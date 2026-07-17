@@ -25,8 +25,8 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("AI 视频生成")
-        self.setMinimumSize(1000, 680)
-        self.resize(1200, 750)
+        self.setMinimumSize(960, 640)
+        self.resize(1100, 700)
         self.setStyleSheet(MAIN_WINDOW_STYLE)
         self._current_conversation_id: str | None = None
         self._setup_ui()
@@ -39,7 +39,6 @@ class MainWindow(QMainWindow):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
 
-        # 分割器实现左右分栏
         splitter = QSplitter(Qt.Orientation.Horizontal)
 
         self.sidebar = Sidebar()
@@ -49,7 +48,7 @@ class MainWindow(QMainWindow):
         splitter.addWidget(self.chat_area)
         splitter.setStretchFactor(0, 0)
         splitter.setStretchFactor(1, 1)
-        splitter.setSizes([260, 940])
+        splitter.setSizes([240, 860])
 
         main_layout.addWidget(splitter)
 
@@ -73,16 +72,10 @@ class MainWindow(QMainWindow):
         self._current_conversation_id = conv_id
 
     def _on_message_sent(self, text: str) -> None:
-        # 如果没有当前对话，自动创建一条
         if not self._current_conversation_id:
             self._on_new_conversation()
 
-        # 更新侧边栏对话标题（取首条消息摘要）
-        title = text[:20] + ("…" if len(text) > 20 else "")
-
         self.chat_area.add_user_message(text)
-
-        # 模拟 AI 回复 + 视频卡片（后续由 Service 层接管）
         self.chat_area.add_ai_message("收到你的描述，正在生成视频…")
         self.chat_area.add_video_card()
 

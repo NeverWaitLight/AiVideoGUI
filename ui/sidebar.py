@@ -7,8 +7,6 @@ from PyQt6.QtWidgets import (
     QListWidget,
     QListWidgetItem,
     QPushButton,
-    QSizePolicy,
-    QSpacerItem,
     QVBoxLayout,
     QWidget,
 )
@@ -26,33 +24,26 @@ class Sidebar(QWidget):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setObjectName("sidebar")
-        self.setFixedWidth(260)
+        self.setFixedWidth(240)
         self.setStyleSheet(SIDEBAR_STYLE)
         self._setup_ui()
 
     def _setup_ui(self) -> None:
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(12, 16, 12, 16)
+        layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(8)
 
-        # 新建对话按钮
         self.new_btn = QPushButton("+  新建对话")
         self.new_btn.setObjectName("newConversationBtn")
         self.new_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.new_btn.clicked.connect(self.new_conversation_clicked.emit)
         layout.addWidget(self.new_btn)
 
-        layout.addSpacing(8)
-
-        # 历史对话列表
         self.conversation_list = QListWidget()
         self.conversation_list.setObjectName("conversationList")
         self.conversation_list.currentItemChanged.connect(self._on_item_changed)
         layout.addWidget(self.conversation_list, stretch=1)
 
-        layout.addSpacing(8)
-
-        # 设置按钮
         self.settings_btn = QPushButton("⚙  设置")
         self.settings_btn.setObjectName("settingsBtn")
         self.settings_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -66,17 +57,14 @@ class Sidebar(QWidget):
                 self.conversation_selected.emit(conv_id)
 
     def add_conversation(self, conv_id: str, title: str, time_text: str) -> None:
-        """添加一条历史对话到列表。"""
         item = QListWidgetItem(f"{title}\n{time_text}")
         item.setData(Qt.ItemDataRole.UserRole, conv_id)
-        item.setSizeHint(item.sizeHint())
         self.conversation_list.insertItem(0, item)
 
     def clear_conversations(self) -> None:
         self.conversation_list.clear()
 
     def select_conversation(self, conv_id: str) -> None:
-        """按 ID 选中一条对话。"""
         for i in range(self.conversation_list.count()):
             item = self.conversation_list.item(i)
             if item.data(Qt.ItemDataRole.UserRole) == conv_id:

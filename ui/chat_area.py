@@ -8,7 +8,6 @@ from PyQt6.QtWidgets import (
     QLabel,
     QPushButton,
     QScrollArea,
-    QSizePolicy,
     QTextEdit,
     QVBoxLayout,
     QWidget,
@@ -36,10 +35,10 @@ class ChatArea(QWidget):
 
         # ── 顶部标题栏 ──
         header = QWidget()
-        header.setFixedHeight(60)
-        header.setStyleSheet("border-bottom: 1px solid #E0E0E0;")
+        header.setObjectName("chatHeader")
+        header.setFixedHeight(52)
         header_layout = QVBoxLayout(header)
-        header_layout.setContentsMargins(20, 8, 20, 8)
+        header_layout.setContentsMargins(20, 10, 20, 10)
         header_layout.setSpacing(2)
 
         self.title_label = QLabel("AI 视频生成")
@@ -70,35 +69,33 @@ class ChatArea(QWidget):
 
         # ── 底部输入区 ──
         input_area = QWidget()
-        input_area.setFixedHeight(100)
-        input_area.setStyleSheet("border-top: 1px solid #E0E0E0;")
+        input_area.setObjectName("inputArea")
+        input_area.setFixedHeight(80)
         input_layout = QHBoxLayout(input_area)
-        input_layout.setContentsMargins(16, 12, 16, 12)
-        input_layout.setSpacing(12)
+        input_layout.setContentsMargins(16, 16, 16, 16)
+        input_layout.setSpacing(10)
 
         self.input_box = QTextEdit()
         self.input_box.setObjectName("inputBox")
         self.input_box.setPlaceholderText("输入视频描述…（Enter 发送，Shift+Enter 换行）")
-        self.input_box.setMaximumHeight(76)
+        self.input_box.setFixedHeight(48)
         self.input_box.installEventFilter(self)
         input_layout.addWidget(self.input_box, stretch=1)
 
         self.send_btn = QPushButton("发送")
         self.send_btn.setObjectName("sendBtn")
         self.send_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.send_btn.setFixedHeight(42)
         self.send_btn.clicked.connect(self._on_send)
         input_layout.addWidget(self.send_btn)
 
         layout.addWidget(input_area)
 
-        # 欢迎信息
         self._show_welcome()
 
     def _show_welcome(self) -> None:
-        welcome = QLabel("👋 你好！输入文字描述，AI 将为你生成视频。")
+        welcome = QLabel("👋  你好！输入文字描述，AI 将为你生成视频。")
         welcome.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        welcome.setStyleSheet("color: #999; font-size: 15px; padding: 40px;")
+        welcome.setStyleSheet("color: #AAAAAA; font-size: 14px; padding: 60px 20px;")
         self.message_layout.insertWidget(0, welcome)
         self._welcome_label = welcome
 
@@ -110,7 +107,6 @@ class ChatArea(QWidget):
         self.message_sent.emit(text)
 
     def eventFilter(self, obj, event) -> bool:
-        """拦截输入框的 Enter 键实现发送。"""
         if obj is self.input_box and event.type() == event.Type.KeyPress:
             if event.key() == Qt.Key.Key_Return and not event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
                 self._on_send()
@@ -118,19 +114,16 @@ class ChatArea(QWidget):
         return super().eventFilter(obj, event)
 
     def add_user_message(self, text: str) -> None:
-        """添加一条用户消息气泡。"""
         if hasattr(self, "_welcome_label") and self._welcome_label:
             self._welcome_label.hide()
             self._welcome_label = None
 
         bubble = MessageBubble("user", text)
-        # 插入到 stretch 之前
         count = self.message_layout.count()
         self.message_layout.insertWidget(count - 1, bubble)
         self._scroll_to_bottom()
 
     def add_ai_message(self, text: str) -> MessageBubble:
-        """添加一条 AI 回复气泡。"""
         bubble = MessageBubble("assistant", text)
         count = self.message_layout.count()
         self.message_layout.insertWidget(count - 1, bubble)
@@ -138,17 +131,14 @@ class ChatArea(QWidget):
         return bubble
 
     def add_video_card(self) -> VideoStatusCard:
-        """添加一个视频状态卡片到消息流。"""
         card = VideoStatusCard()
         count = self.message_layout.count()
-        # 靠左对齐：卡片前加 stretch
         wrapper = QWidget()
         wrapper.setStyleSheet("background: transparent;")
         wrapper_layout = QHBoxLayout(wrapper)
         wrapper_layout.setContentsMargins(16, 0, 16, 0)
         wrapper_layout.addWidget(card)
         wrapper_layout.addStretch()
-
         self.message_layout.insertWidget(count - 1, wrapper)
         self._scroll_to_bottom()
         return card
