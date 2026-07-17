@@ -58,6 +58,13 @@ class AppSettings:
 
 
 @dataclass
+class TaskResult:
+    status: TaskStatus
+    video_url: str = ""
+    error_message: str = ""
+
+
+@dataclass
 class ModelInfo:
     name: str
     provider_name: str

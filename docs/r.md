@@ -19,3 +19,9 @@ curl --location 'https://dashscope.aliyuncs.com/api/v1/services/aigc/video-gener
 }'
 ```
 
+## 查询任务结果
+
+```sh
+curl --location 'https://dashscope.aliyuncs.com/api/v1/tasks/ba20a885-3f66-4e76-a8d6-223477d3919c' \
+--header 'Authorization: *******'
+```

@@ -130,6 +130,11 @@ class ChatArea(QWidget):
         self._scroll_to_bottom()
         return bubble
 
+    def add_ai_message_with_card(self, text: str) -> VideoStatusCard:
+        """添加 AI 气泡 + 视频状态卡片（成对出现）。"""
+        self.add_ai_message(text)
+        return self.add_video_card()
+
     def add_video_card(self) -> VideoStatusCard:
         card = VideoStatusCard()
         count = self.message_layout.count()
@@ -142,6 +147,15 @@ class ChatArea(QWidget):
         self.message_layout.insertWidget(count - 1, wrapper)
         self._scroll_to_bottom()
         return card
+
+    def clear_messages(self) -> None:
+        while self.message_layout.count() > 1:
+            item = self.message_layout.takeAt(0)
+            w = item.widget()
+            if w:
+                w.setParent(None)
+                w.deleteLater()
+        self._show_welcome()
 
     def set_header(self, title: str, model: str) -> None:
         self.title_label.setText(title)

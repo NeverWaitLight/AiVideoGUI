@@ -59,7 +59,7 @@ class MessageBubble(QWidget):
 
         label = QLabel(content)
         label.setWordWrap(True)
-        label.setTextInteractionFlags(Qt.TextBrowserInteraction.TextSelectableByMouse)
+        label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         label.setStyleSheet(f"color: {text_color}; background: transparent; font-size: 14px;")
         bubble_layout.addWidget(label)
 

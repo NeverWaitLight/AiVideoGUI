@@ -1,0 +1,102 @@
+"""JSON 配置文件管理。"""
+
+import json
+import logging
+import os
+
+from models.data_models import AppSettings, ProviderConfig
+
+logger = logging.getLogger(__name__)
+
+
+class ConfigManager:
+    """读写应用配置和 Provider 凭证。"""
+
+    def __init__(self, config_path: str) -> None:
+        self._path = config_path
+        self._providers: dict[str, ProviderConfig] = {}
+        self._settings = AppSettings()
+        self._load()
+
+    def _load(self) -> None:
+        if not os.path.exists(self._path):
+            logger.info("配置文件不存在，使用默认值：%s", self._path)
+            return
+        try:
+            with open(self._path, encoding="utf-8") as f:
+                data = json.load(f)
+        except (OSError, json.JSONDecodeError) as e:
+            logger.error("读取配置失败：%s", e)
+            return
+
+        for item in data.get("providers", []):
+            cfg = ProviderConfig(
+                provider_name=item.get("provider_name", ""),
+                api_key=item.get("api_key", ""),
+                base_url=item.get("base_url", ""),
+                default_model=item.get("default_model", ""),
+                default_params=item.get("default_params", {}),
+            )
+            if cfg.provider_name:
+                self._providers[cfg.provider_name] = cfg
+
+        s = data.get("app_settings", {})
+        self._settings = AppSettings(
+            default_provider=s.get("default_provider", ""),
+            default_download_dir=s.get("default_download_dir", ""),
+            theme=s.get("theme", "light"),
+        )
+        logger.info("配置已加载，providers=%s", list(self._providers.keys()))
+
+    def save(self) -> None:
+        data = {
+            "providers": [
+                {
+                    "provider_name": p.provider_name,
+                    "api_key": p.api_key,
+                    "base_url": p.base_url,
+                    "default_model": p.default_model,
+                    "default_params": p.default_params,
+                }
+                for p in self._providers.values()
+            ],
+            "app_settings": {
+                "default_provider": self._settings.default_provider,
+                "default_download_dir": self._settings.default_download_dir,
+                "theme": self._settings.theme,
+            },
+        }
+        os.makedirs(os.path.dirname(self._path), exist_ok=True)
+        with open(self._path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        logger.info("配置已保存：%s", self._path)
+
+    # ---------- providers ----------
+
+    def get_provider(self, name: str) -> ProviderConfig | None:
+        return self._providers.get(name)
+
+    def list_providers(self) -> list[ProviderConfig]:
+        return list(self._providers.values())
+
+    def upsert_provider(self, cfg: ProviderConfig) -> None:
+        self._providers[cfg.provider_name] = cfg
+        self.save()
+
+    def delete_provider(self, name: str) -> None:
+        self._providers.pop(name, None)
+        if self._settings.default_provider == name:
+            self._settings.default_provider = ""
+        self.save()
+
+    # ---------- settings ----------
+
+    @property
+    def settings(self) -> AppSettings:
+        return self._settings
+
+    def update_settings(self, **kwargs) -> None:
+        for k, v in kwargs.items():
+            if hasattr(self._settings, k):
+                setattr(self._settings, k, v)
+        self.save()

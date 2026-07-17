@@ -4,8 +4,11 @@ from __future__ import annotations
 
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
+    QAbstractItemView,
     QListWidget,
     QListWidgetItem,
+    QMenu,
+    QMessageBox,
     QPushButton,
     QVBoxLayout,
     QWidget,
@@ -19,6 +22,7 @@ class Sidebar(QWidget):
 
     new_conversation_clicked = pyqtSignal()
     conversation_selected = pyqtSignal(str)
+    conversation_deleted = pyqtSignal(str)
     settings_clicked = pyqtSignal()
 
     def __init__(self, parent: QWidget | None = None):
@@ -41,6 +45,8 @@ class Sidebar(QWidget):
 
         self.conversation_list = QListWidget()
         self.conversation_list.setObjectName("conversationList")
+        self.conversation_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.conversation_list.customContextMenuRequested.connect(self._on_context_menu)
         self.conversation_list.currentItemChanged.connect(self._on_item_changed)
         layout.addWidget(self.conversation_list, stretch=1)
 
@@ -55,6 +61,28 @@ class Sidebar(QWidget):
             conv_id = current.data(Qt.ItemDataRole.UserRole)
             if conv_id:
                 self.conversation_selected.emit(conv_id)
+
+    def _on_context_menu(self, pos) -> None:
+        item = self.conversation_list.itemAt(pos)
+        if not item:
+            return
+        menu = QMenu(self)
+        delete_action = menu.addAction("🗑  删除对话")
+        action = menu.exec(self.conversation_list.mapToGlobal(pos))
+        if action == delete_action:
+            conv_id = item.data(Qt.ItemDataRole.UserRole)
+            if not conv_id:
+                return
+            reply = QMessageBox.question(
+                self,
+                "确认删除",
+                "删除后将无法恢复该对话及其所有视频记录，是否继续？",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            )
+            if reply == QMessageBox.StandardButton.Yes:
+                row = self.conversation_list.row(item)
+                self.conversation_list.takeItem(row)
+                self.conversation_deleted.emit(conv_id)
 
     def add_conversation(self, conv_id: str, title: str, time_text: str) -> None:
         item = QListWidgetItem(f"{title}\n{time_text}")
