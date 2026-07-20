@@ -4,20 +4,14 @@ from __future__ import annotations
 
 from PyQt6.QtCore import QSize, Qt, pyqtSignal
 from PyQt6.QtWidgets import (
-    QAbstractItemView,
     QHBoxLayout,
     QLabel,
-    QListWidget,
     QListWidgetItem,
-    QMenu,
-    QMessageBox,
-    QPushButton,
     QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
-
-from ui.styles import SIDEBAR_STYLE
+from qfluentwidgets import PrimaryPushButton, PushButton, ListWidget, MessageBox, RoundMenu, Action, FluentIcon
 
 
 class _ConversationRow(QWidget):
@@ -47,8 +41,7 @@ class _ConversationRow(QWidget):
         text_layout.addWidget(self._time_label)
         layout.addLayout(text_layout, stretch=1)
 
-        self._delete_btn = QPushButton("✕")
-        self._delete_btn.setObjectName("deleteConvBtn")
+        self._delete_btn = PushButton("✕")
         self._delete_btn.setFixedSize(22, 22)
         self._delete_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._delete_btn.clicked.connect(lambda: self.delete_clicked.emit(self._conv_id))
@@ -78,7 +71,6 @@ class Sidebar(QWidget):
         super().__init__(parent)
         self.setObjectName("sidebar")
         self.setFixedWidth(240)
-        self.setStyleSheet(SIDEBAR_STYLE)
         self._setup_ui()
 
     def _setup_ui(self) -> None:
@@ -86,28 +78,24 @@ class Sidebar(QWidget):
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(8)
 
-        self.new_btn = QPushButton("+  新建对话")
-        self.new_btn.setObjectName("newConversationBtn")
+        self.new_btn = PrimaryPushButton(FluentIcon.ADD, "新建对话")
         self.new_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.new_btn.clicked.connect(self.new_conversation_clicked.emit)
         layout.addWidget(self.new_btn)
 
-        self.conversation_list = QListWidget()
-        self.conversation_list.setObjectName("conversationList")
+        self.conversation_list = ListWidget()
         self.conversation_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.conversation_list.customContextMenuRequested.connect(self._on_context_menu)
         self.conversation_list.currentItemChanged.connect(self._on_item_changed)
         layout.addWidget(self.conversation_list, stretch=1)
 
-        self.library_btn = QPushButton("📁  素材库")
-        self.library_btn.setObjectName("libraryBtn")
+        self.library_btn = PushButton(FluentIcon.FOLDER, "素材库")
         self.library_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.library_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.library_btn.clicked.connect(self.library_clicked.emit)
         layout.addWidget(self.library_btn)
 
-        self.settings_btn = QPushButton("⚙  设置")
-        self.settings_btn.setObjectName("settingsBtn")
+        self.settings_btn = PushButton(FluentIcon.SETTING, "设置")
         self.settings_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.settings_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.settings_btn.clicked.connect(self.settings_clicked.emit)
@@ -138,8 +126,9 @@ class Sidebar(QWidget):
         item = self.conversation_list.itemAt(pos)
         if not item:
             return
-        menu = QMenu(self)
-        delete_action = menu.addAction("🗑  删除对话")
+        menu = RoundMenu(parent=self)
+        delete_action = Action(FluentIcon.DELETE, "删除对话")
+        menu.addAction(delete_action)
         action = menu.exec(self.conversation_list.mapToGlobal(pos))
         if action == delete_action:
             conv_id = item.data(Qt.ItemDataRole.UserRole)
@@ -155,13 +144,12 @@ class Sidebar(QWidget):
                 return
 
     def _confirm_delete(self, conv_id: str, item: QListWidgetItem) -> None:
-        reply = QMessageBox.question(
-            self,
+        w = MessageBox(
             "确认删除",
             "删除后将无法恢复该对话及其所有视频记录，是否继续？",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            self
         )
-        if reply == QMessageBox.StandardButton.Yes:
+        if w.exec():
             row = self.conversation_list.row(item)
             self.conversation_list.takeItem(row)
             self.conversation_deleted.emit(conv_id)

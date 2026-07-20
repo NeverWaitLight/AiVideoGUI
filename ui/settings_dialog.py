@@ -7,23 +7,24 @@ import os
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
-    QComboBox,
-    QDialog,
     QFileDialog,
     QFormLayout,
-    QGroupBox,
     QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QMessageBox,
-    QPushButton,
     QVBoxLayout,
+    QWidget,
+)
+from qfluentwidgets import (
+    MessageBox,
+    ComboBox,
+    LineEdit,
+    PushButton,
+    PrimaryPushButton,
+    Dialog,
 )
 
 from config.manager import ConfigManager
 from models.data_models import ProviderConfig
 from providers.bailian_chat import BailianChatProvider
-from ui.styles import SETTINGS_DIALOG_STYLE
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +44,7 @@ _CHAT_PROVIDER_OPTIONS: list[tuple[str, str]] = [
 ]
 
 
-class SettingsDialog(QDialog):
+class SettingsDialog(Dialog):
     """应用设置对话框。"""
 
     def __init__(self, config: ConfigManager, parent=None):
@@ -51,96 +52,84 @@ class SettingsDialog(QDialog):
         self._config = config
         self.setWindowTitle("设置")
         self.setFixedSize(520, 680)
-        self.setStyleSheet(SETTINGS_DIALOG_STYLE)
         self._setup_ui()
         self._load_from_config()
 
     def _setup_ui(self) -> None:
-        layout = QVBoxLayout(self)
+        layout = QVBoxLayout()
         layout.setContentsMargins(24, 20, 24, 20)
         layout.setSpacing(16)
 
         # ── Provider 配置 ──
-        provider_group = QGroupBox("供应商配置")
         provider_layout = QFormLayout()
         provider_layout.setSpacing(12)
         provider_layout.setContentsMargins(16, 20, 16, 16)
 
-        self.provider_combo = QComboBox()
+        self.provider_combo = ComboBox()
         for display, _name in _PROVIDER_OPTIONS:
-            self.provider_combo.addItem(display, _name)
+            self.provider_combo.addItem(display, userData=_name)
         self.provider_combo.currentIndexChanged.connect(self._on_provider_changed)
         provider_layout.addRow("供应商:", self.provider_combo)
 
-        self.api_key_input = QLineEdit()
+        self.api_key_input = LineEdit()
         self.api_key_input.setPlaceholderText("输入 API Key")
-        self.api_key_input.setEchoMode(QLineEdit.EchoMode.Password)
+        self.api_key_input.setEchoMode(LineEdit.EchoMode.Password)
         provider_layout.addRow("API Key:", self.api_key_input)
 
-        self.base_url_input = QLineEdit()
+        self.base_url_input = LineEdit()
         self.base_url_input.setPlaceholderText("留空使用默认地址")
         provider_layout.addRow("Base URL:", self.base_url_input)
 
-        self.model_combo = QComboBox()
+        self.model_combo = ComboBox()
         provider_layout.addRow("默认模型:", self.model_combo)
 
-        provider_group.setLayout(provider_layout)
-        layout.addWidget(provider_group)
+        layout.addLayout(provider_layout)
 
         # ── 对话模型配置 ──
-        chat_group = QGroupBox("对话模型配置")
         chat_layout = QFormLayout()
         chat_layout.setSpacing(12)
         chat_layout.setContentsMargins(16, 20, 16, 16)
 
-        self.chat_provider_combo = QComboBox()
+        self.chat_provider_combo = ComboBox()
         for display, name in _CHAT_PROVIDER_OPTIONS:
-            self.chat_provider_combo.addItem(display, name)
+            self.chat_provider_combo.addItem(display, userData=name)
         self.chat_provider_combo.currentIndexChanged.connect(self._on_chat_provider_changed)
         chat_layout.addRow("供应商:", self.chat_provider_combo)
 
-        self.chat_api_key_input = QLineEdit()
+        self.chat_api_key_input = LineEdit()
         self.chat_api_key_input.setPlaceholderText("输入 API Key")
-        self.chat_api_key_input.setEchoMode(QLineEdit.EchoMode.Password)
+        self.chat_api_key_input.setEchoMode(LineEdit.EchoMode.Password)
         chat_layout.addRow("API Key:", self.chat_api_key_input)
 
-        self.chat_base_url_input = QLineEdit()
+        self.chat_base_url_input = LineEdit()
         self.chat_base_url_input.setPlaceholderText("留空使用默认地址")
         chat_layout.addRow("Base URL:", self.chat_base_url_input)
 
         model_row = QHBoxLayout()
-        self.chat_model_combo = QComboBox()
-        self.chat_model_combo.setSizePolicy(
-            self.chat_model_combo.sizePolicy().horizontalPolicy(),
-            self.chat_model_combo.sizePolicy().verticalPolicy(),
-        )
+        self.chat_model_combo = ComboBox()
         model_row.addWidget(self.chat_model_combo, stretch=1)
 
-        refresh_btn = QPushButton("刷新")
-        refresh_btn.setObjectName("browseBtn")
+        refresh_btn = PushButton("刷新")
         refresh_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         refresh_btn.clicked.connect(self._fetch_chat_models)
         model_row.addWidget(refresh_btn)
         chat_layout.addRow("默认模型:", model_row)
 
-        chat_group.setLayout(chat_layout)
-        layout.addWidget(chat_group)
+        layout.addLayout(chat_layout)
 
         # ── 应用设置 ──
-        app_group = QGroupBox("应用设置")
         app_layout = QFormLayout()
         app_layout.setSpacing(12)
         app_layout.setContentsMargins(16, 20, 16, 16)
 
         dir_row = QHBoxLayout()
-        self.download_dir_input = QLineEdit()
+        self.download_dir_input = LineEdit()
         default_dir = os.path.join(os.path.expanduser("~"), "Videos", "AI-Video-GUI")
         self.download_dir_input.setText(default_dir)
         self.download_dir_input.setPlaceholderText("选择视频下载目录")
         dir_row.addWidget(self.download_dir_input)
 
-        browse_btn = QPushButton("浏览")
-        browse_btn.setObjectName("browseBtn")
+        browse_btn = PushButton("浏览")
         browse_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         browse_btn.clicked.connect(self._browse_dir)
         dir_row.addWidget(browse_btn)
@@ -148,13 +137,12 @@ class SettingsDialog(QDialog):
         app_layout.addRow("下载目录:", dir_row)
 
         # 默认 Provider
-        self.default_provider_combo = QComboBox()
+        self.default_provider_combo = ComboBox()
         for display, name in _PROVIDER_OPTIONS:
-            self.default_provider_combo.addItem(display, name)
+            self.default_provider_combo.addItem(display, userData=name)
         app_layout.addRow("默认供应商:", self.default_provider_combo)
 
-        app_group.setLayout(app_layout)
-        layout.addWidget(app_group)
+        layout.addLayout(app_layout)
 
         layout.addStretch()
 
@@ -162,19 +150,22 @@ class SettingsDialog(QDialog):
         btn_row = QHBoxLayout()
         btn_row.addStretch()
 
-        cancel_btn = QPushButton("取消")
-        cancel_btn.setObjectName("cancelBtn")
+        cancel_btn = PushButton("取消")
         cancel_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         cancel_btn.clicked.connect(self.reject)
         btn_row.addWidget(cancel_btn)
 
-        save_btn = QPushButton("保存")
-        save_btn.setObjectName("saveBtn")
+        save_btn = PrimaryPushButton("保存")
         save_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         save_btn.clicked.connect(self._on_save)
         btn_row.addWidget(save_btn)
 
         layout.addLayout(btn_row)
+
+        # 设置到 Dialog 的内容区
+        widget = QWidget()
+        widget.setLayout(layout)
+        self.setContentWidget(widget)
 
     # ───────── 加载 ─────────
 
@@ -243,7 +234,8 @@ class SettingsDialog(QDialog):
     def _fetch_chat_models(self) -> None:
         api_key = self.chat_api_key_input.text().strip()
         if not api_key:
-            QMessageBox.warning(self, "缺少 API Key", "请先输入 API Key 再刷新模型列表。")
+            w = MessageBox("缺少 API Key", "请先输入 API Key 再刷新模型列表。", self)
+            w.exec()
             return
 
         provider_name = self.chat_provider_combo.currentData()
@@ -258,11 +250,13 @@ class SettingsDialog(QDialog):
             models = provider.list_available_models()
         except Exception as e:
             logger.warning("获取模型列表失败：%s", e)
-            QMessageBox.warning(self, "获取失败", f"无法获取模型列表：\n{e}")
+            w = MessageBox("获取失败", f"无法获取模型列表：\n{e}", self)
+            w.exec()
             return
 
         if not models:
-            QMessageBox.information(self, "无可用模型", "当前账号没有可用的模型。")
+            w = MessageBox("无可用模型", "当前账号没有可用的模型。", self)
+            w.exec()
             return
 
         current = self.chat_model_combo.currentText()
@@ -274,7 +268,8 @@ class SettingsDialog(QDialog):
             if i >= 0:
                 self.chat_model_combo.setCurrentIndex(i)
 
-        QMessageBox.information(self, "刷新成功", f"已获取 {len(models)} 个可用模型。")
+        w = MessageBox("刷新成功", f"已获取 {len(models)} 个可用模型。", self)
+        w.exec()
 
     # ───────── 保存 ─────────
 
@@ -285,7 +280,8 @@ class SettingsDialog(QDialog):
         default_model = self.model_combo.currentText()
 
         if not api_key:
-            QMessageBox.warning(self, "缺少 API Key", "请输入 API Key 后再保存。")
+            w = MessageBox("缺少 API Key", "请输入 API Key 后再保存。", self)
+            w.exec()
             return
 
         # 保存视频 Provider 凭证

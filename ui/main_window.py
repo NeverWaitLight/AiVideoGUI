@@ -10,11 +10,10 @@ from datetime import datetime
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QHBoxLayout,
-    QMainWindow,
     QMessageBox,
     QSplitter,
-    QStackedWidget,
     QWidget,
+    QMainWindow,
 )
 
 from config.manager import ConfigManager
@@ -26,7 +25,7 @@ from ui.chat_area import ChatArea
 from ui.media_library import MediaLibrary
 from ui.settings_dialog import SettingsDialog
 from ui.sidebar import Sidebar
-from ui.styles import MAIN_WINDOW_STYLE
+from ui.styles import apply_fluent_theme
 from ui.widgets import VideoStatusCard
 
 logger = logging.getLogger(__name__)
@@ -53,7 +52,9 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("AI 视频生成")
         self.setMinimumSize(960, 640)
         self.resize(1100, 700)
-        self.setStyleSheet(MAIN_WINDOW_STYLE)
+
+        # 应用 Fluent 主题
+        apply_fluent_theme()
 
         self._current_conversation_id: str | None = None
         self._video_cards: dict[str, VideoStatusCard] = {}
@@ -92,19 +93,26 @@ class MainWindow(QMainWindow):
 
         self.sidebar = Sidebar()
 
-        # 右侧页面堆栈：索引 0 = 聊天页，索引 1 = 素材库页
-        self._page_stack = QStackedWidget()
+        # 右侧内容区域
+        content = QWidget()
+        content_layout = QHBoxLayout(content)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+
         self.chat_area = ChatArea()
         self.media_library = MediaLibrary(
             self._media_service,
             on_play=self._play_video,
             on_open_folder=self._open_folder,
         )
-        self._page_stack.addWidget(self.chat_area)
-        self._page_stack.addWidget(self.media_library)
+
+        # 初始显示聊天区域
+        content_layout.addWidget(self.chat_area)
+        self.chat_area.show()
+        content_layout.addWidget(self.media_library)
+        self.media_library.hide()
 
         splitter.addWidget(self.sidebar)
-        splitter.addWidget(self._page_stack)
+        splitter.addWidget(content)
         splitter.setStretchFactor(0, 0)
         splitter.setStretchFactor(1, 1)
         splitter.setSizes([240, 860])
@@ -156,7 +164,8 @@ class MainWindow(QMainWindow):
     # ───────── 侧边栏事件 ─────────
 
     def _on_new_conversation(self) -> None:
-        self._page_stack.setCurrentIndex(0)
+        self.media_library.hide()
+        self.chat_area.show()
         provider_name = self._config.settings.default_provider or "dashscope"
         provider_cfg = self._config.get_provider(provider_name)
         model_name = provider_cfg.default_model if provider_cfg else "wan2.7-t2v"
@@ -170,7 +179,8 @@ class MainWindow(QMainWindow):
         self.chat_area.clear_messages()
 
     def _on_conversation_selected(self, conv_id: str) -> None:
-        self._page_stack.setCurrentIndex(0)
+        self.media_library.hide()
+        self.chat_area.show()
         self._current_conversation_id = conv_id
         convs = [c for c in self._db.list_conversations() if c.id == conv_id]
         if convs:
@@ -186,7 +196,8 @@ class MainWindow(QMainWindow):
 
     def _on_library(self) -> None:
         self.sidebar.clear_selection()
-        self._page_stack.setCurrentIndex(1)
+        self.chat_area.hide()
+        self.media_library.show()
         self.media_library.refresh()
 
     def _on_title_ready(self, conv_id: str, title: str) -> None:

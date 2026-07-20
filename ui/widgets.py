@@ -4,20 +4,19 @@ from __future__ import annotations
 
 import os
 
-from PyQt6.QtCore import QRectF, Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QColor, QFont, QPainter, QPen, QPixmap
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal
+from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
-    QProgressBar,
-    QPushButton,
     QSizePolicy,
     QSpacerItem,
     QStackedLayout,
     QVBoxLayout,
     QWidget,
 )
+from qfluentwidgets import ProgressBar, PushButton, PrimaryPushButton, IndeterminateProgressBar
 
 from ui.styles import (
     COLOR_BUBBLE_AI,
@@ -205,24 +204,9 @@ class VideoStatusCard(QWidget):
         layout.addWidget(self.status_label)
 
         # 进度条（初始隐藏）
-        self.progress_bar = QProgressBar()
+        self.progress_bar = ProgressBar()
         self.progress_bar.setRange(0, 100)
         self.progress_bar.setValue(0)
-        self.progress_bar.setTextVisible(True)
-        self.progress_bar.setStyleSheet(
-            """
-            QProgressBar {
-                border: 1px solid #E0E0E0;
-                border-radius: 4px;
-                text-align: center;
-                height: 20px;
-            }
-            QProgressBar::chunk {
-                background-color: #4A90D9;
-                border-radius: 3px;
-            }
-            """
-        )
         self.progress_bar.hide()
         layout.addWidget(self.progress_bar)
 
@@ -247,12 +231,10 @@ class VideoStatusCard(QWidget):
         self._load_placeholder_pixmap()
         gen_layout.addWidget(self.preview_label)
 
-        self._spinner = SpinnerOverlay(self._generating_page, size=40)
-        self._spinner.move(
-            (self.PREVIEW_W - 40) // 2,
-            (self.PREVIEW_H - 40) // 2,
-        )
-        self._spinner.start()
+        # 使用 Fluent 不确定进度条替代自定义 Spinner
+        self._spinner = IndeterminateProgressBar()
+        self._spinner.setFixedWidth(self.PREVIEW_W - 20)
+        gen_layout.addWidget(self._spinner, alignment=Qt.AlignmentFlag.AlignCenter)
 
         preview_stack.addWidget(self._generating_page)
 
@@ -270,31 +252,12 @@ class VideoStatusCard(QWidget):
         layout.addWidget(self._preview_container)
 
         # 播放按钮
-        self.play_btn = QPushButton("▶  播放视频")
-        self.play_btn.setStyleSheet(
-            """
-            QPushButton {
-                background-color: #4A90D9; color: white; border: none;
-                border-radius: 6px; padding: 8px; font-size: 13px;
-            }
-            QPushButton:hover { background-color: #357ABD; }
-            """
-        )
+        self.play_btn = PrimaryPushButton("▶  播放视频")
         self.play_btn.hide()
         layout.addWidget(self.play_btn)
 
         # 打开文件夹按钮
-        self.folder_btn = QPushButton("📂  打开文件夹")
-        self.folder_btn.setStyleSheet(
-            """
-            QPushButton {
-                background-color: transparent; color: #4A90D9;
-                border: 1px solid #4A90D9; border-radius: 6px;
-                padding: 6px; font-size: 12px;
-            }
-            QPushButton:hover { background-color: #E3EDF7; }
-            """
-        )
+        self.folder_btn = PushButton("📂  打开文件夹")
         self.folder_btn.hide()
         self.folder_btn.clicked.connect(lambda: self.open_folder_clicked.emit(self._local_path))
         layout.addWidget(self.folder_btn)
@@ -349,7 +312,7 @@ class VideoStatusCard(QWidget):
         self.progress_bar.setValue(progress)
         self._preview_container.show()
         self._preview_stack.setCurrentIndex(0)
-        self._spinner.start()
+        self._spinner.pause()
 
     def set_completed(self, local_path: str) -> None:
         self._local_path = local_path
@@ -360,7 +323,7 @@ class VideoStatusCard(QWidget):
         self.progress_bar.hide()
         self._preview_container.show()
         self._preview_stack.setCurrentIndex(1)
-        self._spinner.stop()
+        self._spinner.pause()
         self.play_btn.show()
         self.folder_btn.show()
 
@@ -370,4 +333,4 @@ class VideoStatusCard(QWidget):
         self.progress_bar.hide()
         self._preview_container.show()
         self._preview_stack.setCurrentIndex(0)
-        self._spinner.stop()
+        self._spinner.pause()

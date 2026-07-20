@@ -4,7 +4,7 @@ Windows 桌面端 AI 视频生成工具。用户通过聊天界面输入文字�
 
 - **语言：** Python 3.14
 - **包管理：** uv
-- **GUI 框架：** PyQt6 — 成熟稳定，控件丰富，适合构建复杂聊天界面
+- **GUI 框架：** PyQt6 + PyQt6-Fluent-Widgets — 现代化的 Fluent Design 界面组件库
 - **HTTP：** requests（同步调用）+ 异步下载用 requests 流式写入
 - **本地存储：** SQLite（对话历史）+ 本地文件系统（视频文件）
 - **配置：** JSON 配置文件，存放 API Key、默认模型等用户设置
@@ -21,22 +21,32 @@ Windows 桌面端 AI 视频生成工具。用户通过聊天界面输入文字�
 
 ## 界面设计
 
+采用现代化的 **Fluent Design** 设计语言，提供流畅一致的用户体验。
+
 整体布局为经典的左右分栏：
 
 **左侧边栏**
-- 顶部：新建对话按钮
-- 中部：历史对话列表，每条显示对话标题（取首条消息摘要）和时间，支持右键删除
-- 底部：设置入口（API Key 管理、默认模型选择、下载目录配置）
+- 顶部：新建对话按钮（PrimaryPushButton）
+- 中部：历史对话列表（ListWidget），每条显示对话标题（取首条消息摘要）和时间，支持右键菜单删除
+- 底部：素材库和设置入口（API Key 管理、默认模型选择、下载目录配置）
 
 **右侧主区域**
 - 顶部：当前对话标题 + 当前选中的模型名称
 - 中部：消息流区域，用户消息靠右，AI 回复靠左；AI 回复中嵌入视频预览（缩略图 + 播放按钮），下方显示下载状态（生成中 → 下载中 → 已完成 + 本地路径）
-- 底部：输入框 + 发送按钮，支持 Enter 发送、Shift+Enter 换行
+- 底部：参数面板（分辨率、时长、比例、自动优化、水印等选项）+ 输入框（TextEdit）+ 发送按钮（PrimaryPushButton），支持 Enter 发送、Shift+Enter 换行
+
+**Fluent 组件特性**
+- **现代化按钮**：PrimaryPushButton（主要操作）、PushButton（次要操作），自带悬停和点击动效
+- **流畅输入框**：LineEdit 和 TextEdit 带有聚焦高亮效果
+- **图标系统**：使用 FluentIcon 枚举提供一致的图标风格
+- **对话框**：Dialog 和 MessageBox 采用圆角、阴影设计
+- **菜单**：RoundMenu 提供圆角卡片式上下文菜单
+- **开关和进度**：SwitchButton、ProgressBar、IndeterminateProgressBar 等现代化控件
 
 **视频状态流转**
-- 发送 prompt 后显示"生成中…"
+- 发送 prompt 后显示"生成中…"（IndeterminateProgressBar）
 - Provider 返回任务 ID 后进入轮询，显示进度（如 API 支持）
-- 视频就绪后自动开始下载，显示下载进度条
+- 视频就绪后自动开始下载，显示下载进度条（ProgressBar）
 - 下载完成后显示本地视频播放器 + "打开文件夹"按钮
 
 ## Provider 抽象设计
@@ -148,9 +158,21 @@ Windows 桌面端 AI 视频生成工具。用户通过聊天界面输入文字�
 
 ## 构建与运行
 
+**开发环境依赖：**
+- Python 3.14+
+- uv 包管理器
+- PyQt6 6.11.0+
+- PyQt6-Fluent-Widgets 1.11.2+
+
+**启动步骤：**
 - 安装依赖：`uv sync`
 - 启动程序：`uv run main.py`
 - 首次启动时会弹出设置面板，引导用户配置至少一个 Provider 的 API Key
+
+**主题配置：**
+- 默认使用浅色 Fluent Design 主题
+- 主题色为 `#4A90D9`（蓝色），可在 `ui/styles.py` 的 `apply_fluent_theme()` 函数中修改
+- 支持切换深色模式（修改 `setTheme(Theme.DARK)`）
 
 ## 打包与发布
 
@@ -190,6 +212,22 @@ Windows 桌面端 AI 视频生成工具。用户通过聊天界面输入文字�
 ## 开发约定
 
 - 使用 uv 管理依赖，不手动操作 pip
+- UI 组件统一使用 PyQt6-Fluent-Widgets，不直接使用原生 PyQt6 控件（除非 Fluent 库未提供）
+- 主题配置统一在 `ui/styles.py` 中管理，不使用内联 QSS 样式
+- 新增 UI 组件时优先查阅 [QFluentWidgets 文档](https://qfluentwidgets.com/)
 - Provider 新增时只需在 providers/ 下添加实现类，并在配置中注册，不改动业务层和界面层代码
 - API Key 等敏感信息存储在本地配置文件中，不进入版本控制
 - 界面层不直接调用 Provider，一律通过 Service 层中转
+
+**Fluent 组件使用规范：**
+- 主要操作按钮使用 `PrimaryPushButton`
+- 次要操作按钮使用 `PushButton`
+- 输入框使用 `LineEdit` 或 `TextEdit`
+- 下拉框使用 `ComboBox`
+- 对话框使用 `Dialog` 或 `MessageBox`
+- 菜单使用 `RoundMenu` + `Action`
+- 图标使用 `FluentIcon` 枚举
+- 进度条使用 `ProgressBar` 或 `IndeterminateProgressBar`
+- 开关使用 `SwitchButton`
+
+详见 `FLUENT_MIGRATION.md` 获取完整的组件迁移指南。

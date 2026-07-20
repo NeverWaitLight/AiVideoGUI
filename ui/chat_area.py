@@ -4,76 +4,24 @@ from __future__ import annotations
 
 from typing import Any
 
-from PyQt6.QtCore import QRectF, Qt, pyqtSignal
-from PyQt6.QtGui import QColor, QPainter
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
-    QComboBox,
     QFrame,
     QHBoxLayout,
     QLabel,
-    QPushButton,
     QScrollArea,
-    QTextEdit,
     QVBoxLayout,
     QWidget,
 )
+from qfluentwidgets import (
+    TextEdit,
+    PrimaryPushButton,
+    ComboBox,
+    SwitchButton,
+)
 
-from ui.styles import CHAT_AREA_STYLE, COLOR_PRIMARY
+from ui.styles import COLOR_PRIMARY
 from ui.widgets import MessageBubble, VideoStatusCard
-
-
-class ToggleSwitch(QWidget):
-    """iOS 风格滑动开关组件。"""
-
-    toggled = pyqtSignal(bool)
-
-    def __init__(self, checked: bool = False, parent: QWidget | None = None):
-        super().__init__(parent)
-        self.setFixedSize(40, 22)
-        self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._checked = checked
-        self._anim_pos = 1.0 if checked else 0.0
-
-    def isChecked(self) -> bool:
-        return self._checked
-
-    def setChecked(self, checked: bool) -> None:
-        if checked == self._checked:
-            return
-        self._checked = checked
-        self._anim_pos = 1.0 if checked else 0.0
-        self.update()
-        self.toggled.emit(checked)
-
-    def mousePressEvent(self, event) -> None:
-        if event.button() == Qt.MouseButton.LeftButton:
-            self.setChecked(not self._checked)
-
-    def paintEvent(self, event) -> None:
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-
-        w, h = self.width(), self.height()
-        r = h / 2
-
-        if self._checked:
-            bg = QColor(COLOR_PRIMARY)
-        else:
-            bg = QColor("#CCCCCC")
-
-        painter.setBrush(bg)
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.drawRoundedRect(QRectF(0, 0, w, h), r, r)
-
-        knob_r = h - 4
-        margin = 2
-        if self._checked:
-            knob_x = w - knob_r - margin
-        else:
-            knob_x = margin
-
-        painter.setBrush(QColor("#FFFFFF"))
-        painter.drawEllipse(QRectF(knob_x, margin, knob_r, knob_r))
 
 
 class ParameterPanel(QFrame):
@@ -95,17 +43,6 @@ class ParameterPanel(QFrame):
                 font-size: 12px;
                 color: #666666;
             }
-            QComboBox#paramCombo {
-                border: 1px solid #D0D0D0;
-                border-radius: 4px;
-                padding: 3px 8px;
-                font-size: 12px;
-                background: white;
-                min-height: 22px;
-            }
-            QComboBox#paramCombo:focus { border-color: """
-            + COLOR_PRIMARY
-            + """; }
             """
         )
 
@@ -139,13 +76,14 @@ class ParameterPanel(QFrame):
         )
 
         # 自动优化
-        self._prompt_extend_switch = ToggleSwitch(checked=True)
+        self._prompt_extend_switch = SwitchButton()
+        self._prompt_extend_switch.setChecked(True)
         params_layout.addWidget(
             self._make_param_group("自动优化", self._prompt_extend_switch), stretch=1
         )
 
         # 水印
-        self._watermark_switch = ToggleSwitch(checked=False)
+        self._watermark_switch = SwitchButton()
         params_layout.addWidget(
             self._make_param_group("水印", self._watermark_switch), stretch=1
         )
@@ -167,9 +105,8 @@ class ParameterPanel(QFrame):
         return group
 
     @staticmethod
-    def _make_combo(items: list[str], default: str = "") -> QComboBox:
-        combo = QComboBox()
-        combo.setObjectName("paramCombo")
+    def _make_combo(items: list[str], default: str = "") -> ComboBox:
+        combo = ComboBox()
         combo.addItems(items)
         if default:
             combo.setCurrentText(default)
@@ -195,7 +132,6 @@ class ChatArea(QWidget):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setObjectName("chatArea")
-        self.setStyleSheet(CHAT_AREA_STYLE)
         self._setup_ui()
 
     def _setup_ui(self) -> None:
@@ -249,15 +185,13 @@ class ChatArea(QWidget):
         input_layout.setContentsMargins(16, 16, 16, 16)
         input_layout.setSpacing(10)
 
-        self.input_box = QTextEdit()
-        self.input_box.setObjectName("inputBox")
+        self.input_box = TextEdit()
         self.input_box.setPlaceholderText("输入视频描述…（Enter 发送，Shift+Enter 换行）")
         self.input_box.setFixedHeight(48)
         self.input_box.installEventFilter(self)
         input_layout.addWidget(self.input_box, stretch=1)
 
-        self.send_btn = QPushButton("发送")
-        self.send_btn.setObjectName("sendBtn")
+        self.send_btn = PrimaryPushButton("发送")
         self.send_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.send_btn.clicked.connect(self._on_send)
         input_layout.addWidget(self.send_btn)

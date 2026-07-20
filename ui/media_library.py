@@ -11,21 +11,26 @@ from PyQt6.QtCore import QSize, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QFont, QPixmap
 from PyQt6.QtWidgets import (
     QCheckBox,
-    QComboBox,
     QFileDialog,
     QGridLayout,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
-    QMenu,
-    QMessageBox,
-    QPushButton,
     QScrollArea,
     QSizePolicy,
     QSpacerItem,
     QStackedWidget,
     QVBoxLayout,
     QWidget,
+)
+from qfluentwidgets import (
+    ComboBox,
+    LineEdit,
+    PrimaryPushButton,
+    PushButton,
+    MessageBox,
+    RoundMenu,
+    Action,
+    FluentIcon,
 )
 
 from models.data_models import MediaFile, MediaType
@@ -35,7 +40,6 @@ from ui.styles import (
     COLOR_MEDIA_IMAGE,
     COLOR_MEDIA_VIDEO,
     COLOR_TEXT_SECONDARY,
-    MEDIA_LIBRARY_STYLE,
 )
 
 logger = logging.getLogger(__name__)
@@ -196,11 +200,15 @@ class _MediaCard(QWidget):
         self.double_clicked.emit(self.media.id)
 
     def contextMenuEvent(self, event) -> None:
-        menu = QMenu(self)
-        play_action = menu.addAction("▶  播放/预览")
-        folder_action = menu.addAction("📂  打开文件夹")
+        menu = RoundMenu(parent=self)
+        play_action = Action(FluentIcon.PLAY, "播放/预览")
+        folder_action = Action(FluentIcon.FOLDER, "打开文件夹")
+        delete_action = Action(FluentIcon.DELETE, "删除")
+
+        menu.addAction(play_action)
+        menu.addAction(folder_action)
         menu.addSeparator()
-        delete_action = menu.addAction("🗑  删除")
+        menu.addAction(delete_action)
 
         action = menu.exec(self.mapToGlobal(event.pos()))
         if action == play_action:
@@ -237,16 +245,9 @@ class _EmptyState(QWidget):
         hint_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(hint_label)
 
-        import_btn = QPushButton("📥  导入文件")
-        import_btn.setStyleSheet(
-            """
-            QPushButton {
-                background-color: #4A90D9; color: white; border: none;
-                border-radius: 8px; padding: 10px 32px; font-size: 14px;
-            }
-            QPushButton:hover { background-color: #357ABD; }
-            """
-        )
+        import_btn = PrimaryPushButton(FluentIcon.DOWNLOAD, "导入文件")
+        import_btn.clicked.connect(self.import_clicked.emit)
+        layout.addWidget(import_btn, alignment=Qt.AlignmentFlag.AlignCenter)
         import_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         import_btn.clicked.connect(self.import_clicked.emit)
         layout.addWidget(import_btn, alignment=Qt.AlignmentFlag.AlignCenter)
@@ -264,7 +265,6 @@ class MediaLibrary(QWidget):
     ):
         super().__init__(parent)
         self.setObjectName("mediaLibrary")
-        self.setStyleSheet(MEDIA_LIBRARY_STYLE)
         self._service = media_service
         self._on_play = on_play
         self._on_open_folder = on_open_folder
@@ -295,26 +295,22 @@ class MediaLibrary(QWidget):
 
         tb_layout.addStretch()
 
-        self._type_filter = QComboBox()
-        self._type_filter.setObjectName("typeFilter")
+        self._type_filter = ComboBox()
         self._type_filter.addItems(["全部", "视频", "图片", "音频"])
         self._type_filter.currentIndexChanged.connect(self._on_type_changed)
         tb_layout.addWidget(self._type_filter)
 
-        self._search_box = QLineEdit()
-        self._search_box.setObjectName("searchBox")
+        self._search_box = LineEdit()
         self._search_box.setPlaceholderText("🔍 搜索文件名…")
         self._search_box.textChanged.connect(self._on_search_text_changed)
         tb_layout.addWidget(self._search_box)
 
-        self._import_btn = QPushButton("📥  导入文件")
-        self._import_btn.setObjectName("importBtn")
+        self._import_btn = PrimaryPushButton(FluentIcon.DOWNLOAD, "导入文件")
         self._import_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._import_btn.clicked.connect(self._on_import)
         tb_layout.addWidget(self._import_btn)
 
-        self._delete_btn = QPushButton("🗑  删除选中")
-        self._delete_btn.setObjectName("deleteSelectedBtn")
+        self._delete_btn = PushButton(FluentIcon.DELETE, "删除选中")
         self._delete_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._delete_btn.setEnabled(False)
         self._delete_btn.clicked.connect(self._on_delete_selected)
@@ -447,26 +443,24 @@ class MediaLibrary(QWidget):
         if not selected:
             return
         count = len(selected)
-        reply = QMessageBox.question(
-            self,
+        w = MessageBox(
             "确认删除",
             f"确定要删除选中的 {count} 个素材吗？\n文件将从磁盘中永久删除。",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            self
         )
-        if reply != QMessageBox.StandardButton.Yes:
+        if not w.exec():
             return
         ids = [c.media.id for c in selected]
         self._service.delete_files(ids)
         self.refresh()
 
     def _delete_single(self, media_id: str) -> None:
-        reply = QMessageBox.question(
-            self,
+        w = MessageBox(
             "确认删除",
             "确定要删除这个素材吗？\n文件将从磁盘中永久删除。",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            self
         )
-        if reply != QMessageBox.StandardButton.Yes:
+        if not w.exec():
             return
         self._service.delete_file(media_id)
         self.refresh()
