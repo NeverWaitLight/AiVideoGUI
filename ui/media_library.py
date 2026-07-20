@@ -46,7 +46,8 @@ logger = logging.getLogger(__name__)
 
 _THUMB_SIZE = QSize(160, 120)
 _CARD_WIDTH = 176
-_COLS = 5
+_H_SPACING = 12
+_GRID_MARGIN = 16
 
 _TYPE_LABELS: dict[str, tuple[str, str]] = {
     "video": ("视频", COLOR_MEDIA_VIDEO),
@@ -246,8 +247,6 @@ class _EmptyState(QWidget):
         layout.addWidget(hint_label)
 
         import_btn = PrimaryPushButton(FluentIcon.DOWNLOAD, "导入文件")
-        import_btn.clicked.connect(self.import_clicked.emit)
-        layout.addWidget(import_btn, alignment=Qt.AlignmentFlag.AlignCenter)
         import_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         import_btn.clicked.connect(self.import_clicked.emit)
         layout.addWidget(import_btn, alignment=Qt.AlignmentFlag.AlignCenter)
@@ -271,6 +270,7 @@ class MediaLibrary(QWidget):
         self._cards: list[_MediaCard] = []
         self._current_type: str | None = None
         self._current_keyword: str | None = None
+        self._current_files: list[MediaFile] = []
         self._setup_ui()
         self._search_timer = QTimer(self)
         self._search_timer.setSingleShot(True)
@@ -332,8 +332,8 @@ class MediaLibrary(QWidget):
         self._grid_container = QWidget()
         self._grid_container.setObjectName("mediaGridContainer")
         self._grid_layout = QGridLayout(self._grid_container)
-        self._grid_layout.setContentsMargins(16, 16, 16, 16)
-        self._grid_layout.setHorizontalSpacing(12)
+        self._grid_layout.setContentsMargins(_GRID_MARGIN, _GRID_MARGIN, _GRID_MARGIN, _GRID_MARGIN)
+        self._grid_layout.setHorizontalSpacing(_H_SPACING)
         self._grid_layout.setVerticalSpacing(12)
         self._grid_layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
 
@@ -388,12 +388,30 @@ class MediaLibrary(QWidget):
 
     # ───────── 渲染 ─────────
 
+    def _calc_cols(self) -> int:
+        available = self._scroll.viewport().width() - 2 * _GRID_MARGIN
+        cols = max(1, (available + _H_SPACING) // (_CARD_WIDTH + _H_SPACING))
+        return cols
+
+    def _relayout_cards(self) -> None:
+        cols = self._calc_cols()
+        for i, card in enumerate(self._cards):
+            self._grid_layout.removeWidget(card)
+        for i, card in enumerate(self._cards):
+            self._grid_layout.addWidget(card, i // cols, i % cols)
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        if self._cards:
+            self._relayout_cards()
+
     def _render_cards(self, files: list[MediaFile]) -> None:
         # 清除旧卡片
         for card in self._cards:
             card.setParent(None)
             card.deleteLater()
         self._cards.clear()
+        self._current_files = files
 
         if not files:
             self._stack.setCurrentIndex(1)
@@ -401,13 +419,14 @@ class MediaLibrary(QWidget):
             return
 
         self._stack.setCurrentIndex(0)
+        cols = self._calc_cols()
 
         for i, media in enumerate(files):
             card = _MediaCard(media, self._on_open_folder)
             card.double_clicked.connect(self._on_card_double_click)
             card.delete_requested.connect(self._delete_single)
             card.selection_changed.connect(self._update_delete_btn)
-            self._grid_layout.addWidget(card, i // _COLS, i % _COLS)
+            self._grid_layout.addWidget(card, i // cols, i % cols)
             self._cards.append(card)
 
         total_size = sum(f.file_size for f in files)

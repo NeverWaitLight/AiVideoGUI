@@ -35,10 +35,6 @@ class ParameterPanel(QFrame):
     def _setup_ui(self) -> None:
         self.setStyleSheet(
             """
-            QFrame#paramPanel {
-                background-color: #FAFAFA;
-                border-top: 1px solid #E0E0E0;
-            }
             QLabel#paramLabel {
                 font-size: 12px;
                 color: #666666;
@@ -47,7 +43,7 @@ class ParameterPanel(QFrame):
         )
 
         outer = QVBoxLayout(self)
-        outer.setContentsMargins(16, 6, 16, 6)
+        outer.setContentsMargins(0, 6, 0, 6)
         outer.setSpacing(0)
 
         # ── 参数控件行 ──
@@ -173,16 +169,31 @@ class ChatArea(QWidget):
         self.scroll_area.setWidget(self.message_container)
         layout.addWidget(self.scroll_area, stretch=1)
 
-        # ── 参数面板 ──
-        self.param_panel = ParameterPanel()
-        layout.addWidget(self.param_panel)
+        # ── 底部区域：参数面板 + 输入框（统一容器，确保水平对齐） ──
+        bottom = QWidget()
+        bottom.setObjectName("bottomSection")
+        bottom.setStyleSheet(
+            """
+            QWidget#bottomSection {
+                background-color: #FAFAFA;
+                border-top: 1px solid #E0E0E0;
+            }
+            """
+        )
+        bottom_layout = QVBoxLayout(bottom)
+        bottom_layout.setContentsMargins(16, 0, 16, 0)
+        bottom_layout.setSpacing(0)
 
-        # ── 底部输入区 ──
-        input_area = QWidget()
-        input_area.setObjectName("inputArea")
-        input_area.setFixedHeight(80)
-        input_layout = QHBoxLayout(input_area)
-        input_layout.setContentsMargins(16, 16, 16, 16)
+        # 参数面板
+        self.param_panel = ParameterPanel()
+        bottom_layout.addWidget(self.param_panel)
+
+        # 输入行
+        input_row = QWidget()
+        input_row.setStyleSheet("background: transparent;")
+        input_row.setFixedHeight(70)
+        input_layout = QHBoxLayout(input_row)
+        input_layout.setContentsMargins(0, 10, 0, 12)
         input_layout.setSpacing(10)
 
         self.input_box = TextEdit()
@@ -196,7 +207,8 @@ class ChatArea(QWidget):
         self.send_btn.clicked.connect(self._on_send)
         input_layout.addWidget(self.send_btn)
 
-        layout.addWidget(input_area)
+        bottom_layout.addWidget(input_row)
+        layout.addWidget(bottom)
 
         self._show_welcome()
 
