@@ -32,6 +32,14 @@ from ui.widgets import VideoStatusCard
 logger = logging.getLogger(__name__)
 
 
+def _format_time(dt: datetime) -> str:
+    """将 datetime 格式化为显示时间（今天 HH:MM，其他 MM-DD HH:MM）。"""
+    now = datetime.now()
+    if dt.date() == now.date():
+        return dt.strftime("%H:%M")
+    return dt.strftime("%m-%d %H:%M")
+
+
 def _app_data_dir() -> str:
     root = os.environ.get("LOCALAPPDATA", os.path.expanduser("~"))
     return os.path.join(root, "ai-video-gui")
@@ -128,17 +136,22 @@ class MainWindow(QMainWindow):
     def _load_messages(self, conversation_id: str) -> None:
         self.chat_area.clear_messages()
         for msg in self._db.list_messages(conversation_id):
+            time_str = _format_time(msg.created_at)
             if msg.role == "user":
-                self.chat_area.add_user_message(msg.content)
+                self.chat_area.add_user_message(msg.content, time_str)
             else:
-                card = self.chat_area.add_video_card()
+                card = self.chat_area.add_video_card(
+                    message_text=msg.content, timestamp=time_str
+                )
                 self._video_cards[msg.id] = card
                 card.open_folder_clicked.connect(self._open_folder)
                 if msg.status.value == "completed" and msg.local_path:
                     card.set_completed(msg.local_path)
+                    card.play_btn.clicked.connect(lambda _, p=msg.local_path: self._play_video(p))
                 elif msg.status.value == "failed":
                     card.set_failed("生成失败")
-                card.play_btn.clicked.connect(lambda _, p=msg.local_path: self._play_video(p))
+                else:
+                    card.set_generating()
 
     # ───────── 侧边栏事件 ─────────
 
@@ -186,7 +199,7 @@ class MainWindow(QMainWindow):
 
     # ───────── 消息发送 ─────────
 
-    def _on_message_sent(self, text: str) -> None:
+    def _on_message_sent(self, text: str, params: dict) -> None:
         if not self._current_conversation_id:
             self._on_new_conversation()
 
@@ -203,7 +216,8 @@ class MainWindow(QMainWindow):
         conv_id = self._current_conversation_id
         is_first_message = len(self._db.list_messages(conv_id)) == 0
 
-        self.chat_area.add_user_message(text)
+        now_str = _format_time(datetime.now())
+        self.chat_area.add_user_message(text, now_str)
         self._service.add_user_message(conv_id, text)
 
         if is_first_message:
@@ -211,7 +225,7 @@ class MainWindow(QMainWindow):
 
         try:
             assistant_msg = self._service.submit_task(
-                self._current_conversation_id, text, provider_name
+                self._current_conversation_id, text, provider_name, params
             )
         except Exception as e:
             logger.exception("提交任务失败")
@@ -219,8 +233,9 @@ class MainWindow(QMainWindow):
             card.set_failed(str(e))
             return
 
-        card = self.chat_area.add_ai_message_with_card("收到你的描述，正在生成视频…")
+        card = self.chat_area.add_ai_message_with_card("马上开始生成视频", now_str)
         card.open_folder_clicked.connect(self._open_folder)
+        card.set_generating()
         self._video_cards[assistant_msg.id] = card
 
     # ───────── VideoService 信号 ─────────

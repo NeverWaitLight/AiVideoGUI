@@ -1,9 +1,14 @@
-"""右侧聊天主区域：标题栏、消息流、输入框。"""
+"""右侧聊天主区域：标题栏、消息流、参数面板、输入框。"""
 
 from __future__ import annotations
 
-from PyQt6.QtCore import Qt, pyqtSignal
+from typing import Any
+
+from PyQt6.QtCore import QRectF, Qt, pyqtSignal
+from PyQt6.QtGui import QColor, QPainter
 from PyQt6.QtWidgets import (
+    QComboBox,
+    QFrame,
     QHBoxLayout,
     QLabel,
     QPushButton,
@@ -13,14 +18,179 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from ui.styles import CHAT_AREA_STYLE
+from ui.styles import CHAT_AREA_STYLE, COLOR_PRIMARY
 from ui.widgets import MessageBubble, VideoStatusCard
+
+
+class ToggleSwitch(QWidget):
+    """iOS 风格滑动开关组件。"""
+
+    toggled = pyqtSignal(bool)
+
+    def __init__(self, checked: bool = False, parent: QWidget | None = None):
+        super().__init__(parent)
+        self.setFixedSize(40, 22)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._checked = checked
+        self._anim_pos = 1.0 if checked else 0.0
+
+    def isChecked(self) -> bool:
+        return self._checked
+
+    def setChecked(self, checked: bool) -> None:
+        if checked == self._checked:
+            return
+        self._checked = checked
+        self._anim_pos = 1.0 if checked else 0.0
+        self.update()
+        self.toggled.emit(checked)
+
+    def mousePressEvent(self, event) -> None:
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.setChecked(not self._checked)
+
+    def paintEvent(self, event) -> None:
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        w, h = self.width(), self.height()
+        r = h / 2
+
+        if self._checked:
+            bg = QColor(COLOR_PRIMARY)
+        else:
+            bg = QColor("#CCCCCC")
+
+        painter.setBrush(bg)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawRoundedRect(QRectF(0, 0, w, h), r, r)
+
+        knob_r = h - 4
+        margin = 2
+        if self._checked:
+            knob_x = w - knob_r - margin
+        else:
+            knob_x = margin
+
+        painter.setBrush(QColor("#FFFFFF"))
+        painter.drawEllipse(QRectF(knob_x, margin, knob_r, knob_r))
+
+
+class ParameterPanel(QFrame):
+    """视频生成参数选择面板，位于输入框上方。"""
+
+    def __init__(self, parent: QWidget | None = None):
+        super().__init__(parent)
+        self.setObjectName("paramPanel")
+        self._setup_ui()
+
+    def _setup_ui(self) -> None:
+        self.setStyleSheet(
+            """
+            QFrame#paramPanel {
+                background-color: #FAFAFA;
+                border-top: 1px solid #E0E0E0;
+            }
+            QLabel#paramLabel {
+                font-size: 12px;
+                color: #666666;
+            }
+            QComboBox#paramCombo {
+                border: 1px solid #D0D0D0;
+                border-radius: 4px;
+                padding: 3px 8px;
+                font-size: 12px;
+                background: white;
+                min-height: 22px;
+            }
+            QComboBox#paramCombo:focus { border-color: """
+            + COLOR_PRIMARY
+            + """; }
+            """
+        )
+
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(16, 6, 16, 6)
+        outer.setSpacing(0)
+
+        # ── 参数控件行 ──
+        params_widget = QWidget()
+        params_widget.setStyleSheet("background: transparent;")
+        params_layout = QHBoxLayout(params_widget)
+        params_layout.setContentsMargins(0, 0, 0, 0)
+        params_layout.setSpacing(10)
+
+        # 分辨率
+        self._resolution_combo = self._make_combo(["480P", "720P", "1080P"], default="720P")
+        params_layout.addWidget(
+            self._make_param_group("分辨率", self._resolution_combo), stretch=1
+        )
+
+        # 时长
+        self._duration_combo = self._make_combo(["5秒", "10秒", "15秒"])
+        params_layout.addWidget(
+            self._make_param_group("时长", self._duration_combo), stretch=1
+        )
+
+        # 画面比例
+        self._ratio_combo = self._make_combo(["16:9", "9:16", "1:1"])
+        params_layout.addWidget(
+            self._make_param_group("比例", self._ratio_combo), stretch=1
+        )
+
+        # 自动优化
+        self._prompt_extend_switch = ToggleSwitch(checked=True)
+        params_layout.addWidget(
+            self._make_param_group("自动优化", self._prompt_extend_switch), stretch=1
+        )
+
+        # 水印
+        self._watermark_switch = ToggleSwitch(checked=False)
+        params_layout.addWidget(
+            self._make_param_group("水印", self._watermark_switch), stretch=1
+        )
+
+        outer.addWidget(params_widget)
+
+    @staticmethod
+    def _make_param_group(label_text: str, control: QWidget) -> QWidget:
+        group = QWidget()
+        group.setStyleSheet("background: transparent;")
+        layout = QHBoxLayout(group)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(6)
+        lbl = QLabel(label_text)
+        lbl.setObjectName("paramLabel")
+        layout.addWidget(lbl)
+        layout.addWidget(control)
+        layout.addStretch()
+        return group
+
+    @staticmethod
+    def _make_combo(items: list[str], default: str = "") -> QComboBox:
+        combo = QComboBox()
+        combo.setObjectName("paramCombo")
+        combo.addItems(items)
+        if default:
+            combo.setCurrentText(default)
+        return combo
+
+    def get_params(self) -> dict[str, Any]:
+        """返回当前选中的生成参数，字段名与 DashScope API 一一对应。"""
+        duration_map = {"5秒": 5, "10秒": 10, "15秒": 15}
+        return {
+            "resolution": self._resolution_combo.currentText(),
+            "ratio": self._ratio_combo.currentText(),
+            "duration": duration_map.get(self._duration_combo.currentText(), 5),
+            "prompt_extend": self._prompt_extend_switch.isChecked(),
+            "watermark": self._watermark_switch.isChecked(),
+        }
 
 
 class ChatArea(QWidget):
     """右侧聊天主区域组件。"""
 
-    message_sent = pyqtSignal(str)
+    message_sent = pyqtSignal(str, dict)
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
@@ -67,6 +237,10 @@ class ChatArea(QWidget):
         self.scroll_area.setWidget(self.message_container)
         layout.addWidget(self.scroll_area, stretch=1)
 
+        # ── 参数面板 ──
+        self.param_panel = ParameterPanel()
+        layout.addWidget(self.param_panel)
+
         # ── 底部输入区 ──
         input_area = QWidget()
         input_area.setObjectName("inputArea")
@@ -103,8 +277,9 @@ class ChatArea(QWidget):
         text = self.input_box.toPlainText().strip()
         if not text:
             return
+        params = self.param_panel.get_params()
         self.input_box.clear()
-        self.message_sent.emit(text)
+        self.message_sent.emit(text, params)
 
     def eventFilter(self, obj, event) -> bool:
         if obj is self.input_box and event.type() == event.Type.KeyPress:
@@ -113,38 +288,33 @@ class ChatArea(QWidget):
                 return True
         return super().eventFilter(obj, event)
 
-    def add_user_message(self, text: str) -> None:
+    def add_user_message(self, text: str, timestamp: str = "") -> None:
         if hasattr(self, "_welcome_label") and self._welcome_label:
             self._welcome_label.hide()
             self._welcome_label = None
 
-        bubble = MessageBubble("user", text)
+        bubble = MessageBubble("user", text, timestamp)
         count = self.message_layout.count()
         self.message_layout.insertWidget(count - 1, bubble)
         self._scroll_to_bottom()
 
-    def add_ai_message(self, text: str) -> MessageBubble:
-        bubble = MessageBubble("assistant", text)
+    def add_ai_message(self, text: str, timestamp: str = "") -> MessageBubble:
+        bubble = MessageBubble("assistant", text, timestamp)
         count = self.message_layout.count()
         self.message_layout.insertWidget(count - 1, bubble)
         self._scroll_to_bottom()
         return bubble
 
-    def add_ai_message_with_card(self, text: str) -> VideoStatusCard:
-        """添加 AI 气泡 + 视频状态卡片（成对出现）。"""
-        self.add_ai_message(text)
-        return self.add_video_card()
+    def add_ai_message_with_card(self, text: str, timestamp: str = "") -> VideoStatusCard:
+        """添加包含回复文字 + 视频状态卡片的整合气泡。"""
+        return self.add_video_card(message_text=text, timestamp=timestamp)
 
-    def add_video_card(self) -> VideoStatusCard:
-        card = VideoStatusCard()
+    def add_video_card(
+        self, message_text: str = "", timestamp: str = ""
+    ) -> VideoStatusCard:
+        card = VideoStatusCard(message_text=message_text, timestamp=timestamp)
         count = self.message_layout.count()
-        wrapper = QWidget()
-        wrapper.setStyleSheet("background: transparent;")
-        wrapper_layout = QHBoxLayout(wrapper)
-        wrapper_layout.setContentsMargins(16, 0, 16, 0)
-        wrapper_layout.addWidget(card)
-        wrapper_layout.addStretch()
-        self.message_layout.insertWidget(count - 1, wrapper)
+        self.message_layout.insertWidget(count - 1, card)
         self._scroll_to_bottom()
         return card
 
