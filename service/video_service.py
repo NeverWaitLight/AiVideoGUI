@@ -317,6 +317,76 @@ class VideoService(QObject):
             self._db.remove_active_task(task_id)
         self._message_conv.pop(message_id, None)
 
+    # ---------- 恢复未完成任务 ----------
+
+    def resume_pending_tasks(self) -> int:
+        """启动时恢复 active_tasks 表中仍在等待的任务轮询。
+
+        返回成功恢复的任务数量。
+        """
+        active = self._db.list_active_tasks()
+        resumed = 0
+        for task in active:
+            task_id = task["task_id"]
+            message_id = task["message_id"]
+            provider_name = task["provider_name"]
+            model_name = task["model_name"]
+
+            # 跳过已有 worker 的任务（理论上不应出现）
+            if message_id in self._workers:
+                continue
+
+            # 获取消息以拿到 conversation_id 和 prompt
+            msg = self._db.get_message(message_id)
+            if not msg:
+                logger.warning("恢复任务失败：消息不存在 message_id=%s", message_id)
+                self._db.remove_active_task(task_id)
+                continue
+
+            # 消息已经是终态，清理残留记录
+            if msg.status in (MessageStatus.COMPLETED, MessageStatus.FAILED):
+                self._db.remove_active_task(task_id)
+                continue
+
+            try:
+                provider = self.get_provider(provider_name)
+            except Exception as e:
+                logger.warning("恢复任务失败：Provider 不可用 %s — %s", provider_name, e)
+                self._db.update_message_status(
+                    message_id, MessageStatus.FAILED,
+                    error_message=f"Provider {provider_name} 不可用，任务已中断",
+                )
+                self._db.remove_active_task(task_id)
+                continue
+
+            filename = _build_video_filename(model_name, msg.content)
+            save_path = os.path.join(self._download_dir, filename)
+
+            worker = _TaskWorker(
+                provider=provider,
+                task_id=task_id,
+                message_id=message_id,
+                save_path=save_path,
+                temp_dir=self._temp_dir,
+                poll_interval=self.poll_interval,
+                poll_delay=0.0,
+                max_polls=self.max_polls,
+            )
+            worker.status_changed.connect(self._on_status_changed)
+            worker.download_progress.connect(self._on_download_progress)
+            worker.finished.connect(self._on_finished)
+            worker.failed.connect(self._on_failed)
+            self._workers[message_id] = worker
+            self._message_tasks[message_id] = task_id
+            self._message_conv[message_id] = msg.conversation_id
+            worker.start()
+            resumed += 1
+            logger.info("已恢复任务轮询 message=%s task=%s", message_id, task_id)
+
+        if resumed:
+            logger.info("共恢复 %d 个未完成任务", resumed)
+        return resumed
+
     # ---------- 生命周期 ----------
 
     def shutdown(self) -> None:

@@ -79,6 +79,7 @@ class MainWindow(QMainWindow):
         self._setup_ui()
         self._connect_signals()
         self._load_conversations()
+        self._service.resume_pending_tasks()
 
     # ───────── UI 组装 ─────────
 

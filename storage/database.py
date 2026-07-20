@@ -143,6 +143,28 @@ class DatabaseManager:
         )
         self._conn.commit()
 
+    def get_message(self, message_id: str) -> Message | None:
+        row = self._conn.execute(
+            "SELECT id, conversation_id, role, content, created_at, "
+            "task_id, video_url, local_path, status, error_message "
+            "FROM messages WHERE id = ?",
+            (message_id,),
+        ).fetchone()
+        if not row:
+            return None
+        return Message(
+            id=row["id"],
+            conversation_id=row["conversation_id"],
+            role=row["role"],
+            content=row["content"],
+            created_at=datetime.fromisoformat(row["created_at"]),
+            task_id=row["task_id"],
+            video_url=row["video_url"],
+            local_path=row["local_path"],
+            status=MessageStatus(row["status"]),
+            error_message=row["error_message"],
+        )
+
     def list_messages(self, conversation_id: str) -> list[Message]:
         rows = self._conn.execute(
             "SELECT id, conversation_id, role, content, created_at, "
