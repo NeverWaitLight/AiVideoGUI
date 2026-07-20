@@ -54,18 +54,26 @@ QListWidget#conversationList {
     outline: none;
 }
 QListWidget#conversationList::item {
-    padding: 10px 14px;
+    padding: 2px 4px;
     border-radius: 6px;
     margin: 1px 0px;
-    font-size: 13px;
-    color: #333333;
 }
 QListWidget#conversationList::item:selected {
     background-color: #DDE8F4;
-    color: #1A5DAB;
-    font-weight: bold;
 }
 QListWidget#conversationList::item:hover:!selected { background-color: #EAEAEA; }
+QPushButton#deleteConvBtn {
+    background-color: transparent;
+    color: #BBBBBB;
+    border: none;
+    border-radius: 11px;
+    font-size: 13px;
+    font-weight: bold;
+}
+QPushButton#deleteConvBtn:hover {
+    background-color: #E74C3C;
+    color: white;
+}
 """
 
 CHAT_AREA_STYLE = """

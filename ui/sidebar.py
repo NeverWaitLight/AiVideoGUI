@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import QSize, Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QAbstractItemView,
+    QHBoxLayout,
+    QLabel,
     QListWidget,
     QListWidgetItem,
     QMenu,
@@ -16,6 +18,51 @@ from PyQt6.QtWidgets import (
 )
 
 from ui.styles import SIDEBAR_STYLE
+
+
+class _ConversationRow(QWidget):
+    """对话列表行控件：左侧标题+时间，右侧垂直居中删除按钮。"""
+
+    delete_clicked = pyqtSignal(str)
+
+    def __init__(self, conv_id: str, title: str, time_text: str, parent: QWidget | None = None):
+        super().__init__(parent)
+        self._conv_id = conv_id
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(6, 4, 6, 4)
+        layout.setSpacing(0)
+
+        text_layout = QVBoxLayout()
+        text_layout.setContentsMargins(0, 0, 0, 0)
+        text_layout.setSpacing(2)
+
+        self._title_label = QLabel(title)
+        self._title_label.setObjectName("convRowTitle")
+        self._time_label = QLabel(time_text)
+        self._time_label.setObjectName("convRowTime")
+
+        text_layout.addWidget(self._title_label)
+        text_layout.addWidget(self._time_label)
+        layout.addLayout(text_layout, stretch=1)
+
+        self._delete_btn = QPushButton("✕")
+        self._delete_btn.setObjectName("deleteConvBtn")
+        self._delete_btn.setFixedSize(22, 22)
+        self._delete_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._delete_btn.clicked.connect(lambda: self.delete_clicked.emit(self._conv_id))
+        layout.addWidget(self._delete_btn, alignment=Qt.AlignmentFlag.AlignVCenter)
+
+        self.set_selected(False)
+
+    def set_selected(self, selected: bool) -> None:
+        if selected:
+            self._title_label.setStyleSheet("color: #1A5DAB; font-weight: bold; font-size: 13px;")
+            self._time_label.setStyleSheet("color: #5A8FBF; font-size: 11px;")
+        else:
+            self._title_label.setStyleSheet("color: #333333; font-weight: normal; font-size: 13px;")
+            self._time_label.setStyleSheet("color: #999999; font-size: 11px;")
 
 
 class Sidebar(QWidget):
@@ -65,8 +112,16 @@ class Sidebar(QWidget):
         sw_layout.addWidget(self.settings_btn)
         layout.addWidget(settings_wrapper)
 
-    def _on_item_changed(self, current: QListWidgetItem | None, _previous: QListWidgetItem | None) -> None:
+    def _on_item_changed(self, current: QListWidgetItem | None, previous: QListWidgetItem | None) -> None:
+        if previous:
+            prev_widget = self.conversation_list.itemWidget(previous)
+            if isinstance(prev_widget, _ConversationRow):
+                prev_widget.set_selected(False)
+
         if current:
+            curr_widget = self.conversation_list.itemWidget(current)
+            if isinstance(curr_widget, _ConversationRow):
+                curr_widget.set_selected(True)
             conv_id = current.data(Qt.ItemDataRole.UserRole)
             if conv_id:
                 self.conversation_selected.emit(conv_id)
@@ -82,21 +137,41 @@ class Sidebar(QWidget):
             conv_id = item.data(Qt.ItemDataRole.UserRole)
             if not conv_id:
                 return
-            reply = QMessageBox.question(
-                self,
-                "确认删除",
-                "删除后将无法恢复该对话及其所有视频记录，是否继续？",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            )
-            if reply == QMessageBox.StandardButton.Yes:
-                row = self.conversation_list.row(item)
-                self.conversation_list.takeItem(row)
-                self.conversation_deleted.emit(conv_id)
+            self._confirm_delete(conv_id, item)
 
-    def add_conversation(self, conv_id: str, title: str, time_text: str) -> None:
-        item = QListWidgetItem(f"{title}\n{time_text}")
+    def _on_delete_button_clicked(self, conv_id: str) -> None:
+        for i in range(self.conversation_list.count()):
+            item = self.conversation_list.item(i)
+            if item.data(Qt.ItemDataRole.UserRole) == conv_id:
+                self._confirm_delete(conv_id, item)
+                return
+
+    def _confirm_delete(self, conv_id: str, item: QListWidgetItem) -> None:
+        reply = QMessageBox.question(
+            self,
+            "确认删除",
+            "删除后将无法恢复该对话及其所有视频记录，是否继续？",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            row = self.conversation_list.row(item)
+            self.conversation_list.takeItem(row)
+            self.conversation_deleted.emit(conv_id)
+
+    def add_conversation(self, conv_id: str, title: str, time_text: str, at_top: bool = True) -> None:
+        item = QListWidgetItem()
         item.setData(Qt.ItemDataRole.UserRole, conv_id)
-        self.conversation_list.insertItem(0, item)
+
+        row = _ConversationRow(conv_id, title, time_text)
+        row.delete_clicked.connect(self._on_delete_button_clicked)
+        item.setSizeHint(QSize(0, 52))
+
+        if at_top:
+            self.conversation_list.insertItem(0, item)
+        else:
+            self.conversation_list.addItem(item)
+
+        self.conversation_list.setItemWidget(item, row)
 
     def clear_conversations(self) -> None:
         self.conversation_list.clear()

@@ -100,7 +100,7 @@ class MainWindow(QMainWindow):
     def _load_conversations(self) -> None:
         for conv in self._db.list_conversations():
             time_text = conv.created_at.strftime("%Y-%m-%d %H:%M")
-            self.sidebar.add_conversation(conv.id, conv.title, time_text)
+            self.sidebar.add_conversation(conv.id, conv.title, time_text, at_top=False)
 
     def _load_messages(self, conversation_id: str) -> None:
         self.chat_area.clear_messages()
