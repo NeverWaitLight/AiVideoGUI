@@ -389,7 +389,7 @@ class MainWindow(QMainWindow):
             self._polling_service._download_dir = download_dir
 
     def _scroll_to_message(self, message_id: str) -> None:
-        """滚动到指定消息位置并高亮显示。"""
+        """滚动到指定消息位置。"""
         card = self._video_cards.get(message_id)
         if not card:
             return
@@ -408,11 +408,6 @@ class MainWindow(QMainWindow):
 
         # 滚动到目标位置
         scroll_area.verticalScrollBar().setValue(max(0, target_y))
-
-        # 短暂高亮效果（只高亮最外层）
-        original_style = card.styleSheet()
-        card.setStyleSheet(original_style + "\nVideoStatusCard { border: 2px solid #4A90D9; border-radius: 12px; }")
-        QTimer.singleShot(1500, lambda: card.setStyleSheet(original_style))
 
     def closeEvent(self, event) -> None:
         self._polling_service.shutdown()
