@@ -13,6 +13,9 @@ COLOR_TEXT_SECONDARY = "#888888"
 COLOR_BORDER = "#E0E0E0"
 COLOR_DANGER = "#E74C3C"
 COLOR_SUCCESS = "#27AE60"
+COLOR_MEDIA_VIDEO = "#4A90D9"
+COLOR_MEDIA_IMAGE = "#27AE60"
+COLOR_MEDIA_AUDIO = "#E67E22"
 
 MAIN_WINDOW_STYLE = """
 QMainWindow { background-color: #FFFFFF; }
@@ -45,6 +48,19 @@ QPushButton#settingsBtn {
     min-height: 20px;
 }
 QPushButton#settingsBtn:hover {
+    background-color: #E8E8E8;
+    border-color: #BBBBBB;
+}
+QPushButton#libraryBtn {
+    background-color: transparent;
+    color: #555555;
+    border: 1px solid #D0D0D0;
+    border-radius: 6px;
+    padding: 10px 0px;
+    font-size: 13px;
+    min-height: 20px;
+}
+QPushButton#libraryBtn:hover {
     background-color: #E8E8E8;
     border-color: #BBBBBB;
 }
@@ -162,5 +178,64 @@ QGroupBox::title {
     subcontrol-origin: margin;
     left: 12px;
     padding: 0 6px;
+}
+"""
+
+MEDIA_LIBRARY_STYLE = """
+QWidget#mediaLibrary { background-color: #FFFFFF; }
+QWidget#mediaToolbar {
+    background-color: #FFFFFF;
+    border-bottom: 1px solid #E0E0E0;
+}
+QLabel#mediaTitle { font-size: 15px; font-weight: bold; color: #333333; }
+QScrollArea#mediaScroll { border: none; background-color: #FAFAFA; }
+QWidget#mediaGridContainer { background-color: #FAFAFA; }
+QComboBox#typeFilter {
+    border: 1px solid #E0E0E0;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 13px;
+    min-width: 80px;
+}
+QLineEdit#searchBox {
+    border: 1px solid #E0E0E0;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 13px;
+    min-width: 160px;
+}
+QLineEdit#searchBox:focus { border-color: #4A90D9; }
+QPushButton#importBtn {
+    background-color: #4A90D9;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 16px;
+    font-size: 13px;
+}
+QPushButton#importBtn:hover { background-color: #357ABD; }
+QPushButton#deleteSelectedBtn {
+    background-color: transparent;
+    color: #E74C3C;
+    border: 1px solid #E74C3C;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 13px;
+}
+QPushButton#deleteSelectedBtn:hover {
+    background-color: #FDE8E8;
+}
+QPushButton#deleteSelectedBtn:disabled {
+    color: #CCCCCC;
+    border-color: #E0E0E0;
+}
+QWidget#mediaStatusBar {
+    background-color: #FAFAFA;
+    border-top: 1px solid #E0E0E0;
+}
+QLabel#statusBarLabel {
+    font-size: 12px;
+    color: #888888;
+    padding: 4px 8px;
 }
 """

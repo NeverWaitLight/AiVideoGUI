@@ -13,14 +13,17 @@ from PyQt6.QtWidgets import (
     QMainWindow,
     QMessageBox,
     QSplitter,
+    QStackedWidget,
     QWidget,
 )
 
 from config.manager import ConfigManager
 from service.chat_service import ChatService
+from service.media_service import MediaService
 from service.video_service import VideoService
 from storage.database import DatabaseManager
 from ui.chat_area import ChatArea
+from ui.media_library import MediaLibrary
 from ui.settings_dialog import SettingsDialog
 from ui.sidebar import Sidebar
 from ui.styles import MAIN_WINDOW_STYLE
@@ -58,6 +61,11 @@ class MainWindow(QMainWindow):
             download_dir=self._config.settings.default_download_dir,
         )
         self._chat_service = ChatService(self._config)
+        self._media_service = MediaService(
+            self._db,
+            self._service._download_dir,
+        )
+        self._service.set_media_service(self._media_service)
 
         self._setup_ui()
         self._connect_signals()
@@ -75,10 +83,20 @@ class MainWindow(QMainWindow):
         splitter = QSplitter(Qt.Orientation.Horizontal)
 
         self.sidebar = Sidebar()
+
+        # 右侧页面堆栈：索引 0 = 聊天页，索引 1 = 素材库页
+        self._page_stack = QStackedWidget()
         self.chat_area = ChatArea()
+        self.media_library = MediaLibrary(
+            self._media_service,
+            on_play=self._play_video,
+            on_open_folder=self._open_folder,
+        )
+        self._page_stack.addWidget(self.chat_area)
+        self._page_stack.addWidget(self.media_library)
 
         splitter.addWidget(self.sidebar)
-        splitter.addWidget(self.chat_area)
+        splitter.addWidget(self._page_stack)
         splitter.setStretchFactor(0, 0)
         splitter.setStretchFactor(1, 1)
         splitter.setSizes([240, 860])
@@ -89,6 +107,7 @@ class MainWindow(QMainWindow):
         self.sidebar.new_conversation_clicked.connect(self._on_new_conversation)
         self.sidebar.conversation_selected.connect(self._on_conversation_selected)
         self.sidebar.conversation_deleted.connect(self._on_conversation_deleted)
+        self.sidebar.library_clicked.connect(self._on_library)
         self.sidebar.settings_clicked.connect(self._on_settings)
         self.chat_area.message_sent.connect(self._on_message_sent)
 
@@ -124,6 +143,7 @@ class MainWindow(QMainWindow):
     # ───────── 侧边栏事件 ─────────
 
     def _on_new_conversation(self) -> None:
+        self._page_stack.setCurrentIndex(0)
         provider_name = self._config.settings.default_provider or "dashscope"
         provider_cfg = self._config.get_provider(provider_name)
         model_name = provider_cfg.default_model if provider_cfg else "wan2.7-t2v"
@@ -137,6 +157,7 @@ class MainWindow(QMainWindow):
         self.chat_area.clear_messages()
 
     def _on_conversation_selected(self, conv_id: str) -> None:
+        self._page_stack.setCurrentIndex(0)
         self._current_conversation_id = conv_id
         convs = [c for c in self._db.list_conversations() if c.id == conv_id]
         if convs:
@@ -149,6 +170,11 @@ class MainWindow(QMainWindow):
             self._current_conversation_id = None
             self.chat_area.set_header("AI 视频生成", "未选择模型")
             self.chat_area.clear_messages()
+
+    def _on_library(self) -> None:
+        self.sidebar.clear_selection()
+        self._page_stack.setCurrentIndex(1)
+        self.media_library.refresh()
 
     def _on_title_ready(self, conv_id: str, title: str) -> None:
         self._db.update_conversation_title(conv_id, title)
@@ -271,6 +297,7 @@ class MainWindow(QMainWindow):
         # 同步下载目录
         if self._config.settings.default_download_dir:
             self._service._download_dir = self._config.settings.default_download_dir
+            self._media_service._download_dir = self._config.settings.default_download_dir
 
     def closeEvent(self, event) -> None:
         self._service.shutdown()

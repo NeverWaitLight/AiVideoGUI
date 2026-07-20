@@ -1,5 +1,7 @@
 """视频生成业务编排：submit → poll → download。"""
 
+from __future__ import annotations
+
 import logging
 import os
 import shutil
@@ -161,10 +163,16 @@ class VideoService(QObject):
         self._temp_dir = temp_dir or self._default_temp_dir()
         self._workers: dict[str, _TaskWorker] = {}
         self._message_tasks: dict[str, str] = {}
+        self._message_conv: dict[str, str] = {}
         self._providers: dict[str, VideoProvider] = {}
+        self._media_service: Any = None
         self.poll_delay: float = 300.0
         self.poll_interval: float = 30.0
         self.max_polls: int = 50
+
+    def set_media_service(self, media_service: Any) -> None:
+        """注入素材库服务，用于任务完成后自动入库。"""
+        self._media_service = media_service
 
     @staticmethod
     def _default_download_dir() -> str:
@@ -263,6 +271,7 @@ class VideoService(QObject):
         worker.failed.connect(self._on_failed)
         self._workers[assistant_msg.id] = worker
         self._message_tasks[assistant_msg.id] = task_id
+        self._message_conv[assistant_msg.id] = conversation_id
         worker.start()
 
         logger.info("任务已启动 message=%s task=%s", assistant_msg.id, task_id)
@@ -283,6 +292,12 @@ class VideoService(QObject):
 
     def _on_finished(self, message_id: str, local_path: str) -> None:
         self._db.update_message_status(message_id, MessageStatus.COMPLETED, local_path=local_path)
+        conv_id = self._message_conv.get(message_id, "")
+        if self._media_service:
+            try:
+                self._media_service.register_task_result(message_id, local_path, conv_id)
+            except Exception as e:
+                logger.warning("素材自动入库失败：%s", e)
         self._cleanup_worker(message_id)
         self.task_finished.emit(message_id, local_path)
 
@@ -300,6 +315,7 @@ class VideoService(QObject):
         task_id = self._message_tasks.pop(message_id, None)
         if task_id:
             self._db.remove_active_task(task_id)
+        self._message_conv.pop(message_id, None)
 
     # ---------- 生命周期 ----------
 

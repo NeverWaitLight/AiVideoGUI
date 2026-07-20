@@ -19,6 +19,12 @@ class MessageStatus(enum.Enum):
     FAILED = "failed"
 
 
+class MediaType(enum.Enum):
+    VIDEO = "video"
+    IMAGE = "image"
+    AUDIO = "audio"
+
+
 @dataclass
 class Conversation:
     id: str
@@ -74,3 +80,16 @@ class ModelInfo:
     supported_ratios: list[str] = field(default_factory=list)
     max_duration: int = 0
     description: str = ""
+
+
+@dataclass
+class MediaFile:
+    id: str
+    filename: str
+    media_type: MediaType
+    local_path: str
+    file_size: int = 0
+    source: str = "task"
+    conversation_id: str = ""
+    message_id: str = ""
+    created_at: datetime = field(default_factory=datetime.now)

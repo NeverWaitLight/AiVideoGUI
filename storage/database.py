@@ -4,7 +4,7 @@ import logging
 import sqlite3
 from datetime import datetime
 
-from models.data_models import Conversation, Message, MessageStatus
+from models.data_models import Conversation, MediaFile, MediaType, Message, MessageStatus
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +65,19 @@ class DatabaseManager:
                 created_at TEXT NOT NULL,
                 FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE
             );
+            CREATE TABLE IF NOT EXISTS media_files (
+                id TEXT PRIMARY KEY,
+                filename TEXT NOT NULL,
+                media_type TEXT NOT NULL,
+                local_path TEXT NOT NULL,
+                file_size INTEGER NOT NULL DEFAULT 0,
+                source TEXT NOT NULL DEFAULT 'task',
+                conversation_id TEXT NOT NULL DEFAULT '',
+                message_id TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_media_type ON media_files(media_type);
+            CREATE INDEX IF NOT EXISTS idx_media_created ON media_files(created_at DESC);
             """
         )
         self._conn.commit()
@@ -218,6 +231,100 @@ class DatabaseManager:
     def remove_active_task(self, task_id: str) -> None:
         self._conn.execute("DELETE FROM active_tasks WHERE task_id = ?", (task_id,))
         self._conn.commit()
+
+    # ---------- media_files ----------
+
+    def add_media_file(self, media: MediaFile) -> None:
+        self._conn.execute(
+            "INSERT INTO media_files "
+            "(id, filename, media_type, local_path, file_size, source, "
+            "conversation_id, message_id, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                media.id,
+                media.filename,
+                media.media_type.value,
+                media.local_path,
+                media.file_size,
+                media.source,
+                media.conversation_id,
+                media.message_id,
+                media.created_at.isoformat(),
+            ),
+        )
+        self._conn.commit()
+
+    def list_media_files(
+        self,
+        media_type: str | None = None,
+        keyword: str | None = None,
+    ) -> list[MediaFile]:
+        query = (
+            "SELECT id, filename, media_type, local_path, file_size, source, "
+            "conversation_id, message_id, created_at "
+            "FROM media_files WHERE 1=1"
+        )
+        params: list = []
+        if media_type:
+            query += " AND media_type = ?"
+            params.append(media_type)
+        if keyword:
+            query += " AND filename LIKE ?"
+            params.append(f"%{keyword}%")
+        query += " ORDER BY created_at DESC"
+        rows = self._conn.execute(query, params).fetchall()
+        return [
+            MediaFile(
+                id=r["id"],
+                filename=r["filename"],
+                media_type=MediaType(r["media_type"]),
+                local_path=r["local_path"],
+                file_size=r["file_size"],
+                source=r["source"],
+                conversation_id=r["conversation_id"],
+                message_id=r["message_id"],
+                created_at=datetime.fromisoformat(r["created_at"]),
+            )
+            for r in rows
+        ]
+
+    def delete_media_file(self, media_id: str) -> MediaFile | None:
+        row = self._conn.execute(
+            "SELECT id, filename, media_type, local_path, file_size, source, "
+            "conversation_id, message_id, created_at "
+            "FROM media_files WHERE id = ?",
+            (media_id,),
+        ).fetchone()
+        if not row:
+            return None
+        media = MediaFile(
+            id=row["id"],
+            filename=row["filename"],
+            media_type=MediaType(row["media_type"]),
+            local_path=row["local_path"],
+            file_size=row["file_size"],
+            source=row["source"],
+            conversation_id=row["conversation_id"],
+            message_id=row["message_id"],
+            created_at=datetime.fromisoformat(row["created_at"]),
+        )
+        self._conn.execute("DELETE FROM media_files WHERE id = ?", (media_id,))
+        self._conn.commit()
+        return media
+
+    def get_media_file_by_message(self, message_id: str) -> MediaFile | None:
+        row = self._conn.execute(
+            "SELECT id FROM media_files WHERE message_id = ?",
+            (message_id,),
+        ).fetchone()
+        if not row:
+            return None
+        return MediaFile(
+            id=row["id"],
+            filename="",
+            media_type=MediaType.VIDEO,
+            local_path="",
+        )
 
     def close(self) -> None:
         self._conn.close()

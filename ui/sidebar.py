@@ -71,6 +71,7 @@ class Sidebar(QWidget):
     new_conversation_clicked = pyqtSignal()
     conversation_selected = pyqtSignal(str)
     conversation_deleted = pyqtSignal(str)
+    library_clicked = pyqtSignal()
     settings_clicked = pyqtSignal()
 
     def __init__(self, parent: QWidget | None = None):
@@ -97,6 +98,13 @@ class Sidebar(QWidget):
         self.conversation_list.customContextMenuRequested.connect(self._on_context_menu)
         self.conversation_list.currentItemChanged.connect(self._on_item_changed)
         layout.addWidget(self.conversation_list, stretch=1)
+
+        self.library_btn = QPushButton("📁  素材库")
+        self.library_btn.setObjectName("libraryBtn")
+        self.library_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.library_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.library_btn.clicked.connect(self.library_clicked.emit)
+        layout.addWidget(self.library_btn)
 
         self.settings_btn = QPushButton("⚙  设置")
         self.settings_btn.setObjectName("settingsBtn")
@@ -185,6 +193,16 @@ class Sidebar(QWidget):
 
     def clear_conversations(self) -> None:
         self.conversation_list.clear()
+
+    def clear_selection(self) -> None:
+        """清除对话列表的当前选中项。"""
+        current = self.conversation_list.currentItem()
+        if current:
+            widget = self.conversation_list.itemWidget(current)
+            if isinstance(widget, _ConversationRow):
+                widget.set_selected(False)
+        self.conversation_list.clearSelection()
+        self.conversation_list.setCurrentItem(None)
 
     def select_conversation(self, conv_id: str) -> None:
         for i in range(self.conversation_list.count()):

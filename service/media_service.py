@@ -1,0 +1,156 @@
+"""素材库服务：管理媒体文件的导入、查询、删除和自动入库。"""
+
+import logging
+import os
+import shutil
+import uuid
+from datetime import datetime
+from pathlib import Path
+
+from models.data_models import MediaFile, MediaType
+from storage.database import DatabaseManager
+
+logger = logging.getLogger(__name__)
+
+_VIDEO_EXTENSIONS = {".mp4", ".avi", ".mov", ".mkv", ".wmv", ".flv", ".webm"}
+_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg"}
+_AUDIO_EXTENSIONS = {".mp3", ".wav", ".flac", ".aac", ".ogg", ".wma", ".m4a"}
+_ALL_MEDIA_EXTENSIONS = _VIDEO_EXTENSIONS | _IMAGE_EXTENSIONS | _AUDIO_EXTENSIONS
+
+
+def detect_media_type(filename: str) -> MediaType | None:
+    """根据文件扩展名判断媒体类型。"""
+    ext = Path(filename).suffix.lower()
+    if ext in _VIDEO_EXTENSIONS:
+        return MediaType.VIDEO
+    if ext in _IMAGE_EXTENSIONS:
+        return MediaType.IMAGE
+    if ext in _AUDIO_EXTENSIONS:
+        return MediaType.AUDIO
+    return None
+
+
+def supported_extensions() -> set[str]:
+    """返回所有支持的媒体文件扩展名。"""
+    return _ALL_MEDIA_EXTENSIONS
+
+
+class MediaService:
+    """素材库业务服务。"""
+
+    def __init__(self, db: DatabaseManager, download_dir: str) -> None:
+        self._db = db
+        self._download_dir = download_dir
+
+    def register_task_result(
+        self,
+        message_id: str,
+        local_path: str,
+        conversation_id: str = "",
+    ) -> None:
+        """视频任务完成后自动入库（防重复）。"""
+        if self._db.get_media_file_by_message(message_id):
+            logger.debug("素材已入库，跳过 message_id=%s", message_id)
+            return
+
+        filename = os.path.basename(local_path)
+        media_type = detect_media_type(filename) or MediaType.VIDEO
+        file_size = os.path.getsize(local_path) if os.path.exists(local_path) else 0
+
+        media = MediaFile(
+            id=uuid.uuid4().hex,
+            filename=filename,
+            media_type=media_type,
+            local_path=local_path,
+            file_size=file_size,
+            source="task",
+            conversation_id=conversation_id,
+            message_id=message_id,
+            created_at=datetime.now(),
+        )
+        self._db.add_media_file(media)
+        logger.info("素材自动入库：%s", filename)
+
+    def import_files(self, file_paths: list[str]) -> list[MediaFile]:
+        """将外部文件复制到下载目录并入库。"""
+        os.makedirs(self._download_dir, exist_ok=True)
+        imported: list[MediaFile] = []
+
+        for src_path in file_paths:
+            filename = os.path.basename(src_path)
+            media_type = detect_media_type(filename)
+            if media_type is None:
+                logger.warning("不支持的文件类型，跳过：%s", filename)
+                continue
+
+            dest_path = self._resolve_dest_path(filename)
+
+            try:
+                shutil.copy2(src_path, dest_path)
+            except OSError as e:
+                logger.error("复制文件失败 %s: %s", src_path, e)
+                continue
+
+            file_size = os.path.getsize(dest_path)
+            media = MediaFile(
+                id=uuid.uuid4().hex,
+                filename=os.path.basename(dest_path),
+                media_type=media_type,
+                local_path=dest_path,
+                file_size=file_size,
+                source="import",
+                created_at=datetime.now(),
+            )
+            self._db.add_media_file(media)
+            imported.append(media)
+            logger.info("导入素材：%s", media.filename)
+
+        return imported
+
+    def list_files(
+        self,
+        media_type: str | None = None,
+        keyword: str | None = None,
+    ) -> list[MediaFile]:
+        """查询素材列表。"""
+        return self._db.list_media_files(media_type=media_type, keyword=keyword)
+
+    def delete_file(self, media_id: str) -> bool:
+        """删除单个素材（文件 + 数据库记录）。"""
+        media = self._db.delete_media_file(media_id)
+        if not media:
+            return False
+        self._try_remove_file(media.local_path)
+        logger.info("删除素材：%s", media.filename)
+        return True
+
+    def delete_files(self, media_ids: list[str]) -> int:
+        """批量删除素材，返回成功删除数量。"""
+        count = 0
+        for mid in media_ids:
+            if self.delete_file(mid):
+                count += 1
+        return count
+
+    def _resolve_dest_path(self, filename: str) -> str:
+        """避免目标文件重名：同名时追加序号。"""
+        dest = os.path.join(self._download_dir, filename)
+        if not os.path.exists(dest):
+            return dest
+        stem = Path(filename).stem
+        suffix = Path(filename).suffix
+        counter = 1
+        while os.path.exists(dest):
+            dest = os.path.join(self._download_dir, f"{stem}_{counter}{suffix}")
+            counter += 1
+        return dest
+
+    @staticmethod
+    def _try_remove_file(path: str) -> None:
+        """尝试删除磁盘文件，失败时仅记录日志。"""
+        if not path or not os.path.exists(path):
+            return
+        try:
+            os.remove(path)
+        except OSError as e:
+            logger.warning("删除文件失败 %s: %s", path, e)
