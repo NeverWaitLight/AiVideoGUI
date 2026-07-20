@@ -17,6 +17,7 @@ from PyQt6.QtWidgets import (
 )
 
 from config.manager import ConfigManager
+from service.chat_service import ChatService
 from service.video_service import VideoService
 from storage.database import DatabaseManager
 from ui.chat_area import ChatArea
@@ -56,6 +57,7 @@ class MainWindow(QMainWindow):
             self._config,
             download_dir=self._config.settings.default_download_dir,
         )
+        self._chat_service = ChatService(self._config)
 
         self._setup_ui()
         self._connect_signals()
@@ -94,6 +96,8 @@ class MainWindow(QMainWindow):
         self._service.download_progress.connect(self._on_download_progress)
         self._service.task_finished.connect(self._on_task_finished)
         self._service.task_failed.connect(self._on_task_failed)
+
+        self._chat_service.title_ready.connect(self._on_title_ready)
 
     # ───────── 数据加载 ─────────
 
@@ -146,6 +150,14 @@ class MainWindow(QMainWindow):
             self.chat_area.set_header("AI 视频生成", "未选择模型")
             self.chat_area.clear_messages()
 
+    def _on_title_ready(self, conv_id: str, title: str) -> None:
+        self._db.update_conversation_title(conv_id, title)
+        self.sidebar.update_conversation_title(conv_id, title)
+        if conv_id == self._current_conversation_id:
+            convs = [c for c in self._db.list_conversations() if c.id == conv_id]
+            model_name = convs[0].model_name if convs else ""
+            self.chat_area.set_header(title, model_name)
+
     # ───────── 消息发送 ─────────
 
     def _on_message_sent(self, text: str) -> None:
@@ -162,8 +174,14 @@ class MainWindow(QMainWindow):
             )
             return
 
+        conv_id = self._current_conversation_id
+        is_first_message = len(self._db.list_messages(conv_id)) == 0
+
         self.chat_area.add_user_message(text)
-        self._service.add_user_message(self._current_conversation_id, text)
+        self._service.add_user_message(conv_id, text)
+
+        if is_first_message:
+            self._chat_service.generate_title(conv_id, text)
 
         try:
             assistant_msg = self._service.submit_task(
@@ -239,6 +257,7 @@ class MainWindow(QMainWindow):
         dialog = SettingsDialog(self._config, self)
         if dialog.exec():
             self._service._providers.clear()
+            self._chat_service.reset_provider()
             self._apply_default_provider()
 
     def _apply_default_provider(self) -> None:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 
 from PyQt6.QtCore import Qt
@@ -21,7 +22,10 @@ from PyQt6.QtWidgets import (
 
 from config.manager import ConfigManager
 from models.data_models import ProviderConfig
+from providers.bailian_chat import BailianChatProvider
 from ui.styles import SETTINGS_DIALOG_STYLE
+
+logger = logging.getLogger(__name__)
 
 # (显示文本, provider_name)
 _PROVIDER_OPTIONS: list[tuple[str, str]] = [
@@ -33,6 +37,11 @@ _MODEL_OPTIONS: dict[str, list[str]] = {
     "dashscope": ["wan2.7-t2v"],
 }
 
+# ── 对话模型 ──
+_CHAT_PROVIDER_OPTIONS: list[tuple[str, str]] = [
+    ("阿里百炼", "bailian"),
+]
+
 
 class SettingsDialog(QDialog):
     """应用设置对话框。"""
@@ -41,7 +50,7 @@ class SettingsDialog(QDialog):
         super().__init__(parent)
         self._config = config
         self.setWindowTitle("设置")
-        self.setFixedSize(520, 520)
+        self.setFixedSize(520, 680)
         self.setStyleSheet(SETTINGS_DIALOG_STYLE)
         self._setup_ui()
         self._load_from_config()
@@ -77,6 +86,45 @@ class SettingsDialog(QDialog):
 
         provider_group.setLayout(provider_layout)
         layout.addWidget(provider_group)
+
+        # ── 对话模型配置 ──
+        chat_group = QGroupBox("对话模型配置")
+        chat_layout = QFormLayout()
+        chat_layout.setSpacing(12)
+        chat_layout.setContentsMargins(16, 20, 16, 16)
+
+        self.chat_provider_combo = QComboBox()
+        for display, name in _CHAT_PROVIDER_OPTIONS:
+            self.chat_provider_combo.addItem(display, name)
+        self.chat_provider_combo.currentIndexChanged.connect(self._on_chat_provider_changed)
+        chat_layout.addRow("供应商:", self.chat_provider_combo)
+
+        self.chat_api_key_input = QLineEdit()
+        self.chat_api_key_input.setPlaceholderText("输入 API Key")
+        self.chat_api_key_input.setEchoMode(QLineEdit.EchoMode.Password)
+        chat_layout.addRow("API Key:", self.chat_api_key_input)
+
+        self.chat_base_url_input = QLineEdit()
+        self.chat_base_url_input.setPlaceholderText("留空使用默认地址")
+        chat_layout.addRow("Base URL:", self.chat_base_url_input)
+
+        model_row = QHBoxLayout()
+        self.chat_model_combo = QComboBox()
+        self.chat_model_combo.setSizePolicy(
+            self.chat_model_combo.sizePolicy().horizontalPolicy(),
+            self.chat_model_combo.sizePolicy().verticalPolicy(),
+        )
+        model_row.addWidget(self.chat_model_combo, stretch=1)
+
+        refresh_btn = QPushButton("刷新")
+        refresh_btn.setObjectName("browseBtn")
+        refresh_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        refresh_btn.clicked.connect(self._fetch_chat_models)
+        model_row.addWidget(refresh_btn)
+        chat_layout.addRow("默认模型:", model_row)
+
+        chat_group.setLayout(chat_layout)
+        layout.addWidget(chat_group)
 
         # ── 应用设置 ──
         app_group = QGroupBox("应用设置")
@@ -144,8 +192,11 @@ class SettingsDialog(QDialog):
         if dd:
             self.download_dir_input.setText(dd)
 
-        # 当前 Provider 回填
+        # 当前视频 Provider 回填
         self._on_provider_changed(self.provider_combo.currentIndex())
+
+        # 对话模型回填
+        self._on_chat_provider_changed(self.chat_provider_combo.currentIndex())
 
     def _on_provider_changed(self, index: int) -> None:
         provider_name = self.provider_combo.itemData(index)
@@ -173,6 +224,58 @@ class SettingsDialog(QDialog):
         if directory:
             self.download_dir_input.setText(directory)
 
+    # ───────── 对话模型 ─────────
+
+    def _on_chat_provider_changed(self, index: int) -> None:
+        provider_name = self.chat_provider_combo.itemData(index)
+        cfg = self._config.get_provider(provider_name)
+        if cfg:
+            self.chat_api_key_input.setText(cfg.api_key)
+            self.chat_base_url_input.setText(cfg.base_url)
+            self.chat_model_combo.clear()
+            if cfg.default_model:
+                self.chat_model_combo.addItem(cfg.default_model)
+        else:
+            self.chat_api_key_input.clear()
+            self.chat_base_url_input.clear()
+            self.chat_model_combo.clear()
+
+    def _fetch_chat_models(self) -> None:
+        api_key = self.chat_api_key_input.text().strip()
+        if not api_key:
+            QMessageBox.warning(self, "缺少 API Key", "请先输入 API Key 再刷新模型列表。")
+            return
+
+        provider_name = self.chat_provider_combo.currentData()
+        base_url = self.chat_base_url_input.text().strip()
+        cfg = ProviderConfig(
+            provider_name=provider_name,
+            api_key=api_key,
+            base_url=base_url,
+        )
+        try:
+            provider = BailianChatProvider(cfg)
+            models = provider.list_available_models()
+        except Exception as e:
+            logger.warning("获取模型列表失败：%s", e)
+            QMessageBox.warning(self, "获取失败", f"无法获取模型列表：\n{e}")
+            return
+
+        if not models:
+            QMessageBox.information(self, "无可用模型", "当前账号没有可用的模型。")
+            return
+
+        current = self.chat_model_combo.currentText()
+        self.chat_model_combo.clear()
+        for m in models:
+            self.chat_model_combo.addItem(m)
+        if current:
+            i = self.chat_model_combo.findText(current)
+            if i >= 0:
+                self.chat_model_combo.setCurrentIndex(i)
+
+        QMessageBox.information(self, "刷新成功", f"已获取 {len(models)} 个可用模型。")
+
     # ───────── 保存 ─────────
 
     def _on_save(self) -> None:
@@ -185,7 +288,7 @@ class SettingsDialog(QDialog):
             QMessageBox.warning(self, "缺少 API Key", "请输入 API Key 后再保存。")
             return
 
-        # 保存 Provider 凭证
+        # 保存视频 Provider 凭证
         self._config.upsert_provider(
             ProviderConfig(
                 provider_name=provider_name,
@@ -196,12 +299,29 @@ class SettingsDialog(QDialog):
             )
         )
 
+        # 保存对话模型凭证
+        chat_provider_name = self.chat_provider_combo.currentData()
+        chat_api_key = self.chat_api_key_input.text().strip()
+        chat_base_url = self.chat_base_url_input.text().strip()
+        chat_model = self.chat_model_combo.currentText()
+        if chat_api_key:
+            self._config.upsert_provider(
+                ProviderConfig(
+                    provider_name=chat_provider_name,
+                    api_key=chat_api_key,
+                    base_url=chat_base_url,
+                    default_model=chat_model,
+                    default_params={},
+                )
+            )
+
         # 保存应用设置
         download_dir = self.download_dir_input.text().strip()
         default_provider = self.default_provider_combo.currentData()
         self._config.update_settings(
             default_download_dir=download_dir,
             default_provider=default_provider,
+            default_chat_provider=chat_provider_name if chat_api_key else "",
         )
 
         self.accept()

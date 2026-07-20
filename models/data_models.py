@@ -54,6 +54,7 @@ class ProviderConfig:
 @dataclass
 class AppSettings:
     default_provider: str = ""
+    default_chat_provider: str = ""
     default_download_dir: str = ""
     theme: str = "light"
 

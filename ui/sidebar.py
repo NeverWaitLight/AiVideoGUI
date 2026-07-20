@@ -173,6 +173,16 @@ class Sidebar(QWidget):
 
         self.conversation_list.setItemWidget(item, row)
 
+    def update_conversation_title(self, conv_id: str, title: str) -> None:
+        """更新列表中指定对话的标题显示。"""
+        for i in range(self.conversation_list.count()):
+            item = self.conversation_list.item(i)
+            if item.data(Qt.ItemDataRole.UserRole) == conv_id:
+                widget = self.conversation_list.itemWidget(item)
+                if isinstance(widget, _ConversationRow):
+                    widget._title_label.setText(title)
+                break
+
     def clear_conversations(self) -> None:
         self.conversation_list.clear()
 
