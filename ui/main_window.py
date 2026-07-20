@@ -131,7 +131,7 @@ class MainWindow(QMainWindow):
             if msg.role == "user":
                 self.chat_area.add_user_message(msg.content)
             else:
-                card = self.chat_area.add_ai_message_with_card(msg.content)
+                card = self.chat_area.add_video_card()
                 self._video_cards[msg.id] = card
                 card.open_folder_clicked.connect(self._open_folder)
                 if msg.status.value == "completed" and msg.local_path:
@@ -215,7 +215,7 @@ class MainWindow(QMainWindow):
             )
         except Exception as e:
             logger.exception("提交任务失败")
-            card = self.chat_area.add_ai_message_with_card(text)
+            card = self.chat_area.add_video_card()
             card.set_failed(str(e))
             return
 
