@@ -11,7 +11,6 @@ from PyQt6.QtWidgets import (
     QFormLayout,
     QHBoxLayout,
     QVBoxLayout,
-    QWidget,
 )
 from qfluentwidgets import (
     MessageBox,
@@ -19,8 +18,8 @@ from qfluentwidgets import (
     LineEdit,
     PushButton,
     PrimaryPushButton,
-    Dialog,
 )
+from qframelesswindow import FramelessDialog
 
 from config.manager import ConfigManager
 from models.data_models import ProviderConfig
@@ -44,14 +43,15 @@ _CHAT_PROVIDER_OPTIONS: list[tuple[str, str]] = [
 ]
 
 
-class SettingsDialog(Dialog):
+class SettingsDialog(FramelessDialog):
     """应用设置对话框。"""
 
     def __init__(self, config: ConfigManager, parent=None):
-        super().__init__("", "", parent)
+        super().__init__(parent=parent)
         self._config = config
         self.setWindowTitle("设置")
         self.setFixedSize(520, 680)
+        self.titleBar.hide()
         self._setup_ui()
         self._load_from_config()
 
@@ -162,10 +162,7 @@ class SettingsDialog(Dialog):
 
         layout.addLayout(btn_row)
 
-        # 设置到 Dialog 的内容区
-        widget = QWidget()
-        widget.setLayout(layout)
-        self.setContentWidget(widget)
+        self.setLayout(layout)
 
     # ───────── 加载 ─────────
 

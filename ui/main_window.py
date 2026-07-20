@@ -148,6 +148,9 @@ class MainWindow(QMainWindow):
         self.sidebar.settings_clicked.connect(self._on_settings)
         self.chat_area.message_sent.connect(self._on_message_sent)
 
+        # 连接素材库信号
+        self.media_library.jump_to_conversation_requested.connect(self._on_jump_to_conversation)
+
         # 连接全局轮询服务信号
         self._polling_service.status_changed.connect(self._on_status_changed)
         self._polling_service.download_progress.connect(self._on_download_progress)
@@ -233,6 +236,27 @@ class MainWindow(QMainWindow):
         self.chat_area.hide()
         self.media_library.show()
         self.media_library.refresh()
+
+    def _on_jump_to_conversation(self, conversation_id: str, message_id: str) -> None:
+        """从素材库跳转到对话，并定位到指定消息。"""
+        # 切换到聊天区域
+        self.media_library.hide()
+        self.chat_area.show()
+
+        # 选中对话
+        self.sidebar.select_conversation(conversation_id)
+        self._current_conversation_id = conversation_id
+
+        # 加载对话和标题
+        convs = [c for c in self._db.list_conversations() if c.id == conversation_id]
+        if convs:
+            self.chat_area.set_header(convs[0].title, convs[0].model_name)
+
+        # 加载消息
+        self._load_messages(conversation_id)
+
+        # 定位到目标消息
+        self._scroll_to_message(message_id)
 
     def _on_title_ready(self, conv_id: str, title: str) -> None:
         self._db.update_conversation_title(conv_id, title)
@@ -363,6 +387,32 @@ class MainWindow(QMainWindow):
             download_dir = self._config.settings.default_download_dir
             self._media_service._download_dir = download_dir
             self._polling_service._download_dir = download_dir
+
+    def _scroll_to_message(self, message_id: str) -> None:
+        """滚动到指定消息位置并高亮显示。"""
+        card = self._video_cards.get(message_id)
+        if not card:
+            return
+
+        # 延迟滚动，确保布局完成
+        QTimer.singleShot(100, lambda: self._do_scroll_to_card(card))
+
+    def _do_scroll_to_card(self, card: VideoStatusCard) -> None:
+        """执行滚动到卡片的操作。"""
+        scroll_area = self.chat_area.scroll_area
+        viewport_height = scroll_area.viewport().height()
+
+        # 获取卡片在滚动区域中的位置
+        card_pos = card.mapTo(scroll_area.widget(), card.pos())
+        target_y = card_pos.y() - (viewport_height // 2) + (card.height() // 2)
+
+        # 滚动到目标位置
+        scroll_area.verticalScrollBar().setValue(max(0, target_y))
+
+        # 短暂高亮效果（只高亮最外层）
+        original_style = card.styleSheet()
+        card.setStyleSheet(original_style + "\nVideoStatusCard { border: 2px solid #4A90D9; border-radius: 12px; }")
+        QTimer.singleShot(1500, lambda: card.setStyleSheet(original_style))
 
     def closeEvent(self, event) -> None:
         self._polling_service.shutdown()

@@ -79,6 +79,7 @@ class _MediaCard(QWidget):
 
     double_clicked = pyqtSignal(str)
     delete_requested = pyqtSignal(str)
+    jump_to_conversation = pyqtSignal(str, str)  # conversation_id, message_id
     selection_changed = pyqtSignal()
 
     def __init__(
@@ -264,20 +265,33 @@ class _MediaCard(QWidget):
         menu = RoundMenu(parent=self)
         play_action = Action(FluentIcon.PLAY, "播放/预览")
         folder_action = Action(FluentIcon.FOLDER, "打开文件夹")
-        delete_action = Action(FluentIcon.DELETE, "删除")
+
+        # 只有来自任务的素材才显示"跳转到对话"
+        if self.media.source == "task" and self.media.conversation_id and self.media.message_id:
+            jump_action = Action(FluentIcon.CHAT, "跳转到对话")
+            jump_action.triggered.connect(
+                lambda: self._handle_jump_action(self.media.conversation_id, self.media.message_id)
+            )
+            menu.addAction(jump_action)
+            menu.addSeparator()
+
+        # 连接其他动作的信号
+        play_action.triggered.connect(lambda: self.double_clicked.emit(self.media.id))
+        folder_action.triggered.connect(lambda: self._on_open_folder(self.media.local_path))
 
         menu.addAction(play_action)
         menu.addAction(folder_action)
         menu.addSeparator()
+
+        delete_action = Action(FluentIcon.DELETE, "删除")
+        delete_action.triggered.connect(lambda: self.delete_requested.emit(self.media.id))
         menu.addAction(delete_action)
 
-        action = menu.exec(self.mapToGlobal(event.pos()))
-        if action == play_action:
-            self.double_clicked.emit(self.media.id)
-        elif action == folder_action:
-            self._on_open_folder(self.media.local_path)
-        elif action == delete_action:
-            self.delete_requested.emit(self.media.id)
+        menu.exec(self.mapToGlobal(event.pos()))
+
+    def _handle_jump_action(self, conv_id: str, msg_id: str) -> None:
+        """处理跳转动作"""
+        self.jump_to_conversation.emit(conv_id, msg_id)
 
 
 class _EmptyState(QWidget):
@@ -314,6 +328,8 @@ class _EmptyState(QWidget):
 
 class MediaLibrary(QWidget):
     """素材库页面组件。"""
+
+    jump_to_conversation_requested = pyqtSignal(str, str)  # conversation_id, message_id
 
     def __init__(
         self,
@@ -485,6 +501,7 @@ class MediaLibrary(QWidget):
             card = _MediaCard(media, self._on_open_folder)
             card.double_clicked.connect(self._on_card_double_click)
             card.delete_requested.connect(self._delete_single)
+            card.jump_to_conversation.connect(self._on_jump_requested)
             card.selection_changed.connect(self._update_delete_btn)
             self._grid_layout.addWidget(card, i // cols, i % cols)
             self._cards.append(card)
@@ -494,6 +511,10 @@ class MediaLibrary(QWidget):
         self._update_delete_btn()
 
     # ───────── 操作 ─────────
+
+    def _on_jump_requested(self, conversation_id: str, message_id: str) -> None:
+        """处理卡片的跳转请求并转发信号。"""
+        self.jump_to_conversation_requested.emit(conversation_id, message_id)
 
     def _on_card_double_click(self, media_id: str) -> None:
         for card in self._cards:
