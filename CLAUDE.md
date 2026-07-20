@@ -38,12 +38,21 @@ uv run python -m unittest discover tests/
 **信号驱动：** 组件通过 PyQt6 信号槽机制通信，避免直接耦合
 
 ### 2. Service Layer (`service/`)
-- **video_service.py** - 核心业务编排服务
-  - `VideoService` - 管理 Provider 实例、对话/消息 CRUD、任务提交和生命周期管理
-  - `_TaskWorker` (QThread) - 后台线程，负责可中断的延迟等待、周期性轮询任务状态、流式下载视频
+- **video_service.py** - 轻量级服务，仅负责对话/消息 CRUD 和任务提交
+  - `VideoService` - 管理 Provider 实例、对话管理、任务提交到数据库
   - `_PROVIDER_REGISTRY` - Provider 注册表，扩展新供应商时在此注册
 
-**任务流程：** submit → 延迟 5 分钟 → 轮询状态（30 秒间隔，最多 50 次）→ 下载视频 → 发出完成信号
+- **task_polling_service.py** - 全局任务轮询服务（独立后台线程）
+  - `TaskPollingService` - 应用启动时运行，数据库驱动的轮询服务
+  - `_PollingWorker` (QThread) - 周期性扫描 `active_tasks` 表，按任务创建时间执行轮询策略
+  - 表空时自动暂停（低频检查），有新任务时恢复活跃轮询
+  - 完全解耦前端页面状态，通过信号通知 UI 更新
+
+**任务流程（解耦版）：** 
+1. UI 提交任务 → VideoService 写入 `active_tasks` 表
+2. TaskPollingService 检测到新任务 → 等待初始延迟（默认 5 分钟）
+3. 周期轮询状态（30 秒间隔，最多 50 次）→ 下载视频 → 发出完成信号
+4. 任务完成后从 `active_tasks` 表移除
 
 ### 3. Provider Layer (`providers/`)
 - **base.py** - `VideoProvider` 抽象基类，定义统一接口：
@@ -77,10 +86,12 @@ uv run python -m unittest discover tests/
 
 ## Key Design Patterns
 
-1. **信号槽机制** - UI 和 Service 通过 PyQt6 信号实现线程安全的异步通信
-2. **注册表模式** - Provider 通过 `_PROVIDER_REGISTRY` 字典注册，支持动态加载
-3. **工厂模式** - VideoService 根据 provider_name 延迟实例化并缓存 Provider 对象
-4. **后台线程** - 使用 `QThread` + 可中断 sleep 机制避免僵尸线程
+1. **全局轮询服务** - TaskPollingService 独立于 UI 页面状态，应用启动时运行，通过 `active_tasks` 表驱动
+2. **信号槽机制** - UI 和 Service 通过 PyQt6 信号实现线程安全的异步通信
+3. **注册表模式** - Provider 通过 `_PROVIDER_REGISTRY` 字典注册，支持动态加载
+4. **工厂模式** - VideoService 根据 provider_name 延迟实例化并缓存 Provider 对象
+5. **后台线程** - 使用 `QThread` + 可中断 sleep 机制避免僵尸线程
+6. **数据库驱动轮询** - 轮询服务根据 `active_tasks` 表自动启停，表空时暂停（60 秒低频检查），有任务时活跃轮询（30 秒间隔）
 
 ## File Locations
 
@@ -141,10 +152,13 @@ uv run python -m unittest discover tests/
 
 ### 修改任务轮询策略
 
-在 `service/video_service.py` 的 `_TaskWorker.__init__()` 中调整：
-- `initial_delay_seconds` - 初始等待时间（默认 300 秒）
-- `poll_interval_seconds` - 轮询间隔（默认 30 秒）
-- `max_polls` - 最大轮询次数（默认 50 次）
+在 `service/task_polling_service.py` 的 `TaskPollingService.__init__()` 中调整：
+- `poll_interval` - 任务状态检查间隔（默认 30 秒）
+- `initial_delay` - 新任务提交后的初始等待时间（默认 300 秒）
+- `idle_check_interval` - 空闲时检查表是否有新任务的间隔（默认 60 秒）
+- `max_polls_per_task` - 单个任务最大轮询次数（默认 50 次）
+
+**注意：** 轮询服务在应用启动时自动运行，不需要手动触发。任务完成后会自动从 `active_tasks` 表移除。
 
 ### 修改 UI 样式
 

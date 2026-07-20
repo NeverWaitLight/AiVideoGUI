@@ -233,10 +233,16 @@ class DatabaseManager:
 
     def list_active_tasks(self) -> list[dict]:
         rows = self._conn.execute(
-            "SELECT task_id, message_id, provider_name, model_name, video_url, status "
+            "SELECT task_id, message_id, provider_name, model_name, video_url, status, created_at "
             "FROM active_tasks"
         ).fetchall()
-        return [dict(r) for r in rows]
+        result = []
+        for r in rows:
+            d = dict(r)
+            # 将 created_at 从 ISO 字符串转换为 datetime 对象
+            d["created_at"] = datetime.fromisoformat(r["created_at"])
+            result.append(d)
+        return result
 
     def update_active_task(self, task_id: str, status: str, video_url: str = "") -> None:
         if video_url:

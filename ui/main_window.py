@@ -19,7 +19,8 @@ from PyQt6.QtWidgets import (
 from config.manager import ConfigManager
 from service.chat_service import ChatService
 from service.media_service import MediaService
-from service.video_service import VideoService
+from service.task_polling_service import TaskPollingService
+from service.video_service import VideoService, _PROVIDER_REGISTRY
 from storage.database import DatabaseManager
 from ui.chat_area import ChatArea
 from ui.media_library import MediaLibrary
@@ -64,22 +65,41 @@ class MainWindow(QMainWindow):
         os.makedirs(data_dir, exist_ok=True)
         self._db = DatabaseManager(os.path.join(data_dir, "ai-video-gui.db"))
         self._config = ConfigManager(os.path.join(data_dir, "config.json"))
-        self._service = VideoService(
-            self._db,
-            self._config,
-            download_dir=self._config.settings.default_download_dir,
-        )
+
+        # VideoService 仅负责对话和任务提交
+        self._service = VideoService(self._db, self._config)
         self._chat_service = ChatService(self._config)
-        self._media_service = MediaService(
-            self._db,
-            self._service._download_dir,
+
+        # 素材库服务
+        download_dir = self._config.settings.default_download_dir or self._default_download_dir()
+        self._media_service = MediaService(self._db, download_dir)
+
+        # 全局任务轮询服务
+        temp_dir = self._default_temp_dir()
+        self._polling_service = TaskPollingService(
+            db=self._db,
+            config=self._config,
+            download_dir=download_dir,
+            temp_dir=temp_dir,
+            provider_registry=_PROVIDER_REGISTRY,
         )
-        self._service.set_media_service(self._media_service)
+        self._polling_service.set_media_service(self._media_service)
 
         self._setup_ui()
         self._connect_signals()
         self._load_conversations()
-        self._service.resume_pending_tasks()
+
+        # 启动全局轮询服务
+        self._polling_service.start()
+
+    @staticmethod
+    def _default_download_dir() -> str:
+        home = os.path.expanduser("~")
+        return os.path.join(home, "Videos", "AI-Video-GUI")
+
+    @staticmethod
+    def _default_temp_dir() -> str:
+        return os.path.join(os.environ.get("TEMP", os.path.expanduser("~")), "ai-video-gui")
 
     # ───────── UI 组装 ─────────
 
@@ -128,10 +148,11 @@ class MainWindow(QMainWindow):
         self.sidebar.settings_clicked.connect(self._on_settings)
         self.chat_area.message_sent.connect(self._on_message_sent)
 
-        self._service.status_changed.connect(self._on_status_changed)
-        self._service.download_progress.connect(self._on_download_progress)
-        self._service.task_finished.connect(self._on_task_finished)
-        self._service.task_failed.connect(self._on_task_failed)
+        # 连接全局轮询服务信号
+        self._polling_service.status_changed.connect(self._on_status_changed)
+        self._polling_service.download_progress.connect(self._on_download_progress)
+        self._polling_service.task_finished.connect(self._on_task_finished)
+        self._polling_service.task_failed.connect(self._on_task_failed)
 
         self._chat_service.title_ready.connect(self._on_title_ready)
 
@@ -273,13 +294,12 @@ class MainWindow(QMainWindow):
         if card:
             card.set_completed(local_path)
             card.play_btn.clicked.connect(lambda _, p=local_path: self._play_video(p))
-        self._video_cards.pop(message_id, None)
+        # 任务完成后可以移除 card 引用（可选保留以便后续操作）
 
     def _on_task_failed(self, message_id: str, error: str) -> None:
         card = self._video_cards.get(message_id)
         if card:
             card.set_failed(error)
-        self._video_cards.pop(message_id, None)
 
     # ───────── 视频操作 ─────────
 
@@ -323,10 +343,11 @@ class MainWindow(QMainWindow):
             )
         # 同步下载目录
         if self._config.settings.default_download_dir:
-            self._service._download_dir = self._config.settings.default_download_dir
-            self._media_service._download_dir = self._config.settings.default_download_dir
+            download_dir = self._config.settings.default_download_dir
+            self._media_service._download_dir = download_dir
+            self._polling_service._download_dir = download_dir
 
     def closeEvent(self, event) -> None:
-        self._service.shutdown()
+        self._polling_service.shutdown()
         self._db.close()
         super().closeEvent(event)
