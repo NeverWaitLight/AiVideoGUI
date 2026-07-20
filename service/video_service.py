@@ -101,7 +101,7 @@ class VideoService(QObject):
             id=uuid.uuid4().hex,
             conversation_id=conversation_id,
             role="assistant",
-            content=prompt,
+            content="",
             created_at=datetime.now(),
             task_id=task_id,
             status=MessageStatus.GENERATING,

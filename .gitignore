@@ -11,6 +11,7 @@ wheels/
 
 # AI coding tools
 QWEN.md
+CLAUDE.md
 .claude/
 .cursor/
 .cursorrules

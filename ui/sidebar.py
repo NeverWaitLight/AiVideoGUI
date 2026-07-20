@@ -11,7 +11,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from qfluentwidgets import PrimaryPushButton, PushButton, ListWidget, MessageBox, RoundMenu, Action, FluentIcon
+from qfluentwidgets import PrimaryPushButton, PushButton, ToolButton, ListWidget, MessageBox, RoundMenu, Action, FluentIcon
 
 
 class _ConversationRow(QWidget):
@@ -41,9 +41,11 @@ class _ConversationRow(QWidget):
         text_layout.addWidget(self._time_label)
         layout.addLayout(text_layout, stretch=1)
 
-        self._delete_btn = PushButton("✕")
-        self._delete_btn.setFixedSize(22, 22)
+        self._delete_btn = ToolButton(FluentIcon.DELETE)
+        self._delete_btn.setFixedSize(28, 28)
+        self._delete_btn.setIconSize(QSize(16, 16))
         self._delete_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._delete_btn.setToolTip("删除对话")
         self._delete_btn.clicked.connect(lambda: self.delete_clicked.emit(self._conv_id))
         layout.addWidget(self._delete_btn, alignment=Qt.AlignmentFlag.AlignVCenter)
 
@@ -147,7 +149,12 @@ class Sidebar(QWidget):
         w = MessageBox(
             "确认删除",
             "删除后将无法恢复该对话及其所有视频记录，是否继续？",
-            self
+            self.window()
+        )
+        w.yesButton.setText("删除")
+        w.cancelButton.setText("取消")
+        w.yesButton.setStyleSheet(
+            "background-color: #E81123; color: white; border: none; border-radius: 4px;"
         )
         if w.exec():
             row = self.conversation_list.row(item)

@@ -7,7 +7,7 @@ import os
 import subprocess
 from datetime import datetime
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
     QHBoxLayout,
     QMessageBox,
@@ -159,9 +159,14 @@ class MainWindow(QMainWindow):
     # ───────── 数据加载 ─────────
 
     def _load_conversations(self) -> None:
-        for conv in self._db.list_conversations():
+        convs = self._db.list_conversations()
+        for conv in convs:
             time_text = conv.created_at.strftime("%Y-%m-%d %H:%M")
             self.sidebar.add_conversation(conv.id, conv.title, time_text, at_top=False)
+        if convs:
+            latest = convs[0]
+            self.sidebar.select_conversation(latest.id)
+            self._on_conversation_selected(latest.id)
 
     def _load_messages(self, conversation_id: str) -> None:
         self.chat_area.clear_messages()
@@ -176,12 +181,19 @@ class MainWindow(QMainWindow):
                 self._video_cards[msg.id] = card
                 card.open_folder_clicked.connect(self._open_folder)
                 if msg.status.value == "completed" and msg.local_path:
-                    card.set_completed(msg.local_path)
+                    meta = self._db.get_video_metadata_by_message(msg.id) or {}
+                    card.set_completed(
+                        msg.local_path,
+                        duration=meta.get("duration", 0),
+                        width=meta.get("width", 0),
+                        height=meta.get("height", 0),
+                    )
                     card.play_btn.clicked.connect(lambda _, p=msg.local_path: self._play_video(p))
                 elif msg.status.value == "failed":
                     card.set_failed("生成失败")
                 else:
                     card.set_generating()
+        QTimer.singleShot(0, self.chat_area._scroll_to_bottom)
 
     # ───────── 侧边栏事件 ─────────
 
@@ -292,9 +304,14 @@ class MainWindow(QMainWindow):
     def _on_task_finished(self, message_id: str, local_path: str) -> None:
         card = self._video_cards.get(message_id)
         if card:
-            card.set_completed(local_path)
+            meta = self._db.get_video_metadata_by_message(message_id) or {}
+            card.set_completed(
+                local_path,
+                duration=meta.get("duration", 0),
+                width=meta.get("width", 0),
+                height=meta.get("height", 0),
+            )
             card.play_btn.clicked.connect(lambda _, p=local_path: self._play_video(p))
-        # 任务完成后可以移除 card 引用（可选保留以便后续操作）
 
     def _on_task_failed(self, message_id: str, error: str) -> None:
         card = self._video_cards.get(message_id)

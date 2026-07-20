@@ -9,6 +9,7 @@ from pathlib import Path
 
 from models.data_models import MediaFile, MediaType
 from storage.database import DatabaseManager
+from utils.video_metadata import VideoMetadataExtractor
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +42,9 @@ class MediaService:
     def __init__(self, db: DatabaseManager, download_dir: str) -> None:
         self._db = db
         self._download_dir = download_dir
+        # 缩略图保存目录
+        self._thumbnail_dir = os.path.join(download_dir, ".thumbnails")
+        os.makedirs(self._thumbnail_dir, exist_ok=True)
 
     def register_task_result(
         self,
@@ -57,6 +61,32 @@ class MediaService:
         media_type = detect_media_type(filename) or MediaType.VIDEO
         file_size = os.path.getsize(local_path) if os.path.exists(local_path) else 0
 
+        # 提取视频元数据
+        thumbnail_path = ""
+        duration = 0.0
+        width = 0
+        height = 0
+
+        if media_type == MediaType.VIDEO and os.path.exists(local_path):
+            try:
+                metadata = VideoMetadataExtractor.extract_all(local_path, self._thumbnail_dir)
+                thumbnail_path = metadata.get("thumbnail_path", "")
+                duration = metadata.get("duration", 0.0)
+                width = metadata.get("width", 0)
+                height = metadata.get("height", 0)
+                # 如果提取到的 file_size 更准确，使用 ffmpeg 的结果
+                if metadata.get("file_size", 0) > 0:
+                    file_size = metadata["file_size"]
+                logger.info(
+                    "视频元数据提取成功：%s (%.1fs, %dx%d)",
+                    filename,
+                    duration,
+                    width,
+                    height,
+                )
+            except Exception as e:
+                logger.warning("视频元数据提取失败，将使用默认值：%s", e)
+
         media = MediaFile(
             id=uuid.uuid4().hex,
             filename=filename,
@@ -67,6 +97,10 @@ class MediaService:
             conversation_id=conversation_id,
             message_id=message_id,
             created_at=datetime.now(),
+            thumbnail_path=thumbnail_path,
+            duration=duration,
+            width=width,
+            height=height,
         )
         self._db.add_media_file(media)
         logger.info("素材自动入库：%s", filename)
@@ -92,6 +126,32 @@ class MediaService:
                 continue
 
             file_size = os.path.getsize(dest_path)
+
+            # 提取视频元数据
+            thumbnail_path = ""
+            duration = 0.0
+            width = 0
+            height = 0
+
+            if media_type == MediaType.VIDEO:
+                try:
+                    metadata = VideoMetadataExtractor.extract_all(dest_path, self._thumbnail_dir)
+                    thumbnail_path = metadata.get("thumbnail_path", "")
+                    duration = metadata.get("duration", 0.0)
+                    width = metadata.get("width", 0)
+                    height = metadata.get("height", 0)
+                    if metadata.get("file_size", 0) > 0:
+                        file_size = metadata["file_size"]
+                    logger.info(
+                        "导入视频元数据提取成功：%s (%.1fs, %dx%d)",
+                        filename,
+                        duration,
+                        width,
+                        height,
+                    )
+                except Exception as e:
+                    logger.warning("导入视频元数据提取失败，将使用默认值：%s", e)
+
             media = MediaFile(
                 id=uuid.uuid4().hex,
                 filename=os.path.basename(dest_path),
@@ -100,6 +160,10 @@ class MediaService:
                 file_size=file_size,
                 source="import",
                 created_at=datetime.now(),
+                thumbnail_path=thumbnail_path,
+                duration=duration,
+                width=width,
+                height=height,
             )
             self._db.add_media_file(media)
             imported.append(media)
@@ -116,11 +180,14 @@ class MediaService:
         return self._db.list_media_files(media_type=media_type, keyword=keyword)
 
     def delete_file(self, media_id: str) -> bool:
-        """删除单个素材（文件 + 数据库记录）。"""
+        """删除单个素材（文件 + 缩略图 + 数据库记录）。"""
         media = self._db.delete_media_file(media_id)
         if not media:
             return False
         self._try_remove_file(media.local_path)
+        # 同时删除缩略图
+        if media.thumbnail_path:
+            self._try_remove_file(media.thumbnail_path)
         logger.info("删除素材：%s", media.filename)
         return True
 

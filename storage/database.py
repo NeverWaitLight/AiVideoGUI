@@ -29,6 +29,26 @@ class DatabaseManager:
             self._conn.commit()
             logger.info("迁移：messages 表新增 error_message 列")
 
+        # 迁移 media_files 表：添加视频元数据列
+        media_cols = {
+            row["name"] for row in self._conn.execute("PRAGMA table_info(media_files)").fetchall()
+        }
+        migrations = []
+        if "thumbnail_path" not in media_cols:
+            migrations.append("ALTER TABLE media_files ADD COLUMN thumbnail_path TEXT NOT NULL DEFAULT ''")
+        if "duration" not in media_cols:
+            migrations.append("ALTER TABLE media_files ADD COLUMN duration REAL NOT NULL DEFAULT 0.0")
+        if "width" not in media_cols:
+            migrations.append("ALTER TABLE media_files ADD COLUMN width INTEGER NOT NULL DEFAULT 0")
+        if "height" not in media_cols:
+            migrations.append("ALTER TABLE media_files ADD COLUMN height INTEGER NOT NULL DEFAULT 0")
+
+        if migrations:
+            for sql in migrations:
+                self._conn.execute(sql)
+            self._conn.commit()
+            logger.info("迁移：media_files 表新增视频元数据列（thumbnail_path, duration, width, height）")
+
     def _init_tables(self) -> None:
         cur = self._conn.cursor()
         cur.executescript(
@@ -266,8 +286,8 @@ class DatabaseManager:
         self._conn.execute(
             "INSERT INTO media_files "
             "(id, filename, media_type, local_path, file_size, source, "
-            "conversation_id, message_id, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "conversation_id, message_id, created_at, thumbnail_path, duration, width, height) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 media.id,
                 media.filename,
@@ -278,6 +298,10 @@ class DatabaseManager:
                 media.conversation_id,
                 media.message_id,
                 media.created_at.isoformat(),
+                media.thumbnail_path,
+                media.duration,
+                media.width,
+                media.height,
             ),
         )
         self._conn.commit()
@@ -289,7 +313,7 @@ class DatabaseManager:
     ) -> list[MediaFile]:
         query = (
             "SELECT id, filename, media_type, local_path, file_size, source, "
-            "conversation_id, message_id, created_at "
+            "conversation_id, message_id, created_at, thumbnail_path, duration, width, height "
             "FROM media_files WHERE 1=1"
         )
         params: list = []
@@ -312,6 +336,10 @@ class DatabaseManager:
                 conversation_id=r["conversation_id"],
                 message_id=r["message_id"],
                 created_at=datetime.fromisoformat(r["created_at"]),
+                thumbnail_path=r["thumbnail_path"],
+                duration=r["duration"],
+                width=r["width"],
+                height=r["height"],
             )
             for r in rows
         ]
@@ -319,7 +347,7 @@ class DatabaseManager:
     def delete_media_file(self, media_id: str) -> MediaFile | None:
         row = self._conn.execute(
             "SELECT id, filename, media_type, local_path, file_size, source, "
-            "conversation_id, message_id, created_at "
+            "conversation_id, message_id, created_at, thumbnail_path, duration, width, height "
             "FROM media_files WHERE id = ?",
             (media_id,),
         ).fetchone()
@@ -335,6 +363,10 @@ class DatabaseManager:
             conversation_id=row["conversation_id"],
             message_id=row["message_id"],
             created_at=datetime.fromisoformat(row["created_at"]),
+            thumbnail_path=row["thumbnail_path"],
+            duration=row["duration"],
+            width=row["width"],
+            height=row["height"],
         )
         self._conn.execute("DELETE FROM media_files WHERE id = ?", (media_id,))
         self._conn.commit()
@@ -353,6 +385,22 @@ class DatabaseManager:
             media_type=MediaType.VIDEO,
             local_path="",
         )
+
+    def get_video_metadata_by_message(self, message_id: str) -> dict | None:
+        """查询视频素材的元数据（缩略图路径、时长、分辨率）。"""
+        row = self._conn.execute(
+            "SELECT thumbnail_path, duration, width, height "
+            "FROM media_files WHERE message_id = ?",
+            (message_id,),
+        ).fetchone()
+        if not row:
+            return None
+        return {
+            "thumbnail_path": row["thumbnail_path"],
+            "duration": row["duration"],
+            "width": row["width"],
+            "height": row["height"],
+        }
 
     def close(self) -> None:
         self._conn.close()

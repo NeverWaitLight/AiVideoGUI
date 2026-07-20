@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QPixmap
+from PyQt6.QtGui import QColor, QFont, QPainter, QPixmap
 from PyQt6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -238,13 +239,22 @@ class VideoStatusCard(QWidget):
 
         preview_stack.addWidget(self._generating_page)
 
-        # Page 1: 完成提示
-        self._completed_page = QLabel("🎬 视频已就绪")
+        # Page 1: 完成提示（显示缩略图或文字兜底）
+        self._completed_page = QWidget()
         self._completed_page.setFixedSize(self.PREVIEW_W, self.PREVIEW_H)
-        self._completed_page.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._completed_page.setStyleSheet(
+        self._completed_page.setStyleSheet("background: transparent;")
+        cp_layout = QVBoxLayout(self._completed_page)
+        cp_layout.setContentsMargins(0, 0, 0, 0)
+
+        self._thumb_label = QLabel()
+        self._thumb_label.setFixedSize(self.PREVIEW_W, self.PREVIEW_H)
+        self._thumb_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._thumb_label.setStyleSheet(
             "background-color: #E8E8E8; border-radius: 6px; color: #999; font-size: 16px;"
         )
+        self._thumb_label.setText("🎬 视频已就绪")
+        cp_layout.addWidget(self._thumb_label)
+
         preview_stack.addWidget(self._completed_page)
 
         self._preview_stack = preview_stack
@@ -314,7 +324,13 @@ class VideoStatusCard(QWidget):
         self._preview_stack.setCurrentIndex(0)
         self._spinner.pause()
 
-    def set_completed(self, local_path: str) -> None:
+    def set_completed(
+        self,
+        local_path: str,
+        duration: float = 0,
+        width: int = 0,
+        height: int = 0,
+    ) -> None:
         self._local_path = local_path
         self.status_label.setText("✅ 已完成")
         self.status_label.setStyleSheet(
@@ -326,6 +342,81 @@ class VideoStatusCard(QWidget):
         self._spinner.pause()
         self.play_btn.show()
         self.folder_btn.show()
+        self._load_thumbnail(local_path, duration, width, height)
+
+    def _load_thumbnail(
+        self,
+        local_path: str,
+        duration: float = 0,
+        width: int = 0,
+        height: int = 0,
+    ) -> None:
+        """根据视频路径推导并加载缩略图，叠加时长和分辨率标签。"""
+        if not local_path:
+            return
+        video_dir = os.path.dirname(local_path)
+        stem = Path(local_path).stem
+        thumb_path = os.path.join(video_dir, ".thumbnails", f"{stem}_thumb.jpg")
+
+        if not os.path.exists(thumb_path):
+            return
+
+        pm = QPixmap(thumb_path).scaled(
+            self.PREVIEW_W,
+            self.PREVIEW_H,
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        )
+
+        # 在缩略图上叠加元数据标签
+        painter = QPainter(pm)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        font = QFont("Segoe UI", 9, QFont.Weight.Bold)
+        painter.setFont(font)
+        fm = painter.fontMetrics()
+        pad_x, pad_y = 6, 3
+
+        # 右下角：时长
+        if duration > 0:
+            dur_text = self._format_duration(duration)
+            tw = fm.horizontalAdvance(dur_text)
+            th = fm.height()
+            x = pm.width() - tw - pad_x * 2
+            y = pm.height() - th - pad_y * 2
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QColor(0, 0, 0, 160))
+            painter.drawRoundedRect(x - pad_x, y - pad_y, tw + pad_x * 2, th + pad_y * 2, 3, 3)
+            painter.setPen(QColor(255, 255, 255))
+            painter.drawText(x, y + fm.ascent(), dur_text)
+
+        # 左上角：分辨率（取短边，区分横竖屏）
+        if width > 0 and height > 0:
+            res_text = self._format_resolution(width, height)
+            tw = fm.horizontalAdvance(res_text)
+            th = fm.height()
+            x = pad_x
+            y = pad_y
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QColor(0, 0, 0, 160))
+            painter.drawRoundedRect(x, y, tw + pad_x * 2, th + pad_y * 2, 3, 3)
+            painter.setPen(QColor(255, 255, 255))
+            painter.drawText(x + pad_x, y + pad_y + fm.ascent(), res_text)
+
+        painter.end()
+
+        self._thumb_label.setStyleSheet("border-radius: 6px;")
+        self._thumb_label.setPixmap(pm)
+
+    @staticmethod
+    def _format_duration(seconds: float) -> str:
+        total = int(seconds)
+        if total >= 3600:
+            return f"{total // 3600}:{total % 3600 // 60:02d}:{total % 60:02d}"
+        return f"{total // 60}:{total % 60:02d}"
+
+    @staticmethod
+    def _format_resolution(width: int, height: int) -> str:
+        return f"{min(width, height)}p"
 
     def set_failed(self, error: str) -> None:
         self.status_label.setText(f"❌ 失败: {error}")

@@ -48,7 +48,7 @@ class SettingsDialog(Dialog):
     """应用设置对话框。"""
 
     def __init__(self, config: ConfigManager, parent=None):
-        super().__init__(parent)
+        super().__init__("", "", parent)
         self._config = config
         self.setWindowTitle("设置")
         self.setFixedSize(520, 680)

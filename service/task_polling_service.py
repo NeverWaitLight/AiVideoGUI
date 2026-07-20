@@ -248,6 +248,7 @@ class _PollingWorker(QThread):
             self._task_poll_count[task_id] = poll_count + 1
 
             self.status_changed.emit(message_id, result.status.value)
+            self._db.update_active_task(task_id, result.status.value, video_url=result.video_url or "")
 
             if result.status == TaskStatus.SUCCEEDED:
                 if not result.video_url:

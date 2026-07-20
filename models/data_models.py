@@ -93,3 +93,8 @@ class MediaFile:
     conversation_id: str = ""
     message_id: str = ""
     created_at: datetime = field(default_factory=datetime.now)
+    # 视频元数据
+    thumbnail_path: str = ""  # 封面图路径
+    duration: float = 0.0  # 时长（秒）
+    width: int = 0  # 分辨率宽度
+    height: int = 0  # 分辨率高度

@@ -8,7 +8,7 @@ import subprocess
 from typing import Callable
 
 from PyQt6.QtCore import QSize, Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QFont, QPixmap
+from PyQt6.QtGui import QColor, QFont, QPainter, QPixmap
 from PyQt6.QtWidgets import (
     QCheckBox,
     QFileDialog,
@@ -186,10 +186,70 @@ class _MediaCard(QWidget):
                 )
                 self._thumb_label.setPixmap(scaled)
                 return
-        # 非图片或图片加载失败，使用图标
+
+        if (
+            media_type == MediaType.VIDEO
+            and self.media.thumbnail_path
+            and os.path.exists(self.media.thumbnail_path)
+        ):
+            pm = QPixmap(self.media.thumbnail_path).scaled(
+                _THUMB_SIZE,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+            self._paint_video_overlays(pm)
+            self._thumb_label.setPixmap(pm)
+            return
+
+        # 兜底：使用图标
         icon = _MEDIA_ICONS.get(media_type, "📄")
         self._thumb_label.setText(f"<span style='font-size: 48px;'>{icon}</span>")
         self._thumb_label.setTextFormat(Qt.TextFormat.RichText)
+
+    def _paint_video_overlays(self, pm: QPixmap) -> None:
+        """在视频缩略图上叠加时长（右下角）和分辨率（左上角）。"""
+        painter = QPainter(pm)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        font = QFont("Segoe UI", 8, QFont.Weight.Bold)
+        painter.setFont(font)
+        fm = painter.fontMetrics()
+        pad_x, pad_y = 4, 2
+
+        # 右下角：时长
+        if self.media.duration > 0:
+            dur_text = self._format_duration(self.media.duration)
+            tw = fm.horizontalAdvance(dur_text)
+            th = fm.height()
+            x = pm.width() - tw - pad_x * 2
+            y = pm.height() - th - pad_y * 2
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QColor(0, 0, 0, 160))
+            painter.drawRoundedRect(x - pad_x, y - pad_y, tw + pad_x * 2, th + pad_y * 2, 3, 3)
+            painter.setPen(QColor(255, 255, 255))
+            painter.drawText(x, y + fm.ascent(), dur_text)
+
+        # 左上角：分辨率
+        w, h = self.media.width, self.media.height
+        if w > 0 and h > 0:
+            res_text = f"{min(w, h)}p"
+            tw = fm.horizontalAdvance(res_text)
+            th = fm.height()
+            x = pad_x
+            y = pad_y
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QColor(0, 0, 0, 160))
+            painter.drawRoundedRect(x, y, tw + pad_x * 2, th + pad_y * 2, 3, 3)
+            painter.setPen(QColor(255, 255, 255))
+            painter.drawText(x + pad_x, y + pad_y + fm.ascent(), res_text)
+
+        painter.end()
+
+    @staticmethod
+    def _format_duration(seconds: float) -> str:
+        total = int(seconds)
+        if total >= 3600:
+            return f"{total // 3600}:{total % 3600 // 60:02d}:{total % 60:02d}"
+        return f"{total // 60}:{total % 60:02d}"
 
     def is_selected(self) -> bool:
         return self._checkbox.isChecked()
