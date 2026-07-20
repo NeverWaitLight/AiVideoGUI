@@ -95,6 +95,11 @@ def main():
 
         svc._providers["dashscope"] = mock_provider
 
+        # 覆盖轮询参数以加速测试
+        svc.poll_delay = 0.0
+        svc.poll_interval = 0.1
+        svc.max_polls = 50
+
         # 收集信号
         events = []
         svc.status_changed.connect(lambda mid, s: events.append(("status", mid, s)))
@@ -142,6 +147,11 @@ def main():
         assert assistant_from_db.status == MessageStatus.COMPLETED
         assert assistant_from_db.local_path == local_path
         print(f"[OK] DB 状态正确: status={assistant_from_db.status.value}, path={assistant_from_db.local_path}")
+
+        # 6. 验证 active_task 已清理
+        active = db.list_active_tasks()
+        assert not active, f"active_task 未清理: {active}"
+        print("[OK] active_task 已清理")
 
         # 清理
         svc.shutdown()

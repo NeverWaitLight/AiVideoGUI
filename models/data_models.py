@@ -39,6 +39,7 @@ class Message:
     video_url: str = ""
     local_path: str = ""
     status: MessageStatus = MessageStatus.GENERATING
+    error_message: str = ""
 
 
 @dataclass

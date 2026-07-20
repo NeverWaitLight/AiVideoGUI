@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (
     QMenu,
     QMessageBox,
     QPushButton,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -53,8 +54,16 @@ class Sidebar(QWidget):
         self.settings_btn = QPushButton("⚙  设置")
         self.settings_btn.setObjectName("settingsBtn")
         self.settings_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.settings_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.settings_btn.clicked.connect(self.settings_clicked.emit)
-        layout.addWidget(self.settings_btn)
+
+        settings_wrapper = QWidget()
+        settings_wrapper.setFixedHeight(56)
+        sw_layout = QVBoxLayout(settings_wrapper)
+        sw_layout.setContentsMargins(0, 0, 0, 0)
+        sw_layout.setSpacing(0)
+        sw_layout.addWidget(self.settings_btn)
+        layout.addWidget(settings_wrapper)
 
     def _on_item_changed(self, current: QListWidgetItem | None, _previous: QListWidgetItem | None) -> None:
         if current:

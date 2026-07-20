@@ -84,6 +84,10 @@ def main():
         mock_provider.download.side_effect = fake_download
         w._service._providers["dashscope"] = mock_provider
 
+        # 覆盖轮询参数以加速测试
+        w._service.poll_delay = 0.0
+        w._service.poll_interval = 0.1
+
         # 1. 新建对话
         w.sidebar.new_conversation_clicked.emit()
         app.processEvents()

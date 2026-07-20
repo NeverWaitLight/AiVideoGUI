@@ -17,6 +17,17 @@ class DatabaseManager:
         self._conn = sqlite3.connect(db_path, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         self._init_tables()
+        self._migrate()
+
+    def _migrate(self) -> None:
+        """增量迁移：为已有表补充缺失列。"""
+        cols = {row["name"] for row in self._conn.execute("PRAGMA table_info(messages)").fetchall()}
+        if "error_message" not in cols:
+            self._conn.execute(
+                "ALTER TABLE messages ADD COLUMN error_message TEXT NOT NULL DEFAULT ''"
+            )
+            self._conn.commit()
+            logger.info("迁移：messages 表新增 error_message 列")
 
     def _init_tables(self) -> None:
         cur = self._conn.cursor()
@@ -39,6 +50,7 @@ class DatabaseManager:
                 video_url TEXT NOT NULL DEFAULT '',
                 local_path TEXT NOT NULL DEFAULT '',
                 status TEXT NOT NULL DEFAULT 'generating',
+                error_message TEXT NOT NULL DEFAULT '',
                 FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
             );
             CREATE INDEX IF NOT EXISTS idx_messages_conversation
@@ -100,8 +112,9 @@ class DatabaseManager:
     def add_message(self, msg: Message) -> None:
         self._conn.execute(
             "INSERT INTO messages "
-            "(id, conversation_id, role, content, created_at, task_id, video_url, local_path, status) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "(id, conversation_id, role, content, created_at, task_id, video_url, "
+            "local_path, status, error_message) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 msg.id,
                 msg.conversation_id,
@@ -112,6 +125,7 @@ class DatabaseManager:
                 msg.video_url,
                 msg.local_path,
                 msg.status.value,
+                msg.error_message,
             ),
         )
         self._conn.commit()
@@ -119,7 +133,7 @@ class DatabaseManager:
     def list_messages(self, conversation_id: str) -> list[Message]:
         rows = self._conn.execute(
             "SELECT id, conversation_id, role, content, created_at, "
-            "task_id, video_url, local_path, status "
+            "task_id, video_url, local_path, status, error_message "
             "FROM messages WHERE conversation_id = ? ORDER BY created_at",
             (conversation_id,),
         ).fetchall()
@@ -134,6 +148,7 @@ class DatabaseManager:
                 video_url=r["video_url"],
                 local_path=r["local_path"],
                 status=MessageStatus(r["status"]),
+                error_message=r["error_message"],
             )
             for r in rows
         ]
@@ -146,6 +161,7 @@ class DatabaseManager:
         task_id: str = "",
         video_url: str = "",
         local_path: str = "",
+        error_message: str | None = None,
     ) -> None:
         sets = ["status = ?"]
         vals: list = [status.value]
@@ -158,6 +174,9 @@ class DatabaseManager:
         if local_path:
             sets.append("local_path = ?")
             vals.append(local_path)
+        if error_message is not None:
+            sets.append("error_message = ?")
+            vals.append(error_message)
         vals.append(message_id)
         self._conn.execute(
             f"UPDATE messages SET {', '.join(sets)} WHERE id = ?", vals

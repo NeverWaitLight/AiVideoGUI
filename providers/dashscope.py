@@ -74,19 +74,22 @@ class DashScopeProvider(VideoProvider):
         task_status = output.get("task_status", "")
 
         if task_status == "SUCCEEDED":
-            results = output.get("results", [])
-            video_url = ""
-            if results and isinstance(results, list):
-                video_url = results[0].get("url", "")
-            elif isinstance(results, dict):
-                video_url = results.get("url", "")
+            video_url = output.get("video_url", "")
+            if not video_url:
+                results = output.get("results", [])
+                if results and isinstance(results, list):
+                    video_url = results[0].get("url", "")
+                elif isinstance(results, dict):
+                    video_url = results.get("url", "")
             logger.info("任务成功，video_url=%s", video_url)
             return TaskResult(status=TaskStatus.SUCCEEDED, video_url=video_url)
 
         if task_status == "FAILED":
+            code = output.get("code", "")
             message = output.get("message", "未知错误")
-            logger.error("任务失败：%s", message)
-            return TaskResult(status=TaskStatus.FAILED, error_message=message)
+            error = f"[{code}] {message}" if code else message
+            logger.error("任务失败：%s", error)
+            return TaskResult(status=TaskStatus.FAILED, error_message=error)
 
         if task_status == "RUNNING":
             return TaskResult(status=TaskStatus.RUNNING)

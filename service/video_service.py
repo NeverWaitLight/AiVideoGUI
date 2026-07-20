@@ -51,8 +51,9 @@ class _TaskWorker(QThread):
         message_id: str,
         save_path: str,
         temp_dir: str,
-        poll_interval: float = 5.0,
-        max_polls: int = 240,
+        poll_interval: float = 30.0,
+        poll_delay: float = 300.0,
+        max_polls: int = 50,
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
@@ -62,14 +63,29 @@ class _TaskWorker(QThread):
         self._save_path = save_path
         self._temp_dir = temp_dir
         self._poll_interval = poll_interval
+        self._poll_delay = poll_delay
         self._max_polls = max_polls
         self._stopped = False
 
     def stop(self) -> None:
         self._stopped = True
 
+    def _interruptible_sleep(self, seconds: float) -> bool:
+        """可中断 sleep，每秒检查 _stopped 标志。返回 True 表示被中断。"""
+        elapsed = 0.0
+        while elapsed < seconds:
+            if self._stopped:
+                return True
+            time.sleep(min(1.0, seconds - elapsed))
+            elapsed += 1.0
+        return False
+
     def run(self) -> None:
         try:
+            if self._poll_delay > 0:
+                logger.info("等待 %.0f 秒后开始轮询 task_id=%s", self._poll_delay, self._task_id)
+                if self._interruptible_sleep(self._poll_delay):
+                    return
             video_url = self._poll_until_done()
             if self._stopped:
                 return
@@ -87,7 +103,7 @@ class _TaskWorker(QThread):
                 result = self._provider.check_status(self._task_id)
             except Exception as e:
                 logger.warning("轮询异常（第 %d 次）：%s", i + 1, e)
-                time.sleep(self._poll_interval)
+                self._interruptible_sleep(self._poll_interval)
                 continue
 
             self.status_changed.emit(self._message_id, result.status.value)
@@ -99,9 +115,13 @@ class _TaskWorker(QThread):
             if result.status == TaskStatus.FAILED:
                 raise RuntimeError(f"任务失败：{result.error_message or '未知原因'}")
 
-            time.sleep(self._poll_interval)
+            if i < self._max_polls - 1:
+                self._interruptible_sleep(self._poll_interval)
 
-        raise TimeoutError(f"轮询超时（{self._max_polls} 次）")
+        total_minutes = (self._poll_delay + self._max_polls * self._poll_interval) / 60
+        raise TimeoutError(
+            f"轮询超时（已等待 {total_minutes:.0f} 分钟，共查询 {self._max_polls} 次，任务仍未完成）"
+        )
 
     def _download(self, video_url: str) -> str:
         os.makedirs(self._temp_dir, exist_ok=True)
@@ -140,7 +160,11 @@ class VideoService(QObject):
         self._download_dir = download_dir or self._default_download_dir()
         self._temp_dir = temp_dir or self._default_temp_dir()
         self._workers: dict[str, _TaskWorker] = {}
+        self._message_tasks: dict[str, str] = {}
         self._providers: dict[str, VideoProvider] = {}
+        self.poll_delay: float = 300.0
+        self.poll_interval: float = 30.0
+        self.max_polls: int = 50
 
     @staticmethod
     def _default_download_dir() -> str:
@@ -229,12 +253,16 @@ class VideoService(QObject):
             message_id=assistant_msg.id,
             save_path=save_path,
             temp_dir=self._temp_dir,
+            poll_interval=self.poll_interval,
+            poll_delay=self.poll_delay,
+            max_polls=self.max_polls,
         )
         worker.status_changed.connect(self._on_status_changed)
         worker.download_progress.connect(self._on_download_progress)
         worker.finished.connect(self._on_finished)
         worker.failed.connect(self._on_failed)
         self._workers[assistant_msg.id] = worker
+        self._message_tasks[assistant_msg.id] = task_id
         worker.start()
 
         logger.info("任务已启动 message=%s task=%s", assistant_msg.id, task_id)
@@ -259,7 +287,9 @@ class VideoService(QObject):
         self.task_finished.emit(message_id, local_path)
 
     def _on_failed(self, message_id: str, error: str) -> None:
-        self._db.update_message_status(message_id, MessageStatus.FAILED)
+        self._db.update_message_status(
+            message_id, MessageStatus.FAILED, error_message=error
+        )
         self._cleanup_worker(message_id)
         self.task_failed.emit(message_id, error)
 
@@ -267,6 +297,9 @@ class VideoService(QObject):
         worker = self._workers.pop(message_id, None)
         if worker:
             worker.deleteLater()
+        task_id = self._message_tasks.pop(message_id, None)
+        if task_id:
+            self._db.remove_active_task(task_id)
 
     # ---------- 生命周期 ----------
 
