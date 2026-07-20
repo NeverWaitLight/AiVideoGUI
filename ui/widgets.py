@@ -49,12 +49,12 @@ class MessageBubble(QWidget):
         bg = COLOR_BUBBLE_USER if is_user else COLOR_BUBBLE_AI
         text_color = COLOR_TEXT_USER if is_user else COLOR_TEXT_AI
         bubble.setStyleSheet(
-            f"QFrame {{ background-color: {bg}; border-radius: 12px; padding: 10px 14px; }}"
+            f"QFrame {{ background-color: {bg}; border-radius: 12px; }}"
         )
         bubble.setMaximumWidth(560)
 
         bubble_layout = QVBoxLayout(bubble)
-        bubble_layout.setContentsMargins(12, 8, 12, 8)
+        bubble_layout.setContentsMargins(10, 8, 10, 8)
         bubble_layout.setSpacing(4)
 
         label = QLabel(content)
