@@ -146,6 +146,16 @@ class SceneTime(enum.Enum):
     CUSTOM = "custom"  # 自定义
 
 
+class ShotSize(enum.Enum):
+    """景别类型"""
+    EXTREME_CLOSE_UP = "extreme_close_up"  # 特写
+    CLOSE_UP = "close_up"  # 近景
+    MEDIUM_SHOT = "medium_shot"  # 中景
+    FULL_SHOT = "full_shot"  # 全景
+    LONG_SHOT = "long_shot"  # 远景
+    EXTREME_LONG_SHOT = "extreme_long_shot"  # 大远景
+
+
 @dataclass
 class Scene:
     """场次数据结构"""
@@ -177,4 +187,32 @@ class ScriptHistory:
     script_id: str
     title: str  # 剧本标题
     scenes_snapshot: str  # 所有场次的JSON快照
+    created_at: datetime  # 该版本创建时间
+
+
+@dataclass
+class Shot:
+    """分镜头数据结构"""
+    id: str
+    scene_id: str  # 所属场次ID
+    scene_number: int  # 场次号（冗余存储，方便查询）
+    shot_number: int  # 分镜号（从1开始）
+    design_image: str = ""  # 分镜设计图路径（可为空）
+    shot_size: ShotSize = ShotSize.MEDIUM_SHOT  # 景别
+    camera_movement: str = ""  # 运镜方式（如"固定"、"慢推"、"跟拍"）
+    visual_content: str = ""  # 画面内容描述
+    dialogue: str = ""  # 台词
+    sound_effect: str = ""  # 音效
+    duration: float = 0.0  # 镜头时长（秒）
+    notes: str = ""  # 备注
+    created_at: datetime = field(default_factory=datetime.now)
+    updated_at: datetime = field(default_factory=datetime.now)
+
+
+@dataclass
+class ShotHistory:
+    """分镜历史版本（快照整个项目的所有分镜）"""
+    id: str
+    project_id: str  # 关联项目ID（分镜是项目级别的）
+    shots_snapshot: str  # 所有分镜的JSON快照
     created_at: datetime  # 该版本创建时间

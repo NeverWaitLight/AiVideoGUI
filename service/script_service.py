@@ -37,6 +37,10 @@ class ScriptService:
         logger.info(f"创建新剧本：{script.id}")
         return script
 
+    def get_script_by_project(self, project_id: str) -> Script | None:
+        """根据项目ID获取剧本。"""
+        return self._db.get_script(project_id)
+
     def update_script_title(self, script_id: str, title: str) -> None:
         """更新剧本标题。"""
         self._db.update_script(script_id, title)

@@ -17,6 +17,9 @@ from models.data_models import (
     Scene,
     SceneLocation,
     SceneTime,
+    Shot,
+    ShotHistory,
+    ShotSize,
 )
 
 logger = logging.getLogger(__name__)
@@ -40,6 +43,7 @@ class DatabaseManager:
         self._migrate_projects()
         self._migrate_outlines()
         self._migrate_scripts()
+        self._migrate_shots()
 
     def _migrate_messages(self) -> None:
         """迁移 messages 表。"""
@@ -250,6 +254,21 @@ class DatabaseManager:
         if not result:
             logger.info("scenes 表已由初始化创建")
 
+    def _migrate_shots(self) -> None:
+        """迁移 shots 表：确保表存在。"""
+        result = self._conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='shots'"
+        ).fetchone()
+        if not result:
+            logger.info("shots 表已由初始化创建")
+
+        # 检查 shot_history 表
+        result = self._conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='shot_history'"
+        ).fetchone()
+        if not result:
+            logger.info("shot_history 表已由初始化创建")
+
     def _init_tables(self) -> None:
         cur = self._conn.cursor()
         cur.executescript(
@@ -355,6 +374,33 @@ class DatabaseManager:
                 FOREIGN KEY (script_id) REFERENCES scripts(id) ON DELETE CASCADE
             );
             CREATE INDEX IF NOT EXISTS idx_history_script ON script_history(script_id, created_at DESC);
+            CREATE TABLE IF NOT EXISTS shots (
+                id TEXT PRIMARY KEY,
+                scene_id TEXT NOT NULL,
+                scene_number INTEGER NOT NULL,
+                shot_number INTEGER NOT NULL,
+                design_image TEXT NOT NULL DEFAULT '',
+                shot_size TEXT NOT NULL DEFAULT 'medium_shot',
+                camera_movement TEXT NOT NULL DEFAULT '',
+                visual_content TEXT NOT NULL DEFAULT '',
+                dialogue TEXT NOT NULL DEFAULT '',
+                sound_effect TEXT NOT NULL DEFAULT '',
+                duration REAL NOT NULL DEFAULT 0.0,
+                notes TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY (scene_id) REFERENCES scenes(id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_shot_scene ON shots(scene_id, shot_number);
+            CREATE INDEX IF NOT EXISTS idx_shot_scene_number ON shots(scene_number);
+            CREATE TABLE IF NOT EXISTS shot_history (
+                id TEXT PRIMARY KEY,
+                project_id TEXT NOT NULL,
+                shots_snapshot TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_history_shot ON shot_history(project_id, created_at DESC);
             """
         )
         self._conn.commit()
@@ -1090,6 +1136,285 @@ class DatabaseManager:
                     scene_data["time_type"],
                     scene_data.get("time_detail", ""),
                     scene_data["content"],
+                    now,
+                    now,
+                ),
+            )
+
+        self._conn.commit()
+
+    # ---------- shot (分镜头) ----------
+
+    def list_shots(self, scene_id: str | None = None, project_id: str | None = None, scene_number: int | None = None) -> list[Shot]:
+        """获取分镜列表。可按场次ID、项目ID或场次号过滤。"""
+        if scene_id:
+            # 按场次ID查询
+            rows = self._conn.execute(
+                "SELECT id, scene_id, scene_number, shot_number, design_image, shot_size, "
+                "camera_movement, visual_content, dialogue, sound_effect, duration, notes, "
+                "created_at, updated_at FROM shots WHERE scene_id = ? ORDER BY shot_number",
+                (scene_id,),
+            ).fetchall()
+        elif project_id:
+            # 按项目ID查询（需要关联 scenes 和 scripts）
+            query = """
+                SELECT s.id, s.scene_id, s.scene_number, s.shot_number, s.design_image, s.shot_size,
+                       s.camera_movement, s.visual_content, s.dialogue, s.sound_effect, s.duration, s.notes,
+                       s.created_at, s.updated_at
+                FROM shots s
+                JOIN scenes sc ON s.scene_id = sc.id
+                JOIN scripts scr ON sc.script_id = scr.id
+                WHERE scr.project_id = ?
+                ORDER BY s.scene_number, s.shot_number
+            """
+            if scene_number is not None:
+                query = query.replace("WHERE scr.project_id = ?", "WHERE scr.project_id = ? AND s.scene_number = ?")
+                rows = self._conn.execute(query, (project_id, scene_number)).fetchall()
+            else:
+                rows = self._conn.execute(query, (project_id,)).fetchall()
+        else:
+            # 查询所有分镜
+            rows = self._conn.execute(
+                "SELECT id, scene_id, scene_number, shot_number, design_image, shot_size, "
+                "camera_movement, visual_content, dialogue, sound_effect, duration, notes, "
+                "created_at, updated_at FROM shots ORDER BY scene_number, shot_number"
+            ).fetchall()
+
+        return [
+            Shot(
+                id=r["id"],
+                scene_id=r["scene_id"],
+                scene_number=r["scene_number"],
+                shot_number=r["shot_number"],
+                design_image=r["design_image"],
+                shot_size=ShotSize(r["shot_size"]),
+                camera_movement=r["camera_movement"],
+                visual_content=r["visual_content"],
+                dialogue=r["dialogue"],
+                sound_effect=r["sound_effect"],
+                duration=r["duration"],
+                notes=r["notes"],
+                created_at=datetime.fromisoformat(r["created_at"]),
+                updated_at=datetime.fromisoformat(r["updated_at"]),
+            )
+            for r in rows
+        ]
+
+    def get_shot(self, shot_id: str) -> Shot | None:
+        """获取单个分镜。"""
+        row = self._conn.execute(
+            "SELECT id, scene_id, scene_number, shot_number, design_image, shot_size, "
+            "camera_movement, visual_content, dialogue, sound_effect, duration, notes, "
+            "created_at, updated_at FROM shots WHERE id = ?",
+            (shot_id,),
+        ).fetchone()
+        if not row:
+            return None
+        return Shot(
+            id=row["id"],
+            scene_id=row["scene_id"],
+            scene_number=row["scene_number"],
+            shot_number=row["shot_number"],
+            design_image=row["design_image"],
+            shot_size=ShotSize(row["shot_size"]),
+            camera_movement=row["camera_movement"],
+            visual_content=row["visual_content"],
+            dialogue=row["dialogue"],
+            sound_effect=row["sound_effect"],
+            duration=row["duration"],
+            notes=row["notes"],
+            created_at=datetime.fromisoformat(row["created_at"]),
+            updated_at=datetime.fromisoformat(row["updated_at"]),
+        )
+
+    def create_shot(self, shot: Shot) -> None:
+        """创建新分镜。"""
+        self._conn.execute(
+            "INSERT INTO shots (id, scene_id, scene_number, shot_number, design_image, shot_size, "
+            "camera_movement, visual_content, dialogue, sound_effect, duration, notes, "
+            "created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                shot.id,
+                shot.scene_id,
+                shot.scene_number,
+                shot.shot_number,
+                shot.design_image,
+                shot.shot_size.value,
+                shot.camera_movement,
+                shot.visual_content,
+                shot.dialogue,
+                shot.sound_effect,
+                shot.duration,
+                shot.notes,
+                shot.created_at.isoformat(),
+                shot.updated_at.isoformat(),
+            ),
+        )
+        self._conn.commit()
+
+    def batch_create_shots(self, shots: list[Shot]) -> None:
+        """批量创建分镜（用于AI生成后导入）。"""
+        for shot in shots:
+            self.create_shot(shot)
+
+    def update_shot(
+        self,
+        shot_id: str,
+        design_image: str | None = None,
+        shot_size: ShotSize | None = None,
+        camera_movement: str | None = None,
+        visual_content: str | None = None,
+        dialogue: str | None = None,
+        sound_effect: str | None = None,
+        duration: float | None = None,
+        notes: str | None = None,
+    ) -> None:
+        """更新分镜信息。"""
+        updates = []
+        params = []
+
+        if design_image is not None:
+            updates.append("design_image = ?")
+            params.append(design_image)
+        if shot_size is not None:
+            updates.append("shot_size = ?")
+            params.append(shot_size.value)
+        if camera_movement is not None:
+            updates.append("camera_movement = ?")
+            params.append(camera_movement)
+        if visual_content is not None:
+            updates.append("visual_content = ?")
+            params.append(visual_content)
+        if dialogue is not None:
+            updates.append("dialogue = ?")
+            params.append(dialogue)
+        if sound_effect is not None:
+            updates.append("sound_effect = ?")
+            params.append(sound_effect)
+        if duration is not None:
+            updates.append("duration = ?")
+            params.append(duration)
+        if notes is not None:
+            updates.append("notes = ?")
+            params.append(notes)
+
+        if not updates:
+            return
+
+        updates.append("updated_at = ?")
+        params.append(datetime.now().isoformat())
+        params.append(shot_id)
+
+        sql = f"UPDATE shots SET {', '.join(updates)} WHERE id = ?"
+        self._conn.execute(sql, params)
+        self._conn.commit()
+
+    def delete_shot(self, shot_id: str) -> None:
+        """删除分镜。"""
+        self._conn.execute("DELETE FROM shots WHERE id = ?", (shot_id,))
+        self._conn.commit()
+
+    def create_shot_history(self, project_id: str, shots: list[Shot]) -> None:
+        """创建分镜历史快照（包含所有分镜数据）。"""
+        import json
+        import uuid
+
+        # 将分镜列表序列化为 JSON
+        shots_data = [
+            {
+                "scene_id": s.scene_id,
+                "scene_number": s.scene_number,
+                "shot_number": s.shot_number,
+                "design_image": s.design_image,
+                "shot_size": s.shot_size.value,
+                "camera_movement": s.camera_movement,
+                "visual_content": s.visual_content,
+                "dialogue": s.dialogue,
+                "sound_effect": s.sound_effect,
+                "duration": s.duration,
+                "notes": s.notes,
+            }
+            for s in shots
+        ]
+
+        history_id = str(uuid.uuid4())
+        self._conn.execute(
+            "INSERT INTO shot_history (id, project_id, shots_snapshot, created_at) "
+            "VALUES (?, ?, ?, ?)",
+            (
+                history_id,
+                project_id,
+                json.dumps(shots_data, ensure_ascii=False),
+                datetime.now().isoformat(),
+            ),
+        )
+        self._conn.commit()
+
+    def list_shot_history(self, project_id: str) -> list[ShotHistory]:
+        """获取分镜的历史版本列表。"""
+        rows = self._conn.execute(
+            "SELECT id, project_id, shots_snapshot, created_at "
+            "FROM shot_history WHERE project_id = ? ORDER BY created_at DESC",
+            (project_id,),
+        ).fetchall()
+        return [
+            ShotHistory(
+                id=r["id"],
+                project_id=r["project_id"],
+                shots_snapshot=r["shots_snapshot"],
+                created_at=datetime.fromisoformat(r["created_at"]),
+            )
+            for r in rows
+        ]
+
+    def restore_shots_from_history(self, project_id: str, history_id: str) -> None:
+        """从历史版本恢复分镜（包括所有分镜）。"""
+        import json
+        import uuid
+
+        # 获取历史版本数据
+        history_row = self._conn.execute(
+            "SELECT shots_snapshot FROM shot_history WHERE id = ?", (history_id,)
+        ).fetchone()
+        if not history_row:
+            return
+
+        # 先保存当前版本到历史
+        current_shots = self.list_shots(project_id=project_id)
+        if current_shots:
+            self.create_shot_history(project_id, current_shots)
+
+        # 删除当前所有分镜（通过项目ID关联查找）
+        self._conn.execute("""
+            DELETE FROM shots WHERE scene_id IN (
+                SELECT sc.id FROM scenes sc
+                JOIN scripts scr ON sc.script_id = scr.id
+                WHERE scr.project_id = ?
+            )
+        """, (project_id,))
+
+        # 恢复历史分镜
+        shots_data = json.loads(history_row["shots_snapshot"])
+        now = datetime.now().isoformat()
+        for shot_data in shots_data:
+            shot_id = str(uuid.uuid4())
+            self._conn.execute(
+                "INSERT INTO shots (id, scene_id, scene_number, shot_number, design_image, shot_size, "
+                "camera_movement, visual_content, dialogue, sound_effect, duration, notes, "
+                "created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    shot_id,
+                    shot_data["scene_id"],
+                    shot_data["scene_number"],
+                    shot_data["shot_number"],
+                    shot_data.get("design_image", ""),
+                    shot_data["shot_size"],
+                    shot_data.get("camera_movement", ""),
+                    shot_data.get("visual_content", ""),
+                    shot_data.get("dialogue", ""),
+                    shot_data.get("sound_effect", ""),
+                    shot_data.get("duration", 0.0),
+                    shot_data.get("notes", ""),
                     now,
                     now,
                 ),

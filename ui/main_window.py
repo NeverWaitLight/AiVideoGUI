@@ -22,6 +22,7 @@ from service.media_service import MediaService
 from service.outline_service import OutlineService
 from service.project_service import ProjectService
 from service.script_service import ScriptService
+from service.shot_service import ShotService
 from service.task_polling_service import TaskPollingService
 from service.text_model_service import TextModelService
 from service.video_service import VideoService, _PROVIDER_REGISTRY
@@ -33,6 +34,7 @@ from ui.project_page import ProjectPage
 from ui.project_grid_page import ProjectGridPage
 from ui.project_detail_page import ProjectDetailPage
 from ui.script_editor import ScriptEditor
+from ui.shot_editor import ShotEditor
 from ui.settings_dialog import SettingsDialog
 from ui.sidebar import Sidebar
 from ui.styles import apply_fluent_theme
@@ -90,6 +92,9 @@ class MainWindow(QMainWindow):
 
         # 剧本服务
         self._script_service = ScriptService(self._db)
+
+        # 分镜服务
+        self._shot_service = ShotService(self._db)
 
         # 文本模型服务
         self._text_model_service = TextModelService(self._config)
@@ -220,6 +225,11 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.script_editor)
         self.script_editor.hide()
 
+        # 第三层：分镜编辑器
+        self.shot_editor = ShotEditor(self._shot_service, self._script_service)
+        layout.addWidget(self.shot_editor)
+        self.shot_editor.hide()
+
         # 第三层：项目对话界面（三栏布局：项目列表 + 对话列表 + 聊天区域）
         self.project_conversation_widget = QWidget()
         conv_layout = QHBoxLayout(self.project_conversation_widget)
@@ -266,6 +276,11 @@ class MainWindow(QMainWindow):
 
         # 剧本编辑器信号
         self.script_editor.back_clicked.connect(self._on_script_editor_back)
+        self.script_editor.generate_storyboard_clicked.connect(self._on_generate_storyboard)
+
+        # 分镜编辑器信号
+        self.shot_editor.back_clicked.connect(self._on_shot_editor_back)
+        self.shot_editor.video_generation_requested.connect(self._on_shot_video_generation)
 
         # 直接生成模式信号
         self.sidebar.new_conversation_clicked.connect(self._on_new_conversation)
@@ -397,8 +412,11 @@ class MainWindow(QMainWindow):
             self.project_media_library.show()
             self.project_media_library.load_files(project_id=project_id)
         elif module_name == "storyboard":
-            # TODO: 进入分镜编辑器
+            # 进入分镜编辑器
             logger.info(f"打开项目 {project_id} 的分镜模块")
+            self.project_detail_page.hide()
+            self.shot_editor.show()
+            self.shot_editor.load_project(project_id)
         elif module_name == "character":
             # TODO: 进入角色管理
             logger.info(f"打开项目 {project_id} 的角色模块")
@@ -426,6 +444,13 @@ class MainWindow(QMainWindow):
     def _on_script_editor_back(self) -> None:
         """从剧本编辑器返回项目详情页。"""
         self.script_editor.hide()
+        self.project_detail_page.show()
+        if self._current_project_id:
+            self.project_detail_page.set_project(self._current_project_id)
+
+    def _on_shot_editor_back(self) -> None:
+        """从分镜编辑器返回项目详情页。"""
+        self.shot_editor.hide()
         self.project_detail_page.show()
         if self._current_project_id:
             self.project_detail_page.set_project(self._current_project_id)
@@ -497,6 +522,155 @@ class MainWindow(QMainWindow):
 
         # 保持 worker 引用避免被回收
         self._script_worker = worker
+
+    def _on_generate_storyboard(self, project_id: str) -> None:
+        """生成分镜（从剧本编辑器触发）。"""
+        if not project_id:
+            return
+
+        # 获取剧本内容（合并所有场次）
+        script = self._script_service.get_script_by_project(project_id)
+        if not script:
+            QMessageBox.warning(self, "错误", "未找到剧本")
+            return
+
+        scenes = self._script_service.list_scenes(script.id)
+        if not scenes:
+            QMessageBox.warning(self, "错误", "剧本中没有场次")
+            return
+
+        # 将所有场次合并为完整剧本文本
+        script_content = f"{script.title}\n\n" if script.title else ""
+        for scene in scenes:
+            location_type_text = {
+                "interior": "内景",
+                "exterior": "外景",
+                "interior_exterior": "内景/外景",
+            }.get(scene.location_type.value, "内景")
+
+            time_type_text = {
+                "day": "日",
+                "night": "夜",
+                "dawn": "晨",
+                "dusk": "黄昏",
+                "evening": "傍晚",
+                "custom": scene.time_detail,
+            }.get(scene.time_type.value, "日")
+
+            script_content += f"第{scene.scene_number}场  {location_type_text}  {scene.location}  -  {time_type_text}\n\n"
+            script_content += f"{scene.content}\n\n"
+
+        # 显示生成中提示
+        from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel
+        from qfluentwidgets import ProgressRing
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("生成分镜")
+        dialog.setModal(True)
+        dialog.setFixedSize(300, 150)
+
+        layout = QVBoxLayout(dialog)
+        layout.setSpacing(20)
+
+        progress = ProgressRing()
+        progress.setFixedSize(48, 48)
+        layout.addWidget(progress, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        label = QLabel("正在使用 AI 生成分镜头脚本，请稍候...")
+        label.setStyleSheet("font-size: 14px; color: #666;")
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(label)
+
+        dialog.show()
+
+        # 使用 QThread 异步生成分镜
+        from PyQt6.QtCore import QThread, pyqtSignal
+
+        class StoryboardGenerateWorker(QThread):
+            finished = pyqtSignal(list)  # shots
+            failed = pyqtSignal(str)
+
+            def __init__(self, text_service, script_content):
+                super().__init__()
+                self.text_service = text_service
+                self.script_content = script_content
+
+            def run(self):
+                try:
+                    shots = self.text_service.generate_storyboard(self.script_content)
+                    self.finished.emit(shots)
+                except Exception as e:
+                    logger.exception("生成分镜失败")
+                    self.failed.emit(str(e))
+
+        def on_success(shots: list):
+            dialog.close()
+            # 需要为每个分镜关联场次号（从剧本解析）
+            # 简单策略：按顺序分配给各场次
+            shots_with_scene = []
+            for shot in shots:
+                # shot_data 中应包含场次信息，如果没有默认为第1场
+                shot["scene_number"] = shot.get("scene_number", 1)
+                shots_with_scene.append(shot)
+
+            # 隐藏剧本编辑器，显示分镜编辑器
+            self.script_editor.hide()
+            self.shot_editor.show()
+            self.shot_editor.load_project(project_id, shots_with_scene)
+            QMessageBox.information(self, "成功", f"分镜生成完成，共 {len(shots)} 个镜头！")
+
+        def on_failed(error_msg: str):
+            dialog.close()
+            QMessageBox.critical(self, "生成失败", f"AI 生成分镜失败：{error_msg}")
+
+        worker = StoryboardGenerateWorker(self._text_model_service, script_content)
+        worker.finished.connect(on_success)
+        worker.failed.connect(on_failed)
+        worker.start()
+
+        # 保持 worker 引用避免被回收
+        self._storyboard_worker = worker
+
+    def _on_shot_video_generation(self, shot_id: str, scene_number: int, shot_number: int, prompt: str, project_id: str) -> None:
+        """处理分镜视频生成请求。"""
+        logger.info(f"分镜视频生成请求：shot_id={shot_id}, scene={scene_number}, shot={shot_number}, project={project_id}")
+
+        # 获取默认视频生成配置
+        provider_name = self._config.settings.default_provider or "dashscope"
+        provider_cfg = self._config.get_provider(provider_name)
+        if not provider_cfg or not provider_cfg.api_key:
+            QMessageBox.warning(self, "配置错误", f"未配置 {provider_name} 的 API Key")
+            return
+
+        model_name = provider_cfg.default_model if provider_cfg else "wan2.7-t2v"
+
+        # 创建或获取项目对应的对话
+        # 使用特殊命名规则标识分镜生成的对话
+        conversation_title = f"分镜视频-场{scene_number}镜{shot_number}"
+        conv = self._service.create_conversation(provider_name, model_name, conversation_title, project_id=project_id)
+
+        # 提交视频生成任务
+        try:
+            msg = self._service.submit_task(
+                conversation_id=conv.id,
+                prompt=prompt,
+                provider_name=provider_name,
+                params=provider_cfg.default_params if provider_cfg else {}
+            )
+
+            task_id = msg.task_id
+
+            QMessageBox.information(
+                self,
+                "任务已提交",
+                f"分镜视频生成任务已提交\n场次：{scene_number}，镜头：{shot_number}\n任务ID：{task_id}\n\n视频生成完成后将自动下载到项目素材库"
+            )
+
+            logger.info(f"分镜视频任务已提交：task_id={task_id}, shot_id={shot_id}")
+
+        except Exception as e:
+            logger.exception("提交视频生成任务失败")
+            QMessageBox.critical(self, "错误", f"提交任务失败：{e}")
 
     # ───────── 侧边栏事件 ─────────
 

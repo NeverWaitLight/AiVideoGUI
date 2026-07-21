@@ -382,6 +382,7 @@ class ScriptEditor(QWidget):
     """剧本编辑器页面：场次列表视图。"""
 
     back_clicked = pyqtSignal()
+    generate_storyboard_clicked = pyqtSignal(str)  # 发送 project_id
 
     def __init__(
         self,
@@ -439,6 +440,13 @@ class ScriptEditor(QWidget):
         self.title_label = QLabel("剧本编辑")
         self.title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #333;")
         toolbar_layout.addWidget(self.title_label, stretch=1)
+
+        # 生成分镜按钮
+        self.generate_storyboard_btn = PrimaryPushButton("生成分镜")
+        self.generate_storyboard_btn.setIcon(FluentIcon.MOVIE)
+        self.generate_storyboard_btn.setFixedHeight(36)
+        self.generate_storyboard_btn.clicked.connect(self._on_generate_storyboard)
+        toolbar_layout.addWidget(self.generate_storyboard_btn)
 
         # 保存历史按钮
         self.save_history_btn = PushButton("保存历史版本")
@@ -665,3 +673,22 @@ class ScriptEditor(QWidget):
         except Exception as e:
             logger.exception("恢复历史版本失败")
             QMessageBox.critical(self, "错误", f"恢复失败：{e}")
+
+    def _on_generate_storyboard(self) -> None:
+        """生成分镜按钮点击。"""
+        if not self._current_project_id:
+            return
+
+        # 检查是否有场次
+        if not self._current_script:
+            QMessageBox.warning(self, "提示", "请先生成剧本内容")
+            return
+
+        scenes = self._service.list_scenes(self._current_script.id)
+        if not scenes:
+            QMessageBox.warning(self, "提示", "剧本中没有场次，无法生成分镜")
+            return
+
+        # 发送信号给主窗口处理
+        self.generate_storyboard_clicked.emit(self._current_project_id)
+

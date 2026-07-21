@@ -254,3 +254,131 @@ class TextModelService:
         except (KeyError, ValueError) as e:
             logger.exception("解析 API 响应失败")
             raise RuntimeError(f"解析响应失败：{e}")
+
+    def generate_storyboard(
+        self,
+        script_content: str,
+        art_style: str = "",
+        model: str | None = None,
+    ) -> list[dict]:
+        """
+        根据剧本生成分镜头脚本，并解析为结构化数据。
+
+        Args:
+            script_content: 剧本内容
+            art_style: 艺术风格（可选，如"韦斯·安德森风格"）
+            model: 使用的模型名称，默认使用 qwen-max
+
+        Returns:
+            分镜列表（字典格式，待转换为 Shot 对象）
+
+        Raises:
+            RuntimeError: API 调用失败或解析失败
+        """
+        # 获取 DashScope 配置
+        provider_config = self._config.get_provider("dashscope")
+        if not provider_config or not provider_config.api_key:
+            raise RuntimeError("未配置 DashScope API Key，请在设置中配置")
+
+        model = model or self.DEFAULT_MODEL
+
+        # 构造分镜生成 prompt（使用专业导演提示词）
+        system_prompt = """你是一位专业的电影导演兼分镜师。请严格遵循以下步骤与规范，将用户提供的剧本转化为详细的分镜头脚本。
+
+**第一步：确认艺术风格（可选，但推荐）**
+请用户指定本次分镜希望采用的艺术风格，例如：韦斯·安德森风格（对称构图、高饱和糖果色）、吉卜力动画风格（手绘质感、自然光影）、赛博朋克风（霓虹光影、雨夜都市）、极简北欧风等。若用户未指定，则采用通用的电影感写实风格。
+
+**第二步：按规则拆分镜头**
+仔细阅读剧本，遵循"一处动作变化、情绪转折或场景切换，即拆分一个新镜头"的核心原则。确保剧本的每一句核心剧情都对应一个独立的镜头，避免单个镜头堆砌过多信息。
+
+**第三步：生成结构化分镜表格**
+请使用以下Markdown表格格式输出分镜脚本，表格必须包含以下7个核心要素：
+
+| 镜头序号 | 景别 | 画面内容描述 | 运镜方式 | 音效/台词 | 时长(秒) | 色调/光影 |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+
+**各列填写要求：**
+
+1.  **镜头序号**：从1开始按顺序编号。
+2.  **景别**：必须明确标注为：特写、近景、中景、全景、远景、极近特写等，可附加说明如"面部特写"。
+3.  **画面内容描述**：采用"谁+在哪+做什么"的公式。描述需高度具体、可视化，包含人物动作、表情、关键道具、环境细节，并融入用户指定的艺术风格。**禁止使用"伤心"、"激动"等抽象词汇，必须描述可见的细节**（如"垂眸，一滴泪滑过脸颊"）。
+4.  **运镜方式**：精准标注，如固定、慢推、拉远、摇镜、跟拍、升降等，并说明其叙事目的（如"慢推以强调情绪"）。
+5.  **音效/台词**：标注该镜头内的对白、环境音（如雨声）、特殊音效（如心跳声）或背景音乐提示。
+6.  **时长(秒)**：为短剧/短视频设计，单镜头时长建议控制在2-8秒之间。
+7.  **色调/光影**：描述镜头的基础色调（如冷蓝调、暖黄调）和关键光影效果（如侧逆光、霓虹灯闪烁），以保持视觉统一。
+
+**第四步：应用创作原则**
+- 全片视觉风格需严格统一。
+- 每个镜头的描述必须足够具体，确保文生图AI（如Midjourney）或视频生成AI可直接理解并生成画面。
+
+直接输出分镜表格，不要添加任何解释或说明。"""
+
+        user_prompt = f"""剧本内容：
+
+{script_content if script_content.strip() else "（空剧本）"}
+
+艺术风格：{art_style if art_style.strip() else "通用电影感写实风格"}
+
+请将这份剧本转换为详细的分镜头脚本（Markdown表格格式）。"""
+
+        # 调用 DashScope API
+        payload = {
+            "model": model,
+            "input": {
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ]
+            },
+            "parameters": {
+                "result_format": "message",
+            },
+        }
+
+        headers = {
+            "Authorization": f"Bearer {provider_config.api_key}",
+            "Content-Type": "application/json",
+        }
+
+        logger.info(f"调用文本模型生成分镜，模型：{model}，风格：{art_style or '默认'}")
+        logger.debug(f"请求体：{payload}")
+
+        try:
+            resp = requests.post(
+                self.DASHSCOPE_TEXT_URL,
+                json=payload,
+                headers=headers,
+                timeout=120,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            logger.debug(f"响应：{data}")
+
+            # 解析响应
+            output = data.get("output", {})
+            choices = output.get("choices", [])
+            if not choices:
+                raise RuntimeError("API 未返回有效内容")
+
+            message = choices[0].get("message", {})
+            storyboard_content = message.get("content", "").strip()
+
+            if not storyboard_content:
+                raise RuntimeError("API 返回的内容为空")
+
+            logger.info("分镜生成成功")
+
+            # 解析分镜为结构化数据
+            from utils.shot_parser import ShotParser
+
+            shots = ShotParser.parse(storyboard_content)
+            logger.info(f"分镜解析成功：共 {len(shots)} 个镜头")
+
+            return shots
+
+        except requests.exceptions.RequestException as e:
+            logger.exception("调用文本模型 API 失败")
+            raise RuntimeError(f"网络请求失败：{e}")
+        except (KeyError, ValueError) as e:
+            logger.exception("解析 API 响应失败")
+            raise RuntimeError(f"解析响应失败：{e}")
