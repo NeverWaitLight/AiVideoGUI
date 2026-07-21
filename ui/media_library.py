@@ -27,6 +27,7 @@ from qfluentwidgets import (
     LineEdit,
     PrimaryPushButton,
     PushButton,
+    ToolButton,
     MessageBox,
     RoundMenu,
     Action,
@@ -330,6 +331,7 @@ class MediaLibrary(QWidget):
     """素材库页面组件。"""
 
     jump_to_conversation_requested = pyqtSignal(str, str)  # conversation_id, message_id
+    back_clicked = pyqtSignal()
 
     def __init__(
         self,
@@ -346,6 +348,7 @@ class MediaLibrary(QWidget):
         self._cards: list[_MediaCard] = []
         self._current_type: str | None = None
         self._current_keyword: str | None = None
+        self._current_project_id: str | None = None
         self._current_files: list[MediaFile] = []
         self._setup_ui()
         self._search_timer = QTimer(self)
@@ -364,6 +367,16 @@ class MediaLibrary(QWidget):
         tb_layout = QHBoxLayout(toolbar)
         tb_layout.setContentsMargins(16, 0, 16, 0)
         tb_layout.setSpacing(12)
+
+        # 返回按钮（项目模式时显示）
+        self._back_btn = ToolButton(FluentIcon.RETURN)
+        self._back_btn.setFixedSize(36, 36)
+        self._back_btn.setIconSize(QSize(18, 18))
+        self._back_btn.setToolTip("返回项目详情")
+        self._back_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._back_btn.clicked.connect(self.back_clicked.emit)
+        self._back_btn.hide()  # 默认隐藏
+        tb_layout.addWidget(self._back_btn)
 
         title = QLabel("素材库")
         title.setObjectName("mediaTitle")
@@ -439,11 +452,21 @@ class MediaLibrary(QWidget):
 
     # ───────── 公共方法 ─────────
 
+    def load_files(self, project_id: str | None = None) -> None:
+        """加载素材文件，可选按项目过滤。"""
+        self._current_project_id = project_id
+        if project_id:
+            self._back_btn.show()
+        else:
+            self._back_btn.hide()
+        self.refresh()
+
     def refresh(self) -> None:
         """刷新素材列表。"""
         files = self._service.list_files(
             media_type=self._current_type,
             keyword=self._current_keyword,
+            project_id=self._current_project_id,
         )
         self._render_cards(files)
 

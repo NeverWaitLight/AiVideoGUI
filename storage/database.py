@@ -17,10 +17,17 @@ class DatabaseManager:
         self._conn = sqlite3.connect(db_path, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         self._init_tables()
-        self._migrate()
+        self._migrate_schema()
 
-    def _migrate(self) -> None:
+    def _migrate_schema(self) -> None:
         """增量迁移：为已有表补充缺失列。"""
+        self._migrate_messages()
+        self._migrate_media_files()
+        self._migrate_conversations()
+        self._migrate_projects()
+
+    def _migrate_messages(self) -> None:
+        """迁移 messages 表。"""
         cols = {row["name"] for row in self._conn.execute("PRAGMA table_info(messages)").fetchall()}
         if "error_message" not in cols:
             self._conn.execute(
@@ -29,7 +36,8 @@ class DatabaseManager:
             self._conn.commit()
             logger.info("迁移：messages 表新增 error_message 列")
 
-        # 迁移 media_files 表：添加视频元数据列
+    def _migrate_media_files(self) -> None:
+        """迁移 media_files 表：添加视频元数据列。"""
         media_cols = {
             row["name"] for row in self._conn.execute("PRAGMA table_info(media_files)").fetchall()
         }
@@ -49,10 +57,43 @@ class DatabaseManager:
             self._conn.commit()
             logger.info("迁移：media_files 表新增视频元数据列（thumbnail_path, duration, width, height）")
 
+    def _migrate_conversations(self) -> None:
+        """迁移 conversations 表：添加 project_id 列。"""
+        conv_cols = {row["name"] for row in self._conn.execute("PRAGMA table_info(conversations)").fetchall()}
+        if "project_id" not in conv_cols:
+            self._conn.execute(
+                "ALTER TABLE conversations ADD COLUMN project_id TEXT NOT NULL DEFAULT ''"
+            )
+            self._conn.commit()
+            logger.info("迁移：conversations 表新增 project_id 列")
+
+        # 创建索引（在列存在后）
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_conversations_project ON conversations(project_id)"
+        )
+        self._conn.commit()
+
+    def _migrate_projects(self) -> None:
+        """迁移 projects 表：添加 cover_image 列。"""
+        project_cols = {row["name"] for row in self._conn.execute("PRAGMA table_info(projects)").fetchall()}
+        if "cover_image" not in project_cols:
+            self._conn.execute(
+                "ALTER TABLE projects ADD COLUMN cover_image TEXT NOT NULL DEFAULT ''"
+            )
+            self._conn.commit()
+            logger.info("迁移：projects 表新增 cover_image 列")
+
     def _init_tables(self) -> None:
         cur = self._conn.cursor()
         cur.executescript(
             """
+            CREATE TABLE IF NOT EXISTS projects (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                resolution TEXT NOT NULL DEFAULT '1280x720',
+                aspect_ratio TEXT NOT NULL DEFAULT '16:9',
+                created_at TEXT NOT NULL
+            );
             CREATE TABLE IF NOT EXISTS conversations (
                 id TEXT PRIMARY KEY,
                 title TEXT NOT NULL,
@@ -107,15 +148,15 @@ class DatabaseManager:
 
     def create_conversation(self, conv: Conversation) -> None:
         self._conn.execute(
-            "INSERT INTO conversations (id, title, created_at, model_name, provider_name) "
-            "VALUES (?, ?, ?, ?, ?)",
-            (conv.id, conv.title, conv.created_at.isoformat(), conv.model_name, conv.provider_name),
+            "INSERT INTO conversations (id, title, created_at, model_name, provider_name, project_id) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (conv.id, conv.title, conv.created_at.isoformat(), conv.model_name, conv.provider_name, conv.project_id),
         )
         self._conn.commit()
 
     def list_conversations(self) -> list[Conversation]:
         rows = self._conn.execute(
-            "SELECT id, title, created_at, model_name, provider_name "
+            "SELECT id, title, created_at, model_name, provider_name, project_id "
             "FROM conversations ORDER BY created_at DESC"
         ).fetchall()
         return [
@@ -125,13 +166,20 @@ class DatabaseManager:
                 created_at=datetime.fromisoformat(r["created_at"]),
                 model_name=r["model_name"],
                 provider_name=r["provider_name"],
+                project_id=r["project_id"],
             )
             for r in rows
         ]
 
     def delete_conversation(self, conversation_id: str) -> None:
-        self._conn.execute("DELETE FROM conversations WHERE id = ?", (conversation_id,))
+        # 清除素材库中与该会话的关联，保留视频文件和记录
+        self._conn.execute(
+            "UPDATE media_files SET conversation_id = '', message_id = '' "
+            "WHERE conversation_id = ?",
+            (conversation_id,),
+        )
         self._conn.execute("DELETE FROM messages WHERE conversation_id = ?", (conversation_id,))
+        self._conn.execute("DELETE FROM conversations WHERE id = ?", (conversation_id,))
         self._conn.commit()
 
     def update_conversation_title(self, conversation_id: str, title: str) -> None:
@@ -310,6 +358,7 @@ class DatabaseManager:
         self,
         media_type: str | None = None,
         keyword: str | None = None,
+        project_id: str | None = None,
     ) -> list[MediaFile]:
         query = (
             "SELECT id, filename, media_type, local_path, file_size, source, "
@@ -323,6 +372,12 @@ class DatabaseManager:
         if keyword:
             query += " AND filename LIKE ?"
             params.append(f"%{keyword}%")
+        if project_id:
+            # 通过 conversation_id 关联到项目
+            query += """ AND conversation_id IN (
+                SELECT id FROM conversations WHERE project_id = ?
+            )"""
+            params.append(project_id)
         query += " ORDER BY created_at DESC"
         rows = self._conn.execute(query, params).fetchall()
         return [
@@ -404,3 +459,60 @@ class DatabaseManager:
 
     def close(self) -> None:
         self._conn.close()
+
+    # ---------- projects ----------
+
+    def create_project(self, project_id: str, name: str, resolution: str, aspect_ratio: str, cover_image: str = "") -> None:
+        self._conn.execute(
+            "INSERT INTO projects (id, name, resolution, aspect_ratio, created_at, cover_image) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (project_id, name, resolution, aspect_ratio, datetime.now().isoformat(), cover_image),
+        )
+        self._conn.commit()
+
+    def list_projects(self) -> list[dict]:
+        rows = self._conn.execute(
+            "SELECT id, name, resolution, aspect_ratio, created_at, cover_image FROM projects ORDER BY created_at DESC"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def get_project(self, project_id: str) -> dict | None:
+        row = self._conn.execute(
+            "SELECT id, name, resolution, aspect_ratio, created_at, cover_image FROM projects WHERE id = ?",
+            (project_id,),
+        ).fetchone()
+        return dict(row) if row else None
+
+    def update_project(self, project_id: str, name: str, resolution: str, aspect_ratio: str, cover_image: str = "") -> None:
+        self._conn.execute(
+            "UPDATE projects SET name = ?, resolution = ?, aspect_ratio = ?, cover_image = ? WHERE id = ?",
+            (name, resolution, aspect_ratio, cover_image, project_id),
+        )
+        self._conn.commit()
+
+    def delete_project(self, project_id: str) -> None:
+        # 清除项目关联的对话的 project_id
+        self._conn.execute(
+            "UPDATE conversations SET project_id = '' WHERE project_id = ?",
+            (project_id,),
+        )
+        self._conn.execute("DELETE FROM projects WHERE id = ?", (project_id,))
+        self._conn.commit()
+
+    def list_project_conversations(self, project_id: str) -> list[Conversation]:
+        rows = self._conn.execute(
+            "SELECT id, title, created_at, model_name, provider_name, project_id "
+            "FROM conversations WHERE project_id = ? ORDER BY created_at DESC",
+            (project_id,),
+        ).fetchall()
+        return [
+            Conversation(
+                id=r["id"],
+                title=r["title"],
+                created_at=datetime.fromisoformat(r["created_at"]),
+                model_name=r["model_name"],
+                provider_name=r["provider_name"],
+                project_id=r["project_id"],
+            )
+            for r in rows
+        ]

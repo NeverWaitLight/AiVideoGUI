@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from PyQt6.QtCore import QSize, Qt, pyqtSignal
 from PyQt6.QtWidgets import (
+    QDialog,
     QHBoxLayout,
     QLabel,
     QListWidgetItem,
@@ -11,7 +12,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from qfluentwidgets import PrimaryPushButton, PushButton, ToolButton, ListWidget, MessageBox, RoundMenu, Action, FluentIcon
+from qfluentwidgets import PrimaryPushButton, PushButton, ToolButton, ListWidget, RoundMenu, Action, FluentIcon
 
 
 class _ConversationRow(QWidget):
@@ -146,17 +147,51 @@ class Sidebar(QWidget):
                 return
 
     def _confirm_delete(self, conv_id: str, item: QListWidgetItem) -> None:
-        w = MessageBox(
-            "确认删除",
-            "删除后将无法恢复该对话及其所有视频记录，是否继续？",
-            self.window()
+        dlg = QDialog(self.window())
+        dlg.setWindowTitle("确认删除")
+        dlg.setFixedSize(360, 160)
+
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(24, 20, 24, 16)
+        layout.setSpacing(12)
+
+        title = QLabel("确认删除")
+        title.setStyleSheet("font-size: 16px; font-weight: bold;")
+        layout.addWidget(title)
+
+        msg = QLabel("删除后将无法恢复该对话及其所有视频记录，是否继续？")
+        msg.setWordWrap(True)
+        msg.setStyleSheet("color: #555; font-size: 13px;")
+        layout.addWidget(msg)
+
+        layout.addStretch()
+
+        btn_row = QHBoxLayout()
+        btn_row.addStretch()
+        btn_row.setSpacing(12)
+
+        delete_btn = PushButton("删除")
+        delete_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        delete_btn.setStyleSheet(
+            "PushButton { background-color: #E81123; color: white; border: none; "
+            "border-radius: 4px; padding: 6px 20px; min-width: 80px; min-height: 32px; }"
+            "PushButton:hover { background-color: #C50F1F; }"
+            "PushButton:pressed { background-color: #A00D1A; }"
         )
-        w.yesButton.setText("删除")
-        w.cancelButton.setText("取消")
-        w.yesButton.setStyleSheet(
-            "background-color: #E81123; color: white; border: none; border-radius: 4px;"
+        delete_btn.clicked.connect(dlg.accept)
+        btn_row.addWidget(delete_btn)
+
+        cancel_btn = PushButton("取消")
+        cancel_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        cancel_btn.setStyleSheet(
+            "PushButton { min-width: 80px; min-height: 32px; padding: 6px 20px; }"
         )
-        if w.exec():
+        cancel_btn.clicked.connect(dlg.reject)
+        btn_row.addWidget(cancel_btn)
+
+        layout.addLayout(btn_row)
+
+        if dlg.exec() == QDialog.DialogCode.Accepted:
             row = self.conversation_list.row(item)
             self.conversation_list.takeItem(row)
             self.conversation_deleted.emit(conv_id)

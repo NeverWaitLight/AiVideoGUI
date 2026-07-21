@@ -44,6 +44,7 @@ class ConfigManager:
         self._settings = AppSettings(
             default_provider=s.get("default_provider", ""),
             default_chat_provider=s.get("default_chat_provider", ""),
+            default_image_provider=s.get("default_image_provider", ""),
             default_download_dir=s.get("default_download_dir", ""),
             theme=s.get("theme", "light"),
         )
@@ -64,6 +65,7 @@ class ConfigManager:
             "app_settings": {
                 "default_provider": self._settings.default_provider,
                 "default_chat_provider": self._settings.default_chat_provider,
+                "default_image_provider": self._settings.default_image_provider,
                 "default_download_dir": self._settings.default_download_dir,
                 "theme": self._settings.theme,
             },

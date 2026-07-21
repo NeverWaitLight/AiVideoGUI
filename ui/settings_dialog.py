@@ -6,10 +6,12 @@ import logging
 import os
 
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (
     QFileDialog,
     QFormLayout,
     QHBoxLayout,
+    QLabel,
     QVBoxLayout,
 )
 from qfluentwidgets import (
@@ -42,6 +44,16 @@ _CHAT_PROVIDER_OPTIONS: list[tuple[str, str]] = [
     ("阿里百炼", "bailian"),
 ]
 
+# ── 图片模型 ──
+_IMAGE_PROVIDER_OPTIONS: list[tuple[str, str]] = [
+    ("阿里百炼", "bailian_image"),
+]
+
+# provider_name -> 可选图片模型
+_IMAGE_MODEL_OPTIONS: dict[str, list[str]] = {
+    "bailian_image": ["z-image-turbo"],
+}
+
 
 class SettingsDialog(FramelessDialog):
     """应用设置对话框。"""
@@ -50,7 +62,7 @@ class SettingsDialog(FramelessDialog):
         super().__init__(parent=parent)
         self._config = config
         self.setWindowTitle("设置")
-        self.setFixedSize(520, 680)
+        self.setFixedSize(520, 900)
         self.titleBar.hide()
         self._setup_ui()
         self._load_from_config()
@@ -60,35 +72,11 @@ class SettingsDialog(FramelessDialog):
         layout.setContentsMargins(24, 20, 24, 20)
         layout.setSpacing(16)
 
-        # ── Provider 配置 ──
-        provider_layout = QFormLayout()
-        provider_layout.setSpacing(12)
-        provider_layout.setContentsMargins(16, 20, 16, 16)
-
-        self.provider_combo = ComboBox()
-        for display, _name in _PROVIDER_OPTIONS:
-            self.provider_combo.addItem(display, userData=_name)
-        self.provider_combo.currentIndexChanged.connect(self._on_provider_changed)
-        provider_layout.addRow("供应商:", self.provider_combo)
-
-        self.api_key_input = LineEdit()
-        self.api_key_input.setPlaceholderText("输入 API Key")
-        self.api_key_input.setEchoMode(LineEdit.EchoMode.Password)
-        provider_layout.addRow("API Key:", self.api_key_input)
-
-        self.base_url_input = LineEdit()
-        self.base_url_input.setPlaceholderText("留空使用默认地址")
-        provider_layout.addRow("Base URL:", self.base_url_input)
-
-        self.model_combo = ComboBox()
-        provider_layout.addRow("默认模型:", self.model_combo)
-
-        layout.addLayout(provider_layout)
-
         # ── 对话模型配置 ──
+        layout.addWidget(self._section_title("对话模型"))
         chat_layout = QFormLayout()
         chat_layout.setSpacing(12)
-        chat_layout.setContentsMargins(16, 20, 16, 16)
+        chat_layout.setContentsMargins(16, 8, 16, 16)
 
         self.chat_provider_combo = ComboBox()
         for display, name in _CHAT_PROVIDER_OPTIONS:
@@ -117,10 +105,63 @@ class SettingsDialog(FramelessDialog):
 
         layout.addLayout(chat_layout)
 
+        # ── 图片模型配置 ──
+        layout.addWidget(self._section_title("图片模型"))
+        image_layout = QFormLayout()
+        image_layout.setSpacing(12)
+        image_layout.setContentsMargins(16, 8, 16, 16)
+
+        self.image_provider_combo = ComboBox()
+        for display, name in _IMAGE_PROVIDER_OPTIONS:
+            self.image_provider_combo.addItem(display, userData=name)
+        self.image_provider_combo.currentIndexChanged.connect(self._on_image_provider_changed)
+        image_layout.addRow("供应商:", self.image_provider_combo)
+
+        self.image_api_key_input = LineEdit()
+        self.image_api_key_input.setPlaceholderText("输入 API Key")
+        self.image_api_key_input.setEchoMode(LineEdit.EchoMode.Password)
+        image_layout.addRow("API Key:", self.image_api_key_input)
+
+        self.image_base_url_input = LineEdit()
+        self.image_base_url_input.setPlaceholderText("留空使用默认地址")
+        image_layout.addRow("Base URL:", self.image_base_url_input)
+
+        self.image_model_combo = ComboBox()
+        image_layout.addRow("默认模型:", self.image_model_combo)
+
+        layout.addLayout(image_layout)
+
+        # ── 视频模型配置 ──
+        layout.addWidget(self._section_title("视频模型"))
+        provider_layout = QFormLayout()
+        provider_layout.setSpacing(12)
+        provider_layout.setContentsMargins(16, 8, 16, 16)
+
+        self.provider_combo = ComboBox()
+        for display, _name in _PROVIDER_OPTIONS:
+            self.provider_combo.addItem(display, userData=_name)
+        self.provider_combo.currentIndexChanged.connect(self._on_provider_changed)
+        provider_layout.addRow("供应商:", self.provider_combo)
+
+        self.api_key_input = LineEdit()
+        self.api_key_input.setPlaceholderText("输入 API Key")
+        self.api_key_input.setEchoMode(LineEdit.EchoMode.Password)
+        provider_layout.addRow("API Key:", self.api_key_input)
+
+        self.base_url_input = LineEdit()
+        self.base_url_input.setPlaceholderText("留空使用默认地址")
+        provider_layout.addRow("Base URL:", self.base_url_input)
+
+        self.model_combo = ComboBox()
+        provider_layout.addRow("默认模型:", self.model_combo)
+
+        layout.addLayout(provider_layout)
+
         # ── 应用设置 ──
+        layout.addWidget(self._section_title("通用设置"))
         app_layout = QFormLayout()
         app_layout.setSpacing(12)
-        app_layout.setContentsMargins(16, 20, 16, 16)
+        app_layout.setContentsMargins(16, 8, 16, 16)
 
         dir_row = QHBoxLayout()
         self.download_dir_input = LineEdit()
@@ -164,6 +205,18 @@ class SettingsDialog(FramelessDialog):
 
         self.setLayout(layout)
 
+    # ───────── 辅助 ─────────
+
+    @staticmethod
+    def _section_title(text: str) -> QLabel:
+        label = QLabel(text)
+        font = QFont()
+        font.setBold(True)
+        font.setPointSize(11)
+        label.setFont(font)
+        label.setStyleSheet("color: #333; margin-top: 4px;")
+        return label
+
     # ───────── 加载 ─────────
 
     def _load_from_config(self) -> None:
@@ -185,6 +238,9 @@ class SettingsDialog(FramelessDialog):
 
         # 对话模型回填
         self._on_chat_provider_changed(self.chat_provider_combo.currentIndex())
+
+        # 图片模型回填
+        self._on_image_provider_changed(self.image_provider_combo.currentIndex())
 
     def _on_provider_changed(self, index: int) -> None:
         provider_name = self.provider_combo.itemData(index)
@@ -268,6 +324,27 @@ class SettingsDialog(FramelessDialog):
         w = MessageBox("刷新成功", f"已获取 {len(models)} 个可用模型。", self)
         w.exec()
 
+    # ───────── 图片模型 ─────────
+
+    def _on_image_provider_changed(self, index: int) -> None:
+        provider_name = self.image_provider_combo.itemData(index)
+        # 回填模型列表
+        self.image_model_combo.clear()
+        for m in _IMAGE_MODEL_OPTIONS.get(provider_name, []):
+            self.image_model_combo.addItem(m)
+        # 回填已保存的凭证
+        cfg = self._config.get_provider(provider_name)
+        if cfg:
+            self.image_api_key_input.setText(cfg.api_key)
+            self.image_base_url_input.setText(cfg.base_url)
+            if cfg.default_model:
+                i = self.image_model_combo.findText(cfg.default_model)
+                if i >= 0:
+                    self.image_model_combo.setCurrentIndex(i)
+        else:
+            self.image_api_key_input.clear()
+            self.image_base_url_input.clear()
+
     # ───────── 保存 ─────────
 
     def _on_save(self) -> None:
@@ -308,6 +385,22 @@ class SettingsDialog(FramelessDialog):
                 )
             )
 
+        # 保存图片模型凭证
+        image_provider_name = self.image_provider_combo.currentData()
+        image_api_key = self.image_api_key_input.text().strip()
+        image_base_url = self.image_base_url_input.text().strip()
+        image_model = self.image_model_combo.currentText()
+        if image_api_key:
+            self._config.upsert_provider(
+                ProviderConfig(
+                    provider_name=image_provider_name,
+                    api_key=image_api_key,
+                    base_url=image_base_url,
+                    default_model=image_model,
+                    default_params={},
+                )
+            )
+
         # 保存应用设置
         download_dir = self.download_dir_input.text().strip()
         default_provider = self.default_provider_combo.currentData()
@@ -315,6 +408,7 @@ class SettingsDialog(FramelessDialog):
             default_download_dir=download_dir,
             default_provider=default_provider,
             default_chat_provider=chat_provider_name if chat_api_key else "",
+            default_image_provider=image_provider_name if image_api_key else "",
         )
 
         self.accept()

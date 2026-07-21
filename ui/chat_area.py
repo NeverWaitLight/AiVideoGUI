@@ -27,6 +27,14 @@ from ui.widgets import MessageBubble, VideoStatusCard
 class ParameterPanel(QFrame):
     """视频生成参数选择面板，位于输入框上方。"""
 
+    # 画面比例到分辨率的映射
+    RESOLUTION_MAP = {
+        "16:9": ["480P", "720P", "1080P", "2K", "4K"],
+        "9:16": ["480P", "720P", "1080P", "2K", "4K"],
+        "4:3": ["480P", "720P", "1080P", "2K", "4K"],
+        "3:4": ["480P", "720P", "1080P", "2K", "4K"],
+    }
+
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setObjectName("paramPanel")
@@ -53,8 +61,14 @@ class ParameterPanel(QFrame):
         params_layout.setContentsMargins(0, 0, 0, 0)
         params_layout.setSpacing(10)
 
-        # 分辨率
-        self._resolution_combo = self._make_combo(["480P", "720P", "1080P"], default="720P")
+        # 画面比例（第一个）
+        self._ratio_combo = self._make_combo(["16:9", "9:16", "4:3", "3:4"])
+        params_layout.addWidget(
+            self._make_param_group("比例", self._ratio_combo), stretch=1
+        )
+
+        # 分辨率（第二个，根据比例动态变化）
+        self._resolution_combo = ComboBox()
         params_layout.addWidget(
             self._make_param_group("分辨率", self._resolution_combo), stretch=1
         )
@@ -63,12 +77,6 @@ class ParameterPanel(QFrame):
         self._duration_combo = self._make_combo(["5秒", "10秒", "15秒"])
         params_layout.addWidget(
             self._make_param_group("时长", self._duration_combo), stretch=1
-        )
-
-        # 画面比例
-        self._ratio_combo = self._make_combo(["16:9", "9:16", "1:1"])
-        params_layout.addWidget(
-            self._make_param_group("比例", self._ratio_combo), stretch=1
         )
 
         # 自动优化
@@ -85,6 +93,21 @@ class ParameterPanel(QFrame):
         )
 
         outer.addWidget(params_widget)
+
+        # 连接信号（在控件创建完成后）
+        self._ratio_combo.currentTextChanged.connect(self._on_ratio_changed)
+
+        # 初始化分辨率选项（手动触发一次）
+        self._on_ratio_changed("16:9")
+
+    def _on_ratio_changed(self, ratio: str) -> None:
+        """比例改变时，更新分辨率选项。"""
+        self._resolution_combo.clear()
+        resolutions = self.RESOLUTION_MAP.get(ratio, [])
+        self._resolution_combo.addItems(resolutions)
+        # 默认选择 720P
+        if "720P" in resolutions:
+            self._resolution_combo.setCurrentText("720P")
 
     @staticmethod
     def _make_param_group(label_text: str, control: QWidget) -> QWidget:
@@ -110,10 +133,51 @@ class ParameterPanel(QFrame):
 
     def get_params(self) -> dict[str, Any]:
         """返回当前选中的生成参数，字段名与 DashScope API 一一对应。"""
+        # 分辨率映射表（与项目对话框保持一致）
+        resolution_map = {
+            "16:9": {
+                "480P": "854x480",
+                "720P": "1280x720",
+                "1080P": "1920x1080",
+                "2K": "2560x1440",
+                "4K": "3840x2160",
+            },
+            "9:16": {
+                "480P": "480x854",
+                "720P": "720x1280",
+                "1080P": "1080x1920",
+                "2K": "1440x2560",
+                "4K": "2160x3840",
+            },
+            "4:3": {
+                "480P": "640x480",
+                "720P": "960x720",
+                "1080P": "1440x1080",
+                "2K": "1920x1440",
+                "4K": "2880x2160",
+            },
+            "3:4": {
+                "480P": "480x640",
+                "720P": "720x960",
+                "1080P": "1080x1440",
+                "2K": "1440x1920",
+                "4K": "2160x2880",
+            },
+        }
+
         duration_map = {"5秒": 5, "10秒": 10, "15秒": 15}
+
+        ratio = self._ratio_combo.currentText()
+        res_name = self._resolution_combo.currentText()
+        resolution = resolution_map.get(ratio, {}).get(res_name, "1280x720")
+
+        # 解析分辨率为宽高
+        width, height = resolution.split("x")
+
         return {
-            "resolution": self._resolution_combo.currentText(),
-            "ratio": self._ratio_combo.currentText(),
+            "width": int(width),
+            "height": int(height),
+            "ratio": ratio,
             "duration": duration_map.get(self._duration_combo.currentText(), 5),
             "prompt_extend": self._prompt_extend_switch.isChecked(),
             "watermark": self._watermark_switch.isChecked(),

@@ -32,6 +32,7 @@ class Conversation:
     created_at: datetime
     model_name: str = ""
     provider_name: str = ""
+    project_id: str = ""
 
 
 @dataclass
@@ -61,6 +62,7 @@ class ProviderConfig:
 class AppSettings:
     default_provider: str = ""
     default_chat_provider: str = ""
+    default_image_provider: str = ""
     default_download_dir: str = ""
     theme: str = "light"
 
@@ -98,3 +100,13 @@ class MediaFile:
     duration: float = 0.0  # 时长（秒）
     width: int = 0  # 分辨率宽度
     height: int = 0  # 分辨率高度
+
+
+@dataclass
+class Project:
+    id: str
+    name: str
+    resolution: str  # 如 "1280x720"
+    aspect_ratio: str  # 如 "16:9"
+    created_at: datetime
+    cover_image: str = ""  # 封面图路径

@@ -175,9 +175,14 @@ class MediaService:
         self,
         media_type: str | None = None,
         keyword: str | None = None,
+        project_id: str | None = None,
     ) -> list[MediaFile]:
-        """查询素材列表。"""
-        return self._db.list_media_files(media_type=media_type, keyword=keyword)
+        """查询素材列表，可选按项目过滤。"""
+        return self._db.list_media_files(
+            media_type=media_type,
+            keyword=keyword,
+            project_id=project_id
+        )
 
     def delete_file(self, media_id: str) -> bool:
         """删除单个素材（文件 + 缩略图 + 数据库记录）。"""

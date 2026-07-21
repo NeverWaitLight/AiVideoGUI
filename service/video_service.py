@@ -61,13 +61,16 @@ class VideoService(QObject):
 
     # ---------- 对话 ----------
 
-    def create_conversation(self, provider_name: str, model_name: str, title: str = "新对话") -> Conversation:
+    def create_conversation(
+        self, provider_name: str, model_name: str, title: str = "新对话", project_id: str = ""
+    ) -> Conversation:
         conv = Conversation(
             id=uuid.uuid4().hex,
             title=title,
             created_at=datetime.now(),
             model_name=model_name,
             provider_name=provider_name,
+            project_id=project_id,
         )
         self._db.create_conversation(conv)
         return conv

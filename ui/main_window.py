@@ -19,14 +19,19 @@ from PyQt6.QtWidgets import (
 from config.manager import ConfigManager
 from service.chat_service import ChatService
 from service.media_service import MediaService
+from service.project_service import ProjectService
 from service.task_polling_service import TaskPollingService
 from service.video_service import VideoService, _PROVIDER_REGISTRY
 from storage.database import DatabaseManager
 from ui.chat_area import ChatArea
 from ui.media_library import MediaLibrary
+from ui.project_page import ProjectPage
+from ui.project_grid_page import ProjectGridPage
+from ui.project_detail_page import ProjectDetailPage
 from ui.settings_dialog import SettingsDialog
 from ui.sidebar import Sidebar
 from ui.styles import apply_fluent_theme
+from ui.tab_bar import TabBar
 from ui.widgets import VideoStatusCard
 
 logger = logging.getLogger(__name__)
@@ -59,6 +64,8 @@ class MainWindow(QMainWindow):
 
         self._current_conversation_id: str | None = None
         self._video_cards: dict[str, VideoStatusCard] = {}
+        self._current_mode: int = 0  # 0: 直接生成, 1: 项目管理
+        self._current_project_id: str | None = None
 
         # ── 初始化基础设施 ──
         data_dir = _app_data_dir()
@@ -69,6 +76,9 @@ class MainWindow(QMainWindow):
         # VideoService 仅负责对话和任务提交
         self._service = VideoService(self._db, self._config)
         self._chat_service = ChatService(self._config)
+
+        # 项目服务
+        self._project_service = ProjectService(self._db)
 
         # 素材库服务
         download_dir = self._config.settings.default_download_dir or self._default_download_dir()
@@ -110,6 +120,26 @@ class MainWindow(QMainWindow):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
 
+        # Tab 栏（最左侧）
+        self.tab_bar = TabBar()
+        main_layout.addWidget(self.tab_bar)
+
+        # 直接生成模式的内容
+        self.direct_mode_widget = self._create_direct_mode()
+        main_layout.addWidget(self.direct_mode_widget)
+
+        # 项目管理模式的内容
+        self.project_mode_widget = self._create_project_mode()
+        main_layout.addWidget(self.project_mode_widget)
+        self.project_mode_widget.hide()
+
+    def _create_direct_mode(self) -> QWidget:
+        """创建直接生成模式的 UI。"""
+        widget = QWidget()
+        layout = QHBoxLayout(widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
         splitter = QSplitter(Qt.Orientation.Horizontal)
 
         self.sidebar = Sidebar()
@@ -138,15 +168,87 @@ class MainWindow(QMainWindow):
         splitter.setStretchFactor(1, 1)
         splitter.setSizes([240, 860])
 
-        main_layout.addWidget(splitter)
+        layout.addWidget(splitter)
+        return widget
+
+    def _create_project_mode(self) -> QWidget:
+        """创建项目管理模式的 UI（三层导航：网格 → 详情 → 模块）。"""
+        widget = QWidget()
+        layout = QHBoxLayout(widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        # 第一层：项目网格页面（初始视图）
+        self.project_grid_page = ProjectGridPage(self._project_service)
+        layout.addWidget(self.project_grid_page)
+
+        # 第二层：项目详情页面（模块入口）
+        self.project_detail_page = ProjectDetailPage(self._project_service)
+        layout.addWidget(self.project_detail_page)
+        self.project_detail_page.hide()
+
+        # 第三层：项目素材库
+        self.project_media_library = MediaLibrary(
+            self._media_service,
+            on_play=self._play_video,
+            on_open_folder=self._open_folder,
+        )
+        layout.addWidget(self.project_media_library)
+        self.project_media_library.hide()
+
+        # 第三层：项目对话界面（三栏布局：项目列表 + 对话列表 + 聊天区域）
+        self.project_conversation_widget = QWidget()
+        conv_layout = QHBoxLayout(self.project_conversation_widget)
+        conv_layout.setContentsMargins(0, 0, 0, 0)
+        conv_layout.setSpacing(0)
+
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+
+        # 项目页面（左侧项目列表 + 中间对话列表）
+        self.project_page = ProjectPage(self._project_service)
+
+        # 右侧聊天区域（复用 ChatArea）
+        self.project_chat_area = ChatArea()
+
+        splitter.addWidget(self.project_page)
+        splitter.addWidget(self.project_chat_area)
+        splitter.setStretchFactor(0, 0)
+        splitter.setStretchFactor(1, 1)
+        splitter.setSizes([480, 620])
+
+        conv_layout.addWidget(splitter)
+        layout.addWidget(self.project_conversation_widget)
+        self.project_conversation_widget.hide()
+
+        return widget
 
     def _connect_signals(self) -> None:
+        # Tab 栏信号
+        self.tab_bar.tab_changed.connect(self._on_tab_changed)
+
+        # 项目网格页面信号
+        self.project_grid_page.project_selected.connect(self._on_project_grid_selected)
+
+        # 项目详情页面信号
+        self.project_detail_page.module_selected.connect(self._on_project_module_selected)
+        self.project_detail_page.back_clicked.connect(self._on_project_detail_back)
+
+        # 项目素材库信号
+        self.project_media_library.back_clicked.connect(self._on_project_media_back)
+
+        # 直接生成模式信号
         self.sidebar.new_conversation_clicked.connect(self._on_new_conversation)
         self.sidebar.conversation_selected.connect(self._on_conversation_selected)
         self.sidebar.conversation_deleted.connect(self._on_conversation_deleted)
         self.sidebar.library_clicked.connect(self._on_library)
         self.sidebar.settings_clicked.connect(self._on_settings)
         self.chat_area.message_sent.connect(self._on_message_sent)
+
+        # 项目管理模式信号
+        self.project_page.new_conversation_clicked.connect(self._on_project_new_conversation)
+        self.project_page.conversation_selected.connect(self._on_project_conversation_selected)
+        self.project_page.conversation_deleted.connect(self._on_project_conversation_deleted)
+        self.project_chat_area.message_sent.connect(self._on_project_message_sent)
 
         # 连接素材库信号
         self.media_library.jump_to_conversation_requested.connect(self._on_jump_to_conversation)
@@ -163,13 +265,21 @@ class MainWindow(QMainWindow):
 
     def _load_conversations(self) -> None:
         convs = self._db.list_conversations()
+        # 只加载没有项目关联的对话到侧边栏（直接生成模式）
         for conv in convs:
-            time_text = conv.created_at.strftime("%Y-%m-%d %H:%M")
-            self.sidebar.add_conversation(conv.id, conv.title, time_text, at_top=False)
-        if convs:
-            latest = convs[0]
+            if not conv.project_id:
+                time_text = conv.created_at.strftime("%Y-%m-%d %H:%M")
+                self.sidebar.add_conversation(conv.id, conv.title, time_text, at_top=False)
+
+        # 找到最新的非项目对话
+        non_project_convs = [c for c in convs if not c.project_id]
+        if non_project_convs:
+            latest = non_project_convs[0]
             self.sidebar.select_conversation(latest.id)
             self._on_conversation_selected(latest.id)
+
+        # 加载项目列表
+        self.project_page.load_projects()
 
     def _load_messages(self, conversation_id: str) -> None:
         self.chat_area.clear_messages()
@@ -198,6 +308,67 @@ class MainWindow(QMainWindow):
                     card.set_generating()
         QTimer.singleShot(0, self.chat_area._scroll_to_bottom)
 
+    # ───────── Tab 切换 ─────────
+
+    def _on_tab_changed(self, index: int) -> None:
+        """Tab 切换事件。"""
+        self._current_mode = index
+        if index == 0:
+            # 切换到直接生成模式
+            self.project_mode_widget.hide()
+            self.direct_mode_widget.show()
+        else:
+            # 切换到项目管理模式
+            self.direct_mode_widget.hide()
+            self.project_mode_widget.show()
+            # 显示网格页面，隐藏其他页面
+            self.project_grid_page.show()
+            self.project_detail_page.hide()
+            self.project_media_library.hide()
+            self.project_conversation_widget.hide()
+            self.project_grid_page.load_projects()
+
+    def _on_project_grid_selected(self, project_id: str) -> None:
+        """从网格页面点击项目，进入详情页面。"""
+        self._current_project_id = project_id
+        # 隐藏网格页面，显示详情页面
+        self.project_grid_page.hide()
+        self.project_detail_page.show()
+        self.project_detail_page.set_project(project_id)
+
+    def _on_project_module_selected(self, project_id: str, module_name: str) -> None:
+        """项目模块被选中。"""
+        self._current_project_id = project_id
+
+        if module_name == "media":
+            # 进入项目素材库
+            self.project_detail_page.hide()
+            self.project_conversation_widget.hide()
+            self.project_media_library.show()
+            self.project_media_library.load_files(project_id=project_id)
+        elif module_name == "script":
+            # TODO: 进入剧本编辑器
+            logger.info(f"打开项目 {project_id} 的剧本模块")
+        elif module_name == "storyboard":
+            # TODO: 进入分镜编辑器
+            logger.info(f"打开项目 {project_id} 的分镜模块")
+        elif module_name == "character":
+            # TODO: 进入角色管理
+            logger.info(f"打开项目 {project_id} 的角色模块")
+
+    def _on_project_detail_back(self) -> None:
+        """从项目详情页返回项目网格。"""
+        self.project_detail_page.hide()
+        self.project_grid_page.show()
+        self.project_grid_page.load_projects()
+
+    def _on_project_media_back(self) -> None:
+        """从项目素材库返回项目详情页。"""
+        self.project_media_library.hide()
+        self.project_detail_page.show()
+        if self._current_project_id:
+            self.project_detail_page.set_project(self._current_project_id)
+
     # ───────── 侧边栏事件 ─────────
 
     def _on_new_conversation(self) -> None:
@@ -207,7 +378,7 @@ class MainWindow(QMainWindow):
         provider_cfg = self._config.get_provider(provider_name)
         model_name = provider_cfg.default_model if provider_cfg else "wan2.7-t2v"
 
-        conv = self._service.create_conversation(provider_name, model_name, "新对话")
+        conv = self._service.create_conversation(provider_name, model_name, "新对话", project_id="")
         time_text = conv.created_at.strftime("%Y-%m-%d %H:%M")
         self.sidebar.add_conversation(conv.id, conv.title, time_text)
         self.sidebar.select_conversation(conv.id)
@@ -235,7 +406,7 @@ class MainWindow(QMainWindow):
         self.sidebar.clear_selection()
         self.chat_area.hide()
         self.media_library.show()
-        self.media_library.refresh()
+        self.media_library.load_files(project_id=None)
 
     def _on_jump_to_conversation(self, conversation_id: str, message_id: str) -> None:
         """从素材库跳转到对话，并定位到指定消息。"""
@@ -260,11 +431,21 @@ class MainWindow(QMainWindow):
 
     def _on_title_ready(self, conv_id: str, title: str) -> None:
         self._db.update_conversation_title(conv_id, title)
+
+        # 更新直接生成模式的侧边栏
         self.sidebar.update_conversation_title(conv_id, title)
+
+        # 更新项目管理模式的对话列表
+        self.project_page.update_conversation_title(conv_id, title)
+
+        # 更新当前聊天区域标题
         if conv_id == self._current_conversation_id:
             convs = [c for c in self._db.list_conversations() if c.id == conv_id]
             model_name = convs[0].model_name if convs else ""
-            self.chat_area.set_header(title, model_name)
+            if self._current_mode == 0:
+                self.chat_area.set_header(title, model_name)
+            else:
+                self.project_chat_area.set_header(title, model_name)
 
     # ───────── 消息发送 ─────────
 
@@ -409,7 +590,125 @@ class MainWindow(QMainWindow):
         # 滚动到目标位置
         scroll_area.verticalScrollBar().setValue(max(0, target_y))
 
-    def closeEvent(self, event) -> None:
+    # ───────── 项目管理模式事件 ─────────
+
+    def _on_project_new_conversation(self, project_id: str) -> None:
+        """项目模式：新建对话。"""
+        self._current_project_id = project_id
+        project = self._project_service.get_project(project_id)
+        if not project:
+            return
+
+        provider_name = self._config.settings.default_provider or "dashscope"
+        provider_cfg = self._config.get_provider(provider_name)
+        model_name = provider_cfg.default_model if provider_cfg else "wan2.7-t2v"
+
+        conv = self._service.create_conversation(provider_name, model_name, "新对话", project_id=project_id)
+        self._current_conversation_id = conv.id
+
+        # 添加到项目页面的对话列表
+        self.project_page.add_conversation_to_current_project(conv.id, conv.title)
+        self.project_page.select_conversation(conv.id)
+
+        # 更新聊天区域
+        self.project_chat_area.set_header(conv.title, model_name)
+        self.project_chat_area.clear_messages()
+
+    def _on_project_conversation_selected(self, project_id: str, conv_id: str) -> None:
+        """项目模式：选中对话。"""
+        self._current_project_id = project_id
+        self._current_conversation_id = conv_id
+        convs = [c for c in self._db.list_conversations() if c.id == conv_id]
+        if convs:
+            self.project_chat_area.set_header(convs[0].title, convs[0].model_name)
+        self._load_messages_for_project(conv_id)
+
+    def _load_messages_for_project(self, conversation_id: str) -> None:
+        """为项目模式加载消息。"""
+        self.project_chat_area.clear_messages()
+        for msg in self._db.list_messages(conversation_id):
+            time_str = _format_time(msg.created_at)
+            if msg.role == "user":
+                self.project_chat_area.add_user_message(msg.content, time_str)
+            else:
+                card = self.project_chat_area.add_video_card(
+                    message_text=msg.content, timestamp=time_str
+                )
+                self._video_cards[msg.id] = card
+                card.open_folder_clicked.connect(self._open_folder)
+                if msg.status.value == "completed" and msg.local_path:
+                    meta = self._db.get_video_metadata_by_message(msg.id) or {}
+                    card.set_completed(
+                        msg.local_path,
+                        duration=meta.get("duration", 0),
+                        width=meta.get("width", 0),
+                        height=meta.get("height", 0),
+                    )
+                    card.play_btn.clicked.connect(lambda _, p=msg.local_path: self._play_video(p))
+                elif msg.status.value == "failed":
+                    card.set_failed("生成失败")
+                else:
+                    card.set_generating()
+        QTimer.singleShot(0, self.project_chat_area._scroll_to_bottom)
+
+    def _on_project_conversation_deleted(self, conv_id: str) -> None:
+        """项目模式：删除对话。"""
+        self._db.delete_conversation(conv_id)
+        if self._current_conversation_id == conv_id:
+            self._current_conversation_id = None
+            self.project_chat_area.set_header("选择对话", "")
+            self.project_chat_area.clear_messages()
+
+    def _on_project_message_sent(self, text: str, params: dict) -> None:
+        """项目模式：发送消息。"""
+        if not self._current_conversation_id or not self._current_project_id:
+            return
+
+        provider_name = self._config.settings.default_provider or "dashscope"
+        provider_cfg = self._config.get_provider(provider_name)
+        if not provider_cfg or not provider_cfg.api_key:
+            QMessageBox.warning(
+                self,
+                "未配置 API Key",
+                f"请先在设置中配置 {provider_name} 的 API Key。",
+            )
+            return
+
+        conv_id = self._current_conversation_id
+        is_first_message = len(self._db.list_messages(conv_id)) == 0
+
+        now_str = _format_time(datetime.now())
+        self.project_chat_area.add_user_message(text, now_str)
+        self._service.add_user_message(conv_id, text)
+
+        if is_first_message:
+            self._chat_service.generate_title(conv_id, text)
+
+        # 获取项目设置并添加到参数
+        project = self._project_service.get_project(self._current_project_id)
+        if project:
+            # 将分辨率转换为宽高
+            if "x" in project.resolution:
+                width, height = project.resolution.split("x")
+                params["width"] = int(width)
+                params["height"] = int(height)
+
+        try:
+            assistant_msg = self._service.submit_task(
+                self._current_conversation_id, text, provider_name, params
+            )
+        except Exception as e:
+            logger.exception("提交任务失败")
+            card = self.project_chat_area.add_video_card()
+            card.set_failed(str(e))
+            return
+
+        card = self.project_chat_area.add_ai_message_with_card("马上开始生成视频", now_str)
+        card.open_folder_clicked.connect(self._open_folder)
+        card.set_generating()
+        self._video_cards[assistant_msg.id] = card
+
+    # ───────── 设置 / 生命周期 ─────────
         self._polling_service.shutdown()
         self._db.close()
         super().closeEvent(event)
