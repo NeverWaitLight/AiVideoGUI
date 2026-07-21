@@ -110,3 +110,71 @@ class Project:
     aspect_ratio: str  # 如 "16:9"
     created_at: datetime
     cover_image: str = ""  # 封面图路径
+
+
+@dataclass
+class Outline:
+    id: str
+    project_id: str
+    content: str  # 大纲文本内容
+    created_at: datetime
+    updated_at: datetime
+
+
+@dataclass
+class OutlineHistory:
+    id: str
+    outline_id: str
+    content: str  # 历史版本的大纲内容
+    created_at: datetime  # 该版本创建时间
+
+
+class SceneLocation(enum.Enum):
+    """场景内外景类型"""
+    INTERIOR = "interior"  # 内景
+    EXTERIOR = "exterior"  # 外景
+    INTERIOR_EXTERIOR = "interior_exterior"  # 内景/外景
+
+
+class SceneTime(enum.Enum):
+    """场景时间类型"""
+    DAY = "day"  # 日
+    NIGHT = "night"  # 夜
+    DAWN = "dawn"  # 晨/黎明
+    DUSK = "dusk"  # 黄昏/傍晚
+    EVENING = "evening"  # 傍晚
+    CUSTOM = "custom"  # 自定义
+
+
+@dataclass
+class Scene:
+    """场次数据结构"""
+    id: str
+    script_id: str  # 所属剧本ID
+    scene_number: int  # 场次号（从1开始）
+    location_type: SceneLocation  # 内景/外景
+    location: str  # 地点（如"审讯室"、"老城区街道"）
+    time_type: SceneTime  # 时间类型（日/夜/晨/黄昏等）
+    time_detail: str = ""  # 详细时间描述（可选，如"下午3点"）
+    content: str = ""  # 场次具体内容（动作描述+对话）
+    created_at: datetime = field(default_factory=datetime.now)
+    updated_at: datetime = field(default_factory=datetime.now)
+
+
+@dataclass
+class Script:
+    id: str
+    project_id: str
+    title: str = ""  # 剧本标题
+    created_at: datetime = field(default_factory=datetime.now)
+    updated_at: datetime = field(default_factory=datetime.now)
+
+
+@dataclass
+class ScriptHistory:
+    """剧本历史版本（快照整个剧本的所有场次）"""
+    id: str
+    script_id: str
+    title: str  # 剧本标题
+    scenes_snapshot: str  # 所有场次的JSON快照
+    created_at: datetime  # 该版本创建时间

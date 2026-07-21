@@ -19,15 +19,20 @@ from PyQt6.QtWidgets import (
 from config.manager import ConfigManager
 from service.chat_service import ChatService
 from service.media_service import MediaService
+from service.outline_service import OutlineService
 from service.project_service import ProjectService
+from service.script_service import ScriptService
 from service.task_polling_service import TaskPollingService
+from service.text_model_service import TextModelService
 from service.video_service import VideoService, _PROVIDER_REGISTRY
 from storage.database import DatabaseManager
 from ui.chat_area import ChatArea
 from ui.media_library import MediaLibrary
+from ui.outline_editor import OutlineEditor
 from ui.project_page import ProjectPage
 from ui.project_grid_page import ProjectGridPage
 from ui.project_detail_page import ProjectDetailPage
+from ui.script_editor import ScriptEditor
 from ui.settings_dialog import SettingsDialog
 from ui.sidebar import Sidebar
 from ui.styles import apply_fluent_theme
@@ -79,6 +84,15 @@ class MainWindow(QMainWindow):
 
         # 项目服务
         self._project_service = ProjectService(self._db)
+
+        # 大纲服务
+        self._outline_service = OutlineService(self._db)
+
+        # 剧本服务
+        self._script_service = ScriptService(self._db)
+
+        # 文本模型服务
+        self._text_model_service = TextModelService(self._config)
 
         # 素材库服务
         download_dir = self._config.settings.default_download_dir or self._default_download_dir()
@@ -196,6 +210,16 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.project_media_library)
         self.project_media_library.hide()
 
+        # 第三层：大纲编辑器
+        self.outline_editor = OutlineEditor(self._outline_service, self._text_model_service)
+        layout.addWidget(self.outline_editor)
+        self.outline_editor.hide()
+
+        # 第三层：剧本编辑器
+        self.script_editor = ScriptEditor(self._script_service)
+        layout.addWidget(self.script_editor)
+        self.script_editor.hide()
+
         # 第三层：项目对话界面（三栏布局：项目列表 + 对话列表 + 聊天区域）
         self.project_conversation_widget = QWidget()
         conv_layout = QHBoxLayout(self.project_conversation_widget)
@@ -235,6 +259,13 @@ class MainWindow(QMainWindow):
 
         # 项目素材库信号
         self.project_media_library.back_clicked.connect(self._on_project_media_back)
+
+        # 大纲编辑器信号
+        self.outline_editor.back_clicked.connect(self._on_outline_editor_back)
+        self.outline_editor.next_step_clicked.connect(self._on_outline_next_step)
+
+        # 剧本编辑器信号
+        self.script_editor.back_clicked.connect(self._on_script_editor_back)
 
         # 直接生成模式信号
         self.sidebar.new_conversation_clicked.connect(self._on_new_conversation)
@@ -325,6 +356,7 @@ class MainWindow(QMainWindow):
             self.project_grid_page.show()
             self.project_detail_page.hide()
             self.project_media_library.hide()
+            self.outline_editor.hide()
             self.project_conversation_widget.hide()
             self.project_grid_page.load_projects()
 
@@ -340,15 +372,30 @@ class MainWindow(QMainWindow):
         """项目模块被选中。"""
         self._current_project_id = project_id
 
-        if module_name == "media":
+        if module_name == "outline":
+            # 进入大纲编辑器
+            self.project_detail_page.hide()
+            self.project_conversation_widget.hide()
+            self.project_media_library.hide()
+            self.script_editor.hide()
+            self.outline_editor.show()
+            self.outline_editor.load_outline(project_id)
+        elif module_name == "script":
+            # 进入剧本编辑器
+            self.project_detail_page.hide()
+            self.project_conversation_widget.hide()
+            self.project_media_library.hide()
+            self.outline_editor.hide()
+            self.script_editor.show()
+            self.script_editor.load_script(project_id)
+        elif module_name == "media":
             # 进入项目素材库
             self.project_detail_page.hide()
             self.project_conversation_widget.hide()
+            self.outline_editor.hide()
+            self.script_editor.hide()
             self.project_media_library.show()
             self.project_media_library.load_files(project_id=project_id)
-        elif module_name == "script":
-            # TODO: 进入剧本编辑器
-            logger.info(f"打开项目 {project_id} 的剧本模块")
         elif module_name == "storyboard":
             # TODO: 进入分镜编辑器
             logger.info(f"打开项目 {project_id} 的分镜模块")
@@ -368,6 +415,88 @@ class MainWindow(QMainWindow):
         self.project_detail_page.show()
         if self._current_project_id:
             self.project_detail_page.set_project(self._current_project_id)
+
+    def _on_outline_editor_back(self) -> None:
+        """从大纲编辑器返回项目详情页。"""
+        self.outline_editor.hide()
+        self.project_detail_page.show()
+        if self._current_project_id:
+            self.project_detail_page.set_project(self._current_project_id)
+
+    def _on_script_editor_back(self) -> None:
+        """从剧本编辑器返回项目详情页。"""
+        self.script_editor.hide()
+        self.project_detail_page.show()
+        if self._current_project_id:
+            self.project_detail_page.set_project(self._current_project_id)
+
+    def _on_outline_next_step(self, outline_content: str) -> None:
+        """大纲下一步：生成剧本并跳转到剧本编辑器。"""
+        if not self._current_project_id:
+            return
+
+        # 显示生成中提示
+        from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel
+        from qfluentwidgets import ProgressRing
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("生成剧本")
+        dialog.setModal(True)
+        dialog.setFixedSize(300, 150)
+
+        layout = QVBoxLayout(dialog)
+        layout.setSpacing(20)
+
+        progress = ProgressRing()
+        progress.setFixedSize(48, 48)
+        layout.addWidget(progress, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        label = QLabel("正在使用 AI 生成剧本，请稍候...")
+        label.setStyleSheet("font-size: 14px; color: #666;")
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(label)
+
+        dialog.show()
+
+        # 使用 QThread 异步生成剧本
+        from PyQt6.QtCore import QThread, pyqtSignal
+
+        class ScriptGenerateWorker(QThread):
+            finished = pyqtSignal(str, list)  # (title, scenes)
+            failed = pyqtSignal(str)
+
+            def __init__(self, text_service, outline_content):
+                super().__init__()
+                self.text_service = text_service
+                self.outline_content = outline_content
+
+            def run(self):
+                try:
+                    title, scenes = self.text_service.generate_script(self.outline_content)
+                    self.finished.emit(title, scenes)
+                except Exception as e:
+                    logger.exception("生成剧本失败")
+                    self.failed.emit(str(e))
+
+        def on_success(title: str, scenes: list):
+            dialog.close()
+            # 隐藏大纲编辑器，显示剧本编辑器
+            self.outline_editor.hide()
+            self.script_editor.show()
+            self.script_editor.load_script(self._current_project_id, title, scenes)
+            QMessageBox.information(self, "成功", f"剧本生成完成，共 {len(scenes)} 场！")
+
+        def on_failed(error_msg: str):
+            dialog.close()
+            QMessageBox.critical(self, "生成失败", f"AI 生成剧本失败：{error_msg}")
+
+        worker = ScriptGenerateWorker(self._text_model_service, outline_content)
+        worker.finished.connect(on_success)
+        worker.failed.connect(on_failed)
+        worker.start()
+
+        # 保持 worker 引用避免被回收
+        self._script_worker = worker
 
     # ───────── 侧边栏事件 ─────────
 

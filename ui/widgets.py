@@ -29,7 +29,7 @@ from ui.styles import (
 )
 
 _ASSETS_DIR = os.path.join(os.path.dirname(__file__), "assets")
-_PLACEHOLDER_PATH = os.path.join(_ASSETS_DIR, "video_placeholder.png")
+_PLACEHOLDER_PATH = os.path.join(_ASSETS_DIR, "default_video_cover.png")
 
 
 class SpinnerOverlay(QWidget):

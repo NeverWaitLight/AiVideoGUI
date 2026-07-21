@@ -160,6 +160,7 @@ class ProjectDetailPage(QWidget):
 
         # 创建模块卡片
         modules = [
+            ("outline", "大纲", "编写和管理项目大纲", FluentIcon.EDIT),
             ("script", "剧本", "编写和管理视频剧本", FluentIcon.DOCUMENT),
             ("storyboard", "分镜", "设计视频分镜脚本", FluentIcon.PHOTO),
             ("character", "角色", "管理项目中的角色资料", FluentIcon.PEOPLE),
