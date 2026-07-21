@@ -2,6 +2,7 @@
 
 import logging
 import sqlite3
+import threading
 from datetime import datetime
 
 from models.data_models import (
@@ -32,6 +33,7 @@ class DatabaseManager:
         self._db_path = db_path
         self._conn = sqlite3.connect(db_path, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
+        self._lock = threading.RLock()  # 递归锁，支持同一线程多次获取
         self._init_tables()
         self._migrate_schema()
 
@@ -409,12 +411,13 @@ class DatabaseManager:
     # ---------- conversation ----------
 
     def create_conversation(self, conv: Conversation) -> None:
-        self._conn.execute(
-            "INSERT INTO conversations (id, title, created_at, model_name, provider_name, project_id) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
-            (conv.id, conv.title, conv.created_at.isoformat(), conv.model_name, conv.provider_name, conv.project_id),
-        )
-        self._conn.commit()
+        with self._lock:
+            self._conn.execute(
+                "INSERT INTO conversations (id, title, created_at, model_name, provider_name, project_id) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (conv.id, conv.title, conv.created_at.isoformat(), conv.model_name, conv.provider_name, conv.project_id),
+            )
+            self._conn.commit()
 
     def list_conversations(self) -> list[Conversation]:
         rows = self._conn.execute(
@@ -445,33 +448,35 @@ class DatabaseManager:
         self._conn.commit()
 
     def update_conversation_title(self, conversation_id: str, title: str) -> None:
-        self._conn.execute(
-            "UPDATE conversations SET title = ? WHERE id = ?", (title, conversation_id)
-        )
-        self._conn.commit()
+        with self._lock:
+            self._conn.execute(
+                "UPDATE conversations SET title = ? WHERE id = ?", (title, conversation_id)
+            )
+            self._conn.commit()
 
     # ---------- message ----------
 
     def add_message(self, msg: Message) -> None:
-        self._conn.execute(
-            "INSERT INTO messages "
-            "(id, conversation_id, role, content, created_at, task_id, video_url, "
-            "local_path, status, error_message) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (
-                msg.id,
-                msg.conversation_id,
-                msg.role,
-                msg.content,
-                msg.created_at.isoformat(),
-                msg.task_id,
-                msg.video_url,
-                msg.local_path,
-                msg.status.value,
-                msg.error_message,
-            ),
-        )
-        self._conn.commit()
+        with self._lock:
+            self._conn.execute(
+                "INSERT INTO messages "
+                "(id, conversation_id, role, content, created_at, task_id, video_url, "
+                "local_path, status, error_message) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    msg.id,
+                    msg.conversation_id,
+                    msg.role,
+                    msg.content,
+                    msg.created_at.isoformat(),
+                    msg.task_id,
+                    msg.video_url,
+                    msg.local_path,
+                    msg.status.value,
+                    msg.error_message,
+                ),
+            )
+            self._conn.commit()
 
     def get_message(self, message_id: str) -> Message | None:
         row = self._conn.execute(
@@ -528,38 +533,40 @@ class DatabaseManager:
         local_path: str = "",
         error_message: str | None = None,
     ) -> None:
-        sets = ["status = ?"]
-        vals: list = [status.value]
-        if task_id:
-            sets.append("task_id = ?")
-            vals.append(task_id)
-        if video_url:
-            sets.append("video_url = ?")
-            vals.append(video_url)
-        if local_path:
-            sets.append("local_path = ?")
-            vals.append(local_path)
-        if error_message is not None:
-            sets.append("error_message = ?")
-            vals.append(error_message)
-        vals.append(message_id)
-        self._conn.execute(
-            f"UPDATE messages SET {', '.join(sets)} WHERE id = ?", vals
-        )
-        self._conn.commit()
+        with self._lock:
+            sets = ["status = ?"]
+            vals: list = [status.value]
+            if task_id:
+                sets.append("task_id = ?")
+                vals.append(task_id)
+            if video_url:
+                sets.append("video_url = ?")
+                vals.append(video_url)
+            if local_path:
+                sets.append("local_path = ?")
+                vals.append(local_path)
+            if error_message is not None:
+                sets.append("error_message = ?")
+                vals.append(error_message)
+            vals.append(message_id)
+            self._conn.execute(
+                f"UPDATE messages SET {', '.join(sets)} WHERE id = ?", vals
+            )
+            self._conn.commit()
 
     # ---------- active_tasks ----------
 
     def add_active_task(
         self, task_id: str, message_id: str, provider_name: str, model_name: str
     ) -> None:
-        self._conn.execute(
-            "INSERT OR REPLACE INTO active_tasks "
-            "(task_id, message_id, provider_name, model_name, status, created_at) "
-            "VALUES (?, ?, ?, ?, 'pending', ?)",
-            (task_id, message_id, provider_name, model_name, datetime.now().isoformat()),
-        )
-        self._conn.commit()
+        with self._lock:
+            self._conn.execute(
+                "INSERT OR REPLACE INTO active_tasks "
+                "(task_id, message_id, provider_name, model_name, status, created_at) "
+                "VALUES (?, ?, ?, ?, 'pending', ?)",
+                (task_id, message_id, provider_name, model_name, datetime.now().isoformat()),
+            )
+            self._conn.commit()
 
     def list_active_tasks(self) -> list[dict]:
         rows = self._conn.execute(
@@ -575,46 +582,49 @@ class DatabaseManager:
         return result
 
     def update_active_task(self, task_id: str, status: str, video_url: str = "") -> None:
-        if video_url:
-            self._conn.execute(
-                "UPDATE active_tasks SET status = ?, video_url = ? WHERE task_id = ?",
-                (status, video_url, task_id),
-            )
-        else:
-            self._conn.execute(
-                "UPDATE active_tasks SET status = ? WHERE task_id = ?", (status, task_id)
-            )
-        self._conn.commit()
+        with self._lock:
+            if video_url:
+                self._conn.execute(
+                    "UPDATE active_tasks SET status = ?, video_url = ? WHERE task_id = ?",
+                    (status, video_url, task_id),
+                )
+            else:
+                self._conn.execute(
+                    "UPDATE active_tasks SET status = ? WHERE task_id = ?", (status, task_id)
+                )
+            self._conn.commit()
 
     def remove_active_task(self, task_id: str) -> None:
-        self._conn.execute("DELETE FROM active_tasks WHERE task_id = ?", (task_id,))
-        self._conn.commit()
+        with self._lock:
+            self._conn.execute("DELETE FROM active_tasks WHERE task_id = ?", (task_id,))
+            self._conn.commit()
 
     # ---------- media_files ----------
 
     def add_media_file(self, media: MediaFile) -> None:
-        self._conn.execute(
-            "INSERT INTO media_files "
-            "(id, filename, media_type, local_path, file_size, source, "
-            "conversation_id, message_id, created_at, thumbnail_path, duration, width, height) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (
-                media.id,
-                media.filename,
-                media.media_type.value,
-                media.local_path,
-                media.file_size,
-                media.source,
-                media.conversation_id,
-                media.message_id,
-                media.created_at.isoformat(),
-                media.thumbnail_path,
-                media.duration,
-                media.width,
-                media.height,
-            ),
-        )
-        self._conn.commit()
+        with self._lock:
+            self._conn.execute(
+                "INSERT INTO media_files "
+                "(id, filename, media_type, local_path, file_size, source, "
+                "conversation_id, message_id, created_at, thumbnail_path, duration, width, height) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    media.id,
+                    media.filename,
+                    media.media_type.value,
+                    media.local_path,
+                    media.file_size,
+                    media.source,
+                    media.conversation_id,
+                    media.message_id,
+                    media.created_at.isoformat(),
+                    media.thumbnail_path,
+                    media.duration,
+                    media.width,
+                    media.height,
+                ),
+            )
+            self._conn.commit()
 
     def list_media_files(
         self,
@@ -662,32 +672,33 @@ class DatabaseManager:
         ]
 
     def delete_media_file(self, media_id: str) -> MediaFile | None:
-        row = self._conn.execute(
-            "SELECT id, filename, media_type, local_path, file_size, source, "
-            "conversation_id, message_id, created_at, thumbnail_path, duration, width, height "
-            "FROM media_files WHERE id = ?",
-            (media_id,),
-        ).fetchone()
-        if not row:
-            return None
-        media = MediaFile(
-            id=row["id"],
-            filename=row["filename"],
-            media_type=MediaType(row["media_type"]),
-            local_path=row["local_path"],
-            file_size=row["file_size"],
-            source=row["source"],
-            conversation_id=row["conversation_id"],
-            message_id=row["message_id"],
-            created_at=datetime.fromisoformat(row["created_at"]),
-            thumbnail_path=row["thumbnail_path"],
-            duration=row["duration"],
-            width=row["width"],
-            height=row["height"],
-        )
-        self._conn.execute("DELETE FROM media_files WHERE id = ?", (media_id,))
-        self._conn.commit()
-        return media
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT id, filename, media_type, local_path, file_size, source, "
+                "conversation_id, message_id, created_at, thumbnail_path, duration, width, height "
+                "FROM media_files WHERE id = ?",
+                (media_id,),
+            ).fetchone()
+            if not row:
+                return None
+            media = MediaFile(
+                id=row["id"],
+                filename=row["filename"],
+                media_type=MediaType(row["media_type"]),
+                local_path=row["local_path"],
+                file_size=row["file_size"],
+                source=row["source"],
+                conversation_id=row["conversation_id"],
+                message_id=row["message_id"],
+                created_at=datetime.fromisoformat(row["created_at"]),
+                thumbnail_path=row["thumbnail_path"],
+                duration=row["duration"],
+                width=row["width"],
+                height=row["height"],
+            )
+            self._conn.execute("DELETE FROM media_files WHERE id = ?", (media_id,))
+            self._conn.commit()
+            return media
 
     def get_media_file_by_message(self, message_id: str) -> MediaFile | None:
         row = self._conn.execute(
@@ -746,20 +757,22 @@ class DatabaseManager:
         return dict(row) if row else None
 
     def update_project(self, project_id: str, name: str, resolution: str, aspect_ratio: str, cover_image: str = "") -> None:
-        self._conn.execute(
-            "UPDATE projects SET name = ?, resolution = ?, aspect_ratio = ?, cover_image = ? WHERE id = ?",
-            (name, resolution, aspect_ratio, cover_image, project_id),
-        )
-        self._conn.commit()
+        with self._lock:
+            self._conn.execute(
+                "UPDATE projects SET name = ?, resolution = ?, aspect_ratio = ?, cover_image = ? WHERE id = ?",
+                (name, resolution, aspect_ratio, cover_image, project_id),
+            )
+            self._conn.commit()
 
     def delete_project(self, project_id: str) -> None:
-        # 清除项目关联的对话的 project_id
-        self._conn.execute(
-            "UPDATE conversations SET project_id = '' WHERE project_id = ?",
-            (project_id,),
-        )
-        self._conn.execute("DELETE FROM projects WHERE id = ?", (project_id,))
-        self._conn.commit()
+        with self._lock:
+            # 清除项目关联的对话的 project_id
+            self._conn.execute(
+                "UPDATE conversations SET project_id = '' WHERE project_id = ?",
+                (project_id,),
+            )
+            self._conn.execute("DELETE FROM projects WHERE id = ?", (project_id,))
+            self._conn.commit()
 
     def list_project_conversations(self, project_id: str) -> list[Conversation]:
         rows = self._conn.execute(

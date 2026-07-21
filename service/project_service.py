@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import uuid
 from datetime import datetime
 
@@ -65,8 +66,47 @@ class ProjectService:
         self._db.update_project(project_id, name, resolution, aspect_ratio, cover_image)
 
     def delete_project(self, project_id: str) -> None:
-        """删除项目（会清除关联对话的 project_id）。"""
+        """删除项目（级联删除所有关联数据和文件）。"""
+        logger.info(f"开始删除项目：project_id={project_id}")
+
+        # 1. 查询项目关联的所有素材文件（通过对话关联）
+        media_files = self._db.list_media_files(project_id=project_id)
+        logger.info(f"找到 {len(media_files)} 个项目关联的素材文件")
+
+        # 2. 删除素材文件（磁盘文件 + 缩略图 + 数据库记录）
+        for media in media_files:
+            # 删除视频/图片文件
+            if media.local_path and os.path.exists(media.local_path):
+                try:
+                    os.remove(media.local_path)
+                    logger.info(f"删除素材文件：{media.local_path}")
+                except OSError as e:
+                    logger.warning(f"删除素材文件失败 {media.local_path}: {e}")
+
+            # 删除缩略图
+            if media.thumbnail_path and os.path.exists(media.thumbnail_path):
+                try:
+                    os.remove(media.thumbnail_path)
+                    logger.info(f"删除缩略图：{media.thumbnail_path}")
+                except OSError as e:
+                    logger.warning(f"删除缩略图失败 {media.thumbnail_path}: {e}")
+
+            # 删除数据库记录
+            self._db.delete_media_file(media.id)
+
+        # 3. 数据库级联删除会自动处理：
+        #    - outlines (ON DELETE CASCADE)
+        #    - outline_history (ON DELETE CASCADE)
+        #    - scripts (ON DELETE CASCADE)
+        #    - scenes (ON DELETE CASCADE)
+        #    - script_history (ON DELETE CASCADE)
+        #    - shots (ON DELETE CASCADE)
+        #    - shot_history (ON DELETE CASCADE)
+
+        # 4. 删除项目（会清除对话的 project_id 关联）
         self._db.delete_project(project_id)
+
+        logger.info(f"项目删除完成：project_id={project_id}")
 
     def list_project_conversations(self, project_id: str) -> list[Conversation]:
         """列出项目下的所有对话。"""

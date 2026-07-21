@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import random
 from datetime import datetime
 from pathlib import Path
 
@@ -13,6 +14,7 @@ from PyQt6.QtWidgets import (
     QDialog,
     QHBoxLayout,
     QLabel,
+    QMessageBox,
     QVBoxLayout,
     QWidget,
     QFormLayout,
@@ -456,6 +458,97 @@ class ProjectGridPage(QWidget):
             self.load_projects()
 
     def _on_delete_project(self, project_id: str) -> None:
-        """删除项目。"""
-        self._service.delete_project(project_id)
-        self.load_projects()
+        """删除项目（带随机数字二次确认）。"""
+        project = self._service.get_project(project_id)
+        if not project:
+            return
+
+        # 统计项目关联的素材数量
+        from storage.database import DatabaseManager
+        db = self._service._db
+        media_count = len(db.list_media_files(project_id=project_id))
+
+        # 生成6位随机数字
+        verification_code = str(random.randint(100000, 999999))
+
+        # 创建自定义确认对话框
+        dialog = QDialog(self)
+        dialog.setWindowTitle("确认删除项目")
+        dialog.setFixedSize(450, 280)
+
+        layout = QVBoxLayout(dialog)
+        layout.setContentsMargins(24, 20, 24, 20)
+        layout.setSpacing(16)
+
+        # 标题
+        title = QLabel(f"删除项目：{project.name}")
+        title.setStyleSheet("font-size: 16px; font-weight: bold; color: #E81123;")
+        layout.addWidget(title)
+
+        # 警告信息
+        warning_text = (
+            f"以下数据将被永久删除：\n"
+            f"• 项目关联的 {media_count} 个素材文件\n"
+            f"• 项目的大纲、剧本、分镜等所有数据\n"
+            f"• 项目关联的对话记录\n\n"
+            f"此操作不可恢复！"
+        )
+        warning_label = QLabel(warning_text)
+        warning_label.setWordWrap(True)
+        warning_label.setStyleSheet("color: #555; font-size: 13px; line-height: 1.6;")
+        layout.addWidget(warning_label)
+
+        # 验证码提示
+        code_label = QLabel(f"请输入以下数字以确认删除：<b>{verification_code}</b>")
+        code_label.setStyleSheet("font-size: 14px; color: #333; margin-top: 8px;")
+        layout.addWidget(code_label)
+
+        # 输入框
+        from qfluentwidgets import LineEdit
+        code_input = LineEdit()
+        code_input.setPlaceholderText("输入6位数字")
+        code_input.setMaxLength(6)
+        layout.addWidget(code_input)
+
+        layout.addStretch()
+
+        # 按钮行
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+        btn_layout.setSpacing(12)
+
+        cancel_btn = PushButton("取消")
+        cancel_btn.setFixedSize(100, 36)
+        cancel_btn.clicked.connect(dialog.reject)
+        btn_layout.addWidget(cancel_btn)
+
+        delete_btn = PushButton("删除")
+        delete_btn.setFixedSize(100, 36)
+        delete_btn.setStyleSheet(
+            "PushButton { background-color: #E81123; color: white; border: none; "
+            "border-radius: 4px; font-weight: bold; }"
+            "PushButton:hover { background-color: #C50F1F; }"
+            "PushButton:pressed { background-color: #A00D1A; }"
+            "PushButton:disabled { background-color: #CCCCCC; color: #888888; }"
+        )
+        delete_btn.setEnabled(False)  # 初始禁用
+        btn_layout.addWidget(delete_btn)
+
+        layout.addLayout(btn_layout)
+
+        # 验证输入，只有匹配才启用删除按钮
+        def on_text_changed(text: str):
+            delete_btn.setEnabled(text == verification_code)
+
+        code_input.textChanged.connect(on_text_changed)
+        delete_btn.clicked.connect(dialog.accept)
+
+        # 显示对话框
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            try:
+                self._service.delete_project(project_id)
+                QMessageBox.information(self, "成功", f"项目 \"{project.name}\" 已删除")
+                self.load_projects()
+            except Exception as e:
+                logger.exception("删除项目失败")
+                QMessageBox.critical(self, "错误", f"删除项目失败：{e}")
