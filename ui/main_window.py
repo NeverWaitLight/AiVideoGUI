@@ -635,6 +635,12 @@ class MainWindow(QMainWindow):
         """处理分镜视频生成请求。"""
         logger.info(f"分镜视频生成请求：shot_id={shot_id}, scene={scene_number}, shot={shot_number}, project={project_id}")
 
+        # 获取项目属性（分辨率和比例）
+        project = self._project_service.get_project(project_id)
+        if not project:
+            QMessageBox.warning(self, "错误", "项目不存在")
+            return
+
         # 获取默认视频生成配置
         provider_name = self._config.settings.default_provider or "dashscope"
         provider_cfg = self._config.get_provider(provider_name)
@@ -649,13 +655,18 @@ class MainWindow(QMainWindow):
         conversation_title = f"分镜视频-场{scene_number}镜{shot_number}"
         conv = self._service.create_conversation(provider_name, model_name, conversation_title, project_id=project_id)
 
-        # 提交视频生成任务
+        # 提交视频生成任务，使用项目的分辨率和比例参数
         try:
+            # 合并项目参数和默认参数
+            params = (provider_cfg.default_params if provider_cfg else {}).copy()
+            params["resolution"] = project.resolution
+            params["aspect_ratio"] = project.aspect_ratio
+
             msg = self._service.submit_task(
                 conversation_id=conv.id,
                 prompt=prompt,
                 provider_name=provider_name,
-                params=provider_cfg.default_params if provider_cfg else {}
+                params=params
             )
 
             task_id = msg.task_id
@@ -663,10 +674,10 @@ class MainWindow(QMainWindow):
             QMessageBox.information(
                 self,
                 "任务已提交",
-                f"分镜视频生成任务已提交\n场次：{scene_number}，镜头：{shot_number}\n任务ID：{task_id}\n\n视频生成完成后将自动下载到项目素材库"
+                f"分镜视频生成任务已提交\n场次：{scene_number}，镜头：{shot_number}\n分辨率：{project.resolution} ({project.aspect_ratio})\n任务ID：{task_id}\n\n视频生成完成后将自动下载到项目素材库"
             )
 
-            logger.info(f"分镜视频任务已提交：task_id={task_id}, shot_id={shot_id}")
+            logger.info(f"分镜视频任务已提交：task_id={task_id}, shot_id={shot_id}, resolution={project.resolution}, aspect_ratio={project.aspect_ratio}")
 
         except Exception as e:
             logger.exception("提交视频生成任务失败")
