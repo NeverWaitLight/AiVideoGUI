@@ -58,25 +58,27 @@ class ConversationRepository(BaseRepository[ConversationEntity, Conversation]):
         entities = self.session.execute(stmt).scalars().all()
         return [self._to_dto(e) for e in entities]
 
-    def list_by_project(self, project_id: str, is_hidden: bool = False) -> List[Conversation]:
+    def list_by_project(self, project_id: str, is_hidden: bool | None = None) -> List[Conversation]:
         """
         查询项目的所有对话。
 
         Args:
             project_id: 项目 ID
-            is_hidden: 是否包含隐藏对话
+            is_hidden: 是否隐藏过滤（None=不过滤，True=仅隐藏，False=仅非隐藏）
 
         Returns:
             对话列表
         """
         stmt = (
             select(ConversationEntity)
-            .where(
-                ConversationEntity.project_id == project_id,
-                ConversationEntity.is_hidden == is_hidden,
-            )
-            .order_by(ConversationEntity.created_at.desc())
+            .where(ConversationEntity.project_id == project_id)
         )
+
+        # 仅当 is_hidden 不为 None 时才添加过滤条件
+        if is_hidden is not None:
+            stmt = stmt.where(ConversationEntity.is_hidden == is_hidden)
+
+        stmt = stmt.order_by(ConversationEntity.created_at.desc())
         entities = self.session.execute(stmt).scalars().all()
         return [self._to_dto(e) for e in entities]
 
