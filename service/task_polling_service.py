@@ -104,8 +104,15 @@ class TaskPollingService(QObject):
     # ---------- Worker 信号处理 ----------
 
     def _on_status_changed(self, message_id: str, status: str) -> None:
-        msg_status = MessageStatus(status)
-        self._db.update_message_status(message_id, msg_status)
+        _TASK_TO_MSG_STATUS = {
+            "pending": MessageStatus.GENERATING,
+            "running": MessageStatus.GENERATING,
+            "succeeded": MessageStatus.COMPLETED,
+            "failed": MessageStatus.FAILED,
+        }
+        msg_status = _TASK_TO_MSG_STATUS.get(status)
+        if msg_status is not None:
+            self._db.update_message_status(message_id, msg_status)
         self.status_changed.emit(message_id, status)
 
     def _on_download_progress(self, message_id: str, downloaded: int, total: int) -> None:
