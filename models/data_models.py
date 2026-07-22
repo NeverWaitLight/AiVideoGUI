@@ -33,6 +33,7 @@ class Conversation:
     model_name: str = ""
     provider_name: str = ""
     project_id: str = ""
+    is_hidden: bool = False
 
 
 @dataclass

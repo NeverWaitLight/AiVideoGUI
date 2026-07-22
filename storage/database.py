@@ -79,7 +79,7 @@ class DatabaseManager:
             logger.info("迁移：media_files 表新增视频元数据列（thumbnail_path, duration, width, height）")
 
     def _migrate_conversations(self) -> None:
-        """迁移 conversations 表：添加 project_id 列。"""
+        """迁移 conversations 表：添加 project_id 和 is_hidden 列。"""
         conv_cols = {row["name"] for row in self._conn.execute("PRAGMA table_info(conversations)").fetchall()}
         if "project_id" not in conv_cols:
             self._conn.execute(
@@ -87,6 +87,13 @@ class DatabaseManager:
             )
             self._conn.commit()
             logger.info("迁移：conversations 表新增 project_id 列")
+
+        if "is_hidden" not in conv_cols:
+            self._conn.execute(
+                "ALTER TABLE conversations ADD COLUMN is_hidden INTEGER NOT NULL DEFAULT 0"
+            )
+            self._conn.commit()
+            logger.info("迁移：conversations 表新增 is_hidden 列")
 
         # 创建索引（在列存在后）
         self._conn.execute(
@@ -413,16 +420,16 @@ class DatabaseManager:
     def create_conversation(self, conv: Conversation) -> None:
         with self._lock:
             self._conn.execute(
-                "INSERT INTO conversations (id, title, created_at, model_name, provider_name, project_id) "
-                "VALUES (?, ?, ?, ?, ?, ?)",
-                (conv.id, conv.title, conv.created_at.isoformat(), conv.model_name, conv.provider_name, conv.project_id),
+                "INSERT INTO conversations (id, title, created_at, model_name, provider_name, project_id, is_hidden) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (conv.id, conv.title, conv.created_at.isoformat(), conv.model_name, conv.provider_name, conv.project_id, 1 if conv.is_hidden else 0),
             )
             self._conn.commit()
 
     def list_conversations(self) -> list[Conversation]:
         rows = self._conn.execute(
-            "SELECT id, title, created_at, model_name, provider_name, project_id "
-            "FROM conversations ORDER BY created_at DESC"
+            "SELECT id, title, created_at, model_name, provider_name, project_id, COALESCE(is_hidden, 0) as is_hidden "
+            "FROM conversations WHERE is_hidden = 0 ORDER BY created_at DESC"
         ).fetchall()
         return [
             Conversation(
@@ -432,6 +439,7 @@ class DatabaseManager:
                 model_name=r["model_name"],
                 provider_name=r["provider_name"],
                 project_id=r["project_id"],
+                is_hidden=bool(r["is_hidden"]),
             )
             for r in rows
         ]

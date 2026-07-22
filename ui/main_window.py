@@ -650,10 +650,9 @@ class MainWindow(QMainWindow):
 
         model_name = provider_cfg.default_model if provider_cfg else "wan2.7-t2v"
 
-        # 创建或获取项目对应的对话
-        # 使用特殊命名规则标识分镜生成的对话
+        # 创建隐藏对话（不在对话列表中显示）
         conversation_title = f"分镜视频-场{scene_number}镜{shot_number}"
-        conv = self._service.create_conversation(provider_name, model_name, conversation_title, project_id=project_id)
+        conv = self._service.create_conversation(provider_name, model_name, conversation_title, project_id=project_id, is_hidden=True)
 
         # 提交视频生成任务，使用项目的分辨率和比例参数
         try:

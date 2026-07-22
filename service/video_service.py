@@ -62,7 +62,7 @@ class VideoService(QObject):
     # ---------- 对话 ----------
 
     def create_conversation(
-        self, provider_name: str, model_name: str, title: str = "新对话", project_id: str = ""
+        self, provider_name: str, model_name: str, title: str = "新对话", project_id: str = "", is_hidden: bool = False
     ) -> Conversation:
         conv = Conversation(
             id=uuid.uuid4().hex,
@@ -71,6 +71,7 @@ class VideoService(QObject):
             model_name=model_name,
             provider_name=provider_name,
             project_id=project_id,
+            is_hidden=is_hidden,
         )
         self._db.create_conversation(conv)
         return conv

@@ -368,8 +368,8 @@ class ProjectGridPage(QWidget):
         layout.setSpacing(16)
 
         # 顶部区域：标题 + 新建按钮
-        header = QWidget()
-        header_layout = QHBoxLayout(header)
+        self._header = QWidget()
+        header_layout = QHBoxLayout(self._header)
         header_layout.setContentsMargins(0, 0, 0, 0)
         header_layout.setSpacing(12)
 
@@ -379,12 +379,19 @@ class ProjectGridPage(QWidget):
 
         header_layout.addStretch()
 
-        new_btn = PrimaryPushButton(FluentIcon.ADD, "新建项目")
-        new_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        new_btn.clicked.connect(self._on_new_project)
-        header_layout.addWidget(new_btn)
+        # 右上角的新建按钮
+        self._header_new_btn = PrimaryPushButton(FluentIcon.ADD, "新建项目")
+        self._header_new_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._header_new_btn.clicked.connect(self._on_new_project)
+        header_layout.addWidget(self._header_new_btn)
 
-        layout.addWidget(header)
+        layout.addWidget(self._header)
+
+        # 内容容器（用于放置 scroll 和 empty_state，共享同一空间）
+        self._content_container = QWidget()
+        content_layout = QVBoxLayout(self._content_container)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(0)
 
         # 滚动区域
         scroll = QScrollArea()
@@ -400,7 +407,30 @@ class ProjectGridPage(QWidget):
         self._grid_layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
 
         scroll.setWidget(self._grid_container)
-        layout.addWidget(scroll, stretch=1)
+        content_layout.addWidget(scroll)
+
+        # 空状态界面（完全居中显示）
+        self._empty_state = QWidget()
+
+        empty_outer_layout = QVBoxLayout(self._empty_state)
+        empty_outer_layout.setContentsMargins(0, 0, 0, 0)
+        empty_outer_layout.setSpacing(0)
+
+        empty_outer_layout.addStretch(1)
+
+        self._center_new_btn = PrimaryPushButton(FluentIcon.ADD, "新建项目")
+        self._center_new_btn.setFixedSize(140, 44)
+        self._center_new_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._center_new_btn.clicked.connect(self._on_new_project)
+        empty_outer_layout.addWidget(self._center_new_btn, 0, Qt.AlignmentFlag.AlignHCenter)
+
+        empty_outer_layout.addStretch(1)
+
+        content_layout.addWidget(self._empty_state, stretch=1)
+        self._empty_state.hide()
+
+        # 将内容容器添加到主布局
+        layout.addWidget(self._content_container, stretch=1)
 
     def load_projects(self) -> None:
         """加载并显示所有项目。"""
@@ -411,20 +441,33 @@ class ProjectGridPage(QWidget):
                 item.widget().deleteLater()
 
         projects = self._service.list_projects()
-        row, col = 0, 0
-        max_cols = 4  # 每行最多4个卡片
 
-        for project in projects:
-            card = ProjectCard(project)
-            card.project_clicked.connect(self.project_selected.emit)
-            card.edit_clicked.connect(self._on_edit_project)
-            card.delete_clicked.connect(self._on_delete_project)
+        # 根据项目数量显示不同界面
+        if not projects:
+            # 没有项目时：隐藏顶部栏和网格，显示空状态界面（带居中按钮）
+            self._header.hide()
+            self._grid_container.hide()
+            self._empty_state.show()
+        else:
+            # 有项目时：显示顶部栏（带右上角按钮）和网格，隐藏空状态界面
+            self._header.show()
+            self._grid_container.show()
+            self._empty_state.hide()
 
-            self._grid_layout.addWidget(card, row, col)
-            col += 1
-            if col >= max_cols:
-                col = 0
-                row += 1
+            row, col = 0, 0
+            max_cols = 4  # 每行最多4个卡片
+
+            for project in projects:
+                card = ProjectCard(project)
+                card.project_clicked.connect(self.project_selected.emit)
+                card.edit_clicked.connect(self._on_edit_project)
+                card.delete_clicked.connect(self._on_delete_project)
+
+                self._grid_layout.addWidget(card, row, col)
+                col += 1
+                if col >= max_cols:
+                    col = 0
+                    row += 1
 
     def _on_new_project(self) -> None:
         """新建项目。"""
