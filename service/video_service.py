@@ -95,6 +95,7 @@ class VideoService(QObject):
         prompt: str,
         provider_name: str,
         params: dict[str, Any] | None = None,
+        save_path: str = "",
     ) -> Message:
         """提交视频生成任务，写入数据库后由 TaskPollingService 接管轮询。"""
         provider = self.get_provider(provider_name)
@@ -115,7 +116,8 @@ class VideoService(QObject):
             message_id=assistant_msg.id,
             provider_name=provider_name,
             model_name=provider._config.default_model,
+            save_path=save_path,
         )
 
-        logger.info("任务已提交 message=%s task=%s provider=%s", assistant_msg.id, task_id, provider_name)
+        logger.info("任务已提交 message=%s task=%s provider=%s save_path=%s", assistant_msg.id, task_id, provider_name, save_path)
         return assistant_msg

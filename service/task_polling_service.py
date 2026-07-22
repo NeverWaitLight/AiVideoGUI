@@ -260,6 +260,7 @@ class _PollingWorker(QThread):
                     video_url=result.video_url,
                     model_name=model_name,
                     prompt=msg.content,
+                    save_path=task_info.get("save_path", ""),
                 )
             elif result.status == TaskStatus.FAILED:
                 error_msg = result.error_message or "未知原因"
@@ -279,51 +280,20 @@ class _PollingWorker(QThread):
         video_url: str,
         model_name: str,
         prompt: str,
+        save_path: str = "",
     ) -> None:
         """下载视频并标记任务完成。"""
         try:
-            from datetime import datetime
-            import re
-            now = datetime.now()
-            stamp = now.strftime("%Y%m%d_%H%M%S")
-
-            # 获取消息对应的对话，判断是否为分镜生成
-            msg = self._db.get_message(message_id)
-            conversation_id = msg.conversation_id if msg else None
-
-            # 默认文件名
-            safe_prompt = "".join(c for c in prompt[:20] if c.isalnum() or c in " _-").strip() or "video"
-            filename = f"{stamp}_{model_name}_{safe_prompt}.mp4"
-
-            # 如果是分镜生成任务，使用特殊命名规则：场次号-镜头号-序号.mp4
-            if conversation_id:
-                conversations = [c for c in self._db.list_conversations() if c.id == conversation_id]
-                if conversations:
-                    conv_title = conversations[0].title
-                    # 匹配 "分镜视频-场X镜Y" 格式
-                    match = re.match(r"分镜视频-场(\d+)镜(\d+)", conv_title)
-                    if match:
-                        scene_number = match.group(1)
-                        shot_number = match.group(2)
-
-                        # 从数据库查找已有的同场次同镜号视频，计算自增序号
-                        all_media = self._db.list_media_files(media_type="video")
-                        prefix = f"{scene_number}-{shot_number}-"
-                        max_seq = 0
-                        for media in all_media:
-                            if media.filename.startswith(prefix) and media.filename.endswith(".mp4"):
-                                # 提取序号
-                                seq_match = re.match(rf"{prefix}(\d+)\.mp4", media.filename)
-                                if seq_match:
-                                    seq = int(seq_match.group(1))
-                                    max_seq = max(max_seq, seq)
-
-                        # 新序号 = 最大序号 + 1
-                        new_seq = max_seq + 1
-                        filename = f"{scene_number}-{shot_number}-{new_seq}.mp4"
-                        logger.info(f"分镜视频文件名：{filename} (场{scene_number}镜{shot_number}第{new_seq}次生成)")
-
-            save_path = os.path.join(self._download_dir, filename)
+            # 如果任务提交时已预计算保存路径（相对路径），拼接到下载目录；否则按默认规则生成
+            if save_path:
+                save_path = os.path.join(self._download_dir, save_path)
+            else:
+                from datetime import datetime
+                now = datetime.now()
+                stamp = now.strftime("%Y%m%d_%H%M%S")
+                safe_prompt = "".join(c for c in prompt[:20] if c.isalnum() or c in " _-").strip() or "video"
+                filename = f"{stamp}_{model_name}_{safe_prompt}.mp4"
+                save_path = os.path.join(self._download_dir, filename)
 
             os.makedirs(self._temp_dir, exist_ok=True)
             tmp_path = os.path.join(self._temp_dir, f"{uuid.uuid4().hex}.mp4.part")

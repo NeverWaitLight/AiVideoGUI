@@ -144,15 +144,21 @@ class _BatchGenerationController(QObject):
             params["resolution"] = self._project.resolution
             params["ratio"] = self._project.aspect_ratio
 
+            # 预计算保存路径（相对于下载目录）：场次号-镜头号-生成次数.mp4
+            seq = self._service._db.get_next_storyboard_seq(scene_number, shot_number)
+            save_path = f"{scene_number}-{shot_number}-{seq}.mp4"
+
             msg = self._service.submit_task(
                 conversation_id=conv.id,
                 prompt=prompt,
                 provider_name=self._provider_name,
                 params=params,
+                save_path=save_path,
             )
             self._current_message_id = msg.task_id
             self.progress.emit(self._index, len(self._shot_list), scene_number, shot_number, f"任务已提交，等待生成... (task: {msg.task_id[:12]}...)")
-            logger.info(f"批量生成 [{self._index + 1}/{len(self._shot_list)}] 场{scene_number}镜{shot_number} 已提交 task_id={msg.task_id}")
+            logger.info("批量生成 [%d/%d] 场%d镜%d 已提交 task_id=%s save_path=%s",
+                        self._index + 1, len(self._shot_list), scene_number, shot_number, msg.task_id, save_path)
 
         except Exception as e:
             logger.exception(f"批量生成提交失败：场{scene_number}镜{shot_number}")
@@ -827,11 +833,16 @@ class MainWindow(QMainWindow):
             params["resolution"] = project.resolution
             params["ratio"] = project.aspect_ratio
 
+            # 预计算保存路径（相对于下载目录）：场次号-镜头号-生成次数.mp4
+            seq = self._db.get_next_storyboard_seq(scene_number, shot_number)
+            save_path = f"{scene_number}-{shot_number}-{seq}.mp4"
+
             msg = self._service.submit_task(
                 conversation_id=conv.id,
                 prompt=prompt,
                 provider_name=provider_name,
-                params=params
+                params=params,
+                save_path=save_path,
             )
 
             task_id = msg.task_id
@@ -839,10 +850,10 @@ class MainWindow(QMainWindow):
             QMessageBox.information(
                 self,
                 "任务已提交",
-                f"分镜视频生成任务已提交\n场次：{scene_number}，镜头：{shot_number}\n分辨率：{project.resolution} ({project.aspect_ratio})\n任务ID：{task_id}\n\n视频生成完成后将自动下载到项目素材库"
+                f"分镜视频生成任务已提交\n场次：{scene_number}，镜头：{shot_number}\n保存路径：{save_path}\n分辨率：{project.resolution} ({project.aspect_ratio})\n任务ID：{task_id}\n\n视频生成完成后将自动下载到项目素材库"
             )
 
-            logger.info(f"分镜视频任务已提交：task_id={task_id}, shot_id={shot_id}, resolution={project.resolution}, aspect_ratio={project.aspect_ratio}")
+            logger.info("分镜视频任务已提交：task_id=%s, shot_id=%s, save_path=%s", task_id, shot_id, save_path)
 
         except Exception as e:
             logger.exception("提交视频生成任务失败")

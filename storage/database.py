@@ -1,6 +1,7 @@
 """SQLite 数据库管理。"""
 
 import logging
+import re
 import sqlite3
 import threading
 from datetime import datetime
@@ -46,6 +47,7 @@ class DatabaseManager:
         self._migrate_outlines()
         self._migrate_scripts()
         self._migrate_shots()
+        self._migrate_active_tasks()
 
     def _migrate_messages(self) -> None:
         """迁移 messages 表。"""
@@ -278,6 +280,16 @@ class DatabaseManager:
         if not result:
             logger.info("shot_history 表已由初始化创建")
 
+    def _migrate_active_tasks(self) -> None:
+        """迁移 active_tasks 表：添加 save_path 列。"""
+        cols = {row["name"] for row in self._conn.execute("PRAGMA table_info(active_tasks)").fetchall()}
+        if "save_path" not in cols:
+            self._conn.execute(
+                "ALTER TABLE active_tasks ADD COLUMN save_path TEXT NOT NULL DEFAULT ''"
+            )
+            self._conn.commit()
+            logger.info("迁移：active_tasks 表新增 save_path 列")
+
     def _init_tables(self) -> None:
         cur = self._conn.cursor()
         cur.executescript(
@@ -318,6 +330,7 @@ class DatabaseManager:
                 model_name TEXT NOT NULL DEFAULT '',
                 video_url TEXT NOT NULL DEFAULT '',
                 status TEXT NOT NULL DEFAULT 'pending',
+                save_path TEXT NOT NULL DEFAULT '',
                 created_at TEXT NOT NULL,
                 FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE
             );
@@ -565,20 +578,25 @@ class DatabaseManager:
     # ---------- active_tasks ----------
 
     def add_active_task(
-        self, task_id: str, message_id: str, provider_name: str, model_name: str
+        self,
+        task_id: str,
+        message_id: str,
+        provider_name: str,
+        model_name: str,
+        save_path: str = "",
     ) -> None:
         with self._lock:
             self._conn.execute(
                 "INSERT OR REPLACE INTO active_tasks "
-                "(task_id, message_id, provider_name, model_name, status, created_at) "
-                "VALUES (?, ?, ?, ?, 'pending', ?)",
-                (task_id, message_id, provider_name, model_name, datetime.now().isoformat()),
+                "(task_id, message_id, provider_name, model_name, status, save_path, created_at) "
+                "VALUES (?, ?, ?, ?, 'pending', ?, ?)",
+                (task_id, message_id, provider_name, model_name, save_path, datetime.now().isoformat()),
             )
             self._conn.commit()
 
     def list_active_tasks(self) -> list[dict]:
         rows = self._conn.execute(
-            "SELECT task_id, message_id, provider_name, model_name, video_url, status, created_at "
+            "SELECT task_id, message_id, provider_name, model_name, video_url, status, save_path, created_at "
             "FROM active_tasks"
         ).fetchall()
         result = []
@@ -606,6 +624,33 @@ class DatabaseManager:
         with self._lock:
             self._conn.execute("DELETE FROM active_tasks WHERE task_id = ?", (task_id,))
             self._conn.commit()
+
+    def get_next_storyboard_seq(self, scene_number: int, shot_number: int) -> int:
+        """计算指定场次-镜头的下一个生成序号（综合已完成素材和待处理任务）。"""
+        prefix = f"{scene_number}-{shot_number}-"
+        max_seq = 0
+
+        # 扫描已入库的素材文件
+        rows = self._conn.execute(
+            "SELECT filename FROM media_files WHERE media_type = 'video' AND filename LIKE ?",
+            (f"{prefix}%.mp4",),
+        ).fetchall()
+        for row in rows:
+            m = re.match(rf"^{re.escape(prefix)}(\d+)\.mp4$", row["filename"])
+            if m:
+                max_seq = max(max_seq, int(m.group(1)))
+
+        # 扫描待处理的活跃任务（save_path 为相对路径）
+        rows = self._conn.execute(
+            "SELECT save_path FROM active_tasks WHERE save_path LIKE ?",
+            (f"{prefix}%.mp4",),
+        ).fetchall()
+        for row in rows:
+            m = re.match(rf"^{re.escape(prefix)}(\d+)\.mp4$", row["save_path"])
+            if m:
+                max_seq = max(max_seq, int(m.group(1)))
+
+        return max_seq + 1
 
     # ---------- media_files ----------
 
