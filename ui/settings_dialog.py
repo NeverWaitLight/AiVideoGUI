@@ -1,14 +1,12 @@
-"""设置对话框：API Key 管理、模型选择、下载目录配置。"""
+"""设置对话框：API Key 管理、模型选择、应用配置。"""
 
 from __future__ import annotations
 
 import logging
-import os
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (
-    QFileDialog,
     QFormLayout,
     QHBoxLayout,
     QLabel,
@@ -26,6 +24,7 @@ from qframelesswindow import FramelessDialog
 from config.manager import ConfigManager
 from models.data_models import ProviderConfig
 from providers.bailian_chat import BailianChatProvider
+from utils import paths
 
 logger = logging.getLogger(__name__)
 
@@ -163,19 +162,11 @@ class SettingsDialog(FramelessDialog):
         app_layout.setSpacing(12)
         app_layout.setContentsMargins(16, 8, 16, 16)
 
-        dir_row = QHBoxLayout()
-        self.download_dir_input = LineEdit()
-        default_dir = os.path.join(os.path.expanduser("~"), "Videos", "AI-Video-GUI")
-        self.download_dir_input.setText(default_dir)
-        self.download_dir_input.setPlaceholderText("选择视频下载目录")
-        dir_row.addWidget(self.download_dir_input)
-
-        browse_btn = PushButton("浏览")
-        browse_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        browse_btn.clicked.connect(self._browse_dir)
-        dir_row.addWidget(browse_btn)
-
-        app_layout.addRow("下载目录:", dir_row)
+        # 工作区路径（只读展示）
+        ws_label = LineEdit()
+        ws_label.setText(paths.workspace_root())
+        ws_label.setReadOnly(True)
+        app_layout.addRow("工作区目录:", ws_label)
 
         # 默认 Provider
         self.default_provider_combo = ComboBox()
@@ -228,11 +219,6 @@ class SettingsDialog(FramelessDialog):
                     self.default_provider_combo.setCurrentIndex(i)
                     break
 
-        # 下载目录
-        dd = self._config.settings.default_download_dir
-        if dd:
-            self.download_dir_input.setText(dd)
-
         # 当前视频 Provider 回填
         self._on_provider_changed(self.provider_combo.currentIndex())
 
@@ -260,13 +246,6 @@ class SettingsDialog(FramelessDialog):
         else:
             self.api_key_input.clear()
             self.base_url_input.clear()
-
-    def _browse_dir(self) -> None:
-        directory = QFileDialog.getExistingDirectory(
-            self, "选择下载目录", self.download_dir_input.text()
-        )
-        if directory:
-            self.download_dir_input.setText(directory)
 
     # ───────── 对话模型 ─────────
 
@@ -402,10 +381,8 @@ class SettingsDialog(FramelessDialog):
             )
 
         # 保存应用设置
-        download_dir = self.download_dir_input.text().strip()
         default_provider = self.default_provider_combo.currentData()
         self._config.update_settings(
-            default_download_dir=download_dir,
             default_provider=default_provider,
             default_chat_provider=chat_provider_name if chat_api_key else "",
             default_image_provider=image_provider_name if image_api_key else "",
@@ -420,5 +397,4 @@ class SettingsDialog(FramelessDialog):
             "api_key": self.api_key_input.text().strip(),
             "base_url": self.base_url_input.text().strip(),
             "default_model": self.model_combo.currentText(),
-            "download_dir": self.download_dir_input.text().strip(),
         }

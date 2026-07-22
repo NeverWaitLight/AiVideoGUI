@@ -30,6 +30,7 @@ from service.task_polling_service import TaskPollingService
 from service.text_model_service import TextModelService
 from service.video_service import VideoService, _PROVIDER_REGISTRY
 from storage.database import DatabaseManager
+from utils import paths
 from ui.chat_area import ChatArea
 from ui.media_library import MediaLibrary
 from ui.outline_editor import OutlineEditor
@@ -55,9 +56,8 @@ def _format_time(dt: datetime) -> str:
     return dt.strftime("%m-%d %H:%M")
 
 
-def _app_data_dir() -> str:
-    root = os.environ.get("LOCALAPPDATA", os.path.expanduser("~"))
-    return os.path.join(root, "ai-video-gui")
+def _workspace_root() -> str:
+    return paths.workspace_root()
 
 
 class _BatchGenerationController(QObject):
@@ -225,8 +225,15 @@ class MainWindow(QMainWindow):
         self._current_project_id: str | None = None
 
         # ── 初始化基础设施 ──
-        data_dir = _app_data_dir()
-        os.makedirs(data_dir, exist_ok=True)
+        root = _workspace_root()
+        data_dir = paths.data_dir(root)
+        cache_dir = paths.cache_dir(root)
+        ws_dir = paths.workspace_dir(root)
+        chat_dir = paths.chat_dir(root)
+        for d in (data_dir, cache_dir, ws_dir, chat_dir):
+            os.makedirs(d, exist_ok=True)
+
+        self._root = root
         self._db = DatabaseManager(os.path.join(data_dir, "ai-video-gui.db"))
         self._config = ConfigManager(os.path.join(data_dir, "config.json"))
 
@@ -235,7 +242,7 @@ class MainWindow(QMainWindow):
         self._chat_service = ChatService(self._config)
 
         # 项目服务
-        self._project_service = ProjectService(self._db)
+        self._project_service = ProjectService(self._db, self._root)
 
         # 大纲服务
         self._outline_service = OutlineService(self._db)
@@ -250,16 +257,13 @@ class MainWindow(QMainWindow):
         self._text_model_service = TextModelService(self._config)
 
         # 素材库服务
-        download_dir = self._config.settings.default_download_dir or self._default_download_dir()
-        self._media_service = MediaService(self._db, download_dir)
+        self._media_service = MediaService(self._db, self._root)
 
         # 全局任务轮询服务
-        temp_dir = self._default_temp_dir()
         self._polling_service = TaskPollingService(
             db=self._db,
             config=self._config,
-            download_dir=download_dir,
-            temp_dir=temp_dir,
+            workspace_root=self._root,
             provider_registry=_PROVIDER_REGISTRY,
         )
         self._polling_service.set_media_service(self._media_service)
@@ -270,15 +274,6 @@ class MainWindow(QMainWindow):
 
         # 启动全局轮询服务
         self._polling_service.start()
-
-    @staticmethod
-    def _default_download_dir() -> str:
-        home = os.path.expanduser("~")
-        return os.path.join(home, "Videos", "AI-Video-GUI")
-
-    @staticmethod
-    def _default_temp_dir() -> str:
-        return os.path.join(os.environ.get("TEMP", os.path.expanduser("~")), "ai-video-gui")
 
     # ───────── UI 组装 ─────────
 
@@ -645,12 +640,12 @@ class MainWindow(QMainWindow):
         from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel
         from qfluentwidgets import ProgressRing
 
-        dialog = QDialog(self)
-        dialog.setWindowTitle("生成剧本")
-        dialog.setModal(True)
-        dialog.setFixedSize(300, 150)
+        self._script_dialog = QDialog(self)
+        self._script_dialog.setWindowTitle("生成剧本")
+        self._script_dialog.setModal(True)
+        self._script_dialog.setFixedSize(300, 150)
 
-        layout = QVBoxLayout(dialog)
+        layout = QVBoxLayout(self._script_dialog)
         layout.setSpacing(20)
 
         progress = ProgressRing()
@@ -662,7 +657,7 @@ class MainWindow(QMainWindow):
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(label)
 
-        dialog.show()
+        self._script_dialog.show()
 
         # 使用 QThread 异步生成剧本
         from PyQt6.QtCore import QThread, pyqtSignal
@@ -685,15 +680,22 @@ class MainWindow(QMainWindow):
                     self.failed.emit(str(e))
 
         def on_success(title: str, scenes: list):
-            dialog.close()
-            # 隐藏大纲编辑器，显示剧本编辑器
-            self.outline_editor.hide()
-            self.script_editor.show()
-            self.script_editor.load_script(self._current_project_id, title, scenes)
-            QMessageBox.information(self, "成功", f"剧本生成完成，共 {len(scenes)} 场！")
+            try:
+                self._script_dialog.close()
+                self.outline_editor.hide()
+                self.script_editor.show()
+                self.script_editor.load_script(self._current_project_id, title, scenes)
+                QMessageBox.information(self, "成功", f"剧本生成完成，共 {len(scenes)} 场！")
+            except Exception as e:
+                logger.exception("生成剧本后处理失败")
+                self._script_dialog.close()
+                QMessageBox.critical(self, "错误", f"剧本生成后处理失败：{e}")
 
         def on_failed(error_msg: str):
-            dialog.close()
+            try:
+                self._script_dialog.close()
+            except Exception:
+                pass
             QMessageBox.critical(self, "生成失败", f"AI 生成剧本失败：{error_msg}")
 
         worker = ScriptGenerateWorker(self._text_model_service, outline_content)
@@ -745,12 +747,12 @@ class MainWindow(QMainWindow):
         from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel
         from qfluentwidgets import ProgressRing
 
-        dialog = QDialog(self)
-        dialog.setWindowTitle("生成分镜")
-        dialog.setModal(True)
-        dialog.setFixedSize(300, 150)
+        self._storyboard_dialog = QDialog(self)
+        self._storyboard_dialog.setWindowTitle("生成分镜")
+        self._storyboard_dialog.setModal(True)
+        self._storyboard_dialog.setFixedSize(300, 150)
 
-        layout = QVBoxLayout(dialog)
+        layout = QVBoxLayout(self._storyboard_dialog)
         layout.setSpacing(20)
 
         progress = ProgressRing()
@@ -762,7 +764,7 @@ class MainWindow(QMainWindow):
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(label)
 
-        dialog.show()
+        self._storyboard_dialog.show()
 
         # 使用 QThread 异步生成分镜
         from PyQt6.QtCore import QThread, pyqtSignal
@@ -785,14 +787,22 @@ class MainWindow(QMainWindow):
                     self.failed.emit(str(e))
 
         def on_success(shots: list):
-            dialog.close()
-            self.script_editor.hide()
-            self.shot_editor.show()
-            self.shot_editor.load_project(project_id, shots)
-            QMessageBox.information(self, "成功", f"分镜生成完成，共 {len(shots)} 个镜头！")
+            try:
+                self._storyboard_dialog.close()
+                self.script_editor.hide()
+                self.shot_editor.show()
+                self.shot_editor.load_project(project_id, shots)
+                QMessageBox.information(self, "成功", f"分镜生成完成，共 {len(shots)} 个镜头！")
+            except Exception as e:
+                logger.exception("生成分镜后处理失败")
+                self._storyboard_dialog.close()
+                QMessageBox.critical(self, "错误", f"分镜生成后处理失败：{e}")
 
         def on_failed(error_msg: str):
-            dialog.close()
+            try:
+                self._storyboard_dialog.close()
+            except Exception:
+                pass
             QMessageBox.critical(self, "生成失败", f"AI 生成分镜失败：{error_msg}")
 
         worker = StoryboardGenerateWorker(self._text_model_service, script_content)
@@ -1144,11 +1154,6 @@ class MainWindow(QMainWindow):
             self.chat_area.set_header(
                 self.chat_area.title_label.text(), model
             )
-        # 同步下载目录
-        if self._config.settings.default_download_dir:
-            download_dir = self._config.settings.default_download_dir
-            self._media_service._download_dir = download_dir
-            self._polling_service._download_dir = download_dir
 
     def _scroll_to_message(self, message_id: str) -> None:
         """滚动到指定消息位置。"""

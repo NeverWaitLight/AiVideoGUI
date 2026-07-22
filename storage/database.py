@@ -62,6 +62,12 @@ class DatabaseManager:
             repo = ConversationRepository(session)
             repo.create(conv)
 
+    def get_conversation(self, conversation_id: str) -> Conversation | None:
+        """根据 ID 查询单个对话。"""
+        session = self._get_session()
+        repo = ConversationRepository(session)
+        return repo.get_by_id(conversation_id)
+
     def list_conversations(self) -> list[Conversation]:
         """查询所有对话（不包含隐藏对话）。"""
         session = self._get_session()
@@ -519,9 +525,9 @@ class DatabaseManager:
             scenes_data = [
                 {
                     "scene_number": s.scene_number,
-                    "location_type": s.location_type,
+                    "location_type": s.location_type.value if hasattr(s.location_type, "value") else s.location_type,
                     "location": s.location,
-                    "time_type": s.time_type,
+                    "time_type": s.time_type.value if hasattr(s.time_type, "value") else s.time_type,
                     "time_detail": s.time_detail,
                     "content": s.content,
                 }

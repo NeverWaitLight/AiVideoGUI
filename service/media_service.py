@@ -9,6 +9,7 @@ from pathlib import Path
 
 from models.data_models import MediaFile, MediaType
 from storage.database import DatabaseManager
+from utils import paths
 from utils.video_metadata import VideoMetadataExtractor
 
 logger = logging.getLogger(__name__)
@@ -39,12 +40,11 @@ def supported_extensions() -> set[str]:
 class MediaService:
     """素材库业务服务。"""
 
-    def __init__(self, db: DatabaseManager, download_dir: str) -> None:
+    def __init__(self, db: DatabaseManager, workspace_root: str) -> None:
         self._db = db
-        self._download_dir = download_dir
-        # 缩略图保存目录
-        self._thumbnail_dir = os.path.join(download_dir, ".thumbnails")
-        os.makedirs(self._thumbnail_dir, exist_ok=True)
+        self._root = workspace_root
+        self._chat_dir = paths.chat_dir(workspace_root)
+        os.makedirs(self._chat_dir, exist_ok=True)
 
     def register_task_result(
         self,
@@ -61,6 +61,11 @@ class MediaService:
         media_type = detect_media_type(filename) or MediaType.VIDEO
         file_size = os.path.getsize(local_path) if os.path.exists(local_path) else 0
 
+        # 缩略图存放在文件所在目录的 .thumbnails 子目录
+        file_dir = os.path.dirname(local_path)
+        thumb_dir = paths.thumbnail_dir(file_dir)
+        os.makedirs(thumb_dir, exist_ok=True)
+
         # 提取视频元数据
         thumbnail_path = ""
         duration = 0.0
@@ -69,7 +74,7 @@ class MediaService:
 
         if media_type == MediaType.VIDEO and os.path.exists(local_path):
             try:
-                metadata = VideoMetadataExtractor.extract_all(local_path, self._thumbnail_dir)
+                metadata = VideoMetadataExtractor.extract_all(local_path, thumb_dir)
                 thumbnail_path = metadata.get("thumbnail_path", "")
                 duration = metadata.get("duration", 0.0)
                 width = metadata.get("width", 0)
@@ -105,9 +110,10 @@ class MediaService:
         self._db.add_media_file(media)
         logger.info("素材自动入库：%s", filename)
 
-    def import_files(self, file_paths: list[str]) -> list[MediaFile]:
-        """将外部文件复制到下载目录并入库。"""
-        os.makedirs(self._download_dir, exist_ok=True)
+    def import_files(self, file_paths: list[str], project_id: str = "") -> list[MediaFile]:
+        """将外部文件复制到目标目录并入库。project_id 非空时存入项目目录，否则存入 chat 目录。"""
+        target_dir = paths.project_dir(self._root, project_id) if project_id else self._chat_dir
+        os.makedirs(target_dir, exist_ok=True)
         imported: list[MediaFile] = []
 
         for src_path in file_paths:
@@ -117,7 +123,7 @@ class MediaService:
                 logger.warning("不支持的文件类型，跳过：%s", filename)
                 continue
 
-            dest_path = self._resolve_dest_path(filename)
+            dest_path = self._resolve_dest_path(filename, target_dir)
 
             try:
                 shutil.copy2(src_path, dest_path)
@@ -127,6 +133,10 @@ class MediaService:
 
             file_size = os.path.getsize(dest_path)
 
+            # 缩略图存放在文件所在目录的 .thumbnails 子目录
+            thumb_dir = paths.thumbnail_dir(target_dir)
+            os.makedirs(thumb_dir, exist_ok=True)
+
             # 提取视频元数据
             thumbnail_path = ""
             duration = 0.0
@@ -135,7 +145,7 @@ class MediaService:
 
             if media_type == MediaType.VIDEO:
                 try:
-                    metadata = VideoMetadataExtractor.extract_all(dest_path, self._thumbnail_dir)
+                    metadata = VideoMetadataExtractor.extract_all(dest_path, thumb_dir)
                     thumbnail_path = metadata.get("thumbnail_path", "")
                     duration = metadata.get("duration", 0.0)
                     width = metadata.get("width", 0)
@@ -204,16 +214,16 @@ class MediaService:
                 count += 1
         return count
 
-    def _resolve_dest_path(self, filename: str) -> str:
+    def _resolve_dest_path(self, filename: str, target_dir: str) -> str:
         """避免目标文件重名：同名时追加序号。"""
-        dest = os.path.join(self._download_dir, filename)
+        dest = os.path.join(target_dir, filename)
         if not os.path.exists(dest):
             return dest
         stem = Path(filename).stem
         suffix = Path(filename).suffix
         counter = 1
         while os.path.exists(dest):
-            dest = os.path.join(self._download_dir, f"{stem}_{counter}{suffix}")
+            dest = os.path.join(target_dir, f"{stem}_{counter}{suffix}")
             counter += 1
         return dest
 

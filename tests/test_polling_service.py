@@ -55,8 +55,12 @@ class TestPollingService(unittest.TestCase):
         self.temp_dir = tempfile.mkdtemp()
         self.db_path = os.path.join(self.temp_dir, "test.db")
         self.config_path = os.path.join(self.temp_dir, "config.json")
-        self.download_dir = os.path.join(self.temp_dir, "downloads")
-        self.temp_files = os.path.join(self.temp_dir, "temp")
+        # 模拟 workspace 结构
+        self.workspace_root = self.temp_dir
+        self.chat_dir = os.path.join(self.temp_dir, "workspace", "chat")
+        self.cache_dir = os.path.join(self.temp_dir, "cache")
+        os.makedirs(self.chat_dir, exist_ok=True)
+        os.makedirs(self.cache_dir, exist_ok=True)
 
         # 初始化数据库和配置
         self.db = DatabaseManager(self.db_path)
@@ -79,13 +83,11 @@ class TestPollingService(unittest.TestCase):
         self.polling_service = TaskPollingService(
             db=self.db,
             config=self.config,
-            download_dir=self.download_dir,
-            temp_dir=self.temp_files,
+            workspace_root=self.workspace_root,
             provider_registry=self.provider_registry,
         )
         # 设置快速轮询以加速测试
         self.polling_service.poll_interval = 0.5
-        self.polling_service.initial_delay = 0.1
         self.polling_service.idle_check_interval = 1.0
 
     def tearDown(self):

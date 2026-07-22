@@ -15,6 +15,7 @@ from config.manager import ConfigManager
 from models.data_models import MessageStatus, TaskStatus
 from providers.base import VideoProvider
 from storage.database import DatabaseManager
+from utils import paths
 
 logger = logging.getLogger(__name__)
 
@@ -31,26 +32,24 @@ class TaskPollingService(QObject):
         self,
         db: DatabaseManager,
         config: ConfigManager,
-        download_dir: str,
-        temp_dir: str,
+        workspace_root: str,
         provider_registry: dict[str, type[VideoProvider]],
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
         self._db = db
         self._config = config
-        self._download_dir = download_dir
-        self._temp_dir = temp_dir
+        self._root = workspace_root
+        self._cache_dir = paths.cache_dir(workspace_root)
         self._provider_registry = provider_registry
         self._providers: dict[str, VideoProvider] = {}
         self._worker: _PollingWorker | None = None
         self._media_service: Any = None
 
         # 轮询策略配置
-        self.poll_interval = 30.0  # 任务状态检查间隔（秒）
-        self.initial_delay = 300.0  # 新任务提交后的初始等待时间（秒）
+        self.poll_interval = 10.0  # 任务状态检查间隔（秒）
         self.idle_check_interval = 60.0  # 空闲时检查表是否有新任务的间隔（秒）
-        self.max_polls_per_task = 50  # 单个任务最大轮询次数
+        self.max_polls_per_task = 150  # 单个任务最大轮询次数
 
     def set_media_service(self, media_service: Any) -> None:
         """注入素材库服务，用于任务完成后自动入库。"""
@@ -79,11 +78,10 @@ class TaskPollingService(QObject):
             db=self._db,
             service=self,
             poll_interval=self.poll_interval,
-            initial_delay=self.initial_delay,
             idle_check_interval=self.idle_check_interval,
             max_polls_per_task=self.max_polls_per_task,
-            download_dir=self._download_dir,
-            temp_dir=self._temp_dir,
+            workspace_root=self._root,
+            cache_dir=self._cache_dir,
         )
         self._worker.status_changed.connect(self._on_status_changed)
         self._worker.download_progress.connect(self._on_download_progress)
@@ -146,22 +144,20 @@ class _PollingWorker(QThread):
         db: DatabaseManager,
         service: TaskPollingService,
         poll_interval: float,
-        initial_delay: float,
         idle_check_interval: float,
         max_polls_per_task: int,
-        download_dir: str,
-        temp_dir: str,
+        workspace_root: str,
+        cache_dir: str,
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
         self._db = db
         self._service = service
         self._poll_interval = poll_interval
-        self._initial_delay = initial_delay
         self._idle_check_interval = idle_check_interval
         self._max_polls_per_task = max_polls_per_task
-        self._download_dir = download_dir
-        self._temp_dir = temp_dir
+        self._root = workspace_root
+        self._cache_dir = cache_dir
         self._stopped = False
         self._task_poll_count: dict[str, int] = {}  # task_id -> 已轮询次数
 
@@ -213,7 +209,6 @@ class _PollingWorker(QThread):
         message_id = task_info["message_id"]
         provider_name = task_info["provider_name"]
         model_name = task_info["model_name"]
-        created_at = task_info["created_at"]
 
         # 检查消息状态
         msg = self._db.get_message(message_id)
@@ -227,12 +222,6 @@ class _PollingWorker(QThread):
         if msg.status in (MessageStatus.COMPLETED, MessageStatus.FAILED):
             self._db.remove_active_task(task_id)
             self._task_poll_count.pop(task_id, None)
-            return
-
-        # 检查是否需要等待初始延迟
-        elapsed_seconds = (time.time() - created_at.timestamp()) if created_at else 999999
-        if elapsed_seconds < self._initial_delay:
-            # 还在初始等待期，跳过此次轮询
             return
 
         # 检查是否超过最大轮询次数
@@ -288,19 +277,32 @@ class _PollingWorker(QThread):
     ) -> None:
         """下载视频并标记任务完成。"""
         try:
-            # 如果任务提交时已预计算保存路径（相对路径），拼接到下载目录；否则按默认规则生成
+            # 确定保存目录：有 save_path 时为项目视频，否则为对话视频
             if save_path:
-                save_path = os.path.join(self._download_dir, save_path)
+                # 项目视频：通过 message → conversation → project_id 解析项目目录
+                msg = self._db.get_message(message_id)
+                project_id = ""
+                if msg:
+                    conv = self._db.get_conversation(msg.conversation_id)
+                    if conv:
+                        project_id = conv.project_id
+                if project_id:
+                    target_dir = paths.project_dir(self._root, project_id)
+                else:
+                    target_dir = paths.chat_dir(self._root)
+                save_path = os.path.join(target_dir, save_path)
             else:
+                # 对话视频：保存到 chat 目录
                 from datetime import datetime
+                target_dir = paths.chat_dir(self._root)
                 now = datetime.now()
                 stamp = now.strftime("%Y%m%d_%H%M%S")
                 safe_prompt = "".join(c for c in prompt[:20] if c.isalnum() or c in " _-").strip() or "video"
                 filename = f"{stamp}_{model_name}_{safe_prompt}.mp4"
-                save_path = os.path.join(self._download_dir, filename)
+                save_path = os.path.join(target_dir, filename)
 
-            os.makedirs(self._temp_dir, exist_ok=True)
-            tmp_path = os.path.join(self._temp_dir, f"{uuid.uuid4().hex}.mp4.part")
+            os.makedirs(self._cache_dir, exist_ok=True)
+            tmp_path = os.path.join(self._cache_dir, f"{uuid.uuid4().hex}.mp4.part")
 
             def on_progress(downloaded: int, total: int) -> None:
                 self.download_progress.emit(message_id, downloaded, total)

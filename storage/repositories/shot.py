@@ -5,7 +5,7 @@ from typing import List
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from models.data_models import Shot, ShotHistory
+from models.data_models import Shot, ShotHistory, ShotSize
 from storage.orm.models import ShotEntity, ShotHistoryEntity, SceneEntity, ScriptEntity
 from storage.repositories.base import BaseRepository
 
@@ -24,7 +24,7 @@ class ShotRepository(BaseRepository[ShotEntity, Shot]):
             scene_number=entity.scene_number,
             shot_number=entity.shot_number,
             design_image=entity.design_image,
-            shot_size=entity.shot_size,
+            shot_size=ShotSize(entity.shot_size) if isinstance(entity.shot_size, str) else entity.shot_size,
             camera_movement=entity.camera_movement,
             visual_content=entity.visual_content,
             dialogue=entity.dialogue,
@@ -43,7 +43,7 @@ class ShotRepository(BaseRepository[ShotEntity, Shot]):
             scene_number=dto.scene_number,
             shot_number=dto.shot_number,
             design_image=dto.design_image,
-            shot_size=dto.shot_size,
+            shot_size=dto.shot_size.value if isinstance(dto.shot_size, ShotSize) else dto.shot_size,
             camera_movement=dto.camera_movement,
             visual_content=dto.visual_content,
             dialogue=dto.dialogue,

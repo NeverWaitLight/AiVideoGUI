@@ -5,7 +5,7 @@ from typing import List, Optional
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from models.data_models import Script, ScriptHistory, Scene
+from models.data_models import SceneLocation, SceneTime, Script, ScriptHistory, Scene
 from storage.orm.models import ScriptEntity, ScriptHistoryEntity, SceneEntity
 from storage.repositories.base import BaseRepository
 
@@ -125,9 +125,9 @@ class SceneRepository(BaseRepository[SceneEntity, Scene]):
             id=entity.id,
             script_id=entity.script_id,
             scene_number=entity.scene_number,
-            location_type=entity.location_type,
+            location_type=SceneLocation(entity.location_type) if isinstance(entity.location_type, str) else entity.location_type,
             location=entity.location,
-            time_type=entity.time_type,
+            time_type=SceneTime(entity.time_type) if isinstance(entity.time_type, str) else entity.time_type,
             time_detail=entity.time_detail,
             content=entity.content,
             created_at=entity.created_at,
@@ -140,9 +140,9 @@ class SceneRepository(BaseRepository[SceneEntity, Scene]):
             id=dto.id,
             script_id=dto.script_id,
             scene_number=dto.scene_number,
-            location_type=dto.location_type,
+            location_type=dto.location_type.value if isinstance(dto.location_type, SceneLocation) else dto.location_type,
             location=dto.location,
-            time_type=dto.time_type,
+            time_type=dto.time_type.value if isinstance(dto.time_type, SceneTime) else dto.time_type,
             time_detail=dto.time_detail,
             content=dto.content,
             created_at=dto.created_at,
