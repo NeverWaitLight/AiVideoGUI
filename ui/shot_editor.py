@@ -18,6 +18,7 @@ from PyQt6.QtWidgets import (
 )
 from qfluentwidgets import (
     CardWidget,
+    CheckBox,
     ComboBox,
     DoubleSpinBox,
     FluentIcon,
@@ -35,6 +36,43 @@ from service.script_service import ScriptService
 
 logger = logging.getLogger(__name__)
 
+_CN_DIGITS = ["零", "一", "二", "三", "四", "五", "六", "七", "八", "九"]
+
+
+def _to_chinese_num(n: int) -> str:
+    """将正整数转为中文数字（支持 1-999）。"""
+    if n <= 0:
+        return str(n)
+    if n < 10:
+        return _CN_DIGITS[n]
+    if n < 20:
+        return ("十" if n == 10 else "十" + _CN_DIGITS[n - 10])
+    if n < 100:
+        tens = n // 10
+        ones = n % 10
+        result = _CN_DIGITS[tens] + "十"
+        if ones:
+            result += _CN_DIGITS[ones]
+        return result
+    # 100+
+    hundreds = n // 100
+    remainder = n % 100
+    result = _CN_DIGITS[hundreds] + "百"
+    if remainder == 0:
+        return result
+    if remainder < 10:
+        result += "零" + _CN_DIGITS[remainder]
+    else:
+        tens = remainder // 10
+        ones = remainder % 10
+        if tens == 0:
+            result += "零"
+        else:
+            result += _CN_DIGITS[tens] + "十"
+        if ones:
+            result += _CN_DIGITS[ones]
+    return result
+
 
 class ShotCard(CardWidget):
     """分镜卡片（横向大块，120px 高度）"""
@@ -47,6 +85,20 @@ class ShotCard(CardWidget):
         self.shot = shot
         self._setup_ui()
 
+    @property
+    def is_checked(self) -> bool:
+        return self._checkbox.isChecked()
+
+    @is_checked.setter
+    def is_checked(self, value: bool) -> None:
+        self._checkbox.setChecked(value)
+
+    def set_checked(self, checked: bool) -> None:
+        """设置勾选状态（不触发信号）。"""
+        self._checkbox.blockSignals(True)
+        self._checkbox.setChecked(checked)
+        self._checkbox.blockSignals(False)
+
     def _setup_ui(self):
         """初始化 UI"""
         self.setFixedHeight(120)
@@ -54,6 +106,11 @@ class ShotCard(CardWidget):
         main_layout = QHBoxLayout(self)
         main_layout.setContentsMargins(16, 12, 16, 12)
         main_layout.setSpacing(12)
+
+        # 勾选框
+        self._checkbox = CheckBox()
+        self._checkbox.setFixedSize(24, 24)
+        main_layout.addWidget(self._checkbox, alignment=Qt.AlignmentFlag.AlignVCenter)
 
         # 左侧：信息区域（可点击）
         info_widget = QWidget()
@@ -66,7 +123,9 @@ class ShotCard(CardWidget):
         header_layout = QHBoxLayout()
         header_layout.setSpacing(12)
 
-        shot_number_label = TitleLabel(f"第 {self.shot.shot_number} 镜")
+        shot_number_label = TitleLabel(
+            f"{_to_chinese_num(self.shot.scene_number)}场{_to_chinese_num(self.shot.shot_number)}镜"
+        )
         header_layout.addWidget(shot_number_label)
 
         # 景别徽章
@@ -328,6 +387,7 @@ class ShotEditor(QWidget):
 
     back_clicked = pyqtSignal()
     video_generation_requested = pyqtSignal(str, int, int, str, str)  # shot_id, scene_number, shot_number, prompt, project_id
+    batch_video_generation_requested = pyqtSignal(list)  # list of dict: {shot_id, scene_number, shot_number, prompt, project_id}
 
     def __init__(self, shot_service: ShotService, script_service: ScriptService, parent=None):
         super().__init__(parent)
@@ -355,26 +415,42 @@ class ShotEditor(QWidget):
         left_layout.setContentsMargins(20, 20, 10, 20)
         left_layout.setSpacing(16)
 
-        # 顶部：返回按钮 + 标题
+        # 顶部：返回按钮 + 标题 + 生成所有按钮
         top_layout = QHBoxLayout()
         back_btn = PushButton("返回", self, FluentIcon.RETURN)
         back_btn.clicked.connect(self.back_clicked.emit)
         top_layout.addWidget(back_btn)
         top_layout.addStretch()
+
+        self._generate_all_btn = PrimaryPushButton("生成所有镜头", self, FluentIcon.PLAY)
+        self._generate_all_btn.setFixedHeight(36)
+        self._generate_all_btn.clicked.connect(self._on_generate_all)
+        top_layout.addWidget(self._generate_all_btn)
+
         left_layout.addLayout(top_layout)
 
         # 标题
         title_label = TitleLabel("分镜头脚本")
         left_layout.addWidget(title_label)
 
-        # 场次过滤
+        # 场次过滤 + 批量操作
         filter_layout = QHBoxLayout()
         filter_layout.addWidget(QLabel("筛选场次："))
         self.scene_filter_combo = ComboBox(self)
         self.scene_filter_combo.addItem("全部场次")
         self.scene_filter_combo.currentIndexChanged.connect(self._on_scene_filter_changed)
         filter_layout.addWidget(self.scene_filter_combo, 1)
-        filter_layout.addStretch()
+
+        self._select_all_cb = CheckBox("全选")
+        self._select_all_cb.toggled.connect(self._on_select_all_toggled)
+        filter_layout.addWidget(self._select_all_cb)
+
+        self._delete_selected_btn = PushButton("删除选中", self, FluentIcon.DELETE)
+        self._delete_selected_btn.setFixedHeight(32)
+        self._delete_selected_btn.setEnabled(False)
+        self._delete_selected_btn.clicked.connect(self._on_delete_selected)
+        filter_layout.addWidget(self._delete_selected_btn)
+
         left_layout.addLayout(filter_layout)
 
         # 分镜卡片列表
@@ -443,10 +519,12 @@ class ShotEditor(QWidget):
 
     def _populate_scene_filter(self):
         """填充场次过滤下拉框"""
+        self.scene_filter_combo.blockSignals(True)
         self.scene_filter_combo.clear()
         self.scene_filter_combo.addItem("全部场次")
         for scene in self._scenes:
-            self.scene_filter_combo.addItem(f"第 {scene.scene_number} 场")
+            self.scene_filter_combo.addItem(f"第 {scene.scene_number} 场", userData=scene.scene_number)
+        self.scene_filter_combo.blockSignals(False)
 
     def _on_scene_filter_changed(self):
         """场次过滤变化"""
@@ -509,9 +587,14 @@ class ShotEditor(QWidget):
             if item.widget():
                 item.widget().deleteLater()
 
+        self._shot_cards: list[ShotCard] = []
+        self._select_all_cb.blockSignals(True)
+        self._select_all_cb.setChecked(False)
+        self._select_all_cb.blockSignals(False)
+        self._delete_selected_btn.setEnabled(False)
+
         # 根据场次过滤
-        filter_index = self.scene_filter_combo.currentIndex()
-        scene_number = None if filter_index == 0 else filter_index
+        scene_number = self.scene_filter_combo.currentData()
 
         shots = self._shot_service.list_shots(
             project_id=self._current_project_id,
@@ -522,6 +605,8 @@ class ShotEditor(QWidget):
             card = ShotCard(shot, self)
             card.shot_clicked.connect(self._on_shot_clicked)
             card.generate_video_clicked.connect(self._on_generate_video)
+            card._checkbox.toggled.connect(self._on_card_check_changed)
+            self._shot_cards.append(card)
             self.shots_layout.insertWidget(self.shots_layout.count() - 1, card)
 
         logger.info(f"加载了 {len(shots)} 个分镜")
@@ -558,14 +643,96 @@ class ShotEditor(QWidget):
         )
 
     def _on_back_to_list(self):
-        self.list_view.hide()
-        self.detail_editor.show()
-        self.detail_editor.load_shot(shot_id)
-
-    def _on_back_to_list(self):
         """返回列表视图"""
         self.detail_editor.hide()
         self.list_view.show()
+
+    def _on_card_check_changed(self, _checked: bool) -> None:
+        """单个卡片勾选变化时，更新全选状态和删除按钮。"""
+        if not hasattr(self, "_shot_cards"):
+            return
+        checked_count = sum(1 for c in self._shot_cards if c.is_checked)
+        total = len(self._shot_cards)
+        self._delete_selected_btn.setEnabled(checked_count > 0)
+        self._select_all_cb.blockSignals(True)
+        self._select_all_cb.setChecked(checked_count == total and total > 0)
+        self._select_all_cb.blockSignals(False)
+
+    def _on_select_all_toggled(self, checked: bool) -> None:
+        """全选/取消全选。"""
+        if not hasattr(self, "_shot_cards"):
+            return
+        for card in self._shot_cards:
+            card.set_checked(checked)
+        self._delete_selected_btn.setEnabled(checked and len(self._shot_cards) > 0)
+
+    def _on_delete_selected(self) -> None:
+        """删除选中的分镜。"""
+        if not hasattr(self, "_shot_cards"):
+            return
+
+        selected = [c for c in self._shot_cards if c.is_checked]
+        if not selected:
+            return
+
+        count = len(selected)
+        reply = QMessageBox.question(
+            self,
+            "确认删除",
+            f"确定要删除选中的 {count} 个分镜吗？此操作不可恢复。",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        try:
+            for card in selected:
+                self._shot_service.delete_shot(card.shot.id)
+            QMessageBox.information(self, "成功", f"已删除 {count} 个分镜")
+            self._load_shots()
+            logger.info(f"批量删除 {count} 个分镜")
+        except Exception as e:
+            logger.exception("批量删除分镜失败")
+            QMessageBox.critical(self, "错误", f"删除失败：{e}")
+
+    def _on_generate_all(self) -> None:
+        """生成所有分镜的视频（串行）。"""
+        if not hasattr(self, "_shot_cards") or not self._shot_cards:
+            QMessageBox.warning(self, "提示", "没有可生成的分镜")
+            return
+
+        if not self._current_project_id:
+            return
+
+        # 收集所有分镜数据
+        shot_list = []
+        for card in self._shot_cards:
+            prompt = card.shot.visual_content
+            if not prompt.strip():
+                continue
+            shot_list.append({
+                "shot_id": card.shot.id,
+                "scene_number": card.shot.scene_number,
+                "shot_number": card.shot.shot_number,
+                "prompt": prompt,
+                "project_id": self._current_project_id,
+            })
+
+        if not shot_list:
+            QMessageBox.warning(self, "提示", "所有分镜的画面内容均为空，无法生成")
+            return
+
+        reply = QMessageBox.question(
+            self,
+            "确认批量生成",
+            f"将按顺序串行生成 {len(shot_list)} 个分镜视频，每个任务完成后才会开始下一个。\n确定继续？",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        self._generate_all_btn.setEnabled(False)
+        self.batch_video_generation_requested.emit(shot_list)
 
     def _on_save_history(self):
         """保存历史版本"""

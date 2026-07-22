@@ -1,4 +1,4 @@
-"""大纲编辑器：支持编辑和历史版本管理。"""
+"""大纲编辑器：支持编辑、AI 对话修改和历史版本管理。"""
 
 from __future__ import annotations
 
@@ -17,16 +17,16 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QSplitter,
     QDialog,
-    QDialogButtonBox,
+    QScrollArea,
+    QFrame,
 )
 from qfluentwidgets import (
     PrimaryPushButton,
     PushButton,
     ToolButton,
     FluentIcon,
-    CardWidget,
-    ComboBox,
     ProgressRing,
+    TextEdit,
 )
 
 from models.data_models import Outline, OutlineHistory
@@ -66,176 +66,6 @@ class OptimizeWorker(QThread):
             self.failed.emit(str(e))
 
 
-class AIOptimizeDialog(QDialog):
-    """AI 优化大纲对话框。"""
-
-    def __init__(
-        self,
-        current_content: str,
-        text_service: TextModelService,
-        parent: QWidget | None = None,
-    ):
-        super().__init__(parent)
-        self._current_content = current_content
-        self._text_service = text_service
-        self._optimized_content = ""
-        self._worker: OptimizeWorker | None = None
-        self._setup_ui()
-
-    def _setup_ui(self) -> None:
-        self.setWindowTitle("AI 优化大纲")
-        self.setMinimumSize(700, 600)
-
-        layout = QVBoxLayout(self)
-        layout.setSpacing(16)
-
-        # 当前大纲预览
-        preview_label = QLabel("当前大纲内容")
-        preview_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #333;")
-        layout.addWidget(preview_label)
-
-        self.preview_text = QTextEdit()
-        self.preview_text.setPlainText(self._current_content)
-        self.preview_text.setReadOnly(True)
-        self.preview_text.setMaximumHeight(150)
-        self.preview_text.setStyleSheet(
-            """
-            QTextEdit {
-                border: 1px solid #E0E0E0;
-                border-radius: 6px;
-                padding: 8px;
-                font-size: 13px;
-                background: #F8F8F8;
-                color: #666;
-            }
-            """
-        )
-        layout.addWidget(self.preview_text)
-
-        # 模型选择
-        model_label = QLabel("选择模型")
-        model_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #333;")
-        layout.addWidget(model_label)
-
-        self.model_combo = ComboBox()
-        self.model_combo.addItems([
-            "qwen-max (通义千问旗舰版)",
-            "qwen-plus (通义千问增强版)",
-            "qwen-turbo (通义千问极速版)",
-        ])
-        self.model_combo.setCurrentIndex(0)
-        layout.addWidget(self.model_combo)
-
-        # 优化要求输入
-        req_label = QLabel("优化要求")
-        req_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #333;")
-        layout.addWidget(req_label)
-
-        self.requirement_text = QTextEdit()
-        self.requirement_text.setPlaceholderText(
-            "请输入对大纲的优化要求，例如：\n"
-            "- 增加更多细节描述\n"
-            "- 调整结构使其更有逻辑性\n"
-            "- 添加时间线规划\n"
-            "- 补充角色设定部分"
-        )
-        self.requirement_text.setMinimumHeight(120)
-        self.requirement_text.setStyleSheet(
-            """
-            QTextEdit {
-                border: 1px solid #E0E0E0;
-                border-radius: 6px;
-                padding: 10px;
-                font-size: 14px;
-                background: white;
-            }
-            QTextEdit:focus {
-                border: 1px solid #0078D4;
-            }
-            """
-        )
-        layout.addWidget(self.requirement_text)
-
-        # 加载状态
-        self.loading_widget = QWidget()
-        loading_layout = QHBoxLayout(self.loading_widget)
-        loading_layout.setContentsMargins(0, 8, 0, 8)
-        loading_layout.setSpacing(12)
-
-        self.progress_ring = ProgressRing()
-        self.progress_ring.setFixedSize(24, 24)
-        self.progress_ring.hide()
-        loading_layout.addWidget(self.progress_ring)
-
-        self.status_label = QLabel("")
-        self.status_label.setStyleSheet("font-size: 13px; color: #666;")
-        loading_layout.addWidget(self.status_label, stretch=1)
-
-        layout.addWidget(self.loading_widget)
-
-        # 按钮
-        button_box = QDialogButtonBox()
-        self.optimize_btn = button_box.addButton("开始优化", QDialogButtonBox.ButtonRole.AcceptRole)
-        self.optimize_btn.setObjectName("primaryButton")
-        cancel_btn = button_box.addButton("取消", QDialogButtonBox.ButtonRole.RejectRole)
-
-        button_box.accepted.connect(self._on_optimize)
-        button_box.rejected.connect(self.reject)
-
-        layout.addWidget(button_box)
-
-    def _on_optimize(self) -> None:
-        """开始优化。"""
-        requirement = self.requirement_text.toPlainText().strip()
-        if not requirement:
-            QMessageBox.warning(self, "提示", "请输入优化要求")
-            return
-
-        # 解析模型名称
-        model_text = self.model_combo.currentText()
-        model = model_text.split(" ")[0]  # 提取 "qwen-max" 部分
-
-        # 禁用输入
-        self.requirement_text.setEnabled(False)
-        self.model_combo.setEnabled(False)
-        self.optimize_btn.setEnabled(False)
-
-        # 显示加载状态
-        self.progress_ring.show()
-        self.status_label.setText("正在调用 AI 模型优化大纲...")
-
-        # 启动后台线程
-        self._worker = OptimizeWorker(
-            self._text_service, self._current_content, requirement, model
-        )
-        self._worker.finished.connect(self._on_optimize_success)
-        self._worker.failed.connect(self._on_optimize_failed)
-        self._worker.start()
-
-    def _on_optimize_success(self, optimized_content: str) -> None:
-        """优化成功。"""
-        self._optimized_content = optimized_content
-        self.progress_ring.hide()
-        self.status_label.setText("")
-        self.accept()
-
-    def _on_optimize_failed(self, error_msg: str) -> None:
-        """优化失败。"""
-        self.progress_ring.hide()
-        self.status_label.setText("")
-
-        # 恢复输入
-        self.requirement_text.setEnabled(True)
-        self.model_combo.setEnabled(True)
-        self.optimize_btn.setEnabled(True)
-
-        QMessageBox.critical(self, "优化失败", f"AI 优化失败：{error_msg}")
-
-    def get_optimized_content(self) -> str:
-        """获取优化后的内容。"""
-        return self._optimized_content
-
-
 class HistoryListItem(QWidget):
     """历史版本列表项。"""
 
@@ -251,16 +81,262 @@ class HistoryListItem(QWidget):
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(8)
 
-        # 时间标签
         time_label = QLabel(self._history.created_at.strftime("%Y-%m-%d %H:%M:%S"))
         time_label.setStyleSheet("font-size: 13px; color: #666;")
         layout.addWidget(time_label, stretch=1)
 
-        # 恢复按钮
         restore_btn = PushButton("恢复")
         restore_btn.setFixedHeight(28)
         restore_btn.clicked.connect(lambda: self.restore_clicked.emit(self._history.id))
         layout.addWidget(restore_btn)
+
+
+class HistoryDialog(QDialog):
+    """历史版本弹出对话框。"""
+
+    restore_requested = pyqtSignal(str)  # history_id
+
+    def __init__(
+        self,
+        outline_id: str,
+        outline_service: OutlineService,
+        parent: QWidget | None = None,
+    ):
+        super().__init__(parent)
+        self._outline_id = outline_id
+        self._service = outline_service
+        self.setWindowTitle("历史版本")
+        self.setFixedSize(400, 500)
+        self._setup_ui()
+        self._load_history()
+
+    def _setup_ui(self) -> None:
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(12)
+
+        self._list = QListWidget()
+        self._list.setStyleSheet(
+            """
+            QListWidget {
+                border: 1px solid #E0E0E0;
+                border-radius: 8px;
+                background: white;
+            }
+            QListWidget::item {
+                border-bottom: 1px solid #F0F0F0;
+                padding: 0px;
+            }
+            QListWidget::item:hover {
+                background: #F5F5F5;
+            }
+            QListWidget::item:selected {
+                background: #E3F2FD;
+            }
+            """
+        )
+        layout.addWidget(self._list)
+
+    def _load_history(self) -> None:
+        self._list.clear()
+        history_list = self._service.list_history(self._outline_id)
+
+        if not history_list:
+            empty_item = QListWidgetItem(self._list)
+            empty_widget = QLabel("暂无历史版本")
+            empty_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            empty_widget.setStyleSheet("color: #999; padding: 20px;")
+            empty_item.setSizeHint(empty_widget.sizeHint())
+            self._list.addItem(empty_item)
+            self._list.setItemWidget(empty_item, empty_widget)
+            return
+
+        for history in history_list:
+            item = QListWidgetItem(self._list)
+            widget = HistoryListItem(history)
+            widget.restore_clicked.connect(self._on_restore)
+            item.setSizeHint(widget.sizeHint())
+            self._list.addItem(item)
+            self._list.setItemWidget(item, widget)
+
+    def _on_restore(self, history_id: str) -> None:
+        self.restore_requested.emit(history_id)
+        self.accept()
+
+
+class _ChatBubble(QWidget):
+    """轻量聊天气泡，区分用户和 AI 对齐方向。"""
+
+    def __init__(self, role: str, text: str, parent: QWidget | None = None):
+        super().__init__(parent)
+        self._setup_ui(role, text)
+
+    def _setup_ui(self, role: str, text: str) -> None:
+        outer = QHBoxLayout(self)
+        outer.setContentsMargins(12, 2, 12, 2)
+
+        is_user = role == "user"
+
+        if is_user:
+            outer.addStretch(1)
+
+        bg = "#DCF8C6" if is_user else "#FFFFFF"
+        self.setMaximumWidth(400)
+
+        frame = QFrame()
+        frame.setStyleSheet(f"QFrame {{ background-color: {bg}; border-radius: 10px; }}")
+
+        inner = QVBoxLayout(frame)
+        inner.setContentsMargins(10, 8, 10, 8)
+
+        label = QLabel(text)
+        label.setWordWrap(True)
+        label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        label.setStyleSheet("color: #333; background: transparent; font-size: 13px;")
+        inner.addWidget(label)
+
+        outer.addWidget(frame)
+
+        if is_user:
+            pass  # stretch already pushes frame right
+        else:
+            outer.addStretch(1)
+
+
+class OutlineChatPanel(QWidget):
+    """右侧 AI 对话面板，用于通过对话修改大纲内容。"""
+
+    content_updated = pyqtSignal(str)  # AI 返回的新内容
+
+    def __init__(
+        self,
+        text_service: TextModelService,
+        parent: QWidget | None = None,
+    ):
+        super().__init__(parent)
+        self._text_service = text_service
+        self._worker: OptimizeWorker | None = None
+        self._current_content: str = ""
+        self._setup_ui()
+
+    def _setup_ui(self) -> None:
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        # 标题
+        header = QLabel("  AI 助手")
+        header.setFixedHeight(44)
+        header.setStyleSheet(
+            "font-size: 14px; font-weight: bold; color: #333; "
+            "border-bottom: 1px solid #E0E0E0; padding: 12px;"
+        )
+        layout.addWidget(header)
+
+        # 消息滚动区域
+        self._scroll = QScrollArea()
+        self._scroll.setWidgetResizable(True)
+        self._scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self._scroll.setStyleSheet("QScrollArea { border: none; background: #F7F7F7; }")
+
+        self._container = QWidget()
+        self._container.setStyleSheet("background: #F7F7F7;")
+        self._msg_layout = QVBoxLayout(self._container)
+        self._msg_layout.setContentsMargins(0, 8, 0, 8)
+        self._msg_layout.setSpacing(6)
+        self._msg_layout.addStretch()
+
+        self._scroll.setWidget(self._container)
+        layout.addWidget(self._scroll, stretch=1)
+
+        # 输入区域
+        input_area = QWidget()
+        input_area.setStyleSheet(
+            "QWidget { background: #FAFAFA; border-top: 1px solid #E0E0E0; }"
+        )
+        input_layout = QHBoxLayout(input_area)
+        input_layout.setContentsMargins(12, 8, 12, 8)
+        input_layout.setSpacing(8)
+
+        self._input = TextEdit()
+        self._input.setPlaceholderText("描述你想修改的内容…")
+        self._input.setFixedHeight(42)
+        self._input.installEventFilter(self)
+        input_layout.addWidget(self._input, stretch=1)
+
+        self._send_btn = PrimaryPushButton("发送")
+        self._send_btn.setFixedHeight(42)
+        self._send_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._send_btn.clicked.connect(self._on_send)
+        input_layout.addWidget(self._send_btn)
+
+        layout.addWidget(input_area)
+
+    def set_current_content(self, content: str) -> None:
+        """设置当前大纲内容，供 AI 优化时参考。"""
+        self._current_content = content
+
+    def clear_messages(self) -> None:
+        """清空消息。"""
+        while self._msg_layout.count() > 1:
+            item = self._msg_layout.takeAt(0)
+            w = item.widget()
+            if w:
+                w.setParent(None)
+                w.deleteLater()
+
+    def _add_bubble(self, role: str, text: str) -> None:
+        bubble = _ChatBubble(role, text)
+        count = self._msg_layout.count()
+        self._msg_layout.insertWidget(count - 1, bubble)
+        self._scroll.verticalScrollBar().setValue(
+            self._scroll.verticalScrollBar().maximum()
+        )
+
+    def _on_send(self) -> None:
+        text = self._input.toPlainText().strip()
+        if not text or not self._current_content:
+            return
+
+        self._add_bubble("user", text)
+        self._input.clear()
+
+        # 显示加载状态
+        self._add_bubble("assistant", "正在思考中…")
+        loading_bubble = self._msg_layout.itemAt(self._msg_layout.count() - 2).widget()
+
+        self._send_btn.setEnabled(False)
+
+        self._worker = OptimizeWorker(
+            self._text_service, self._current_content, text, "qwen-max"
+        )
+
+        def on_finished(result: str) -> None:
+            self._send_btn.setEnabled(True)
+            if loading_bubble and loading_bubble.parent():
+                loading_bubble.setParent(None)
+                loading_bubble.deleteLater()
+            self._add_bubble("assistant", "已根据你的要求优化大纲，内容已更新到编辑器。")
+            self._current_content = result
+            self.content_updated.emit(result)
+
+        def on_failed(error: str) -> None:
+            self._send_btn.setEnabled(True)
+            if loading_bubble and loading_bubble.parent():
+                loading_bubble.setParent(None)
+                loading_bubble.deleteLater()
+            self._add_bubble("assistant", f"优化失败：{error}")
+
+        self._worker.finished.connect(on_finished)
+        self._worker.failed.connect(on_failed)
+        self._worker.start()
+
+    def eventFilter(self, obj, event) -> bool:
+        if obj is self._input and event.type() == event.Type.KeyPress:
+            if event.key() == Qt.Key.Key_Return and not event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
+                self._on_send()
+                return True
+        return super().eventFilter(obj, event)
 
 
 class OutlineEditor(QWidget):
@@ -309,12 +385,14 @@ class OutlineEditor(QWidget):
         title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #333;")
         toolbar_layout.addWidget(title_label, stretch=1)
 
-        # AI 优化按钮
-        self.ai_optimize_btn = PushButton("AI 优化")
-        self.ai_optimize_btn.setIcon(FluentIcon.ROBOT)
-        self.ai_optimize_btn.setFixedHeight(36)
-        self.ai_optimize_btn.clicked.connect(self._on_ai_optimize)
-        toolbar_layout.addWidget(self.ai_optimize_btn)
+        # 历史记录按钮（图标）
+        self.history_btn = ToolButton(FluentIcon.HISTORY)
+        self.history_btn.setFixedSize(36, 36)
+        self.history_btn.setIconSize(QSize(18, 18))
+        self.history_btn.setToolTip("历史版本")
+        self.history_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.history_btn.clicked.connect(self._on_show_history)
+        toolbar_layout.addWidget(self.history_btn)
 
         # 保存按钮
         self.save_btn = PrimaryPushButton("保存")
@@ -322,8 +400,8 @@ class OutlineEditor(QWidget):
         self.save_btn.clicked.connect(self._on_save)
         toolbar_layout.addWidget(self.save_btn)
 
-        # 下一步按钮
-        self.next_btn = PrimaryPushButton("下一步")
+        # 生成剧本按钮
+        self.next_btn = PrimaryPushButton("生成剧本")
         self.next_btn.setIcon(FluentIcon.RIGHT_ARROW)
         self.next_btn.setFixedHeight(36)
         self.next_btn.clicked.connect(self._on_next_step)
@@ -331,7 +409,7 @@ class OutlineEditor(QWidget):
 
         layout.addWidget(toolbar)
 
-        # 主内容区域：左侧编辑器 + 右侧历史版本
+        # 主内容区域：左侧编辑器 + 右侧 AI 对话面板
         splitter = QSplitter(Qt.Orientation.Horizontal)
 
         # 左侧：编辑器
@@ -340,12 +418,10 @@ class OutlineEditor(QWidget):
         editor_layout.setContentsMargins(20, 20, 20, 20)
         editor_layout.setSpacing(12)
 
-        # 编辑器标题
         editor_title = QLabel("大纲内容")
         editor_title.setStyleSheet("font-size: 14px; font-weight: bold; color: #333;")
         editor_layout.addWidget(editor_title)
 
-        # 文本编辑器
         self.text_edit = QTextEdit()
         self.text_edit.setPlaceholderText("请输入项目大纲...")
         self.text_edit.setStyleSheet(
@@ -365,46 +441,16 @@ class OutlineEditor(QWidget):
         )
         editor_layout.addWidget(self.text_edit, stretch=1)
 
-        # 右侧：历史版本
-        history_widget = QWidget()
-        history_widget.setFixedWidth(320)
-        history_layout = QVBoxLayout(history_widget)
-        history_layout.setContentsMargins(20, 20, 20, 20)
-        history_layout.setSpacing(12)
-
-        # 历史版本标题
-        history_title = QLabel("历史版本")
-        history_title.setStyleSheet("font-size: 14px; font-weight: bold; color: #333;")
-        history_layout.addWidget(history_title)
-
-        # 历史版本列表
-        self.history_list = QListWidget()
-        self.history_list.setStyleSheet(
-            """
-            QListWidget {
-                border: 1px solid #E0E0E0;
-                border-radius: 8px;
-                background: white;
-            }
-            QListWidget::item {
-                border-bottom: 1px solid #F0F0F0;
-                padding: 0px;
-            }
-            QListWidget::item:hover {
-                background: #F5F5F5;
-            }
-            QListWidget::item:selected {
-                background: #E3F2FD;
-            }
-            """
-        )
-        history_layout.addWidget(self.history_list, stretch=1)
+        # 右侧：AI 对话面板
+        self._chat_panel = OutlineChatPanel(self._text_service)
+        self._chat_panel.setMinimumWidth(300)
+        self._chat_panel.content_updated.connect(self._on_chat_content_updated)
 
         splitter.addWidget(editor_widget)
-        splitter.addWidget(history_widget)
+        splitter.addWidget(self._chat_panel)
         splitter.setStretchFactor(0, 1)
         splitter.setStretchFactor(1, 0)
-        splitter.setSizes([700, 320])
+        splitter.setSizes([700, 360])
 
         layout.addWidget(splitter, stretch=1)
 
@@ -413,39 +459,24 @@ class OutlineEditor(QWidget):
         self._current_project_id = project_id
         self._current_outline = self._service.get_or_create_outline(project_id)
 
-        # 加载大纲内容
         self.text_edit.setPlainText(self._current_outline.content)
+        self._chat_panel.set_current_content(self._current_outline.content)
+        self._chat_panel.clear_messages()
 
-        # 加载历史版本
-        self._load_history()
+    def _on_chat_content_updated(self, new_content: str) -> None:
+        """AI 对话返回优化后的内容时，更新编辑器。"""
+        self.text_edit.setPlainText(new_content)
+        if self._current_outline:
+            self._current_outline.content = new_content
 
-    def _load_history(self) -> None:
-        """加载历史版本列表。"""
-        self.history_list.clear()
-
+    def _on_show_history(self) -> None:
+        """弹出历史版本对话框。"""
         if not self._current_outline:
             return
 
-        history_list = self._service.list_history(self._current_outline.id)
-
-        if not history_list:
-            # 显示空状态
-            empty_item = QListWidgetItem(self.history_list)
-            empty_widget = QLabel("暂无历史版本")
-            empty_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            empty_widget.setStyleSheet("color: #999; padding: 20px;")
-            empty_item.setSizeHint(empty_widget.sizeHint())
-            self.history_list.addItem(empty_item)
-            self.history_list.setItemWidget(empty_item, empty_widget)
-            return
-
-        for history in history_list:
-            item = QListWidgetItem(self.history_list)
-            widget = HistoryListItem(history)
-            widget.restore_clicked.connect(self._on_restore)
-            item.setSizeHint(widget.sizeHint())
-            self.history_list.addItem(item)
-            self.history_list.setItemWidget(item, widget)
+        dialog = HistoryDialog(self._current_outline.id, self._service, self)
+        dialog.restore_requested.connect(self._on_restore)
+        dialog.exec()
 
     def _on_save(self) -> None:
         """保存大纲。"""
@@ -454,7 +485,6 @@ class OutlineEditor(QWidget):
 
         content = self.text_edit.toPlainText().strip()
 
-        # 检查内容是否有变化
         if content == self._current_outline.content:
             QMessageBox.information(self, "提示", "内容未发生变化")
             return
@@ -463,9 +493,7 @@ class OutlineEditor(QWidget):
             self._service.update_outline(self._current_outline.id, content)
             self._current_outline.content = content
             self._current_outline.updated_at = datetime.now()
-
-            # 重新加载历史版本
-            self._load_history()
+            self._chat_panel.set_current_content(content)
 
             QMessageBox.information(self, "成功", "大纲已保存")
             logger.info(f"保存大纲：{self._current_outline.id}")
@@ -492,7 +520,6 @@ class OutlineEditor(QWidget):
         try:
             self._service.restore_from_history(self._current_outline.id, history_id)
 
-            # 重新加载大纲
             if self._current_project_id:
                 self.load_outline(self._current_project_id)
 
@@ -503,31 +530,11 @@ class OutlineEditor(QWidget):
             logger.exception("恢复历史版本失败")
             QMessageBox.critical(self, "错误", f"恢复失败：{e}")
 
-    def _on_ai_optimize(self) -> None:
-        """AI 优化大纲。"""
-        if not self._current_outline:
-            return
-
-        current_content = self.text_edit.toPlainText()
-
-        # 显示优化对话框
-        dialog = AIOptimizeDialog(current_content, self._text_service, self)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            optimized_content = dialog.get_optimized_content()
-            if optimized_content:
-                # 将优化后的内容填入编辑器
-                self.text_edit.setPlainText(optimized_content)
-                QMessageBox.information(
-                    self, "成功", "AI 优化完成，内容已更新到编辑器。记得保存哦！"
-                )
-                logger.info("AI 优化大纲成功")
-
     def _on_next_step(self) -> None:
-        """下一步：生成剧本。"""
+        """生成剧本。"""
         if not self._current_outline:
             return
 
-        # 检查大纲是否已保存
         current_content = self.text_edit.toPlainText().strip()
         if current_content != self._current_outline.content:
             reply = QMessageBox.question(
@@ -542,7 +549,6 @@ class OutlineEditor(QWidget):
             if reply == QMessageBox.StandardButton.Cancel:
                 return
             elif reply == QMessageBox.StandardButton.Yes:
-                # 保存大纲
                 try:
                     self._service.update_outline(self._current_outline.id, current_content)
                     self._current_outline.content = current_content
@@ -553,5 +559,4 @@ class OutlineEditor(QWidget):
                     QMessageBox.critical(self, "错误", f"保存失败：{e}")
                     return
 
-        # 发射信号，传递大纲内容
         self.next_step_clicked.emit(current_content)

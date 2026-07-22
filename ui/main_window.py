@@ -7,13 +7,16 @@ import os
 import subprocess
 from datetime import datetime
 
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt, QTimer, QObject, pyqtSignal
 from PyQt6.QtWidgets import (
     QHBoxLayout,
     QMessageBox,
     QSplitter,
     QWidget,
     QMainWindow,
+    QDialog,
+    QVBoxLayout,
+    QLabel,
 )
 
 from config.manager import ConfigManager
@@ -55,6 +58,115 @@ def _format_time(dt: datetime) -> str:
 def _app_data_dir() -> str:
     root = os.environ.get("LOCALAPPDATA", os.path.expanduser("~"))
     return os.path.join(root, "ai-video-gui")
+
+
+class _BatchGenerationController(QObject):
+    """批量串行生成控制器：逐个提交任务，等待完成后再提交下一个。"""
+
+    progress = pyqtSignal(int, int, int, int, str)  # index, total, scene, shot, status
+    all_done = pyqtSignal(int, int)  # success_count, failed_count
+
+    def __init__(
+        self,
+        shot_list: list[dict],
+        service: VideoService,
+        polling_service: TaskPollingService,
+        provider_name: str,
+        model_name: str,
+        project,
+        provider_cfg,
+        parent: QObject | None = None,
+    ):
+        super().__init__(parent)
+        self._shot_list = shot_list
+        self._service = service
+        self._polling = polling_service
+        self._provider_name = provider_name
+        self._model_name = model_name
+        self._project = project
+        self._provider_cfg = provider_cfg
+        self._index = 0
+        self._success = 0
+        self._failed = 0
+        self._current_message_id: str | None = None
+
+    def start(self) -> None:
+        self._polling.task_finished.connect(self._on_task_finished)
+        self._polling.task_failed.connect(self._on_task_failed)
+        self._submit_next()
+
+    def _submit_next(self) -> None:
+        if self._index >= len(self._shot_list):
+            self._polling.task_finished.disconnect(self._on_task_finished)
+            self._polling.task_failed.disconnect(self._on_task_failed)
+            self.all_done.emit(self._success, self._failed)
+            return
+
+        shot = self._shot_list[self._index]
+        scene_number = shot["scene_number"]
+        shot_number = shot["shot_number"]
+        prompt = shot["prompt"]
+        project_id = shot["project_id"]
+
+        self.progress.emit(self._index, len(self._shot_list), scene_number, shot_number, "正在提交任务...")
+
+        try:
+            conv_title = f"分镜视频-场{scene_number}镜{shot_number}"
+            conv = self._service.create_conversation(
+                self._provider_name, self._model_name, conv_title,
+                project_id=project_id, is_hidden=True,
+            )
+
+            params = (self._provider_cfg.default_params if self._provider_cfg else {}).copy()
+            params["resolution"] = self._project.resolution
+            params["aspect_ratio"] = self._project.aspect_ratio
+
+            msg = self._service.submit_task(
+                conversation_id=conv.id,
+                prompt=prompt,
+                provider_name=self._provider_name,
+                params=params,
+            )
+            self._current_message_id = msg.task_id
+            self.progress.emit(self._index, len(self._shot_list), scene_number, shot_number, f"任务已提交，等待生成... (task: {msg.task_id[:12]}...)")
+            logger.info(f"批量生成 [{self._index + 1}/{len(self._shot_list)}] 场{scene_number}镜{shot_number} 已提交 task_id={msg.task_id}")
+
+        except Exception as e:
+            logger.exception(f"批量生成提交失败：场{scene_number}镜{shot_number}")
+            self._failed += 1
+            self._index += 1
+            self.progress.emit(self._index - 1, len(self._shot_list), scene_number, shot_number, f"提交失败：{e}")
+            self._submit_next()
+
+    def _on_task_finished(self, message_id: str, local_path: str) -> None:
+        msg = self._service._db.get_message(message_id)
+        if not msg or msg.task_id != self._current_message_id:
+            return
+
+        shot = self._shot_list[self._index]
+        self._success += 1
+        self._index += 1
+        self.progress.emit(
+            self._index - 1, len(self._shot_list),
+            shot["scene_number"], shot["shot_number"], "已完成"
+        )
+        logger.info(f"批量生成 [{self._index}/{len(self._shot_list)}] 场{shot['scene_number']}镜{shot['shot_number']} 完成")
+        self._submit_next()
+
+    def _on_task_failed(self, message_id: str, error: str) -> None:
+        msg = self._service._db.get_message(message_id)
+        if not msg or msg.task_id != self._current_message_id:
+            return
+
+        shot = self._shot_list[self._index]
+        self._failed += 1
+        self._index += 1
+        self.progress.emit(
+            self._index - 1, len(self._shot_list),
+            shot["scene_number"], shot["shot_number"], f"失败：{error}"
+        )
+        logger.warning(f"批量生成 [{self._index}/{len(self._shot_list)}] 场{shot['scene_number']}镜{shot['shot_number']} 失败：{error}")
+        self._submit_next()
 
 
 class MainWindow(QMainWindow):
@@ -281,6 +393,7 @@ class MainWindow(QMainWindow):
         # 分镜编辑器信号
         self.shot_editor.back_clicked.connect(self._on_shot_editor_back)
         self.shot_editor.video_generation_requested.connect(self._on_shot_video_generation)
+        self.shot_editor.batch_video_generation_requested.connect(self._on_batch_video_generation)
 
         # 直接生成模式信号
         self.sidebar.new_conversation_clicked.connect(self._on_new_conversation)
@@ -605,18 +718,9 @@ class MainWindow(QMainWindow):
 
         def on_success(shots: list):
             dialog.close()
-            # 需要为每个分镜关联场次号（从剧本解析）
-            # 简单策略：按顺序分配给各场次
-            shots_with_scene = []
-            for shot in shots:
-                # shot_data 中应包含场次信息，如果没有默认为第1场
-                shot["scene_number"] = shot.get("scene_number", 1)
-                shots_with_scene.append(shot)
-
-            # 隐藏剧本编辑器，显示分镜编辑器
             self.script_editor.hide()
             self.shot_editor.show()
-            self.shot_editor.load_project(project_id, shots_with_scene)
+            self.shot_editor.load_project(project_id, shots)
             QMessageBox.information(self, "成功", f"分镜生成完成，共 {len(shots)} 个镜头！")
 
         def on_failed(error_msg: str):
@@ -681,6 +785,89 @@ class MainWindow(QMainWindow):
         except Exception as e:
             logger.exception("提交视频生成任务失败")
             QMessageBox.critical(self, "错误", f"提交任务失败：{e}")
+
+    def _on_batch_video_generation(self, shot_list: list) -> None:
+        """批量串行生成分镜视频。"""
+        if not shot_list:
+            return
+
+        project_id = shot_list[0]["project_id"]
+        project = self._project_service.get_project(project_id)
+        if not project:
+            QMessageBox.warning(self, "错误", "项目不存在")
+            self.shot_editor._generate_all_btn.setEnabled(True)
+            return
+
+        provider_name = self._config.settings.default_provider or "dashscope"
+        provider_cfg = self._config.get_provider(provider_name)
+        if not provider_cfg or not provider_cfg.api_key:
+            QMessageBox.warning(self, "配置错误", f"未配置 {provider_name} 的 API Key")
+            self.shot_editor._generate_all_btn.setEnabled(True)
+            return
+
+        model_name = provider_cfg.default_model if provider_cfg else "wan2.7-t2v"
+
+        # 创建进度对话框
+        dialog = QDialog(self)
+        dialog.setWindowTitle("批量生成视频")
+        dialog.setModal(True)
+        dialog.setFixedSize(420, 200)
+        dialog.setWindowFlag(Qt.WindowType.WindowCloseButtonHint, False)
+
+        layout = QVBoxLayout(dialog)
+        layout.setSpacing(16)
+        layout.setContentsMargins(24, 20, 24, 20)
+
+        from qfluentwidgets import ProgressBar
+        progress_bar = ProgressBar()
+        progress_bar.setRange(0, len(shot_list))
+        progress_bar.setValue(0)
+        layout.addWidget(progress_bar)
+
+        status_label = QLabel(f"准备生成 {len(shot_list)} 个分镜视频...")
+        status_label.setStyleSheet("font-size: 13px; color: #666;")
+        status_label.setWordWrap(True)
+        layout.addWidget(status_label)
+
+        detail_label = QLabel("")
+        detail_label.setStyleSheet("font-size: 12px; color: #999;")
+        detail_label.setWordWrap(True)
+        layout.addWidget(detail_label)
+
+        layout.addStretch()
+
+        dialog.show()
+
+        # 批量生成控制器
+        batch = _BatchGenerationController(
+            shot_list=shot_list,
+            service=self._service,
+            polling_service=self._polling_service,
+            provider_name=provider_name,
+            model_name=model_name,
+            project=project,
+            provider_cfg=provider_cfg,
+        )
+
+        def on_progress(index: int, total: int, scene: int, shot: int, status: str) -> None:
+            progress_bar.setValue(index)
+            status_label.setText(f"正在生成第 {index + 1}/{total} 个视频：场{scene}镜{shot}")
+            detail_label.setText(status)
+
+        def on_all_done(success: int, failed: int) -> None:
+            dialog.close()
+            self.shot_editor._generate_all_btn.setEnabled(True)
+            QMessageBox.information(
+                self, "批量生成完成",
+                f"共 {len(shot_list)} 个任务\n成功：{success}\n失败：{failed}"
+            )
+
+        batch.progress.connect(on_progress)
+        batch.all_done.connect(on_all_done)
+        batch.start()
+
+        # 保持引用避免被回收
+        self._batch_controller = batch
 
     # ───────── 侧边栏事件 ─────────
 

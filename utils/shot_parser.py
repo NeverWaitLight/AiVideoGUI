@@ -23,22 +23,24 @@ class ShotParser:
         """
         解析 Markdown 表格格式的分镜脚本。
 
-        返回：分镜数据列表，每个元素为字典：
-        {
-            "shot_number": int,
-            "shot_size": str (枚举值),
-            "visual_content": str,
-            "camera_movement": str,
-            "sound_dialogue": str,
-            "duration": float,
-            "color_lighting": str
-        }
+        支持两种格式：
+        - 8 列（含场次）：| 场次 | 镜头序号 | 景别 | 画面内容 | 运镜 | 音效/台词 | 时长 | 色调 |
+        - 7 列（无场次）：| 镜头序号 | 景别 | 画面内容 | 运镜 | 音效/台词 | 时长 | 色调 |
+
+        返回：分镜数据列表，每个元素为字典。
         """
         shots = []
-
-        # 匹配 Markdown 表格行（跳过表头和分隔线）
-        # 格式：| 镜头序号 | 景别 | 画面内容描述 | 运镜方式 | 音效/台词 | 时长(秒) | 色调/光影 |
         lines = markdown_text.strip().split("\n")
+
+        # 检测表头格式，判断是否包含场次列
+        has_scene_column = False
+        for line in lines:
+            stripped = line.strip()
+            if "镜头序号" in stripped and "场次" in stripped:
+                has_scene_column = True
+                break
+            if "镜头序号" in stripped:
+                break
 
         for line in lines:
             line = line.strip()
@@ -47,47 +49,53 @@ class ShotParser:
             if not line or line.startswith("#") or "镜头序号" in line or ":---" in line:
                 continue
 
-            # 解析表格行
             if line.startswith("|") and line.endswith("|"):
-                cells = [cell.strip() for cell in line.split("|")[1:-1]]  # 去除首尾的空元素
+                cells = [cell.strip() for cell in line.split("|")[1:-1]]
 
-                # 至少需要 7 列
-                if len(cells) < 7:
-                    continue
+                if has_scene_column:
+                    if len(cells) < 8:
+                        continue
+                    try:
+                        scene_number = int(re.search(r"\d+", cells[0]).group())
+                        shot_number = int(re.search(r"\d+", cells[1]).group())
+                        shot_size_str = cells[2]
+                        visual_content = cells[3]
+                        camera_movement = cells[4]
+                        sound_dialogue = cells[5]
+                        duration_str = cells[6]
+                        color_lighting = cells[7]
+                    except (ValueError, AttributeError, IndexError):
+                        continue
+                else:
+                    if len(cells) < 7:
+                        continue
+                    try:
+                        scene_number = 1
+                        shot_number = int(re.search(r"\d+", cells[0]).group())
+                        shot_size_str = cells[1]
+                        visual_content = cells[2]
+                        camera_movement = cells[3]
+                        sound_dialogue = cells[4]
+                        duration_str = cells[5]
+                        color_lighting = cells[6]
+                    except (ValueError, AttributeError, IndexError):
+                        continue
 
-                # 提取数据
-                try:
-                    shot_number_str = cells[0]
-                    shot_size_str = cells[1]
-                    visual_content = cells[2]
-                    camera_movement = cells[3]
-                    sound_dialogue = cells[4]
-                    duration_str = cells[5]
-                    color_lighting = cells[6]
+                shot_size_key = shot_size_str.split("（")[0].split("(")[0].strip()
+                shot_size = cls.SHOT_SIZE_MAP.get(shot_size_key, ShotSize.MEDIUM_SHOT)
 
-                    # 解析镜头序号
-                    shot_number = int(re.search(r"\d+", shot_number_str).group())
+                duration_match = re.search(r"[\d.]+", duration_str)
+                duration = float(duration_match.group()) if duration_match else 0.0
 
-                    # 解析景别（支持带说明的格式，如"特写（面部特写）"）
-                    shot_size_key = shot_size_str.split("（")[0].split("(")[0].strip()
-                    shot_size = cls.SHOT_SIZE_MAP.get(shot_size_key, ShotSize.MEDIUM_SHOT)
-
-                    # 解析时长
-                    duration_match = re.search(r"[\d.]+", duration_str)
-                    duration = float(duration_match.group()) if duration_match else 0.0
-
-                    shots.append({
-                        "shot_number": shot_number,
-                        "shot_size": shot_size.value,
-                        "visual_content": visual_content,
-                        "camera_movement": camera_movement,
-                        "sound_dialogue": sound_dialogue,
-                        "duration": duration,
-                        "color_lighting": color_lighting,
-                    })
-
-                except (ValueError, AttributeError, IndexError):
-                    # 解析失败，跳过该行
-                    continue
+                shots.append({
+                    "scene_number": scene_number,
+                    "shot_number": shot_number,
+                    "shot_size": shot_size.value,
+                    "visual_content": visual_content,
+                    "camera_movement": camera_movement,
+                    "sound_dialogue": sound_dialogue,
+                    "duration": duration,
+                    "color_lighting": color_lighting,
+                })
 
         return shots
