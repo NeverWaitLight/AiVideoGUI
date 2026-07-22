@@ -239,6 +239,7 @@ class VideoPlayerPage(QWidget):
 
         self._current_index = 0
         self._update_playlist_info()
+        logger.info(f"加载播放列表完成，共 {len(self._playlist)} 个视频，开始播放第一个")
         self._play_current()
 
     def _generate_playlist(self, project_id: str) -> list[PlaylistItem]:
@@ -277,6 +278,7 @@ class VideoPlayerPage(QWidget):
     def _play_current(self) -> None:
         """播放当前索引的视频。"""
         if not (0 <= self._current_index < len(self._playlist)):
+            logger.warning("播放索引超出范围")
             return
 
         item = self._playlist[self._current_index]
@@ -286,6 +288,10 @@ class VideoPlayerPage(QWidget):
         self._update_playlist_info()
 
         logger.info(f"播放视频：场{item.scene_number}镜{item.shot_number}-第{item.sequence}次生成 ({item.media_file.filename})")
+
+        # 显式启动播放，确保视频立即开始
+        self._player.play()
+        logger.debug("已调用 player.play() 启动播放")
 
     def _update_overlay(self, item: PlaylistItem) -> None:
         """更新叠加层文本。"""
@@ -304,14 +310,30 @@ class VideoPlayerPage(QWidget):
 
     def _on_media_status_changed(self, status: QMediaPlayer.MediaStatus) -> None:
         """媒体状态改变（关键：自动切换下一个）。"""
+        # 记录所有状态变化，便于诊断
+        status_name = {
+            QMediaPlayer.MediaStatus.NoMedia: "NoMedia",
+            QMediaPlayer.MediaStatus.LoadingMedia: "LoadingMedia",
+            QMediaPlayer.MediaStatus.LoadedMedia: "LoadedMedia",
+            QMediaPlayer.MediaStatus.StalledMedia: "StalledMedia",
+            QMediaPlayer.MediaStatus.BufferingMedia: "BufferingMedia",
+            QMediaPlayer.MediaStatus.BufferedMedia: "BufferedMedia",
+            QMediaPlayer.MediaStatus.EndOfMedia: "EndOfMedia",
+            QMediaPlayer.MediaStatus.InvalidMedia: "InvalidMedia",
+        }.get(status, f"Unknown({status})")
+        logger.debug(f"媒体状态变化: {status_name}")
+
         if status == QMediaPlayer.MediaStatus.LoadedMedia:
-            # 加载完成，立即播放
+            # 加载完成，确保播放（虽然 _play_current 已经调用了 play）
             if self._player.playbackState() != QMediaPlayer.PlaybackState.PlayingState:
+                logger.debug("LoadedMedia 状态下播放器未运行，调用 play()")
                 self._player.play()
         elif status == QMediaPlayer.MediaStatus.EndOfMedia:
             # 播放结束，切换下一个
-            logger.info("视频播放结束，自动切换下一个")
+            logger.info(f"视频播放结束 [索引 {self._current_index + 1}/{len(self._playlist)}]，自动切换下一个")
             self._play_next()
+        elif status == QMediaPlayer.MediaStatus.InvalidMedia:
+            logger.error(f"无效的媒体文件，无法播放当前视频 [索引 {self._current_index + 1}]")
 
     def _on_playback_state_changed(self, state: QMediaPlayer.PlaybackState) -> None:
         """播放状态改变（更新播放/暂停按钮图标）。"""
@@ -350,16 +372,17 @@ class VideoPlayerPage(QWidget):
         """播放下一个视频。"""
         if self._current_index < len(self._playlist) - 1:
             self._current_index += 1
+            logger.info(f"切换到下一个视频 [索引 {self._current_index + 1}/{len(self._playlist)}]")
             self._play_current()
         else:
-            # 播放完毕，停止
-            logger.info("播放列表已全部播放完毕")
-            self._player.stop()
+            # 播放完毕，停止（停留在最后一帧）
+            logger.info("播放列表已全部播放完毕，停留在最后一帧")
 
     def _play_previous(self) -> None:
         """播放上一个视频。"""
         if self._current_index > 0:
             self._current_index -= 1
+            logger.info(f"切换到上一个视频 [索引 {self._current_index + 1}/{len(self._playlist)}]")
             self._play_current()
 
     def _toggle_mute(self) -> None:
