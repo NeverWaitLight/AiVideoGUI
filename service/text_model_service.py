@@ -259,7 +259,7 @@ class TextModelService:
         script_content: str,
         art_style: str = "",
         model: str | None = None,
-    ) -> list[dict]:
+    ) -> dict:
         """
         根据剧本生成分镜头脚本，并解析为结构化数据。
 
@@ -269,7 +269,8 @@ class TextModelService:
             model: 使用的模型名称，默认使用 qwen-max
 
         Returns:
-            分镜列表（字典格式，待转换为 Shot 对象）
+            包含 shots 和 characters 的字典：
+            {"shots": list[dict], "characters": list[dict]}
 
         Raises:
             RuntimeError: API 调用失败或解析失败
@@ -314,7 +315,18 @@ class TextModelService:
 - 全片视觉风格需严格统一。
 - 每个镜头的描述必须足够具体，确保文生图AI（如Midjourney）或视频生成AI可直接理解并生成画面。
 
-直接输出分镜表格，不要添加任何解释或说明。"""
+**第五步：输出角色设计表**
+在分镜表格之后，请额外输出一张角色设计表，提取剧本和分镜中出现的所有角色。格式如下：
+
+| 角色名 | 引用代号 | 形象描述 |
+| :--- | :--- | :--- |
+
+各列要求：
+1. **角色名**：角色的中文名字。
+2. **引用代号**：使用 CHAR_A、CHAR_B、CHAR_C 等格式，按出场顺序编号。
+3. **形象描述**：高度具体、可视化的外貌描述（如年龄、性别、发型、发色、体型、服装、标志性特征等），确保视频生成AI能据此保持角色一致性。
+
+直接输出分镜表格和角色设计表，不要添加任何解释或说明。"""
 
         user_prompt = f"""剧本内容：
 
@@ -371,13 +383,14 @@ class TextModelService:
 
             logger.info("分镜生成成功")
 
-            # 解析分镜为结构化数据
+            # 解析分镜和角色为结构化数据
             from utils.shot_parser import ShotParser
 
             shots = ShotParser.parse(storyboard_content)
-            logger.info(f"分镜解析成功：共 {len(shots)} 个镜头")
+            characters = ShotParser.parse_characters(storyboard_content)
+            logger.info(f"分镜解析成功：共 {len(shots)} 个镜头，{len(characters)} 个角色")
 
-            return shots
+            return {"shots": shots, "characters": characters}
 
         except requests.exceptions.RequestException as e:
             logger.exception("调用文本模型 API 失败")

@@ -20,6 +20,7 @@ from PyQt6.QtWidgets import (
 )
 
 from config.manager import ConfigManager
+from service.character_service import CharacterService
 from service.chat_service import ChatService
 from service.media_service import MediaService
 from service.outline_service import OutlineService
@@ -31,6 +32,7 @@ from service.text_model_service import TextModelService
 from service.video_service import VideoService, _PROVIDER_REGISTRY
 from storage.database import DatabaseManager
 from utils import paths
+from ui.character_page import CharacterPage
 from ui.chat_area import ChatArea
 from ui.media_library import MediaLibrary
 from ui.outline_editor import OutlineEditor
@@ -253,6 +255,9 @@ class MainWindow(QMainWindow):
         # 分镜服务
         self._shot_service = ShotService(self._db)
 
+        # 角色服务
+        self._character_service = CharacterService(self._db)
+
         # 文本模型服务
         self._text_model_service = TextModelService(self._config)
 
@@ -375,6 +380,11 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.shot_editor)
         self.shot_editor.hide()
 
+        # 第三层：角色管理页
+        self.character_page = CharacterPage(self._character_service)
+        layout.addWidget(self.character_page)
+        self.character_page.hide()
+
         # 第三层：视频播放器
         from ui.video_player_page import VideoPlayerPage
         self.video_player_page = VideoPlayerPage(self._db)
@@ -433,6 +443,9 @@ class MainWindow(QMainWindow):
         self.shot_editor.back_clicked.connect(self._on_shot_editor_back)
         self.shot_editor.video_generation_requested.connect(self._on_shot_video_generation)
         self.shot_editor.batch_video_generation_requested.connect(self._on_batch_video_generation)
+
+        # 角色管理页信号
+        self.character_page.back_clicked.connect(self._on_character_page_back)
 
         # 视频播放器信号
         self.video_player_page.back_clicked.connect(self._on_video_player_back)
@@ -550,6 +563,7 @@ class MainWindow(QMainWindow):
             self.outline_editor.hide()
             self.script_editor.hide()
             self.shot_editor.hide()
+            self.character_page.hide()
             self.video_player_page.show()
             self.video_player_page.load_playlist(project_id)
         elif module_name == "outline":
@@ -558,6 +572,8 @@ class MainWindow(QMainWindow):
             self.project_conversation_widget.hide()
             self.project_media_library.hide()
             self.script_editor.hide()
+            self.shot_editor.hide()
+            self.character_page.hide()
             self.video_player_page.hide()
             self.outline_editor.show()
             self.outline_editor.load_outline(project_id)
@@ -567,6 +583,8 @@ class MainWindow(QMainWindow):
             self.project_conversation_widget.hide()
             self.project_media_library.hide()
             self.outline_editor.hide()
+            self.shot_editor.hide()
+            self.character_page.hide()
             self.video_player_page.hide()
             self.script_editor.show()
             self.script_editor.load_script(project_id)
@@ -576,6 +594,8 @@ class MainWindow(QMainWindow):
             self.project_conversation_widget.hide()
             self.outline_editor.hide()
             self.script_editor.hide()
+            self.shot_editor.hide()
+            self.character_page.hide()
             self.video_player_page.hide()
             self.project_media_library.show()
             self.project_media_library.load_files(project_id=project_id)
@@ -583,12 +603,21 @@ class MainWindow(QMainWindow):
             # 进入分镜编辑器
             logger.info(f"打开项目 {project_id} 的分镜模块")
             self.project_detail_page.hide()
+            self.character_page.hide()
             self.video_player_page.hide()
             self.shot_editor.show()
             self.shot_editor.load_project(project_id)
         elif module_name == "character":
-            # TODO: 进入角色管理
+            # 进入角色管理
             logger.info(f"打开项目 {project_id} 的角色模块")
+            self.project_detail_page.hide()
+            self.outline_editor.hide()
+            self.script_editor.hide()
+            self.shot_editor.hide()
+            self.video_player_page.hide()
+            self.project_media_library.hide()
+            self.character_page.show()
+            self.character_page.load_project(project_id)
 
     def _on_project_detail_back(self) -> None:
         """从项目详情页返回项目网格。"""
@@ -620,6 +649,13 @@ class MainWindow(QMainWindow):
     def _on_shot_editor_back(self) -> None:
         """从分镜编辑器返回项目详情页。"""
         self.shot_editor.hide()
+        self.project_detail_page.show()
+        if self._current_project_id:
+            self.project_detail_page.set_project(self._current_project_id)
+
+    def _on_character_page_back(self) -> None:
+        """从角色管理页返回项目详情页。"""
+        self.character_page.hide()
         self.project_detail_page.show()
         if self._current_project_id:
             self.project_detail_page.set_project(self._current_project_id)
@@ -770,7 +806,7 @@ class MainWindow(QMainWindow):
         from PyQt6.QtCore import QThread, pyqtSignal
 
         class StoryboardGenerateWorker(QThread):
-            finished = pyqtSignal(list)  # shots
+            finished = pyqtSignal(dict)  # {"shots": list, "characters": list}
             failed = pyqtSignal(str)
 
             def __init__(self, text_service, script_content):
@@ -780,19 +816,27 @@ class MainWindow(QMainWindow):
 
             def run(self):
                 try:
-                    shots = self.text_service.generate_storyboard(self.script_content)
-                    self.finished.emit(shots)
+                    result = self.text_service.generate_storyboard(self.script_content)
+                    self.finished.emit(result)
                 except Exception as e:
                     logger.exception("生成分镜失败")
                     self.failed.emit(str(e))
 
-        def on_success(shots: list):
+        def on_success(result: dict):
             try:
                 self._storyboard_dialog.close()
+                shots = result.get("shots", [])
+                characters = result.get("characters", [])
+
+                # 自动保存提取的角色到数据库
+                if characters and project_id:
+                    self._save_extracted_characters(project_id, characters)
+
                 self.script_editor.hide()
                 self.shot_editor.show()
                 self.shot_editor.load_project(project_id, shots)
-                QMessageBox.information(self, "成功", f"分镜生成完成，共 {len(shots)} 个镜头！")
+                char_info = f"，{len(characters)} 个角色" if characters else ""
+                QMessageBox.information(self, "成功", f"分镜生成完成，共 {len(shots)} 个镜头{char_info}！")
             except Exception as e:
                 logger.exception("生成分镜后处理失败")
                 self._storyboard_dialog.close()
@@ -813,9 +857,43 @@ class MainWindow(QMainWindow):
         # 保持 worker 引用避免被回收
         self._storyboard_worker = worker
 
+    def _save_extracted_characters(self, project_id: str, characters: list[dict]) -> None:
+        """将 AI 提取的角色保存到数据库（跳过已存在的引用代号）。"""
+        import uuid
+        from datetime import datetime
+        from models.data_models import Character
+
+        new_chars = []
+        for char_data in characters:
+            ref_code = char_data.get("ref_code", "")
+            if not ref_code:
+                continue
+            # 跳过已存在的角色（按 ref_code 去重）
+            existing = self._character_service.get_by_ref_code(project_id, ref_code)
+            if existing:
+                logger.info(f"角色 {ref_code} 已存在，跳过")
+                continue
+            new_chars.append(Character(
+                id=0,
+                uuid=str(uuid.uuid4()),
+                project_id=project_id,
+                name=char_data.get("name", ""),
+                ref_code=ref_code,
+                description=char_data.get("description", ""),
+                created_at=datetime.now(),
+                updated_at=datetime.now(),
+            ))
+
+        if new_chars:
+            self._character_service.batch_create_characters(new_chars)
+            logger.info(f"自动保存 {len(new_chars)} 个角色到项目 {project_id}")
+
     def _on_shot_video_generation(self, shot_id: str, scene_number: int, shot_number: int, prompt: str, project_id: str) -> None:
         """处理分镜视频生成请求。"""
         logger.info(f"分镜视频生成请求：shot_id={shot_id}, scene={scene_number}, shot={shot_number}, project={project_id}")
+
+        # 用角色形象描述增强提示词
+        prompt = self._character_service.enrich_prompt_with_characters(prompt, project_id)
 
         # 获取项目属性（分辨率和比例）
         project = self._project_service.get_project(project_id)
@@ -875,6 +953,13 @@ class MainWindow(QMainWindow):
             return
 
         project_id = shot_list[0]["project_id"]
+
+        # 用角色形象描述增强所有提示词
+        for shot_item in shot_list:
+            shot_item["prompt"] = self._character_service.enrich_prompt_with_characters(
+                shot_item["prompt"], project_id
+            )
+
         project = self._project_service.get_project(project_id)
         if not project:
             QMessageBox.warning(self, "错误", "项目不存在")

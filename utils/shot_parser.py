@@ -100,3 +100,54 @@ class ShotParser:
                 })
 
         return shots
+
+    @classmethod
+    def parse_characters(cls, markdown_text: str) -> list[dict]:
+        """
+        从 AI 输出中解析角色设计表。
+
+        查找形如 | 角色名 | 引用代号 | 形象描述 | 的表格并解析。
+
+        Returns:
+            角色列表，每个元素包含 name、ref_code、description。
+        """
+        characters = []
+        lines = markdown_text.strip().split("\n")
+
+        in_char_table = False
+        header_found = False
+
+        for line in lines:
+            line = line.strip()
+
+            if not line:
+                continue
+
+            # 检测角色表头
+            if "角色名" in line and "引用代号" in line:
+                header_found = True
+                in_char_table = True
+                continue
+
+            # 跳过分隔行
+            if in_char_table and ":---" in line:
+                continue
+
+            # 解析表格行
+            if in_char_table and line.startswith("|") and line.endswith("|"):
+                cells = [cell.strip() for cell in line.split("|")[1:-1]]
+                if len(cells) >= 3:
+                    name = cells[0]
+                    ref_code = cells[1]
+                    description = cells[2]
+                    if name and ref_code:
+                        characters.append({
+                            "name": name,
+                            "ref_code": ref_code,
+                            "description": description,
+                        })
+            elif in_char_table and not line.startswith("|"):
+                # 遇到非表格行，角色表结束
+                in_char_table = False
+
+        return characters

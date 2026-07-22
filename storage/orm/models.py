@@ -34,6 +34,9 @@ class ProjectEntity(Base):
     shot_histories: Mapped[List["ShotHistoryEntity"]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )
+    characters: Mapped[List["CharacterEntity"]] = relationship(
+        back_populates="project", cascade="all, delete-orphan"
+    )
 
 
 class ConversationEntity(Base):
@@ -305,3 +308,52 @@ class ShotHistoryEntity(Base):
 
     # 索引
     __table_args__ = (Index("idx_history_shot", "project_id", "created_at"),)
+
+
+class CharacterEntity(Base):
+    """角色表。"""
+
+    __tablename__ = "characters"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    uuid: Mapped[str] = mapped_column(String(36), unique=True, nullable=False)
+    project_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    ref_code: Mapped[str] = mapped_column(String(100), nullable=False)
+    design_image: Mapped[str] = mapped_column(String(500), nullable=False, default="")
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+    # 关系
+    project: Mapped["ProjectEntity"] = relationship(back_populates="characters")
+    history: Mapped[List["CharacterHistoryEntity"]] = relationship(
+        back_populates="character", cascade="all, delete-orphan"
+    )
+
+    # 索引
+    __table_args__ = (
+        Index("idx_character_project", "project_id"),
+        Index("idx_character_ref_code", "project_id", "ref_code"),
+    )
+
+
+class CharacterHistoryEntity(Base):
+    """角色编辑历史表。"""
+
+    __tablename__ = "character_history"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    character_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("characters.uuid", ondelete="CASCADE"), nullable=False
+    )
+    snapshot: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+    # 关系
+    character: Mapped["CharacterEntity"] = relationship(back_populates="history")
+
+    # 索引
+    __table_args__ = (Index("idx_history_character", "character_id", "created_at"),)

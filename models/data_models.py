@@ -216,3 +216,26 @@ class ShotHistory:
     project_id: str  # 关联项目ID（分镜是项目级别的）
     shots_snapshot: str  # 所有分镜的JSON快照
     created_at: datetime  # 该版本创建时间
+
+
+@dataclass
+class Character:
+    """角色数据结构"""
+    id: int  # 自增ID
+    uuid: str  # UUID标识
+    project_id: str  # 所属项目ID
+    name: str  # 角色名
+    ref_code: str  # 引用代号（如 CHAR_A）
+    design_image: str = ""  # 角色设计图路径（可为空）
+    description: str = ""  # 形象描述
+    created_at: datetime = field(default_factory=datetime.now)
+    updated_at: datetime = field(default_factory=datetime.now)
+
+
+@dataclass
+class CharacterHistory:
+    """角色编辑历史（快照单个角色的状态）"""
+    id: str
+    character_id: str  # 关联角色的UUID
+    snapshot: str  # JSON快照（name + ref_code + description + design_image）
+    created_at: datetime  # 该版本创建时间

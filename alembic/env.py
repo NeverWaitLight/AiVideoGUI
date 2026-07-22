@@ -25,6 +25,8 @@ from storage.orm.models import (
     ScriptHistoryEntity,
     ShotEntity,
     ShotHistoryEntity,
+    CharacterEntity,
+    CharacterHistoryEntity,
 )
 
 # this is the Alembic Config object, which provides

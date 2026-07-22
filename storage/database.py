@@ -7,6 +7,8 @@ from datetime import datetime
 from typing import Optional
 
 from models.data_models import (
+    Character,
+    CharacterHistory,
     Conversation,
     MediaFile,
     MediaType,
@@ -22,6 +24,7 @@ from models.data_models import (
 )
 from storage.orm.base import create_all_tables, get_session, init_engine
 from storage.repositories.active_task import ActiveTaskRepository
+from storage.repositories.character import CharacterHistoryRepository, CharacterRepository
 from storage.repositories.conversation import ConversationRepository
 from storage.repositories.media import MediaRepository
 from storage.repositories.message import MessageRepository
@@ -777,6 +780,81 @@ class DatabaseManager:
                     created_at=datetime.now(),
                     updated_at=datetime.now(),
                 ))
+
+    # ========== Character 相关方法 ==========
+
+    def list_characters(self, project_id: str) -> list[Character]:
+        """查询项目的所有角色。"""
+        session = self._get_session()
+        repo = CharacterRepository(session)
+        return repo.list_by_project(project_id)
+
+    def get_character(self, character_uuid: str) -> Character | None:
+        """根据 UUID 查询角色。"""
+        session = self._get_session()
+        repo = CharacterRepository(session)
+        return repo.get_by_id(character_uuid)
+
+    def create_character(self, character: Character) -> Character:
+        """创建角色。"""
+        with self._lock:
+            session = self._get_session()
+            repo = CharacterRepository(session)
+            return repo.create(character)
+
+    def batch_create_characters(self, characters: list[Character]) -> None:
+        """批量创建角色。"""
+        with self._lock:
+            session = self._get_session()
+            repo = CharacterRepository(session)
+            repo.batch_create(characters)
+
+    def update_character(self, character: Character) -> None:
+        """更新角色信息。"""
+        with self._lock:
+            session = self._get_session()
+            repo = CharacterRepository(session)
+            repo.update(character)
+
+    def delete_character(self, character_uuid: str) -> None:
+        """删除角色。"""
+        with self._lock:
+            session = self._get_session()
+            repo = CharacterRepository(session)
+            repo.delete(character_uuid)
+
+    def get_character_by_ref_code(self, project_id: str, ref_code: str) -> Character | None:
+        """根据引用代号查询角色。"""
+        session = self._get_session()
+        repo = CharacterRepository(session)
+        return repo.get_by_ref_code(project_id, ref_code)
+
+    def create_character_history(self, character: Character) -> None:
+        """创建角色编辑历史快照。"""
+        with self._lock:
+            session = self._get_session()
+            repo = CharacterHistoryRepository(session)
+            import uuid
+
+            snapshot = json.dumps({
+                "name": character.name,
+                "ref_code": character.ref_code,
+                "description": character.description,
+                "design_image": character.design_image,
+            }, ensure_ascii=False)
+
+            repo.create(CharacterHistory(
+                id=str(uuid.uuid4()),
+                character_id=character.uuid,
+                snapshot=snapshot,
+                created_at=datetime.now(),
+            ))
+
+    def list_character_history(self, character_uuid: str) -> list[CharacterHistory]:
+        """查询角色的所有编辑历史。"""
+        session = self._get_session()
+        repo = CharacterHistoryRepository(session)
+        return repo.list_by_character(character_uuid)
 
     # ========== 其他方法 ==========
 
