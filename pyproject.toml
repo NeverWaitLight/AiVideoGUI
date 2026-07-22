@@ -5,9 +5,11 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
+    "alembic>=1.13.0",
     "ffmpeg-python>=0.2.0",
     "pyqt6>=6.11.0",
     "pyqt6-fluent-widgets>=1.11.2",
     "requests>=2.34.2",
     "rich>=15.0.0",
+    "sqlalchemy>=2.0.0",
 ]

@@ -41,7 +41,7 @@ class ProjectService:
                 name=r["name"],
                 resolution=r["resolution"],
                 aspect_ratio=r["aspect_ratio"],
-                created_at=datetime.fromisoformat(r["created_at"]),
+                created_at=r["created_at"],
                 cover_image=r.get("cover_image", ""),
             )
             for r in rows
@@ -57,7 +57,7 @@ class ProjectService:
             name=row["name"],
             resolution=row["resolution"],
             aspect_ratio=row["aspect_ratio"],
-            created_at=datetime.fromisoformat(row["created_at"]),
+            created_at=row["created_at"],
             cover_image=row.get("cover_image", ""),
         )
 

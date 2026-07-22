@@ -104,10 +104,7 @@ class TaskPollingService(QObject):
     # ---------- Worker 信号处理 ----------
 
     def _on_status_changed(self, message_id: str, status: str) -> None:
-        try:
-            msg_status = MessageStatus(status)
-        except ValueError:
-            msg_status = MessageStatus.GENERATING
+        msg_status = MessageStatus(status)
         self._db.update_message_status(message_id, msg_status)
         self.status_changed.emit(message_id, status)
 

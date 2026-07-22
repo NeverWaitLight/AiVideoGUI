@@ -237,20 +237,28 @@ class ProjectPage(QWidget):
         return panel
 
     def _on_project_item_changed(self, current: QListWidgetItem | None, previous: QListWidgetItem | None) -> None:
-        if previous:
-            prev_widget = self.project_list.itemWidget(previous)
-            if isinstance(prev_widget, _ProjectRow):
-                prev_widget.set_selected(False)
+        try:
+            if previous:
+                prev_widget = self.project_list.itemWidget(previous)
+                if isinstance(prev_widget, _ProjectRow):
+                    prev_widget.set_selected(False)
 
-        if current:
-            curr_widget = self.project_list.itemWidget(current)
-            if isinstance(curr_widget, _ProjectRow):
-                curr_widget.set_selected(True)
-            project_id = current.data(Qt.ItemDataRole.UserRole)
-            if project_id:
-                self._current_project_id = project_id
-                self._load_project_detail(project_id)
-                self.project_selected.emit(project_id)
+            if current:
+                curr_widget = self.project_list.itemWidget(current)
+                if isinstance(curr_widget, _ProjectRow):
+                    curr_widget.set_selected(True)
+                project_id = current.data(Qt.ItemDataRole.UserRole)
+                if project_id:
+                    self._current_project_id = project_id
+                    self._load_project_detail(project_id)
+                    self.project_selected.emit(project_id)
+        except Exception as e:
+            import logging
+            import traceback
+            logger = logging.getLogger(__name__)
+            logger.error(f"项目切换失败: {e}")
+            logger.error(traceback.format_exc())
+            # 不重新抛出异常，避免应用崩溃
 
     def _on_conversation_item_changed(self, current: QListWidgetItem | None, previous: QListWidgetItem | None) -> None:
         if previous:
@@ -268,20 +276,42 @@ class ProjectPage(QWidget):
 
     def _load_project_detail(self, project_id: str) -> None:
         """加载项目详情和对话列表。"""
-        project = self._service.get_project(project_id)
-        if not project:
-            return
+        try:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"开始加载项目详情: project_id={project_id}")
 
-        self.project_title_label.setText(project.name)
-        self.project_info_label.setText(f"比例: {project.aspect_ratio}\n分辨率: {project.resolution}")
-        self.new_conv_btn.setEnabled(True)
+            project = self._service.get_project(project_id)
+            if not project:
+                logger.warning(f"项目不存在: project_id={project_id}")
+                return
 
-        # 加载对话列表
-        self.conversation_list.clear()
-        conversations = self._service.list_project_conversations(project_id)
-        for conv in conversations:
-            time_text = _format_time(conv.created_at)
-            self._add_conversation_item(conv.id, conv.title, time_text)
+            logger.info(f"项目详情: name={project.name}, created_at={project.created_at}, type={type(project.created_at)}")
+
+            self.project_title_label.setText(project.name)
+            self.project_info_label.setText(f"比例: {project.aspect_ratio}\n分辨率: {project.resolution}")
+            self.new_conv_btn.setEnabled(True)
+
+            # 加载对话列表
+            self.conversation_list.clear()
+            logger.info(f"开始加载对话列表: project_id={project_id}")
+            conversations = self._service.list_project_conversations(project_id)
+            logger.info(f"找到 {len(conversations)} 个对话")
+
+            for conv in conversations:
+                logger.info(f"处理对话: id={conv.id}, title={conv.title}, created_at={conv.created_at}, type={type(conv.created_at)}")
+                time_text = _format_time(conv.created_at)
+                logger.info(f"格式化时间: {time_text}")
+                self._add_conversation_item(conv.id, conv.title, time_text)
+
+            logger.info("项目详情加载完成")
+        except Exception as e:
+            import logging
+            import traceback
+            logger = logging.getLogger(__name__)
+            logger.error(f"加载项目详情失败: {e}")
+            logger.error(traceback.format_exc())
+            raise
 
     def _add_conversation_item(self, conv_id: str, title: str, time_text: str) -> None:
         item = QListWidgetItem()
