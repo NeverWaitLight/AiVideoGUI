@@ -37,10 +37,51 @@ class DashScopeProvider(VideoProvider):
 
     def submit(self, prompt: str, params: dict[str, Any] | None = None) -> str:
         """提交文生视频任务，返回 task_id。"""
+        # 将标准分辨率标签转换为 DashScope API 要求的宽高格式
+        resolution_map = {
+            "16:9": {
+                "480P": {"width": 854, "height": 480},
+                "720P": {"width": 1280, "height": 720},
+                "1080P": {"width": 1920, "height": 1080},
+                "2K": {"width": 2560, "height": 1440},
+                "4K": {"width": 3840, "height": 2160},
+            },
+            "9:16": {
+                "480P": {"width": 480, "height": 854},
+                "720P": {"width": 720, "height": 1280},
+                "1080P": {"width": 1080, "height": 1920},
+                "2K": {"width": 1440, "height": 2560},
+                "4K": {"width": 2160, "height": 3840},
+            },
+            "4:3": {
+                "480P": {"width": 640, "height": 480},
+                "720P": {"width": 960, "height": 720},
+                "1080P": {"width": 1440, "height": 1080},
+                "2K": {"width": 1920, "height": 1440},
+                "4K": {"width": 2880, "height": 2160},
+            },
+            "3:4": {
+                "480P": {"width": 480, "height": 640},
+                "720P": {"width": 720, "height": 960},
+                "1080P": {"width": 1080, "height": 1440},
+                "2K": {"width": 1440, "height": 1920},
+                "4K": {"width": 2160, "height": 2880},
+            },
+        }
+
+        # 转换参数格式
+        api_params = params.copy() if params else {}
+        if "resolution" in api_params and "ratio" in api_params:
+            resolution_label = api_params.pop("resolution")
+            ratio = api_params["ratio"]
+            size = resolution_map.get(ratio, {}).get(resolution_label, {"width": 1280, "height": 720})
+            api_params["width"] = size["width"]
+            api_params["height"] = size["height"]
+
         payload = {
             "model": self._model,
             "input": {"prompt": prompt},
-            "parameters": params or {},
+            "parameters": api_params,
         }
         logger.info("提交 DashScope 任务，模型：%s", self._model)
         logger.debug("请求体：%s", payload)

@@ -12,7 +12,6 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QScrollArea,
-    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -31,8 +30,8 @@ from qfluentwidgets import (
 )
 
 from models.data_models import Scene, Shot, ShotSize
-from service.shot_service import ShotService
 from service.script_service import ScriptService
+from service.shot_service import ShotService
 
 logger = logging.getLogger(__name__)
 

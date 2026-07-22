@@ -19,7 +19,7 @@ class ProjectService:
     def __init__(self, db: DatabaseManager):
         self._db = db
 
-    def create_project(self, name: str, resolution: str = "1280x720", aspect_ratio: str = "16:9", cover_image: str = "") -> Project:
+    def create_project(self, name: str, resolution: str = "720P", aspect_ratio: str = "16:9", cover_image: str = "") -> Project:
         """创建新项目。"""
         project_id = str(uuid.uuid4())
         self._db.create_project(project_id, name, resolution, aspect_ratio, cover_image)

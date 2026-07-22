@@ -25,7 +25,6 @@ from qfluentwidgets import (
     PushButton,
     ToolButton,
     FluentIcon,
-    ProgressRing,
     TextEdit,
 )
 

@@ -33,12 +33,12 @@ from storage.database import DatabaseManager
 from ui.chat_area import ChatArea
 from ui.media_library import MediaLibrary
 from ui.outline_editor import OutlineEditor
-from ui.project_page import ProjectPage, _ProjectDialog
-from ui.project_grid_page import ProjectGridPage
 from ui.project_detail_page import ProjectDetailPage
+from ui.project_grid_page import ProjectGridPage
+from ui.project_page import ProjectPage
 from ui.script_editor import ScriptEditor
-from ui.shot_editor import ShotEditor
 from ui.settings_dialog import SettingsDialog
+from ui.shot_editor import ShotEditor
 from ui.sidebar import Sidebar
 from ui.styles import apply_fluent_theme
 from ui.tab_bar import TabBar
@@ -141,8 +141,8 @@ class _BatchGenerationController(QObject):
             )
 
             params = (self._provider_cfg.default_params if self._provider_cfg else {}).copy()
-            params["resolution"] = _ProjectDialog.resolution_to_label(self._project.resolution)
-            params["aspect_ratio"] = self._project.aspect_ratio
+            params["resolution"] = self._project.resolution
+            params["ratio"] = self._project.aspect_ratio
 
             msg = self._service.submit_task(
                 conversation_id=conv.id,
@@ -794,8 +794,8 @@ class MainWindow(QMainWindow):
         try:
             # 合并项目参数和默认参数
             params = (provider_cfg.default_params if provider_cfg else {}).copy()
-            params["resolution"] = _ProjectDialog.resolution_to_label(project.resolution)
-            params["aspect_ratio"] = project.aspect_ratio
+            params["resolution"] = project.resolution
+            params["ratio"] = project.aspect_ratio
 
             msg = self._service.submit_task(
                 conversation_id=conv.id,
@@ -1227,11 +1227,9 @@ class MainWindow(QMainWindow):
         # 获取项目设置并添加到参数
         project = self._project_service.get_project(self._current_project_id)
         if project:
-            # 将分辨率转换为宽高
-            if "x" in project.resolution:
-                width, height = project.resolution.split("x")
-                params["width"] = int(width)
-                params["height"] = int(height)
+            # 将项目分辨率添加到参数（覆盖默认值）
+            params["resolution"] = project.resolution
+            params["ratio"] = project.aspect_ratio
 
         try:
             assistant_msg = self._service.submit_task(

@@ -1,7 +1,8 @@
 """应用全局样式和 Fluent 主题配置。"""
 
-from qfluentwidgets import Theme, setTheme, setThemeColor
 from PyQt6.QtGui import QColor
+from qfluentwidgets import Theme, setTheme, setThemeColor
+
 
 # ── Fluent 主题配置 ──────────────────────────────────────────────
 def apply_fluent_theme():

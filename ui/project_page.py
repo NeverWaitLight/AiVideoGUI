@@ -11,9 +11,7 @@ from PyQt6.QtWidgets import (
     QDialog,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
     QListWidgetItem,
-    QSizePolicy,
     QSplitter,
     QVBoxLayout,
     QWidget,
@@ -25,8 +23,6 @@ from qfluentwidgets import (
     PushButton,
     ToolButton,
     ListWidget,
-    RoundMenu,
-    Action,
     FluentIcon,
     LineEdit,
 )
@@ -277,7 +273,7 @@ class ProjectPage(QWidget):
             return
 
         self.project_title_label.setText(project.name)
-        self.project_info_label.setText(f"分辨率: {project.resolution}\n比例: {project.aspect_ratio}")
+        self.project_info_label.setText(f"比例: {project.aspect_ratio}\n分辨率: {project.resolution}")
         self.new_conv_btn.setEnabled(True)
 
         # 加载对话列表
@@ -330,7 +326,7 @@ class ProjectPage(QWidget):
                     if isinstance(widget, _ProjectRow):
                         widget._name_label.setText(name)
                         video_count = self._service.get_project_video_count(project_id)
-                        widget.update_info(f"{resolution} · {aspect_ratio} · {video_count} 个视频")
+                        widget.update_info(f"{aspect_ratio} · {resolution} · {video_count} 个视频")
                     break
             # 如果是当前选中的项目，更新详情
             if project_id == self._current_project_id:
@@ -343,7 +339,6 @@ class ProjectPage(QWidget):
             return
 
         # 统计项目关联的素材数量
-        from storage.database import DatabaseManager
         db = self._service._db
         media_count = len(db.list_media_files(project_id=project_id))
 
@@ -507,7 +502,7 @@ class ProjectPage(QWidget):
         item.setData(Qt.ItemDataRole.UserRole, project.id)
 
         video_count = self._service.get_project_video_count(project.id)
-        info = f"{project.resolution} · {project.aspect_ratio} · {video_count} 个视频"
+        info = f"{project.aspect_ratio} · {project.resolution} · {video_count} 个视频"
         row = _ProjectRow(project.id, project.name, info)
         row.delete_clicked.connect(self._on_delete_project)
         row.edit_clicked.connect(self._on_edit_project)
@@ -549,47 +544,6 @@ class ProjectPage(QWidget):
 
 class _ProjectDialog(QDialog):
     """项目创建/编辑对话框。"""
-
-    # 画面比例到分辨率的映射
-    RESOLUTION_MAP = {
-        "16:9": {
-            "480P": "854x480",
-            "720P": "1280x720",
-            "1080P": "1920x1080",
-            "2K": "2560x1440",
-            "4K": "3840x2160",
-        },
-        "9:16": {
-            "480P": "480x854",
-            "720P": "720x1280",
-            "1080P": "1080x1920",
-            "2K": "1440x2560",
-            "4K": "2160x3840",
-        },
-        "4:3": {
-            "480P": "640x480",
-            "720P": "960x720",
-            "1080P": "1440x1080",
-            "2K": "1920x1440",
-            "4K": "2880x2160",
-        },
-        "3:4": {
-            "480P": "480x640",
-            "720P": "720x960",
-            "1080P": "1080x1440",
-            "2K": "1440x1920",
-            "4K": "2160x2880",
-        },
-    }
-
-    @classmethod
-    def resolution_to_label(cls, resolution: str) -> str:
-        """将 '宽x高' 格式的分辨率转回 '720P' 等标签，供 API 传参使用。"""
-        for _ratio, mapping in cls.RESOLUTION_MAP.items():
-            for label, res in mapping.items():
-                if res == resolution:
-                    return label
-        return resolution
 
     def __init__(self, parent: QWidget | None = None, project: Project | None = None):
         super().__init__(parent)
@@ -658,25 +612,18 @@ class _ProjectDialog(QDialog):
     def _on_aspect_ratio_changed(self, ratio: str) -> None:
         """画面比例改变时，更新分辨率选项。"""
         self.resolution_combo.clear()
-        resolutions = self.RESOLUTION_MAP.get(ratio, {})
-        self.resolution_combo.addItems(resolutions.keys())
+        resolutions = ["480P", "720P", "1080P", "2K", "4K"]
+        self.resolution_combo.addItems(resolutions)
         # 默认选择 720P
-        if "720P" in resolutions:
-            self.resolution_combo.setCurrentText("720P")
+        self.resolution_combo.setCurrentText("720P")
 
     def _set_initial_resolution(self, resolution_value: str) -> None:
-        """设置初始分辨率（反向查找）。"""
-        ratio = self.aspect_ratio_combo.currentText()
-        resolutions = self.RESOLUTION_MAP.get(ratio, {})
-        for res_name, res_value in resolutions.items():
-            if res_value == resolution_value:
-                self.resolution_combo.setCurrentText(res_name)
-                break
+        """设置初始分辨率。"""
+        self.resolution_combo.setCurrentText(resolution_value)
 
     def get_values(self) -> tuple[str, str, str]:
         """获取表单值。"""
         name = self.name_input.text().strip() or "未命名项目"
         ratio = self.aspect_ratio_combo.currentText()
-        res_name = self.resolution_combo.currentText()
-        resolution = self.RESOLUTION_MAP[ratio][res_name]
+        resolution = self.resolution_combo.currentText()
         return (name, resolution, ratio)

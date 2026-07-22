@@ -285,7 +285,7 @@ class DatabaseManager:
             CREATE TABLE IF NOT EXISTS projects (
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
-                resolution TEXT NOT NULL DEFAULT '1280x720',
+                resolution TEXT NOT NULL DEFAULT '720P',
                 aspect_ratio TEXT NOT NULL DEFAULT '16:9',
                 created_at TEXT NOT NULL
             );

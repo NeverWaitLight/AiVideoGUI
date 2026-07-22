@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 import os
-import subprocess
 from typing import Callable
 
 from PyQt6.QtCore import QSize, Qt, QTimer, pyqtSignal
@@ -16,8 +15,6 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QScrollArea,
-    QSizePolicy,
-    QSpacerItem,
     QStackedWidget,
     QVBoxLayout,
     QWidget,

@@ -20,7 +20,6 @@ from qfluentwidgets import (
     SwitchButton,
 )
 
-from ui.styles import COLOR_PRIMARY
 from ui.widgets import MessageBubble, VideoStatusCard
 
 
@@ -133,50 +132,13 @@ class ParameterPanel(QFrame):
 
     def get_params(self) -> dict[str, Any]:
         """返回当前选中的生成参数，字段名与 DashScope API 一一对应。"""
-        # 分辨率映射表（与项目对话框保持一致）
-        resolution_map = {
-            "16:9": {
-                "480P": "854x480",
-                "720P": "1280x720",
-                "1080P": "1920x1080",
-                "2K": "2560x1440",
-                "4K": "3840x2160",
-            },
-            "9:16": {
-                "480P": "480x854",
-                "720P": "720x1280",
-                "1080P": "1080x1920",
-                "2K": "1440x2560",
-                "4K": "2160x3840",
-            },
-            "4:3": {
-                "480P": "640x480",
-                "720P": "960x720",
-                "1080P": "1440x1080",
-                "2K": "1920x1440",
-                "4K": "2880x2160",
-            },
-            "3:4": {
-                "480P": "480x640",
-                "720P": "720x960",
-                "1080P": "1080x1440",
-                "2K": "1440x1920",
-                "4K": "2160x2880",
-            },
-        }
-
         duration_map = {"5秒": 5, "10秒": 10, "15秒": 15}
 
         ratio = self._ratio_combo.currentText()
-        res_name = self._resolution_combo.currentText()
-        resolution = resolution_map.get(ratio, {}).get(res_name, "1280x720")
-
-        # 解析分辨率为宽高
-        width, height = resolution.split("x")
+        resolution = self._resolution_combo.currentText()
 
         return {
-            "width": int(width),
-            "height": int(height),
+            "resolution": resolution,
             "ratio": ratio,
             "duration": duration_map.get(self._duration_combo.currentText(), 5),
             "prompt_extend": self._prompt_extend_switch.isChecked(),

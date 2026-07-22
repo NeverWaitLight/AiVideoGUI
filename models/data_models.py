@@ -107,7 +107,7 @@ class MediaFile:
 class Project:
     id: str
     name: str
-    resolution: str  # 如 "1280x720"
+    resolution: str  # 如 "720P"、"1080P"、"2K"、"4K"
     aspect_ratio: str  # 如 "16:9"
     created_at: datetime
     cover_image: str = ""  # 封面图路径

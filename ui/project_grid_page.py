@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 
 from PyQt6.QtCore import Qt, pyqtSignal, QSize
-from PyQt6.QtGui import QPixmap, QPainter, QColor
+from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import (
     QDialog,
     QHBoxLayout,
@@ -44,39 +44,6 @@ def _format_time(dt: datetime) -> str:
     if dt.date() == now.date():
         return dt.strftime("%H:%M")
     return dt.strftime("%m-%d %H:%M")
-
-
-# 分辨率映射表
-RESOLUTION_MAP = {
-    "16:9": {
-        "480P": "854x480",
-        "720P": "1280x720",
-        "1080P": "1920x1080",
-        "2K": "2560x1440",
-        "4K": "3840x2160",
-    },
-    "9:16": {
-        "480P": "480x854",
-        "720P": "720x1280",
-        "1080P": "1080x1920",
-        "2K": "1440x2560",
-        "4K": "2160x3840",
-    },
-    "4:3": {
-        "480P": "640x480",
-        "720P": "960x720",
-        "1080P": "1440x1080",
-        "2K": "1920x1440",
-        "4K": "2880x2160",
-    },
-    "3:4": {
-        "480P": "480x640",
-        "720P": "720x960",
-        "1080P": "1080x1440",
-        "2K": "1440x1920",
-        "4K": "2160x2880",
-    },
-}
 
 
 class ProjectCard(CardWidget):
@@ -127,7 +94,7 @@ class ProjectCard(CardWidget):
         info_layout.addWidget(name_label)
 
         # 项目信息
-        info_text = f"{self._project.aspect_ratio} · {self._get_resolution_name()}"
+        info_text = f"{self._project.aspect_ratio} · {self._project.resolution}"
         info_label = QLabel(info_text)
         info_label.setStyleSheet("font-size: 12px; color: #666;")
         info_layout.addWidget(info_label)
@@ -194,13 +161,6 @@ class ProjectCard(CardWidget):
             # 如果默认图标也不存在，显示占位符
             self._cover_label.setText("📁")
             self._cover_label.setStyleSheet("font-size: 64px;")
-
-    def _get_resolution_name(self) -> str:
-        """根据分辨率获取显示名称（如 720P）。"""
-        for res_name, res_value in RESOLUTION_MAP.get(self._project.aspect_ratio, {}).items():
-            if res_value == self._project.resolution:
-                return res_name
-        return self._project.resolution
 
     def mousePressEvent(self, event) -> None:
         if event.button() == Qt.MouseButton.LeftButton:
@@ -288,10 +248,9 @@ class ProjectDialog(QDialog):
     def _on_ratio_changed(self, ratio: str) -> None:
         """比例改变时，更新分辨率选项。"""
         self._resolution_combo.clear()
-        resolutions = list(RESOLUTION_MAP.get(ratio, {}).keys())
+        resolutions = ["480P", "720P", "1080P", "2K", "4K"]
         self._resolution_combo.addItems(resolutions)
-        if "720P" in resolutions:
-            self._resolution_combo.setCurrentText("720P")
+        self._resolution_combo.setCurrentText("720P")
 
     def _on_choose_cover(self) -> None:
         """选择封面图片。"""
@@ -319,12 +278,7 @@ class ProjectDialog(QDialog):
 
         self._name_input.setText(self._project.name)
         self._ratio_combo.setCurrentText(self._project.aspect_ratio)
-
-        # 根据分辨率找到对应的名称
-        for res_name, res_value in RESOLUTION_MAP.get(self._project.aspect_ratio, {}).items():
-            if res_value == self._project.resolution:
-                self._resolution_combo.setCurrentText(res_name)
-                break
+        self._resolution_combo.setCurrentText(self._project.resolution)
 
         # 封面图
         if self._project.cover_image and os.path.exists(self._project.cover_image):
@@ -340,14 +294,10 @@ class ProjectDialog(QDialog):
 
     def get_data(self) -> dict:
         """获取表单数据。"""
-        ratio = self._ratio_combo.currentText()
-        res_name = self._resolution_combo.currentText()
-        resolution = RESOLUTION_MAP.get(ratio, {}).get(res_name, "1280x720")
-
         return {
             "name": self._name_input.text().strip(),
-            "resolution": resolution,
-            "aspect_ratio": ratio,
+            "resolution": self._resolution_combo.currentText(),
+            "aspect_ratio": self._ratio_combo.currentText(),
             "cover_image": self._cover_image_path,
         }
 
@@ -507,7 +457,6 @@ class ProjectGridPage(QWidget):
             return
 
         # 统计项目关联的素材数量
-        from storage.database import DatabaseManager
         db = self._service._db
         media_count = len(db.list_media_files(project_id=project_id))
 

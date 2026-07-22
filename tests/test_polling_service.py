@@ -5,7 +5,6 @@ import tempfile
 import time
 import unittest
 from datetime import datetime
-from unittest.mock import MagicMock, patch
 
 from PyQt6.QtCore import QCoreApplication
 
