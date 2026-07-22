@@ -26,13 +26,8 @@ from ui.widgets import MessageBubble, VideoStatusCard
 class ParameterPanel(QFrame):
     """视频生成参数选择面板，位于输入框上方。"""
 
-    # 画面比例到分辨率的映射
-    RESOLUTION_MAP = {
-        "16:9": ["480P", "720P", "1080P", "2K", "4K"],
-        "9:16": ["480P", "720P", "1080P", "2K", "4K"],
-        "4:3": ["480P", "720P", "1080P", "2K", "4K"],
-        "3:4": ["480P", "720P", "1080P", "2K", "4K"],
-    }
+    # 支持的分辨率选项（所有画面比例通用）
+    RESOLUTIONS = ["480P", "720P", "1080P", "2K", "4K"]
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
@@ -102,11 +97,9 @@ class ParameterPanel(QFrame):
     def _on_ratio_changed(self, ratio: str) -> None:
         """比例改变时，更新分辨率选项。"""
         self._resolution_combo.clear()
-        resolutions = self.RESOLUTION_MAP.get(ratio, [])
-        self._resolution_combo.addItems(resolutions)
+        self._resolution_combo.addItems(self.RESOLUTIONS)
         # 默认选择 720P
-        if "720P" in resolutions:
-            self._resolution_combo.setCurrentText("720P")
+        self._resolution_combo.setCurrentText("720P")
 
     @staticmethod
     def _make_param_group(label_text: str, control: QWidget) -> QWidget:

@@ -306,14 +306,14 @@ class _PollingWorker(QThread):
                         scene_number = match.group(1)
                         shot_number = match.group(2)
 
-                        # 查找已有的同场次镜头视频，计算自增序号
-                        existing_files = os.listdir(self._download_dir) if os.path.exists(self._download_dir) else []
+                        # 从数据库查找已有的同场次同镜号视频，计算自增序号
+                        all_media = self._db.list_media_files(media_type="video")
                         prefix = f"{scene_number}-{shot_number}-"
                         max_seq = 0
-                        for f in existing_files:
-                            if f.startswith(prefix) and f.endswith(".mp4"):
+                        for media in all_media:
+                            if media.filename.startswith(prefix) and media.filename.endswith(".mp4"):
                                 # 提取序号
-                                seq_match = re.match(rf"{prefix}(\d+)\.mp4", f)
+                                seq_match = re.match(rf"{prefix}(\d+)\.mp4", media.filename)
                                 if seq_match:
                                     seq = int(seq_match.group(1))
                                     max_seq = max(max_seq, seq)
@@ -321,7 +321,7 @@ class _PollingWorker(QThread):
                         # 新序号 = 最大序号 + 1
                         new_seq = max_seq + 1
                         filename = f"{scene_number}-{shot_number}-{new_seq}.mp4"
-                        logger.info(f"分镜视频文件名：{filename}")
+                        logger.info(f"分镜视频文件名：{filename} (场{scene_number}镜{shot_number}第{new_seq}次生成)")
 
             save_path = os.path.join(self._download_dir, filename)
 
