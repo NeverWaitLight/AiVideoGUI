@@ -582,6 +582,15 @@ class _ProjectDialog(QDialog):
         },
     }
 
+    @classmethod
+    def resolution_to_label(cls, resolution: str) -> str:
+        """将 '宽x高' 格式的分辨率转回 '720P' 等标签，供 API 传参使用。"""
+        for _ratio, mapping in cls.RESOLUTION_MAP.items():
+            for label, res in mapping.items():
+                if res == resolution:
+                    return label
+        return resolution
+
     def __init__(self, parent: QWidget | None = None, project: Project | None = None):
         super().__init__(parent)
         self._project = project

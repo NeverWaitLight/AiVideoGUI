@@ -33,7 +33,7 @@ from storage.database import DatabaseManager
 from ui.chat_area import ChatArea
 from ui.media_library import MediaLibrary
 from ui.outline_editor import OutlineEditor
-from ui.project_page import ProjectPage
+from ui.project_page import ProjectPage, _ProjectDialog
 from ui.project_grid_page import ProjectGridPage
 from ui.project_detail_page import ProjectDetailPage
 from ui.script_editor import ScriptEditor
@@ -65,6 +65,7 @@ class _BatchGenerationController(QObject):
 
     progress = pyqtSignal(int, int, int, int, str)  # index, total, scene, shot, status
     all_done = pyqtSignal(int, int)  # success_count, failed_count
+    terminated = pyqtSignal(int, int)  # success_count, failed_count
 
     def __init__(
         self,
@@ -89,13 +90,35 @@ class _BatchGenerationController(QObject):
         self._success = 0
         self._failed = 0
         self._current_message_id: str | None = None
+        self._stopped = False
 
     def start(self) -> None:
+        self._stopped = False
         self._polling.task_finished.connect(self._on_task_finished)
         self._polling.task_failed.connect(self._on_task_failed)
         self._submit_next()
 
+    def stop(self) -> None:
+        """停止继续提交新任务，当前任务仍会在后台轮询完成。"""
+        if self._stopped:
+            return
+        self._stopped = True
+        self.progress.emit(self._index, len(self._shot_list), 0, 0, "正在停止...")
+        logger.info("批量生成已收到停止请求，当前任务完成后不再继续")
+
+    def _cleanup_and_terminate(self) -> None:
+        """断开轮询信号并通知 UI 终止。"""
+        try:
+            self._polling.task_finished.disconnect(self._on_task_finished)
+            self._polling.task_failed.disconnect(self._on_task_failed)
+        except RuntimeError:
+            pass
+        self.terminated.emit(self._success, self._failed)
+
     def _submit_next(self) -> None:
+        if self._stopped:
+            self._cleanup_and_terminate()
+            return
         if self._index >= len(self._shot_list):
             self._polling.task_finished.disconnect(self._on_task_finished)
             self._polling.task_failed.disconnect(self._on_task_failed)
@@ -118,7 +141,7 @@ class _BatchGenerationController(QObject):
             )
 
             params = (self._provider_cfg.default_params if self._provider_cfg else {}).copy()
-            params["resolution"] = self._project.resolution
+            params["resolution"] = _ProjectDialog.resolution_to_label(self._project.resolution)
             params["aspect_ratio"] = self._project.aspect_ratio
 
             msg = self._service.submit_task(
@@ -136,6 +159,9 @@ class _BatchGenerationController(QObject):
             self._failed += 1
             self._index += 1
             self.progress.emit(self._index - 1, len(self._shot_list), scene_number, shot_number, f"提交失败：{e}")
+            if self._stopped:
+                self._cleanup_and_terminate()
+                return
             self._submit_next()
 
     def _on_task_finished(self, message_id: str, local_path: str) -> None:
@@ -151,6 +177,9 @@ class _BatchGenerationController(QObject):
             shot["scene_number"], shot["shot_number"], "已完成"
         )
         logger.info(f"批量生成 [{self._index}/{len(self._shot_list)}] 场{shot['scene_number']}镜{shot['shot_number']} 完成")
+        if self._stopped:
+            self._cleanup_and_terminate()
+            return
         self._submit_next()
 
     def _on_task_failed(self, message_id: str, error: str) -> None:
@@ -166,6 +195,9 @@ class _BatchGenerationController(QObject):
             shot["scene_number"], shot["shot_number"], f"失败：{error}"
         )
         logger.warning(f"批量生成 [{self._index}/{len(self._shot_list)}] 场{shot['scene_number']}镜{shot['shot_number']} 失败：{error}")
+        if self._stopped:
+            self._cleanup_and_terminate()
+            return
         self._submit_next()
 
 
@@ -762,7 +794,7 @@ class MainWindow(QMainWindow):
         try:
             # 合并项目参数和默认参数
             params = (provider_cfg.default_params if provider_cfg else {}).copy()
-            params["resolution"] = project.resolution
+            params["resolution"] = _ProjectDialog.resolution_to_label(project.resolution)
             params["aspect_ratio"] = project.aspect_ratio
 
             msg = self._service.submit_task(
@@ -811,14 +843,14 @@ class MainWindow(QMainWindow):
         dialog = QDialog(self)
         dialog.setWindowTitle("批量生成视频")
         dialog.setModal(True)
-        dialog.setFixedSize(420, 200)
+        dialog.setFixedSize(420, 240)
         dialog.setWindowFlag(Qt.WindowType.WindowCloseButtonHint, False)
 
         layout = QVBoxLayout(dialog)
         layout.setSpacing(16)
         layout.setContentsMargins(24, 20, 24, 20)
 
-        from qfluentwidgets import ProgressBar
+        from qfluentwidgets import ProgressBar, PushButton
         progress_bar = ProgressBar()
         progress_bar.setRange(0, len(shot_list))
         progress_bar.setValue(0)
@@ -833,6 +865,11 @@ class MainWindow(QMainWindow):
         detail_label.setStyleSheet("font-size: 12px; color: #999;")
         detail_label.setWordWrap(True)
         layout.addWidget(detail_label)
+
+        stop_btn = PushButton("停止批量生成", dialog)
+        stop_btn.setFixedHeight(32)
+        stop_btn.clicked.connect(lambda: stop_btn.setEnabled(False))
+        layout.addWidget(stop_btn)
 
         layout.addStretch()
 
@@ -854,16 +891,19 @@ class MainWindow(QMainWindow):
             status_label.setText(f"正在生成第 {index + 1}/{total} 个视频：场{scene}镜{shot}")
             detail_label.setText(status)
 
-        def on_all_done(success: int, failed: int) -> None:
+        def on_finished(success: int, failed: int, stopped: bool) -> None:
             dialog.close()
             self.shot_editor._generate_all_btn.setEnabled(True)
+            title = "批量生成已停止" if stopped else "批量生成完成"
             QMessageBox.information(
-                self, "批量生成完成",
+                self, title,
                 f"共 {len(shot_list)} 个任务\n成功：{success}\n失败：{failed}"
             )
 
+        stop_btn.clicked.connect(batch.stop)
         batch.progress.connect(on_progress)
-        batch.all_done.connect(on_all_done)
+        batch.all_done.connect(lambda s, f: on_finished(s, f, False))
+        batch.terminated.connect(lambda s, f: on_finished(s, f, True))
         batch.start()
 
         # 保持引用避免被回收
