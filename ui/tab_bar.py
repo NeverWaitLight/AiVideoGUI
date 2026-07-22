@@ -11,6 +11,8 @@ class TabBar(QWidget):
     """垂直 Tab 栏组件。"""
 
     tab_changed = pyqtSignal(int)  # 0: 直接生成, 1: 项目管理
+    library_clicked = pyqtSignal()
+    settings_clicked = pyqtSignal()
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
@@ -48,6 +50,24 @@ class TabBar(QWidget):
         layout.addWidget(self.project_btn)
 
         layout.addStretch()
+
+        # 素材库按钮
+        self.library_btn = ToolButton(FluentIcon.FOLDER)
+        self.library_btn.setFixedSize(44, 44)
+        self.library_btn.setIconSize(QSize(24, 24))
+        self.library_btn.setToolTip("素材库")
+        self.library_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.library_btn.clicked.connect(self.library_clicked.emit)
+        layout.addWidget(self.library_btn)
+
+        # 设置按钮
+        self.settings_btn = ToolButton(FluentIcon.SETTING)
+        self.settings_btn.setFixedSize(44, 44)
+        self.settings_btn.setIconSize(QSize(24, 24))
+        self.settings_btn.setToolTip("设置")
+        self.settings_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.settings_btn.clicked.connect(self.settings_clicked.emit)
+        layout.addWidget(self.settings_btn)
 
         # 连接信号
         self.button_group.idClicked.connect(self.tab_changed.emit)

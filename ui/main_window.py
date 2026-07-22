@@ -446,8 +446,8 @@ class MainWindow(QMainWindow):
         self.sidebar.new_conversation_clicked.connect(self._on_new_conversation)
         self.sidebar.conversation_selected.connect(self._on_conversation_selected)
         self.sidebar.conversation_deleted.connect(self._on_conversation_deleted)
-        self.sidebar.library_clicked.connect(self._on_library)
-        self.sidebar.settings_clicked.connect(self._on_settings)
+        self.tab_bar.library_clicked.connect(self._on_library)
+        self.tab_bar.settings_clicked.connect(self._on_settings)
         self.chat_area.message_sent.connect(self._on_message_sent)
 
         # 项目管理模式信号

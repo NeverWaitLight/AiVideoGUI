@@ -92,25 +92,6 @@ class Sidebar(QWidget):
         self.conversation_list.currentItemChanged.connect(self._on_item_changed)
         layout.addWidget(self.conversation_list, stretch=1)
 
-        self.library_btn = PushButton(FluentIcon.FOLDER, "素材库")
-        self.library_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.library_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        self.library_btn.clicked.connect(self.library_clicked.emit)
-        layout.addWidget(self.library_btn)
-
-        self.settings_btn = PushButton(FluentIcon.SETTING, "设置")
-        self.settings_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.settings_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        self.settings_btn.clicked.connect(self.settings_clicked.emit)
-
-        settings_wrapper = QWidget()
-        settings_wrapper.setFixedHeight(56)
-        sw_layout = QVBoxLayout(settings_wrapper)
-        sw_layout.setContentsMargins(0, 0, 0, 0)
-        sw_layout.setSpacing(0)
-        sw_layout.addWidget(self.settings_btn)
-        layout.addWidget(settings_wrapper)
-
     def _on_item_changed(self, current: QListWidgetItem | None, previous: QListWidgetItem | None) -> None:
         if previous:
             prev_widget = self.conversation_list.itemWidget(previous)
