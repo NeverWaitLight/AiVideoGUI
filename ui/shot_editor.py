@@ -7,6 +7,7 @@ from datetime import datetime
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QFileDialog,
+    QFrame,
     QHBoxLayout,
     QLabel,
     QMessageBox,
@@ -192,7 +193,7 @@ class ShotDetailEditor(QWidget):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(16)
 
-        # 顶部：返回按钮 + 标题
+        # 顶部：返回按钮 + 标题（固定）
         top_layout = QHBoxLayout()
         back_btn = PushButton("返回列表", self, FluentIcon.RETURN)
         back_btn.clicked.connect(self.back_clicked.emit)
@@ -203,8 +204,17 @@ class ShotDetailEditor(QWidget):
         title_label = TitleLabel("分镜详情编辑")
         layout.addWidget(title_label)
 
+        # 中间滚动区域
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setFrameShape(QFrame.Shape.NoFrame)
+        scroll_widget = QWidget()
+        scroll_layout = QVBoxLayout(scroll_widget)
+        scroll_layout.setContentsMargins(0, 0, 0, 0)
+        scroll_layout.setSpacing(16)
+
         # 分镜信息卡片
-        info_card = CardWidget(self)
+        info_card = CardWidget(scroll_widget)
         info_layout = QVBoxLayout(info_card)
         info_layout.setContentsMargins(16, 16, 16, 16)
         info_layout.setSpacing(12)
@@ -217,7 +227,7 @@ class ShotDetailEditor(QWidget):
         # 景别选择
         shot_size_layout = QHBoxLayout()
         shot_size_layout.addWidget(QLabel("景别："))
-        self.shot_size_combo = ComboBox(self)
+        self.shot_size_combo = ComboBox(scroll_widget)
         self.shot_size_combo.addItems(["特写", "近景", "中景", "全景", "远景", "大远景"])
         self.shot_size_combo.setCurrentIndex(2)  # 默认中景
         shot_size_layout.addWidget(self.shot_size_combo, 1)
@@ -226,7 +236,7 @@ class ShotDetailEditor(QWidget):
         # 运镜方式
         camera_layout = QHBoxLayout()
         camera_layout.addWidget(QLabel("运镜方式："))
-        self.camera_input = LineEdit(self)
+        self.camera_input = LineEdit(scroll_widget)
         self.camera_input.setPlaceholderText("如：固定、慢推、跟拍、摇镜等")
         camera_layout.addWidget(self.camera_input, 1)
         info_layout.addLayout(camera_layout)
@@ -234,10 +244,11 @@ class ShotDetailEditor(QWidget):
         # 时长
         duration_layout = QHBoxLayout()
         duration_layout.addWidget(QLabel("时长（秒）："))
-        self.duration_spin = DoubleSpinBox(self)
+        self.duration_spin = DoubleSpinBox(scroll_widget)
         self.duration_spin.setRange(0.0, 60.0)
         self.duration_spin.setSingleStep(0.5)
         self.duration_spin.setValue(5.0)
+        self.duration_spin.setFixedWidth(120)
         duration_layout.addWidget(self.duration_spin)
         duration_layout.addStretch()
         info_layout.addLayout(duration_layout)
@@ -253,41 +264,43 @@ class ShotDetailEditor(QWidget):
         design_layout.addWidget(upload_btn)
         info_layout.addLayout(design_layout)
 
-        layout.addWidget(info_card)
+        scroll_layout.addWidget(info_card)
 
         # 画面内容编辑
-        layout.addWidget(QLabel("画面内容描述："))
-        self.visual_content_edit = TextEdit(self)
+        scroll_layout.addWidget(QLabel("画面内容描述："))
+        self.visual_content_edit = TextEdit(scroll_widget)
         self.visual_content_edit.setPlaceholderText("描述镜头中的人物、动作、环境细节...")
         self.visual_content_edit.setMinimumHeight(100)
-        layout.addWidget(self.visual_content_edit)
+        scroll_layout.addWidget(self.visual_content_edit)
 
         # 台词/对白
-        layout.addWidget(QLabel("台词/对白："))
-        self.dialogue_edit = TextEdit(self)
+        scroll_layout.addWidget(QLabel("台词/对白："))
+        self.dialogue_edit = TextEdit(scroll_widget)
         self.dialogue_edit.setPlaceholderText("角色对话内容...")
         self.dialogue_edit.setMinimumHeight(80)
-        layout.addWidget(self.dialogue_edit)
+        scroll_layout.addWidget(self.dialogue_edit)
 
         # 音效
-        layout.addWidget(QLabel("音效："))
-        self.sound_effect_edit = LineEdit(self)
+        scroll_layout.addWidget(QLabel("音效："))
+        self.sound_effect_edit = LineEdit(scroll_widget)
         self.sound_effect_edit.setPlaceholderText("环境音、特效音、背景音乐提示...")
-        layout.addWidget(self.sound_effect_edit)
+        scroll_layout.addWidget(self.sound_effect_edit)
 
         # 备注
-        layout.addWidget(QLabel("备注："))
-        self.notes_edit = TextEdit(self)
+        scroll_layout.addWidget(QLabel("备注："))
+        self.notes_edit = TextEdit(scroll_widget)
         self.notes_edit.setPlaceholderText("其他说明...")
         self.notes_edit.setMinimumHeight(60)
-        layout.addWidget(self.notes_edit)
+        scroll_layout.addWidget(self.notes_edit)
 
-        # 保存按钮
+        scroll_layout.addStretch()
+        scroll_area.setWidget(scroll_widget)
+        layout.addWidget(scroll_area, 1)
+
+        # 保存按钮（固定在底部）
         save_btn = PrimaryPushButton("保存", self, FluentIcon.SAVE)
         save_btn.clicked.connect(self._on_save_shot)
         layout.addWidget(save_btn, alignment=Qt.AlignmentFlag.AlignRight)
-
-        layout.addStretch()
 
     def load_shot(self, shot_id: str):
         """加载分镜数据"""

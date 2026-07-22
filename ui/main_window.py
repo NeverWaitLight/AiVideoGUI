@@ -346,7 +346,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.project_grid_page)
 
         # 第二层：项目详情页面（模块入口）
-        self.project_detail_page = ProjectDetailPage(self._project_service)
+        self.project_detail_page = ProjectDetailPage(self._project_service, self._db)
         layout.addWidget(self.project_detail_page)
         self.project_detail_page.hide()
 
@@ -373,6 +373,12 @@ class MainWindow(QMainWindow):
         self.shot_editor = ShotEditor(self._shot_service, self._script_service)
         layout.addWidget(self.shot_editor)
         self.shot_editor.hide()
+
+        # 第三层：视频播放器
+        from ui.video_player_page import VideoPlayerPage
+        self.video_player_page = VideoPlayerPage(self._db)
+        layout.addWidget(self.video_player_page)
+        self.video_player_page.hide()
 
         # 第三层：项目对话界面（三栏布局：项目列表 + 对话列表 + 聊天区域）
         self.project_conversation_widget = QWidget()
@@ -426,6 +432,9 @@ class MainWindow(QMainWindow):
         self.shot_editor.back_clicked.connect(self._on_shot_editor_back)
         self.shot_editor.video_generation_requested.connect(self._on_shot_video_generation)
         self.shot_editor.batch_video_generation_requested.connect(self._on_batch_video_generation)
+
+        # 视频播放器信号
+        self.video_player_page.back_clicked.connect(self._on_video_player_back)
 
         # 直接生成模式信号
         self.sidebar.new_conversation_clicked.connect(self._on_new_conversation)
@@ -532,12 +541,23 @@ class MainWindow(QMainWindow):
         """项目模块被选中。"""
         self._current_project_id = project_id
 
-        if module_name == "outline":
+        if module_name == "play":
+            # 进入视频播放器
+            self.project_detail_page.hide()
+            self.project_conversation_widget.hide()
+            self.project_media_library.hide()
+            self.outline_editor.hide()
+            self.script_editor.hide()
+            self.shot_editor.hide()
+            self.video_player_page.show()
+            self.video_player_page.load_playlist(project_id)
+        elif module_name == "outline":
             # 进入大纲编辑器
             self.project_detail_page.hide()
             self.project_conversation_widget.hide()
             self.project_media_library.hide()
             self.script_editor.hide()
+            self.video_player_page.hide()
             self.outline_editor.show()
             self.outline_editor.load_outline(project_id)
         elif module_name == "script":
@@ -546,6 +566,7 @@ class MainWindow(QMainWindow):
             self.project_conversation_widget.hide()
             self.project_media_library.hide()
             self.outline_editor.hide()
+            self.video_player_page.hide()
             self.script_editor.show()
             self.script_editor.load_script(project_id)
         elif module_name == "media":
@@ -554,12 +575,14 @@ class MainWindow(QMainWindow):
             self.project_conversation_widget.hide()
             self.outline_editor.hide()
             self.script_editor.hide()
+            self.video_player_page.hide()
             self.project_media_library.show()
             self.project_media_library.load_files(project_id=project_id)
         elif module_name == "storyboard":
             # 进入分镜编辑器
             logger.info(f"打开项目 {project_id} 的分镜模块")
             self.project_detail_page.hide()
+            self.video_player_page.hide()
             self.shot_editor.show()
             self.shot_editor.load_project(project_id)
         elif module_name == "character":
@@ -596,6 +619,13 @@ class MainWindow(QMainWindow):
     def _on_shot_editor_back(self) -> None:
         """从分镜编辑器返回项目详情页。"""
         self.shot_editor.hide()
+        self.project_detail_page.show()
+        if self._current_project_id:
+            self.project_detail_page.set_project(self._current_project_id)
+
+    def _on_video_player_back(self) -> None:
+        """从视频播放器返回项目详情页。"""
+        self.video_player_page.hide()
         self.project_detail_page.show()
         if self._current_project_id:
             self.project_detail_page.set_project(self._current_project_id)

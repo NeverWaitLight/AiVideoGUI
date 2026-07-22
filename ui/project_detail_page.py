@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 
 from PyQt6.QtCore import Qt, pyqtSignal, QSize
 from PyQt6.QtWidgets import (
@@ -21,6 +22,7 @@ from qfluentwidgets import (
 
 from models.data_models import Project
 from service.project_service import ProjectService
+from storage.database import DatabaseManager
 
 logger = logging.getLogger(__name__)
 
@@ -88,9 +90,10 @@ class ProjectDetailPage(QWidget):
     module_selected = pyqtSignal(str, str)  # project_id, module_name
     back_clicked = pyqtSignal()
 
-    def __init__(self, project_service: ProjectService, parent: QWidget | None = None):
+    def __init__(self, project_service: ProjectService, db: DatabaseManager, parent: QWidget | None = None):
         super().__init__(parent)
         self._service = project_service
+        self._db = db
         self._current_project: Project | None = None
         self._setup_ui()
 
@@ -158,18 +161,47 @@ class ProjectDetailPage(QWidget):
         self._grid_layout.setSpacing(20)
         self._grid_layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
 
-        # 创建模块卡片
-        modules = [
+        # 模块卡片将在 set_project() 中动态生成
+        container_layout.addWidget(grid_widget)
+        container_layout.addStretch()
+
+        scroll.setWidget(container)
+        layout.addWidget(scroll, stretch=1)
+
+    def set_project(self, project_id: str) -> None:
+        """设置当前项目并动态生成模块卡片。"""
+        project = self._service.get_project(project_id)
+        if not project:
+            return
+
+        self._current_project = project
+        self.project_name_label.setText(project.name)
+
+        # 清空现有卡片
+        for i in reversed(range(self._grid_layout.count())):
+            widget = self._grid_layout.itemAt(i).widget()
+            if widget:
+                widget.setParent(None)
+
+        # 动态构建模块列表
+        modules = []
+
+        # 条件添加播放模块
+        if self._has_storyboard_videos(project_id):
+            modules.append(("play", "播放", "播放项目分镜视频", FluentIcon.PLAY))
+
+        # 添加固定模块
+        modules.extend([
             ("outline", "大纲", "编写和管理项目大纲", FluentIcon.EDIT),
             ("script", "剧本", "编写和管理视频剧本", FluentIcon.DOCUMENT),
             ("storyboard", "分镜", "设计视频分镜脚本", FluentIcon.PHOTO),
             ("character", "角色", "管理项目中的角色资料", FluentIcon.PEOPLE),
             ("media", "素材库", "管理项目相关的媒体文件", FluentIcon.FOLDER),
-        ]
+        ])
 
+        # 重新布局（3列网格）
         row, col = 0, 0
         max_cols = 3
-
         for module_name, title, description, icon in modules:
             card = ModuleCard(module_name, title, description, icon)
             card.module_clicked.connect(self._on_module_clicked)
@@ -179,25 +211,16 @@ class ProjectDetailPage(QWidget):
                 col = 0
                 row += 1
 
-        container_layout.addWidget(grid_widget)
-        container_layout.addStretch()
-
-        scroll.setWidget(container)
-        layout.addWidget(scroll, stretch=1)
-
-    def set_project(self, project_id: str) -> None:
-        """设置当前项目。"""
-        project = self._service.get_project(project_id)
-        if not project:
-            return
-
-        self._current_project = project
-        self.project_name_label.setText(project.name)
-
-        # 获取视频数量
+        # 更新项目信息
         video_count = self._service.get_project_video_count(project_id)
         info_text = f"{project.aspect_ratio} · {project.resolution} · {video_count} 个视频"
         self.project_info_label.setText(info_text)
+
+    def _has_storyboard_videos(self, project_id: str) -> bool:
+        """判断项目是否有分镜视频（文件名匹配 场次-镜头-序号.mp4 格式）。"""
+        media_files = self._db.list_media_files(project_id=project_id, media_type="video")
+        pattern = re.compile(r"^\d+-\d+-\d+\.mp4$")
+        return any(pattern.match(m.filename) for m in media_files)
 
     def _on_module_clicked(self, module_name: str) -> None:
         """模块被点击。"""
