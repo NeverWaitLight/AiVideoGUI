@@ -78,12 +78,6 @@ class DashScopeProvider(VideoProvider):
             api_params["width"] = size["width"]
             api_params["height"] = size["height"]
 
-        # 默认启用提示词优化和关闭水印（分镜生成场景）
-        if "prompt_optimizer" not in api_params:
-            api_params["prompt_optimizer"] = True
-        if "watermark" not in api_params:
-            api_params["watermark"] = False
-
         payload = {
             "model": self._model,
             "input": {"prompt": prompt},

@@ -18,7 +18,7 @@ from PyQt6.QtWidgets import (
     QSlider,
     QStackedLayout,
 )
-from qfluentwidgets import ToolButton, FluentIcon, TitleLabel
+from qfluentwidgets import ToolButton, FluentIcon, TitleLabel, PushButton
 
 if TYPE_CHECKING:
     from models.data_models import MediaFile
@@ -226,7 +226,7 @@ class VideoPlayerPage(QWidget):
 
     # === 核心播放逻辑 ===
 
-    def load_playlist(self, project_id: int) -> None:
+    def load_playlist(self, project_id: str) -> None:
         """加载项目播放列表并开始播放。"""
         self._playlist = self._generate_playlist(project_id)
 
@@ -242,7 +242,7 @@ class VideoPlayerPage(QWidget):
         logger.info(f"加载播放列表完成，共 {len(self._playlist)} 个视频，开始播放第一个")
         self._play_current()
 
-    def _generate_playlist(self, project_id: int) -> list[PlaylistItem]:
+    def _generate_playlist(self, project_id: str) -> list[PlaylistItem]:
         """生成播放列表（选择每个场次-镜头的最新版本）。"""
         media_files = self._db.list_media_files(project_id=project_id, media_type="video")
 

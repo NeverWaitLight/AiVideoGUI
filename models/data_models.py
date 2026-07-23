@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import enum
 from dataclasses import dataclass, field
+from datetime import datetime
 
 
 class TaskStatus(enum.Enum):
@@ -26,24 +27,22 @@ class MediaType(enum.Enum):
 
 @dataclass
 class Conversation:
-    id: int
+    id: str
     title: str
-    created_at: int
-    updated_at: int = 0
+    created_at: datetime
     model_name: str = ""
     provider_name: str = ""
-    project_id: int = 0
+    project_id: str = ""
     is_hidden: bool = False
 
 
 @dataclass
 class Message:
-    id: int
-    conversation_id: int
+    id: str
+    conversation_id: str
     role: str  # "user" or "assistant"
     content: str
-    created_at: int
-    updated_at: int = 0
+    created_at: datetime
     task_id: str = ""
     video_url: str = ""
     local_path: str = ""
@@ -87,16 +86,15 @@ class ModelInfo:
 
 @dataclass
 class MediaFile:
-    id: int
+    id: str
     filename: str
     media_type: MediaType
     local_path: str
     file_size: int = 0
     source: str = "task"
-    conversation_id: int = 0
-    message_id: int = 0
-    created_at: int = 0
-    updated_at: int = 0
+    conversation_id: str = ""
+    message_id: str = ""
+    created_at: datetime = field(default_factory=datetime.now)
     # 视频元数据
     thumbnail_path: str = ""  # 封面图路径
     duration: float = 0.0  # 时长（秒）
@@ -106,30 +104,29 @@ class MediaFile:
 
 @dataclass
 class Project:
-    id: int
+    id: str
     name: str
     resolution: str  # 如 "720P"、"1080P"、"2K"、"4K"
     aspect_ratio: str  # 如 "16:9"
-    created_at: int
-    updated_at: int = 0
+    created_at: datetime
     cover_image: str = ""  # 封面图路径
 
 
 @dataclass
 class Outline:
-    id: int
-    project_id: int
+    id: str
+    project_id: str
     content: str  # 大纲文本内容
-    created_at: int
-    updated_at: int = 0
+    created_at: datetime
+    updated_at: datetime
 
 
 @dataclass
 class OutlineHistory:
-    id: int
-    outline_id: int
+    id: str
+    outline_id: str
     content: str  # 历史版本的大纲内容
-    created_at: int  # 该版本创建时间
+    created_at: datetime  # 该版本创建时间
 
 
 class SceneLocation(enum.Enum):
@@ -162,42 +159,42 @@ class ShotSize(enum.Enum):
 @dataclass
 class Scene:
     """场次数据结构"""
-    id: int
-    script_id: int  # 所属剧本ID
+    id: str
+    script_id: str  # 所属剧本ID
     scene_number: int  # 场次号（从1开始）
     location_type: SceneLocation  # 内景/外景
     location: str  # 地点（如"审讯室"、"老城区街道"）
     time_type: SceneTime  # 时间类型（日/夜/晨/黄昏等）
     time_detail: str = ""  # 详细时间描述（可选，如"下午3点"）
     content: str = ""  # 场次具体内容（动作描述+对话）
-    created_at: int = 0
-    updated_at: int = 0
+    created_at: datetime = field(default_factory=datetime.now)
+    updated_at: datetime = field(default_factory=datetime.now)
 
 
 @dataclass
 class Script:
-    id: int
-    project_id: int
+    id: str
+    project_id: str
     title: str = ""  # 剧本标题
-    created_at: int = 0
-    updated_at: int = 0
+    created_at: datetime = field(default_factory=datetime.now)
+    updated_at: datetime = field(default_factory=datetime.now)
 
 
 @dataclass
 class ScriptHistory:
     """剧本历史版本（快照整个剧本的所有场次）"""
-    id: int
-    script_id: int
+    id: str
+    script_id: str
     title: str  # 剧本标题
     scenes_snapshot: str  # 所有场次的JSON快照
-    created_at: int  # 该版本创建时间
+    created_at: datetime  # 该版本创建时间
 
 
 @dataclass
 class Shot:
     """分镜头数据结构"""
-    id: int
-    scene_id: int  # 所属场次ID
+    id: str
+    scene_id: str  # 所属场次ID
     scene_number: int  # 场次号（冗余存储，方便查询）
     shot_number: int  # 分镜号（从1开始）
     design_image: str = ""  # 分镜设计图路径（可为空）
@@ -208,36 +205,37 @@ class Shot:
     sound_effect: str = ""  # 音效
     duration: float = 0.0  # 镜头时长（秒）
     notes: str = ""  # 备注
-    created_at: int = 0
-    updated_at: int = 0
+    created_at: datetime = field(default_factory=datetime.now)
+    updated_at: datetime = field(default_factory=datetime.now)
 
 
 @dataclass
 class ShotHistory:
     """分镜历史版本（快照整个项目的所有分镜）"""
-    id: int
-    project_id: int  # 关联项目ID（分镜是项目级别的）
+    id: str
+    project_id: str  # 关联项目ID（分镜是项目级别的）
     shots_snapshot: str  # 所有分镜的JSON快照
-    created_at: int  # 该版本创建时间
+    created_at: datetime  # 该版本创建时间
 
 
 @dataclass
 class Character:
     """角色数据结构"""
     id: int  # 自增ID
-    project_id: int  # 所属项目ID
+    uuid: str  # UUID标识
+    project_id: str  # 所属项目ID
     name: str  # 角色名
     ref_code: str  # 引用代号（如 CHAR_A）
     design_image: str = ""  # 角色设计图路径（可为空）
     description: str = ""  # 形象描述
-    created_at: int = 0
-    updated_at: int = 0
+    created_at: datetime = field(default_factory=datetime.now)
+    updated_at: datetime = field(default_factory=datetime.now)
 
 
 @dataclass
 class CharacterHistory:
     """角色编辑历史（快照单个角色的状态）"""
-    id: int
-    character_id: int  # 关联角色的ID
+    id: str
+    character_id: str  # 关联角色的UUID
     snapshot: str  # JSON快照（name + ref_code + description + design_image）
-    created_at: int  # 该版本创建时间
+    created_at: datetime  # 该版本创建时间

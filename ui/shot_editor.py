@@ -2,6 +2,7 @@
 
 import logging
 import os
+from datetime import datetime
 
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
@@ -32,7 +33,6 @@ from qfluentwidgets import (
 from models.data_models import Scene, Shot, ShotSize
 from service.script_service import ScriptService
 from service.shot_service import ShotService
-from utils.time_utils import ms_to_datetime, now_ms
 
 logger = logging.getLogger(__name__)
 
@@ -77,8 +77,8 @@ def _to_chinese_num(n: int) -> str:
 class ShotCard(CardWidget):
     """分镜卡片（横向大块，120px 高度）"""
 
-    shot_clicked = pyqtSignal(int)  # 发送 shot_id
-    generate_video_clicked = pyqtSignal(int)  # 发送 shot_id
+    shot_clicked = pyqtSignal(str)  # 发送 shot_id
+    generate_video_clicked = pyqtSignal(str)  # 发送 shot_id
 
     def __init__(self, shot: Shot, parent=None):
         super().__init__(parent)
@@ -398,14 +398,14 @@ class ShotEditor(QWidget):
     """分镜编辑器主界面"""
 
     back_clicked = pyqtSignal()
-    video_generation_requested = pyqtSignal(int, int, int, str, int)  # shot_id, scene_number, shot_number, prompt, project_id
+    video_generation_requested = pyqtSignal(str, int, int, str, str)  # shot_id, scene_number, shot_number, prompt, project_id
     batch_video_generation_requested = pyqtSignal(list)  # list of dict: {shot_id, scene_number, shot_number, prompt, project_id}
 
     def __init__(self, shot_service: ShotService, script_service: ScriptService, parent=None):
         super().__init__(parent)
         self._shot_service = shot_service
         self._script_service = script_service
-        self._current_project_id: int = 0
+        self._current_project_id: str | None = None
         self._scenes: list[Scene] = []
         self._setup_ui()
 
@@ -510,7 +510,7 @@ class ShotEditor(QWidget):
         self.detail_editor.hide()
         layout.addWidget(self.detail_editor)
 
-    def load_project(self, project_id: int, generated_shots: list[dict] | None = None):
+    def load_project(self, project_id: str, generated_shots: list[dict] | None = None):
         """加载项目分镜"""
         self._current_project_id = project_id
         logger.info(f"加载项目分镜：project_id={project_id}")
@@ -568,7 +568,7 @@ class ShotEditor(QWidget):
                 sound_effect = sound_dialogue
 
             shot = Shot(
-                id=0,
+                id=str(__import__("uuid").uuid4()),
                 scene_id=scene.id,
                 scene_number=scene_number,
                 shot_number=shot_data["shot_number"],
@@ -579,8 +579,8 @@ class ShotEditor(QWidget):
                 sound_effect=sound_effect,
                 duration=shot_data.get("duration", 5.0),
                 notes=shot_data.get("color_lighting", ""),  # 色调/光影作为备注
-                created_at=now_ms(),
-                updated_at=now_ms(),
+                created_at=datetime.now(),
+                updated_at=datetime.now(),
             )
             shots_to_create.append(shot)
 
@@ -768,7 +768,7 @@ class ShotEditor(QWidget):
         histories = self._shot_service.list_history(self._current_project_id)
 
         for history in histories:
-            time_str = ms_to_datetime(history.created_at).strftime("%Y-%m-%d %H:%M:%S")
+            time_str = history.created_at.strftime("%Y-%m-%d %H:%M:%S")
             self.history_list.addItem(time_str)
 
     def _on_history_clicked(self, item):

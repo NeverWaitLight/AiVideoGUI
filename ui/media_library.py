@@ -39,7 +39,6 @@ from ui.styles import (
     COLOR_MEDIA_VIDEO,
     COLOR_TEXT_SECONDARY,
 )
-from utils.time_utils import ms_to_datetime
 
 logger = logging.getLogger(__name__)
 
@@ -76,9 +75,9 @@ def _format_size(size_bytes: int) -> str:
 class _MediaCard(QWidget):
     """单个素材卡片：缩略图 + 文件名 + 类型标签 + 元信息。"""
 
-    double_clicked = pyqtSignal(int)
-    delete_requested = pyqtSignal(int)
-    jump_to_conversation = pyqtSignal(int, int)  # conversation_id, message_id
+    double_clicked = pyqtSignal(str)
+    delete_requested = pyqtSignal(str)
+    jump_to_conversation = pyqtSignal(str, str)  # conversation_id, message_id
     selection_changed = pyqtSignal()
 
     def __init__(
@@ -168,7 +167,7 @@ class _MediaCard(QWidget):
         info_layout.addLayout(meta_row)
 
         # 日期
-        date_label = QLabel(ms_to_datetime(self.media.created_at).strftime("%Y-%m-%d %H:%M"))
+        date_label = QLabel(self.media.created_at.strftime("%Y-%m-%d %H:%M"))
         date_label.setStyleSheet(f"color: {COLOR_TEXT_SECONDARY}; font-size: 11px;")
         info_layout.addWidget(date_label)
 
@@ -328,7 +327,7 @@ class _EmptyState(QWidget):
 class MediaLibrary(QWidget):
     """素材库页面组件。"""
 
-    jump_to_conversation_requested = pyqtSignal(int, int)  # conversation_id, message_id
+    jump_to_conversation_requested = pyqtSignal(str, str)  # conversation_id, message_id
     back_clicked = pyqtSignal()
 
     def __init__(
@@ -346,7 +345,7 @@ class MediaLibrary(QWidget):
         self._cards: list[_MediaCard] = []
         self._current_type: str | None = None
         self._current_keyword: str | None = None
-        self._current_project_id: int = 0
+        self._current_project_id: str | None = None
         self._current_files: list[MediaFile] = []
         self._setup_ui()
         self._search_timer = QTimer(self)
@@ -450,7 +449,7 @@ class MediaLibrary(QWidget):
 
     # ───────── 公共方法 ─────────
 
-    def load_files(self, project_id: int = 0) -> None:
+    def load_files(self, project_id: str | None = None) -> None:
         """加载素材文件，可选按项目过滤。"""
         self._current_project_id = project_id
         if project_id:
@@ -533,7 +532,7 @@ class MediaLibrary(QWidget):
 
     # ───────── 操作 ─────────
 
-    def _on_jump_requested(self, conversation_id: int, message_id: int) -> None:
+    def _on_jump_requested(self, conversation_id: str, message_id: str) -> None:
         """处理卡片的跳转请求并转发信号。"""
         self.jump_to_conversation_requested.emit(conversation_id, message_id)
 

@@ -87,7 +87,7 @@ class ModuleCard(CardWidget):
 class ProjectDetailPage(QWidget):
     """项目详情页面，显示项目信息和各模块入口。"""
 
-    module_selected = pyqtSignal(int, str)  # project_id, module_name
+    module_selected = pyqtSignal(str, str)  # project_id, module_name
     back_clicked = pyqtSignal()
 
     def __init__(self, project_service: ProjectService, db: DatabaseManager, parent: QWidget | None = None):
@@ -168,7 +168,7 @@ class ProjectDetailPage(QWidget):
         scroll.setWidget(container)
         layout.addWidget(scroll, stretch=1)
 
-    def set_project(self, project_id: int) -> None:
+    def set_project(self, project_id: str) -> None:
         """设置当前项目并动态生成模块卡片。"""
         project = self._service.get_project(project_id)
         if not project:
@@ -216,7 +216,7 @@ class ProjectDetailPage(QWidget):
         info_text = f"{project.aspect_ratio} · {project.resolution} · {video_count} 个视频"
         self.project_info_label.setText(info_text)
 
-    def _has_storyboard_videos(self, project_id: int) -> bool:
+    def _has_storyboard_videos(self, project_id: str) -> bool:
         """判断项目是否有分镜视频（文件名匹配 场次-镜头-序号.mp4 格式）。"""
         media_files = self._db.list_media_files(project_id=project_id, media_type="video")
         pattern = re.compile(r"^\d+-\d+-\d+\.mp4$")

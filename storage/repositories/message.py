@@ -24,7 +24,6 @@ class MessageRepository(BaseRepository[MessageEntity, Message]):
             role=entity.role,
             content=entity.content,
             created_at=entity.created_at,
-            updated_at=entity.updated_at,
             task_id=entity.task_id,
             video_url=entity.video_url,
             local_path=entity.local_path,
@@ -34,39 +33,20 @@ class MessageRepository(BaseRepository[MessageEntity, Message]):
 
     def _to_entity(self, dto: Message) -> MessageEntity:
         """DTO → Entity 转换。"""
-        # 处理 status 字段：可能是枚举或字符串
-        status_value = dto.status.value if isinstance(dto.status, MessageStatus) else dto.status
+        return MessageEntity(
+            id=dto.id,
+            conversation_id=dto.conversation_id,
+            role=dto.role,
+            content=dto.content,
+            created_at=dto.created_at,
+            task_id=dto.task_id,
+            video_url=dto.video_url,
+            local_path=dto.local_path,
+            status=dto.status.value,
+            error_message=dto.error_message,
+        )
 
-        if dto.id == 0:
-            return MessageEntity(
-                # 不设置 id，让数据库自动生成
-                conversation_id=dto.conversation_id,
-                role=dto.role,
-                content=dto.content,
-                created_at=dto.created_at if dto.created_at > 0 else None,
-                updated_at=dto.updated_at if dto.updated_at > 0 else None,
-                task_id=dto.task_id,
-                video_url=dto.video_url,
-                local_path=dto.local_path,
-                status=status_value,
-                error_message=dto.error_message,
-            )
-        else:
-            return MessageEntity(
-                id=dto.id,
-                conversation_id=dto.conversation_id,
-                role=dto.role,
-                content=dto.content,
-                created_at=dto.created_at,
-                updated_at=dto.updated_at,
-                task_id=dto.task_id,
-                video_url=dto.video_url,
-                local_path=dto.local_path,
-                status=status_value,
-                error_message=dto.error_message,
-            )
-
-    def list_by_conversation(self, conversation_id: int) -> List[Message]:
+    def list_by_conversation(self, conversation_id: str) -> List[Message]:
         """
         查询对话的所有消息（按时间升序）。
 
@@ -86,7 +66,7 @@ class MessageRepository(BaseRepository[MessageEntity, Message]):
 
     def update_status(
         self,
-        message_id: int,
+        message_id: str,
         status: MessageStatus,
         task_id: str = "",
         video_url: str = "",

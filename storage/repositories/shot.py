@@ -37,42 +37,24 @@ class ShotRepository(BaseRepository[ShotEntity, Shot]):
 
     def _to_entity(self, dto: Shot) -> ShotEntity:
         """DTO → Entity 转换。"""
-        if dto.id == 0:
-            return ShotEntity(
-                # 不设置 id，让数据库自动生成
-                scene_id=dto.scene_id,
-                scene_number=dto.scene_number,
-                shot_number=dto.shot_number,
-                design_image=dto.design_image,
-                shot_size=dto.shot_size.value if isinstance(dto.shot_size, ShotSize) else dto.shot_size,
-                camera_movement=dto.camera_movement,
-                visual_content=dto.visual_content,
-                dialogue=dto.dialogue,
-                sound_effect=dto.sound_effect,
-                duration=dto.duration,
-                notes=dto.notes,
-                created_at=dto.created_at if dto.created_at > 0 else None,
-                updated_at=dto.updated_at if dto.updated_at > 0 else None,
-            )
-        else:
-            return ShotEntity(
-                id=dto.id,
-                scene_id=dto.scene_id,
-                scene_number=dto.scene_number,
-                shot_number=dto.shot_number,
-                design_image=dto.design_image,
-                shot_size=dto.shot_size.value if isinstance(dto.shot_size, ShotSize) else dto.shot_size,
-                camera_movement=dto.camera_movement,
-                visual_content=dto.visual_content,
-                dialogue=dto.dialogue,
-                sound_effect=dto.sound_effect,
-                duration=dto.duration,
-                notes=dto.notes,
-                created_at=dto.created_at,
-                updated_at=dto.updated_at,
-            )
+        return ShotEntity(
+            id=dto.id,
+            scene_id=dto.scene_id,
+            scene_number=dto.scene_number,
+            shot_number=dto.shot_number,
+            design_image=dto.design_image,
+            shot_size=dto.shot_size.value if isinstance(dto.shot_size, ShotSize) else dto.shot_size,
+            camera_movement=dto.camera_movement,
+            visual_content=dto.visual_content,
+            dialogue=dto.dialogue,
+            sound_effect=dto.sound_effect,
+            duration=dto.duration,
+            notes=dto.notes,
+            created_at=dto.created_at,
+            updated_at=dto.updated_at,
+        )
 
-    def list_by_scene(self, scene_id: int) -> List[Shot]:
+    def list_by_scene(self, scene_id: str) -> List[Shot]:
         """
         查询场次的所有分镜（按镜头号升序）。
 
@@ -90,7 +72,7 @@ class ShotRepository(BaseRepository[ShotEntity, Shot]):
         entities = self.session.execute(stmt).scalars().all()
         return [self._to_dto(e) for e in entities]
 
-    def list_by_project(self, project_id: int) -> List[Shot]:
+    def list_by_project(self, project_id: str) -> List[Shot]:
         """
         查询项目的所有分镜（通过 JOIN 跨 3 表查询）。
 
@@ -110,7 +92,7 @@ class ShotRepository(BaseRepository[ShotEntity, Shot]):
         entities = self.session.execute(stmt).scalars().all()
         return [self._to_dto(e) for e in entities]
 
-    def delete_by_scene(self, scene_id: int) -> None:
+    def delete_by_scene(self, scene_id: str) -> None:
         """
         删除场次的所有分镜。
 
@@ -139,22 +121,14 @@ class ShotHistoryRepository(BaseRepository[ShotHistoryEntity, ShotHistory]):
 
     def _to_entity(self, dto: ShotHistory) -> ShotHistoryEntity:
         """DTO → Entity 转换。"""
-        if dto.id == 0:
-            return ShotHistoryEntity(
-                # 不设置 id，让数据库自动生成
-                project_id=dto.project_id,
-                shots_snapshot=dto.shots_snapshot,
-                created_at=dto.created_at if dto.created_at > 0 else None,
-            )
-        else:
-            return ShotHistoryEntity(
-                id=dto.id,
-                project_id=dto.project_id,
-                shots_snapshot=dto.shots_snapshot,
-                created_at=dto.created_at,
-            )
+        return ShotHistoryEntity(
+            id=dto.id,
+            project_id=dto.project_id,
+            shots_snapshot=dto.shots_snapshot,
+            created_at=dto.created_at,
+        )
 
-    def list_by_project(self, project_id: int) -> List[ShotHistory]:
+    def list_by_project(self, project_id: str) -> List[ShotHistory]:
         """
         查询项目的所有分镜历史（按时间倒序）。
 

@@ -28,7 +28,6 @@ class MediaRepository(BaseRepository[MediaFileEntity, MediaFile]):
             conversation_id=entity.conversation_id,
             message_id=entity.message_id,
             created_at=entity.created_at,
-            updated_at=entity.updated_at,
             thumbnail_path=entity.thumbnail_path,
             duration=entity.duration,
             width=entity.width,
@@ -37,40 +36,21 @@ class MediaRepository(BaseRepository[MediaFileEntity, MediaFile]):
 
     def _to_entity(self, dto: MediaFile) -> MediaFileEntity:
         """DTO → Entity 转换。"""
-        if dto.id == 0:
-            return MediaFileEntity(
-                # 不设置 id，让数据库自动生成
-                filename=dto.filename,
-                media_type=dto.media_type.value,
-                local_path=dto.local_path,
-                file_size=dto.file_size,
-                source=dto.source,
-                conversation_id=dto.conversation_id,
-                message_id=dto.message_id,
-                created_at=dto.created_at if dto.created_at > 0 else None,
-                updated_at=dto.updated_at if dto.updated_at > 0 else None,
-                thumbnail_path=dto.thumbnail_path,
-                duration=dto.duration,
-                width=dto.width,
-                height=dto.height,
-            )
-        else:
-            return MediaFileEntity(
-                id=dto.id,
-                filename=dto.filename,
-                media_type=dto.media_type.value,
-                local_path=dto.local_path,
-                file_size=dto.file_size,
-                source=dto.source,
-                conversation_id=dto.conversation_id,
-                message_id=dto.message_id,
-                created_at=dto.created_at,
-                updated_at=dto.updated_at,
-                thumbnail_path=dto.thumbnail_path,
-                duration=dto.duration,
-                width=dto.width,
-                height=dto.height,
-            )
+        return MediaFileEntity(
+            id=dto.id,
+            filename=dto.filename,
+            media_type=dto.media_type.value,
+            local_path=dto.local_path,
+            file_size=dto.file_size,
+            source=dto.source,
+            conversation_id=dto.conversation_id,
+            message_id=dto.message_id,
+            created_at=dto.created_at,
+            thumbnail_path=dto.thumbnail_path,
+            duration=dto.duration,
+            width=dto.width,
+            height=dto.height,
+        )
 
     def list_all(self, media_type: Optional[MediaType] = None) -> List[MediaFile]:
         """
@@ -90,7 +70,7 @@ class MediaRepository(BaseRepository[MediaFileEntity, MediaFile]):
 
     def update_metadata(
         self,
-        file_id: int,
+        file_id: str,
         thumbnail_path: str = "",
         duration: float = 0.0,
         width: int = 0,

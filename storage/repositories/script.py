@@ -28,24 +28,15 @@ class ScriptRepository(BaseRepository[ScriptEntity, Script]):
 
     def _to_entity(self, dto: Script) -> ScriptEntity:
         """DTO → Entity 转换。"""
-        if dto.id == 0:
-            return ScriptEntity(
-                # 不设置 id，让数据库自动生成
-                project_id=dto.project_id,
-                title=dto.title,
-                created_at=dto.created_at if dto.created_at > 0 else None,
-                updated_at=dto.updated_at if dto.updated_at > 0 else None,
-            )
-        else:
-            return ScriptEntity(
-                id=dto.id,
-                project_id=dto.project_id,
-                title=dto.title,
-                created_at=dto.created_at,
-                updated_at=dto.updated_at,
-            )
+        return ScriptEntity(
+            id=dto.id,
+            project_id=dto.project_id,
+            title=dto.title,
+            created_at=dto.created_at,
+            updated_at=dto.updated_at,
+        )
 
-    def get_by_project(self, project_id: int) -> Optional[Script]:
+    def get_by_project(self, project_id: str) -> Optional[Script]:
         """
         查询项目的剧本。
 
@@ -59,7 +50,7 @@ class ScriptRepository(BaseRepository[ScriptEntity, Script]):
         entity = self.session.execute(stmt).scalars().first()
         return self._to_dto(entity) if entity else None
 
-    def update_script(self, script_id: int, title: str, updated_at) -> None:
+    def update_script(self, script_id: str, title: str, updated_at) -> None:
         """
         更新剧本。
 
@@ -95,24 +86,15 @@ class ScriptHistoryRepository(BaseRepository[ScriptHistoryEntity, ScriptHistory]
 
     def _to_entity(self, dto: ScriptHistory) -> ScriptHistoryEntity:
         """DTO → Entity 转换。"""
-        if dto.id == 0:
-            return ScriptHistoryEntity(
-                # 不设置 id，让数据库自动生成
-                script_id=dto.script_id,
-                title=dto.title,
-                scenes_snapshot=dto.scenes_snapshot,
-                created_at=dto.created_at if dto.created_at > 0 else None,
-            )
-        else:
-            return ScriptHistoryEntity(
-                id=dto.id,
-                script_id=dto.script_id,
-                title=dto.title,
-                scenes_snapshot=dto.scenes_snapshot,
-                created_at=dto.created_at,
-            )
+        return ScriptHistoryEntity(
+            id=dto.id,
+            script_id=dto.script_id,
+            title=dto.title,
+            scenes_snapshot=dto.scenes_snapshot,
+            created_at=dto.created_at,
+        )
 
-    def list_by_script(self, script_id: int) -> List[ScriptHistory]:
+    def list_by_script(self, script_id: str) -> List[ScriptHistory]:
         """
         查询剧本的所有历史版本（按时间倒序）。
 
@@ -154,34 +136,20 @@ class SceneRepository(BaseRepository[SceneEntity, Scene]):
 
     def _to_entity(self, dto: Scene) -> SceneEntity:
         """DTO → Entity 转换。"""
-        if dto.id == 0:
-            return SceneEntity(
-                # 不设置 id，让数据库自动生成
-                script_id=dto.script_id,
-                scene_number=dto.scene_number,
-                location_type=dto.location_type.value if isinstance(dto.location_type, SceneLocation) else dto.location_type,
-                location=dto.location,
-                time_type=dto.time_type.value if isinstance(dto.time_type, SceneTime) else dto.time_type,
-                time_detail=dto.time_detail,
-                content=dto.content,
-                created_at=dto.created_at if dto.created_at > 0 else None,
-                updated_at=dto.updated_at if dto.updated_at > 0 else None,
-            )
-        else:
-            return SceneEntity(
-                id=dto.id,
-                script_id=dto.script_id,
-                scene_number=dto.scene_number,
-                location_type=dto.location_type.value if isinstance(dto.location_type, SceneLocation) else dto.location_type,
-                location=dto.location,
-                time_type=dto.time_type.value if isinstance(dto.time_type, SceneTime) else dto.time_type,
-                time_detail=dto.time_detail,
-                content=dto.content,
-                created_at=dto.created_at,
-                updated_at=dto.updated_at,
-            )
+        return SceneEntity(
+            id=dto.id,
+            script_id=dto.script_id,
+            scene_number=dto.scene_number,
+            location_type=dto.location_type.value if isinstance(dto.location_type, SceneLocation) else dto.location_type,
+            location=dto.location,
+            time_type=dto.time_type.value if isinstance(dto.time_type, SceneTime) else dto.time_type,
+            time_detail=dto.time_detail,
+            content=dto.content,
+            created_at=dto.created_at,
+            updated_at=dto.updated_at,
+        )
 
-    def list_by_script(self, script_id: int) -> List[Scene]:
+    def list_by_script(self, script_id: str) -> List[Scene]:
         """
         查询剧本的所有场次（按场次号升序）。
 
@@ -199,7 +167,7 @@ class SceneRepository(BaseRepository[SceneEntity, Scene]):
         entities = self.session.execute(stmt).scalars().all()
         return [self._to_dto(e) for e in entities]
 
-    def delete_by_script(self, script_id: int) -> None:
+    def delete_by_script(self, script_id: str) -> None:
         """
         删除剧本的所有场次。
 

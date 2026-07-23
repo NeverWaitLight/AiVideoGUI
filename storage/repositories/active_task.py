@@ -5,6 +5,7 @@ from typing import List, Optional
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from models.data_models import TaskStatus
 from storage.orm.models import ActiveTaskEntity
 from storage.repositories.base import BaseRepository
 
@@ -30,7 +31,6 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, dict]):
             "status": entity.status,
             "save_path": entity.save_path,
             "created_at": entity.created_at,
-            "updated_at": entity.updated_at,
         }
 
     def _to_entity(self, dto: dict) -> ActiveTaskEntity:
@@ -43,8 +43,7 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, dict]):
             video_url=dto.get("video_url", ""),
             status=dto.get("status", "pending"),
             save_path=dto.get("save_path", ""),
-            created_at=dto.get("created_at") if dto.get("created_at", 0) > 0 else None,
-            updated_at=dto.get("updated_at") if dto.get("updated_at", 0) > 0 else None,
+            created_at=dto["created_at"],
         )
 
     def list_all(self) -> List[dict]:

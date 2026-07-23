@@ -5,11 +5,12 @@ from __future__ import annotations
 import logging
 import os
 import shutil
+import uuid
+from datetime import datetime
 
 from models.data_models import Conversation, Project
 from storage.database import DatabaseManager
 from utils import paths
-from utils.time_utils import now_ms
 
 logger = logging.getLogger(__name__)
 
@@ -23,35 +24,54 @@ class ProjectService:
 
     def create_project(self, name: str, resolution: str = "720P", aspect_ratio: str = "16:9", cover_image: str = "") -> Project:
         """创建新项目。"""
-        now = now_ms()
-        project = Project(
-            id=0,
+        project_id = str(uuid.uuid4())
+        self._db.create_project(project_id, name, resolution, aspect_ratio, cover_image)
+        # 预创建项目目录
+        proj_dir = paths.project_dir(self._root, project_id)
+        os.makedirs(proj_dir, exist_ok=True)
+        return Project(
+            id=project_id,
             name=name,
             resolution=resolution,
             aspect_ratio=aspect_ratio,
-            created_at=now,
-            updated_at=now,
+            created_at=datetime.now(),
             cover_image=cover_image,
         )
-        result = self._db.create_project(project)
-        # 预创建项目目录
-        proj_dir = paths.project_dir(self._root, result.id)
-        os.makedirs(proj_dir, exist_ok=True)
-        return result
 
     def list_projects(self) -> list[Project]:
         """列出所有项目。"""
-        return self._db.list_projects()
+        rows = self._db.list_projects()
+        return [
+            Project(
+                id=r["id"],
+                name=r["name"],
+                resolution=r["resolution"],
+                aspect_ratio=r["aspect_ratio"],
+                created_at=r["created_at"],
+                cover_image=r.get("cover_image", ""),
+            )
+            for r in rows
+        ]
 
-    def get_project(self, project_id: int) -> Project | None:
+    def get_project(self, project_id: str) -> Project | None:
         """获取单个项目。"""
-        return self._db.get_project(project_id)
+        row = self._db.get_project(project_id)
+        if not row:
+            return None
+        return Project(
+            id=row["id"],
+            name=row["name"],
+            resolution=row["resolution"],
+            aspect_ratio=row["aspect_ratio"],
+            created_at=row["created_at"],
+            cover_image=row.get("cover_image", ""),
+        )
 
-    def update_project(self, project_id: int, name: str, resolution: str, aspect_ratio: str, cover_image: str = "") -> None:
+    def update_project(self, project_id: str, name: str, resolution: str, aspect_ratio: str, cover_image: str = "") -> None:
         """更新项目信息。"""
         self._db.update_project(project_id, name, resolution, aspect_ratio, cover_image)
 
-    def delete_project(self, project_id: int) -> None:
+    def delete_project(self, project_id: str) -> None:
         """删除项目（级联删除所有关联数据和文件）。"""
         logger.info(f"开始删除项目：project_id={project_id}")
 
@@ -84,11 +104,11 @@ class ProjectService:
 
         logger.info(f"项目删除完成：project_id={project_id}")
 
-    def list_project_conversations(self, project_id: int) -> list[Conversation]:
+    def list_project_conversations(self, project_id: str) -> list[Conversation]:
         """列出项目下的所有对话。"""
         return self._db.list_project_conversations(project_id)
 
-    def get_project_video_count(self, project_id: int) -> int:
+    def get_project_video_count(self, project_id: str) -> int:
         """获取项目下的视频总数。"""
         convs = self._db.list_project_conversations(project_id)
         count = 0

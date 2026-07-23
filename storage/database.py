@@ -3,6 +3,7 @@
 import json
 import logging
 import threading
+from datetime import datetime
 from typing import Optional
 
 from models.data_models import (
@@ -15,13 +16,11 @@ from models.data_models import (
     MessageStatus,
     Outline,
     OutlineHistory,
-    Project,
     Scene,
     Script,
     ScriptHistory,
     Shot,
     ShotHistory,
-    ShotSize,
 )
 from storage.orm.base import create_all_tables, get_session, init_engine
 from storage.repositories.active_task import ActiveTaskRepository
@@ -33,7 +32,6 @@ from storage.repositories.outline import OutlineHistoryRepository, OutlineReposi
 from storage.repositories.project import ProjectRepository
 from storage.repositories.script import SceneRepository, ScriptHistoryRepository, ScriptRepository
 from storage.repositories.shot import ShotHistoryRepository, ShotRepository
-from utils.time_utils import now_ms
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +65,7 @@ class DatabaseManager:
             repo = ConversationRepository(session)
             repo.create(conv)
 
-    def get_conversation(self, conversation_id: int) -> Conversation | None:
+    def get_conversation(self, conversation_id: str) -> Conversation | None:
         """根据 ID 查询单个对话。"""
         session = self._get_session()
         repo = ConversationRepository(session)
@@ -79,21 +77,21 @@ class DatabaseManager:
         repo = ConversationRepository(session)
         return repo.list_all(is_hidden=False)
 
-    def delete_conversation(self, conversation_id: int) -> None:
+    def delete_conversation(self, conversation_id: str) -> None:
         """删除对话。"""
         with self._lock:
             session = self._get_session()
             repo = ConversationRepository(session)
             repo.delete(conversation_id)
 
-    def update_conversation_title(self, conversation_id: int, title: str) -> None:
+    def update_conversation_title(self, conversation_id: str, title: str) -> None:
         """更新对话标题。"""
         with self._lock:
             session = self._get_session()
             repo = ConversationRepository(session)
             repo.update_title(conversation_id, title)
 
-    def list_project_conversations(self, project_id: int) -> list[Conversation]:
+    def list_project_conversations(self, project_id: str) -> list[Conversation]:
         """查询项目的所有对话。"""
         session = self._get_session()
         repo = ConversationRepository(session)
@@ -101,20 +99,20 @@ class DatabaseManager:
 
     # ========== Message 相关方法 ==========
 
-    def add_message(self, msg: Message) -> Message:
-        """添加消息，返回包含数据库生成 ID 的消息对象。"""
+    def add_message(self, msg: Message) -> None:
+        """添加消息。"""
         with self._lock:
             session = self._get_session()
             repo = MessageRepository(session)
-            return repo.create(msg)
+            repo.create(msg)
 
-    def get_message(self, message_id: int) -> Message | None:
+    def get_message(self, message_id: str) -> Message | None:
         """根据 ID 查询消息。"""
         session = self._get_session()
         repo = MessageRepository(session)
         return repo.get_by_id(message_id)
 
-    def list_messages(self, conversation_id: int) -> list[Message]:
+    def list_messages(self, conversation_id: str) -> list[Message]:
         """查询对话的所有消息。"""
         session = self._get_session()
         repo = MessageRepository(session)
@@ -122,7 +120,7 @@ class DatabaseManager:
 
     def update_message_status(
         self,
-        message_id: int,
+        message_id: str,
         status: MessageStatus,
         task_id: str = "",
         video_url: str = "",
@@ -147,7 +145,7 @@ class DatabaseManager:
     def add_active_task(
         self,
         task_id: str,
-        message_id: int,
+        message_id: str,
         provider_name: str,
         model_name: str,
         save_path: str = "",
@@ -166,7 +164,7 @@ class DatabaseManager:
                 "video_url": video_url,
                 "status": status,
                 "save_path": save_path,
-                "created_at": now_ms(),
+                "created_at": datetime.now(),
             })
 
     def list_active_tasks(self) -> list[dict]:
@@ -191,35 +189,16 @@ class DatabaseManager:
 
     def get_next_storyboard_seq(self, scene_number: int, shot_number: int) -> int:
         """
-        获取同一场次同一镜头的下一个生成次数（从 1 开始自增）。
+        获取下一个分镜序号（场次号 * 1000 + 镜头号）。
 
         Args:
             scene_number: 场次号
             shot_number: 镜头号
 
         Returns:
-            生成次数（1, 2, 3, ...）
+            分镜序号
         """
-        with self._lock:
-            session = self._get_session()
-            media_repo = MediaRepository(session)
-            # 查询所有以 "{scene_number}-{shot_number}-" 开头的视频文件名
-            prefix = f"{scene_number}-{shot_number}-"
-            all_media = media_repo.list_all(media_type=MediaType.VIDEO)
-
-            # 筛选匹配的文件并提取序号
-            max_seq = 0
-            for media in all_media:
-                if media.filename.startswith(prefix) and media.filename.endswith(".mp4"):
-                    try:
-                        # 提取序号部分：场次号-镜头号-序号.mp4
-                        seq_part = media.filename[len(prefix):-4]  # 去掉前缀和 .mp4
-                        seq = int(seq_part)
-                        max_seq = max(max_seq, seq)
-                    except ValueError:
-                        continue
-
-            return max_seq + 1
+        return scene_number * 1000 + shot_number
 
     # ========== MediaFile 相关方法 ==========
 
@@ -234,8 +213,8 @@ class DatabaseManager:
         self,
         media_type: Optional[MediaType | str] = None,
         keyword: Optional[str] = None,
-        project_id: Optional[int] = None,
-        conversation_id: Optional[int] = None,
+        project_id: Optional[str] = None,
+        conversation_id: Optional[str] = None,
     ) -> list[MediaFile]:
         """
         查询素材文件。
@@ -273,7 +252,7 @@ class DatabaseManager:
 
         return files
 
-    def delete_media_file(self, media_id: int) -> MediaFile | None:
+    def delete_media_file(self, media_id: str) -> MediaFile | None:
         """
         删除素材文件。
 
@@ -291,7 +270,7 @@ class DatabaseManager:
                 repo.delete(media_id)
             return media
 
-    def get_media_file_by_message(self, message_id: int) -> MediaFile | None:
+    def get_media_file_by_message(self, message_id: str) -> MediaFile | None:
         """
         根据消息 ID 查询素材文件。
 
@@ -309,7 +288,7 @@ class DatabaseManager:
                 return f
         return None
 
-    def get_video_metadata_by_message(self, message_id: int) -> dict | None:
+    def get_video_metadata_by_message(self, message_id: str) -> dict | None:
         """
         根据消息 ID 查询视频元数据。
 
@@ -331,28 +310,65 @@ class DatabaseManager:
 
     # ========== Project 相关方法 ==========
 
-    def create_project(self, project: Project) -> Project:
+    def create_project(
+        self,
+        project_id: str,
+        name: str,
+        resolution: str,
+        aspect_ratio: str,
+        cover_image: str = "",
+    ) -> None:
         """创建项目。"""
         with self._lock:
             session = self._get_session()
             repo = ProjectRepository(session)
-            return repo.create(project)
+            from models.data_models import Project
 
-    def list_projects(self) -> list[Project]:
-        """查询所有项目。"""
+            repo.create(Project(
+                id=project_id,
+                name=name,
+                resolution=resolution,
+                aspect_ratio=aspect_ratio,
+                created_at=datetime.now(),
+                cover_image=cover_image,
+            ))
+
+    def list_projects(self) -> list[dict]:
+        """查询所有项目（返回字典格式以保持兼容性）。"""
         session = self._get_session()
         repo = ProjectRepository(session)
-        return repo.list_all()
+        projects = repo.list_all()
+        return [
+            {
+                "id": p.id,
+                "name": p.name,
+                "resolution": p.resolution,
+                "aspect_ratio": p.aspect_ratio,
+                "created_at": p.created_at,
+                "cover_image": p.cover_image,
+            }
+            for p in projects
+        ]
 
-    def get_project(self, project_id: int) -> Project | None:
+    def get_project(self, project_id: str) -> dict | None:
         """查询项目。"""
         session = self._get_session()
         repo = ProjectRepository(session)
-        return repo.get_by_id(project_id)
+        project = repo.get_by_id(project_id)
+        if project:
+            return {
+                "id": project.id,
+                "name": project.name,
+                "resolution": project.resolution,
+                "aspect_ratio": project.aspect_ratio,
+                "created_at": project.created_at,
+                "cover_image": project.cover_image,
+            }
+        return None
 
     def update_project(
         self,
-        project_id: int,
+        project_id: str,
         name: str,
         resolution: str,
         aspect_ratio: str,
@@ -364,7 +380,7 @@ class DatabaseManager:
             repo = ProjectRepository(session)
             repo.update_project(project_id, name, resolution, aspect_ratio, cover_image)
 
-    def delete_project(self, project_id: int) -> None:
+    def delete_project(self, project_id: str) -> None:
         """删除项目。"""
         with self._lock:
             session = self._get_session()
@@ -373,7 +389,7 @@ class DatabaseManager:
 
     # ========== Outline 相关方法 ==========
 
-    def get_outline(self, project_id: int) -> Outline | None:
+    def get_outline(self, project_id: str) -> Outline | None:
         """查询项目的大纲。"""
         session = self._get_session()
         repo = OutlineRepository(session)
@@ -386,30 +402,31 @@ class DatabaseManager:
             repo = OutlineRepository(session)
             repo.create(outline)
 
-    def update_outline(self, outline_id: int, content: str) -> None:
+    def update_outline(self, outline_id: str, content: str) -> None:
         """更新大纲内容。"""
         with self._lock:
             session = self._get_session()
             repo = OutlineRepository(session)
-            repo.update_content(outline_id, content, now_ms())
+            repo.update_content(outline_id, content, datetime.now())
 
             # 自动保存历史版本
             history_repo = OutlineHistoryRepository(session)
+            import uuid
 
             history_repo.create(OutlineHistory(
-                id=0,
+                id=str(uuid.uuid4()),
                 outline_id=outline_id,
                 content=content,
-                created_at=now_ms(),
+                created_at=datetime.now(),
             ))
 
-    def list_outline_history(self, outline_id: int) -> list[OutlineHistory]:
+    def list_outline_history(self, outline_id: str) -> list[OutlineHistory]:
         """查询大纲的所有历史版本。"""
         session = self._get_session()
         repo = OutlineHistoryRepository(session)
         return repo.list_by_outline(outline_id)
 
-    def restore_outline_from_history(self, outline_id: int, history_id: int) -> None:
+    def restore_outline_from_history(self, outline_id: str, history_id: str) -> None:
         """从历史版本恢复大纲。"""
         with self._lock:
             session = self._get_session()
@@ -418,11 +435,11 @@ class DatabaseManager:
 
             if history:
                 outline_repo = OutlineRepository(session)
-                outline_repo.update_content(outline_id, history.content, now_ms())
+                outline_repo.update_content(outline_id, history.content, datetime.now())
 
     # ========== Script 相关方法 ==========
 
-    def get_script(self, project_id: int) -> Script | None:
+    def get_script(self, project_id: str) -> Script | None:
         """查询项目的剧本。"""
         session = self._get_session()
         repo = ScriptRepository(session)
@@ -435,20 +452,20 @@ class DatabaseManager:
             repo = ScriptRepository(session)
             repo.create(script)
 
-    def update_script(self, script_id: int, title: str) -> None:
+    def update_script(self, script_id: str, title: str) -> None:
         """更新剧本标题。"""
         with self._lock:
             session = self._get_session()
             repo = ScriptRepository(session)
-            repo.update_script(script_id, title, now_ms())
+            repo.update_script(script_id, title, datetime.now())
 
-    def list_scenes(self, script_id: int) -> list[Scene]:
+    def list_scenes(self, script_id: str) -> list[Scene]:
         """查询剧本的所有场次。"""
         session = self._get_session()
         repo = SceneRepository(session)
         return repo.list_by_script(script_id)
 
-    def get_scene(self, scene_id: int) -> Scene | None:
+    def get_scene(self, scene_id: str) -> Scene | None:
         """查询场次。"""
         session = self._get_session()
         repo = SceneRepository(session)
@@ -463,7 +480,7 @@ class DatabaseManager:
 
     def update_scene(
         self,
-        scene_id: int,
+        scene_id: str,
         location_type: str | None = None,
         location: str | None = None,
         time_type: str | None = None,
@@ -490,21 +507,22 @@ class DatabaseManager:
                     entity.time_detail = time_detail
                 if content is not None:
                     entity.content = content
-                entity.updated_at = now_ms()
+                entity.updated_at = datetime.now()
                 session.commit()
 
-    def delete_scene(self, scene_id: int) -> None:
+    def delete_scene(self, scene_id: str) -> None:
         """删除场次。"""
         with self._lock:
             session = self._get_session()
             repo = SceneRepository(session)
             repo.delete(scene_id)
 
-    def create_script_history(self, script_id: int, title: str, scenes: list[Scene]) -> None:
+    def create_script_history(self, script_id: str, title: str, scenes: list[Scene]) -> None:
         """创建剧本历史快照。"""
         with self._lock:
             session = self._get_session()
             repo = ScriptHistoryRepository(session)
+            import uuid
 
             # 将 scenes 序列化为 JSON
             scenes_data = [
@@ -520,20 +538,20 @@ class DatabaseManager:
             ]
 
             repo.create(ScriptHistory(
-                id=0,
+                id=str(uuid.uuid4()),
                 script_id=script_id,
                 title=title,
                 scenes_snapshot=json.dumps(scenes_data, ensure_ascii=False),
-                created_at=now_ms(),
+                created_at=datetime.now(),
             ))
 
-    def list_script_history(self, script_id: int) -> list[ScriptHistory]:
+    def list_script_history(self, script_id: str) -> list[ScriptHistory]:
         """查询剧本的所有历史版本。"""
         session = self._get_session()
         repo = ScriptHistoryRepository(session)
         return repo.list_by_script(script_id)
 
-    def restore_script_from_history(self, script_id: int, history_id: int) -> None:
+    def restore_script_from_history(self, script_id: str, history_id: str) -> None:
         """从历史版本恢复剧本。"""
         with self._lock:
             session = self._get_session()
@@ -549,10 +567,11 @@ class DatabaseManager:
 
             # 恢复场次
             scenes_data = json.loads(history.scenes_snapshot)
+            import uuid
 
             for scene_data in scenes_data:
                 scene_repo.create(Scene(
-                    id=0,
+                    id=str(uuid.uuid4()),
                     script_id=script_id,
                     scene_number=scene_data["scene_number"],
                     location_type=scene_data["location_type"],
@@ -560,20 +579,20 @@ class DatabaseManager:
                     time_type=scene_data["time_type"],
                     time_detail=scene_data.get("time_detail", ""),
                     content=scene_data.get("content", ""),
-                    created_at=now_ms(),
-                    updated_at=now_ms(),
+                    created_at=datetime.now(),
+                    updated_at=datetime.now(),
                 ))
 
             # 更新剧本标题
             script_repo = ScriptRepository(session)
-            script_repo.update_script(script_id, history.title, now_ms())
+            script_repo.update_script(script_id, history.title, datetime.now())
 
     # ========== Shot 相关方法 ==========
 
     def list_shots(
         self,
-        scene_id: int | None = None,
-        project_id: int | None = None,
+        scene_id: str | None = None,
+        project_id: str | None = None,
         scene_number: int | None = None,
     ) -> list[Shot]:
         """
@@ -600,7 +619,7 @@ class DatabaseManager:
         else:
             return []
 
-    def get_shot(self, shot_id: int) -> Shot | None:
+    def get_shot(self, shot_id: str) -> Shot | None:
         """查询分镜。"""
         session = self._get_session()
         repo = ShotRepository(session)
@@ -623,7 +642,7 @@ class DatabaseManager:
 
     def update_shot(
         self,
-        shot_id: int,
+        shot_id: str,
         design_image: str | None = None,
         shot_size: str | None = None,
         camera_movement: str | None = None,
@@ -662,21 +681,22 @@ class DatabaseManager:
                     entity.duration = duration
                 if notes is not None:
                     entity.notes = notes
-                entity.updated_at = now_ms()
+                entity.updated_at = datetime.now()
                 session.commit()
 
-    def delete_shot(self, shot_id: int) -> None:
+    def delete_shot(self, shot_id: str) -> None:
         """删除分镜。"""
         with self._lock:
             session = self._get_session()
             repo = ShotRepository(session)
             repo.delete(shot_id)
 
-    def create_shot_history(self, project_id: int, shots: list[Shot]) -> None:
+    def create_shot_history(self, project_id: str, shots: list[Shot]) -> None:
         """创建分镜历史快照。"""
         with self._lock:
             session = self._get_session()
             repo = ShotHistoryRepository(session)
+            import uuid
 
             # 将 shots 序列化为 JSON
             shots_data = [
@@ -684,7 +704,7 @@ class DatabaseManager:
                     "scene_number": s.scene_number,
                     "shot_number": s.shot_number,
                     "design_image": s.design_image,
-                    "shot_size": s.shot_size.value if isinstance(s.shot_size, ShotSize) else s.shot_size,
+                    "shot_size": s.shot_size,
                     "camera_movement": s.camera_movement,
                     "visual_content": s.visual_content,
                     "dialogue": s.dialogue,
@@ -696,19 +716,19 @@ class DatabaseManager:
             ]
 
             repo.create(ShotHistory(
-                id=0,
+                id=str(uuid.uuid4()),
                 project_id=project_id,
                 shots_snapshot=json.dumps(shots_data, ensure_ascii=False),
-                created_at=now_ms(),
+                created_at=datetime.now(),
             ))
 
-    def list_shot_history(self, project_id: int) -> list[ShotHistory]:
+    def list_shot_history(self, project_id: str) -> list[ShotHistory]:
         """查询项目的所有分镜历史版本。"""
         session = self._get_session()
         repo = ShotHistoryRepository(session)
         return repo.list_by_project(project_id)
 
-    def restore_shots_from_history(self, project_id: int, history_id: int) -> None:
+    def restore_shots_from_history(self, project_id: str, history_id: str) -> None:
         """从历史版本恢复分镜。"""
         with self._lock:
             session = self._get_session()
@@ -736,6 +756,7 @@ class DatabaseManager:
 
             # 恢复分镜
             shots_data = json.loads(history.shots_snapshot)
+            import uuid
 
             for shot_data in shots_data:
                 scene_number = shot_data["scene_number"]
@@ -744,35 +765,35 @@ class DatabaseManager:
                     continue
 
                 shot_repo.create(Shot(
-                    id=0,
+                    id=str(uuid.uuid4()),
                     scene_id=scene_id,
                     scene_number=shot_data["scene_number"],
                     shot_number=shot_data["shot_number"],
                     design_image=shot_data.get("design_image", ""),
-                    shot_size=ShotSize(shot_data.get("shot_size", "medium_shot")),
+                    shot_size=shot_data.get("shot_size", "medium_shot"),
                     camera_movement=shot_data.get("camera_movement", ""),
                     visual_content=shot_data.get("visual_content", ""),
                     dialogue=shot_data.get("dialogue", ""),
                     sound_effect=shot_data.get("sound_effect", ""),
                     duration=shot_data.get("duration", 0.0),
                     notes=shot_data.get("notes", ""),
-                    created_at=now_ms(),
-                    updated_at=now_ms(),
+                    created_at=datetime.now(),
+                    updated_at=datetime.now(),
                 ))
 
     # ========== Character 相关方法 ==========
 
-    def list_characters(self, project_id: int) -> list[Character]:
+    def list_characters(self, project_id: str) -> list[Character]:
         """查询项目的所有角色。"""
         session = self._get_session()
         repo = CharacterRepository(session)
         return repo.list_by_project(project_id)
 
-    def get_character(self, character_id: int) -> Character | None:
-        """根据 ID 查询角色。"""
+    def get_character(self, character_uuid: str) -> Character | None:
+        """根据 UUID 查询角色。"""
         session = self._get_session()
         repo = CharacterRepository(session)
-        return repo.get_by_id(character_id)
+        return repo.get_by_id(character_uuid)
 
     def create_character(self, character: Character) -> Character:
         """创建角色。"""
@@ -795,14 +816,14 @@ class DatabaseManager:
             repo = CharacterRepository(session)
             repo.update(character)
 
-    def delete_character(self, character_id: int) -> None:
+    def delete_character(self, character_uuid: str) -> None:
         """删除角色。"""
         with self._lock:
             session = self._get_session()
             repo = CharacterRepository(session)
-            repo.delete(character_id)
+            repo.delete(character_uuid)
 
-    def get_character_by_ref_code(self, project_id: int, ref_code: str) -> Character | None:
+    def get_character_by_ref_code(self, project_id: str, ref_code: str) -> Character | None:
         """根据引用代号查询角色。"""
         session = self._get_session()
         repo = CharacterRepository(session)
@@ -813,6 +834,7 @@ class DatabaseManager:
         with self._lock:
             session = self._get_session()
             repo = CharacterHistoryRepository(session)
+            import uuid
 
             snapshot = json.dumps({
                 "name": character.name,
@@ -822,17 +844,17 @@ class DatabaseManager:
             }, ensure_ascii=False)
 
             repo.create(CharacterHistory(
-                id=0,
-                character_id=character.id,
+                id=str(uuid.uuid4()),
+                character_id=character.uuid,
                 snapshot=snapshot,
-                created_at=now_ms(),
+                created_at=datetime.now(),
             ))
 
-    def list_character_history(self, character_id: int) -> list[CharacterHistory]:
+    def list_character_history(self, character_uuid: str) -> list[CharacterHistory]:
         """查询角色的所有编辑历史。"""
         session = self._get_session()
         repo = CharacterHistoryRepository(session)
-        return repo.list_by_character(character_id)
+        return repo.list_by_character(character_uuid)
 
     # ========== 其他方法 ==========
 

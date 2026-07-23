@@ -54,7 +54,7 @@ class BaseRepository(Generic[EntityType, DTOType]):
         """
         raise NotImplementedError("子类必须实现 _to_entity() 方法")
 
-    def get_by_id(self, id: int) -> Optional[DTOType]:
+    def get_by_id(self, id: str) -> Optional[DTOType]:
         """
         根据 ID 查询单个记录。
 
@@ -79,11 +79,11 @@ class BaseRepository(Generic[EntityType, DTOType]):
         """
         entity = self._to_entity(dto)
         self.session.add(entity)
-        self.session.flush()  # 先 flush 让数据库生成 ID
         self.session.commit()
+        self.session.refresh(entity)
         return self._to_dto(entity)
 
-    def delete(self, id: int) -> bool:
+    def delete(self, id: str) -> bool:
         """
         删除记录。
 

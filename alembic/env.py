@@ -1,16 +1,33 @@
+from logging.config import fileConfig
 import os
 import sys
-from logging.config import fileConfig
 
-from alembic import context
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
+
+from alembic import context
 
 # 添加项目根目录到 sys.path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # 导入 ORM 基类和所有模型
 from storage.orm.base import Base
+from storage.orm.models import (
+    ProjectEntity,
+    ConversationEntity,
+    MessageEntity,
+    ActiveTaskEntity,
+    MediaFileEntity,
+    OutlineEntity,
+    OutlineHistoryEntity,
+    ScriptEntity,
+    SceneEntity,
+    ScriptHistoryEntity,
+    ShotEntity,
+    ShotHistoryEntity,
+    CharacterEntity,
+    CharacterHistoryEntity,
+)
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

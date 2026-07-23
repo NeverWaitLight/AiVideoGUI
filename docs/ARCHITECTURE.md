@@ -35,18 +35,3 @@
 **数据库变更：** `media_files` 表新增 `thumbnail_path`（TEXT）、`duration`（REAL）、`width`（INTEGER）、`height`（INTEGER）四列，应用启动时通过 `_migrate()` 自动增量迁移，已有记录填充默认值。
 
 **数据流：** 视频文件 → `VideoMetadataExtractor.extract_all()` → `MediaFile` 对象（携带元数据） → `DatabaseManager.add_media_file()` → SQLite `media_files` 表。
-
-## 时间戳约定
-
-全系统统一使用 **13 位毫秒时间戳（int，64-bit）** 作为时间的唯一传递格式，从获取、存储、传递到序列化全程保持 int 类型，仅在 UI 显示时才转换为人类可读格式。
-
-**获取时间：** 一律通过 `utils.time_utils.now_ms()` 获取当前时间戳，禁止在业务代码中使用 `datetime.now()` 或 `time.time()`。ORM 层的 `before_insert` / `before_update` 事件监听器也通过 `now_ms()` 自动填充时间字段。
-
-**数据库存储：** 所有 `created_at` / `updated_at` 字段在 ORM 中声明为 `BigInteger`，SQLite DDL 渲染为 `INTEGER`（通过自定义类型编译器确保 ROWID 自动递增兼容）。
-
-**UI 显示转换：** 提供两个工具函数用于显示层：
-
-- **`ms_to_datetime(ms)`** — 将毫秒时间戳转为 `datetime` 对象，用于需要自定义格式化的场景
-- **`format_time(ms)`** — 直接输出显示字符串（今天 HH:MM，其他 MM-DD HH:MM），用于对话列表等通用时间展示
-
-**核心原则：** `datetime` 对象只存在于 UI 显示转换的最后一环，业务层、Service 层、Storage 层、Provider 层之间绝不传递 `datetime` 对象。

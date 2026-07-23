@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 
 from PyQt6.QtCore import Qt, pyqtSignal, QSize, QThread
 from PyQt6.QtWidgets import (
@@ -30,7 +31,6 @@ from qfluentwidgets import (
 from models.data_models import Outline, OutlineHistory
 from service.outline_service import OutlineService
 from service.text_model_service import TextModelService
-from utils.time_utils import ms_to_datetime, now_ms
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +68,7 @@ class OptimizeWorker(QThread):
 class HistoryListItem(QWidget):
     """历史版本列表项。"""
 
-    restore_clicked = pyqtSignal(int)  # history_id
+    restore_clicked = pyqtSignal(str)  # history_id
 
     def __init__(self, history: OutlineHistory, parent: QWidget | None = None):
         super().__init__(parent)
@@ -80,7 +80,7 @@ class HistoryListItem(QWidget):
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(8)
 
-        time_label = QLabel(ms_to_datetime(self._history.created_at).strftime("%Y-%m-%d %H:%M:%S"))
+        time_label = QLabel(self._history.created_at.strftime("%Y-%m-%d %H:%M:%S"))
         time_label.setStyleSheet("font-size: 13px; color: #666;")
         layout.addWidget(time_label, stretch=1)
 
@@ -93,7 +93,7 @@ class HistoryListItem(QWidget):
 class HistoryDialog(QDialog):
     """历史版本弹出对话框。"""
 
-    restore_requested = pyqtSignal(int)  # history_id
+    restore_requested = pyqtSignal(str)  # history_id
 
     def __init__(
         self,
@@ -354,7 +354,7 @@ class OutlineEditor(QWidget):
         self._service = outline_service
         self._text_service = text_service
         self._current_outline: Outline | None = None
-        self._current_project_id: int = 0
+        self._current_project_id: str | None = None
         self._setup_ui()
 
     def _setup_ui(self) -> None:
@@ -453,7 +453,7 @@ class OutlineEditor(QWidget):
 
         layout.addWidget(splitter, stretch=1)
 
-    def load_outline(self, project_id: int) -> None:
+    def load_outline(self, project_id: str) -> None:
         """加载项目大纲。"""
         self._current_project_id = project_id
         self._current_outline = self._service.get_or_create_outline(project_id)
@@ -491,7 +491,7 @@ class OutlineEditor(QWidget):
         try:
             self._service.update_outline(self._current_outline.id, content)
             self._current_outline.content = content
-            self._current_outline.updated_at = now_ms()
+            self._current_outline.updated_at = datetime.now()
             self._chat_panel.set_current_content(content)
 
             QMessageBox.information(self, "成功", "大纲已保存")
@@ -551,7 +551,7 @@ class OutlineEditor(QWidget):
                 try:
                     self._service.update_outline(self._current_outline.id, current_content)
                     self._current_outline.content = current_content
-                    self._current_outline.updated_at = now_ms()
+                    self._current_outline.updated_at = datetime.now()
                     logger.info(f"保存大纲：{self._current_outline.id}")
                 except Exception as e:
                     logger.exception("保存大纲失败")

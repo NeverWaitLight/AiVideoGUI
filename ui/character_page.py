@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import json
 import logging
+from datetime import datetime
 
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QPixmap
+from PyQt6.QtGui import QFont, QPixmap
 from PyQt6.QtWidgets import (
     QGridLayout,
     QHBoxLayout,
@@ -34,7 +35,6 @@ from qfluentwidgets import (
 
 from models.data_models import Character, CharacterHistory
 from service.character_service import CharacterService
-from utils.time_utils import ms_to_datetime
 
 logger = logging.getLogger(__name__)
 
@@ -142,7 +142,7 @@ class _CharacterHistoryDialog(QDialog):
         self._detail_label.setMinimumHeight(150)
 
         for h in self._history:
-            time_str = ms_to_datetime(h.created_at).strftime("%Y-%m-%d %H:%M:%S")
+            time_str = h.created_at.strftime("%Y-%m-%d %H:%M:%S")
             try:
                 snap = json.loads(h.snapshot)
                 summary = f"{snap.get('name', '?')} ({snap.get('ref_code', '?')})"
@@ -179,9 +179,9 @@ class _CharacterHistoryDialog(QDialog):
 class CharacterCard(CardWidget):
     """角色横卡（约 400x120）。"""
 
-    edit_requested = pyqtSignal(int)  # character id
-    history_requested = pyqtSignal(int)
-    delete_requested = pyqtSignal(int)
+    edit_requested = pyqtSignal(str)  # character uuid
+    history_requested = pyqtSignal(str)
+    delete_requested = pyqtSignal(str)
 
     def __init__(self, character: Character, parent: QWidget | None = None):
         super().__init__(parent)
@@ -282,12 +282,12 @@ class CharacterCard(CardWidget):
 
         edit_btn = PushButton("编辑", self, FluentIcon.EDIT)
         edit_btn.setFixedSize(80, 32)
-        edit_btn.clicked.connect(lambda: self.edit_requested.emit(self.character.id))
+        edit_btn.clicked.connect(lambda: self.edit_requested.emit(self.character.uuid))
         btn_layout.addWidget(edit_btn, alignment=Qt.AlignmentFlag.AlignCenter)
 
         history_btn = PushButton("历史", self, FluentIcon.HISTORY)
         history_btn.setFixedSize(80, 32)
-        history_btn.clicked.connect(lambda: self.history_requested.emit(self.character.id))
+        history_btn.clicked.connect(lambda: self.history_requested.emit(self.character.uuid))
         btn_layout.addWidget(history_btn, alignment=Qt.AlignmentFlag.AlignCenter)
 
         main_layout.addWidget(btn_widget, alignment=Qt.AlignmentFlag.AlignVCenter)
@@ -333,7 +333,7 @@ class CharacterPage(QWidget):
     def __init__(self, character_service: CharacterService, parent: QWidget | None = None):
         super().__init__(parent)
         self._character_service = character_service
-        self._current_project_id: int = 0
+        self._current_project_id: str | None = None
         self._cards: list[CharacterCard] = []
         self._setup_ui()
 
@@ -414,7 +414,7 @@ class CharacterPage(QWidget):
 
         layout.addWidget(status_bar)
 
-    def load_project(self, project_id: int) -> None:
+    def load_project(self, project_id: str) -> None:
         """加载项目的角色数据。"""
         self._current_project_id = project_id
         self._render_cards()
@@ -471,9 +471,9 @@ class CharacterPage(QWidget):
             )
             self._render_cards()
 
-    def _on_edit(self, character_id: int) -> None:
+    def _on_edit(self, character_uuid: str) -> None:
         """编辑角色。"""
-        character = self._character_service.get_character(character_id)
+        character = self._character_service.get_character(character_uuid)
         if not character:
             return
 
@@ -481,20 +481,20 @@ class CharacterPage(QWidget):
         if dialog.exec() == QDialog.DialogCode.Accepted:
             data = dialog.get_data()
             self._character_service.update_character(
-                character_id,
+                character_uuid,
                 name=data["name"],
                 ref_code=data["ref_code"],
                 description=data["description"],
             )
             self._render_cards()
 
-    def _on_history(self, character_id: int) -> None:
+    def _on_history(self, character_uuid: str) -> None:
         """查看编辑历史。"""
-        history = self._character_service.list_history(character_id)
+        history = self._character_service.list_history(character_uuid)
         dialog = _CharacterHistoryDialog(history, self)
         dialog.exec()
 
-    def _on_delete_single(self, character_id: int) -> None:
+    def _on_delete_single(self, character_uuid: str) -> None:
         """删除单个角色。"""
         reply = QMessageBox.question(
             self,
@@ -503,7 +503,7 @@ class CharacterPage(QWidget):
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if reply == QMessageBox.StandardButton.Yes:
-            self._character_service.delete_character(character_id)
+            self._character_service.delete_character(character_uuid)
             self._render_cards()
 
     def _on_delete_selected(self) -> None:
@@ -523,7 +523,7 @@ class CharacterPage(QWidget):
             return
 
         for card in selected:
-            self._character_service.delete_character(card.character.id)
+            self._character_service.delete_character(card.character.uuid)
         self._render_cards()
 
     def _on_select_all_toggled(self, state: int) -> None:

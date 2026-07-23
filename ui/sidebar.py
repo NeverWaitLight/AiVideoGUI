@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QListWidgetItem,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -17,9 +18,9 @@ from qfluentwidgets import PrimaryPushButton, PushButton, ToolButton, ListWidget
 class _ConversationRow(QWidget):
     """对话列表行控件：左侧标题+时间，右侧垂直居中删除按钮。"""
 
-    delete_clicked = pyqtSignal(int)
+    delete_clicked = pyqtSignal(str)
 
-    def __init__(self, conv_id: int, title: str, time_text: str, parent: QWidget | None = None):
+    def __init__(self, conv_id: str, title: str, time_text: str, parent: QWidget | None = None):
         super().__init__(parent)
         self._conv_id = conv_id
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
@@ -64,8 +65,8 @@ class Sidebar(QWidget):
     """左侧边栏组件。"""
 
     new_conversation_clicked = pyqtSignal()
-    conversation_selected = pyqtSignal(int)
-    conversation_deleted = pyqtSignal(int)
+    conversation_selected = pyqtSignal(str)
+    conversation_deleted = pyqtSignal(str)
     library_clicked = pyqtSignal()
     settings_clicked = pyqtSignal()
 
@@ -119,14 +120,14 @@ class Sidebar(QWidget):
                 return
             self._confirm_delete(conv_id, item)
 
-    def _on_delete_button_clicked(self, conv_id: int) -> None:
+    def _on_delete_button_clicked(self, conv_id: str) -> None:
         for i in range(self.conversation_list.count()):
             item = self.conversation_list.item(i)
             if item.data(Qt.ItemDataRole.UserRole) == conv_id:
                 self._confirm_delete(conv_id, item)
                 return
 
-    def _confirm_delete(self, conv_id: int, item: QListWidgetItem) -> None:
+    def _confirm_delete(self, conv_id: str, item: QListWidgetItem) -> None:
         dlg = QDialog(self.window())
         dlg.setWindowTitle("确认删除")
         dlg.setFixedSize(360, 160)
@@ -176,7 +177,7 @@ class Sidebar(QWidget):
             self.conversation_list.takeItem(row)
             self.conversation_deleted.emit(conv_id)
 
-    def add_conversation(self, conv_id: int, title: str, time_text: str, at_top: bool = True) -> None:
+    def add_conversation(self, conv_id: str, title: str, time_text: str, at_top: bool = True) -> None:
         item = QListWidgetItem()
         item.setData(Qt.ItemDataRole.UserRole, conv_id)
 
@@ -191,7 +192,7 @@ class Sidebar(QWidget):
 
         self.conversation_list.setItemWidget(item, row)
 
-    def update_conversation_title(self, conv_id: int, title: str) -> None:
+    def update_conversation_title(self, conv_id: str, title: str) -> None:
         """更新列表中指定对话的标题显示。"""
         for i in range(self.conversation_list.count()):
             item = self.conversation_list.item(i)
@@ -214,7 +215,7 @@ class Sidebar(QWidget):
         self.conversation_list.clearSelection()
         self.conversation_list.setCurrentItem(None)
 
-    def select_conversation(self, conv_id: int) -> None:
+    def select_conversation(self, conv_id: str) -> None:
         for i in range(self.conversation_list.count()):
             item = self.conversation_list.item(i)
             if item.data(Qt.ItemDataRole.UserRole) == conv_id:
