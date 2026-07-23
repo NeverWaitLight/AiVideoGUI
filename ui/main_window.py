@@ -33,6 +33,7 @@ from service.video_service import VideoService, _PROVIDER_REGISTRY
 from storage.database import DatabaseManager
 from utils import paths
 from ui.character_page import CharacterPage
+from utils.prompt_builder import inject_shot_context
 from ui.chat_area import ChatArea
 from ui.media_library import MediaLibrary
 from ui.outline_editor import OutlineEditor
@@ -888,12 +889,55 @@ class MainWindow(QMainWindow):
             self._character_service.batch_create_characters(new_chars)
             logger.info(f"自动保存 {len(new_chars)} 个角色到项目 {project_id}")
 
+    def _build_shot_context(self, shot_id: str, project_id: str) -> tuple[str, str]:
+        """获取指定镜头的前后镜头画面描述，用于上下文参考。
+
+        Returns:
+            (prev_context, next_context) 元组，无对应镜头时为空字符串。
+        """
+        shots = self._shot_service.list_shots(project_id=project_id)
+        current_idx = None
+        for i, s in enumerate(shots):
+            if s.id == shot_id:
+                current_idx = i
+                break
+
+        if current_idx is None:
+            return "", ""
+
+        prev_ctx = ""
+        next_ctx = ""
+
+        if current_idx > 0:
+            prev = shots[current_idx - 1]
+            if prev.visual_content.strip():
+                prev_ctx = (
+                    f"[前一镜头参考] 场{prev.scene_number}镜{prev.shot_number}："
+                    f"{prev.visual_content}"
+                    f"（仅供参考，保持动作和场景连贯性，不要复现此画面）"
+                )
+
+        if current_idx < len(shots) - 1:
+            nxt = shots[current_idx + 1]
+            if nxt.visual_content.strip():
+                next_ctx = (
+                    f"[后一镜头参考] 场{nxt.scene_number}镜{nxt.shot_number}："
+                    f"{nxt.visual_content}"
+                    f"（仅供参考，保持动作和场景连贯性，不要复现此画面）"
+                )
+
+        return prev_ctx, next_ctx
+
     def _on_shot_video_generation(self, shot_id: str, scene_number: int, shot_number: int, prompt: str, project_id: str) -> None:
         """处理分镜视频生成请求。"""
         logger.info(f"分镜视频生成请求：shot_id={shot_id}, scene={scene_number}, shot={shot_number}, project={project_id}")
 
         # 用角色形象描述增强提示词
         prompt = self._character_service.enrich_prompt_with_characters(prompt, project_id)
+
+        # 添加前后镜头上下文参考
+        prev_ctx, next_ctx = self._build_shot_context(shot_id, project_id)
+        prompt = inject_shot_context(prompt, prev_ctx, next_ctx)
 
         # 获取项目属性（分辨率和比例）
         project = self._project_service.get_project(project_id)
@@ -954,11 +998,38 @@ class MainWindow(QMainWindow):
 
         project_id = shot_list[0]["project_id"]
 
-        # 用角色形象描述增强所有提示词
+        # 一次性查询项目所有分镜，构建 ID→索引映射（用于批量添加上下文）
+        all_shots = self._shot_service.list_shots(project_id=project_id)
+        shot_index_map = {s.id: i for i, s in enumerate(all_shots)}
+
+        # 用角色形象描述 + 前后镜头上下文增强所有提示词
         for shot_item in shot_list:
             shot_item["prompt"] = self._character_service.enrich_prompt_with_characters(
                 shot_item["prompt"], project_id
             )
+            shot_id = shot_item["shot_id"]
+            idx = shot_index_map.get(shot_id)
+            if idx is not None:
+                prev_ctx, next_ctx = "", ""
+                if idx > 0:
+                    prev = all_shots[idx - 1]
+                    if prev.visual_content.strip():
+                        prev_ctx = (
+                            f"[前一镜头参考] 场{prev.scene_number}镜{prev.shot_number}："
+                            f"{prev.visual_content}"
+                            f"（仅供参考，保持动作和场景连贯性，不要复现此画面）"
+                        )
+                if idx < len(all_shots) - 1:
+                    nxt = all_shots[idx + 1]
+                    if nxt.visual_content.strip():
+                        next_ctx = (
+                            f"[后一镜头参考] 场{nxt.scene_number}镜{nxt.shot_number}："
+                            f"{nxt.visual_content}"
+                            f"（仅供参考，保持动作和场景连贯性，不要复现此画面）"
+                        )
+                shot_item["prompt"] = inject_shot_context(
+                    shot_item["prompt"], prev_ctx, next_ctx
+                )
 
         project = self._project_service.get_project(project_id)
         if not project:
