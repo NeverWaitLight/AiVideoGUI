@@ -67,8 +67,19 @@ class _CharacterEditDialog(QDialog):
         form.addRow("引用代号：", self._ref_code_edit)
 
         self._description_edit = TextEdit()
-        self._description_edit.setPlaceholderText("高度具体、可视化的外貌描述（年龄、性别、发型、服装等）")
-        self._description_edit.setMinimumHeight(120)
+        self._description_edit.setPlaceholderText(
+            "结构化形象描述，每行一个分区：\n"
+            "[外貌] 25岁女性，瓜子脸，柳叶眉\n"
+            "[发型] 齐肩黑色直发，中分\n"
+            "[发色] 自然黑\n"
+            "[瞳色] 深棕色\n"
+            "[体型] 165cm，纤细匀称\n"
+            "[上装] 白色棉质衬衫\n"
+            "[裤子] 深蓝色高腰牛仔裤\n"
+            "[鞋袜] 白色帆布鞋\n"
+            "[帽子] 无"
+        )
+        self._description_edit.setMinimumHeight(200)
         form.addRow("形象描述：", self._description_edit)
 
         layout.addLayout(form)

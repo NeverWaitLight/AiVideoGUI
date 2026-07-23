@@ -104,13 +104,51 @@ class CharacterService:
         """获取角色的编辑历史。"""
         return self._db.list_character_history(character_uuid)
 
+    # 固定特征标签——跨视频保持一致，不随场景变化
+    _FIXED_TAGS = ("外貌", "发型", "发色", "瞳色", "体型")
+
+    @classmethod
+    def extract_fixed_traits(cls, description: str) -> str:
+        """从结构化描述中提取固定特征部分。
+
+        解析形如 ``[外貌] ...\\n[发型] ...`` 的结构化文本，
+        只返回固定特征标签对应的内容。若描述未使用结构化格式，
+        则回退返回原始文本（兼容旧数据）。
+        """
+        if not description:
+            return ""
+
+        parts: list[str] = []
+        has_structured_tags = False
+
+        # 所有已知标签（固定 + 服装）
+        _all_tags = cls._FIXED_TAGS + ("上装", "裤子", "鞋袜", "帽子")
+
+        for line in description.splitlines():
+            stripped = line.strip()
+            for tag in _all_tags:
+                if stripped.startswith(f"[{tag}]"):
+                    has_structured_tags = True
+                    if tag in cls._FIXED_TAGS:
+                        value = stripped[len(f"[{tag}]"):].strip()
+                        if value:
+                            parts.append(value)
+                    break
+
+        if parts:
+            return "，".join(parts)
+
+        # 结构化格式但没有固定特征 → 返回空；非结构化描述 → 回退返回原文
+        return "" if has_structured_tags else description
+
     def enrich_prompt_with_characters(
         self, visual_content: str, project_id: str
     ) -> str:
-        """将角色形象描述拼接到视频生成提示词中。
+        """将角色的固定外貌特征拼接到视频生成提示词中。
 
         扫描 visual_content 中出现的角色 name 或 ref_code，
-        将匹配角色的形象描述作为前缀拼接。
+        仅注入固定特征（发型、发色、瞳色、体型等），
+        服装信息由分镜画面描述自行提供，避免冲突。
         """
         characters = self._db.list_characters(project_id)
         if not characters:
@@ -125,7 +163,13 @@ class CharacterService:
         if not matched:
             return visual_content
 
-        prefix_lines = [
-            f"[角色形象] {c.ref_code}：{c.description}" for c in matched
-        ]
+        prefix_lines = []
+        for c in matched:
+            traits = self.extract_fixed_traits(c.description)
+            if traits:
+                prefix_lines.append(f"[角色形象] {c.ref_code}：{traits}")
+
+        if not prefix_lines:
+            return visual_content
+
         return "\n".join(prefix_lines) + f"\n[画面] {visual_content}"
