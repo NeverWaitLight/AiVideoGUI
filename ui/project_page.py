@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 import random
-from datetime import datetime
 
 from PyQt6.QtCore import Qt, pyqtSignal, QSize, QTimer
 from PyQt6.QtWidgets import (
@@ -29,25 +28,18 @@ from qfluentwidgets import (
 
 from models.data_models import Project
 from service.project_service import ProjectService
+from utils.time_utils import format_time, now_ms
 
 logger = logging.getLogger(__name__)
-
-
-def _format_time(dt: datetime) -> str:
-    """将 datetime 格式化为显示时间。"""
-    now = datetime.now()
-    if dt.date() == now.date():
-        return dt.strftime("%H:%M")
-    return dt.strftime("%m-%d %H:%M")
 
 
 class _ProjectRow(QWidget):
     """项目列表行控件。"""
 
-    delete_clicked = pyqtSignal(str)
-    edit_clicked = pyqtSignal(str)
+    delete_clicked = pyqtSignal(int)
+    edit_clicked = pyqtSignal(int)
 
-    def __init__(self, project_id: str, name: str, info: str, parent: QWidget | None = None):
+    def __init__(self, project_id: int, name: str, info: str, parent: QWidget | None = None):
         super().__init__(parent)
         self._project_id = project_id
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
@@ -104,9 +96,9 @@ class _ProjectRow(QWidget):
 class _ConversationRow(QWidget):
     """对话列表行控件。"""
 
-    delete_clicked = pyqtSignal(str)
+    delete_clicked = pyqtSignal(int)
 
-    def __init__(self, conv_id: str, title: str, time_text: str, parent: QWidget | None = None):
+    def __init__(self, conv_id: int, title: str, time_text: str, parent: QWidget | None = None):
         super().__init__(parent)
         self._conv_id = conv_id
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
@@ -150,15 +142,15 @@ class _ConversationRow(QWidget):
 class ProjectPage(QWidget):
     """项目管理页面。"""
 
-    project_selected = pyqtSignal(str)  # project_id
-    conversation_selected = pyqtSignal(str, str)  # project_id, conversation_id
-    new_conversation_clicked = pyqtSignal(str)  # project_id
-    conversation_deleted = pyqtSignal(str)  # conversation_id
+    project_selected = pyqtSignal(int)  # project_id
+    conversation_selected = pyqtSignal(int, int)  # project_id, conversation_id
+    new_conversation_clicked = pyqtSignal(int)  # project_id
+    conversation_deleted = pyqtSignal(int)  # conversation_id
 
     def __init__(self, project_service: ProjectService, parent: QWidget | None = None):
         super().__init__(parent)
         self._service = project_service
-        self._current_project_id: str | None = None
+        self._current_project_id: int = 0
         self._setup_ui()
 
     def _setup_ui(self) -> None:
@@ -274,7 +266,7 @@ class ProjectPage(QWidget):
             if conv_id and self._current_project_id:
                 self.conversation_selected.emit(self._current_project_id, conv_id)
 
-    def _load_project_detail(self, project_id: str) -> None:
+    def _load_project_detail(self, project_id: int) -> None:
         """加载项目详情和对话列表。"""
         try:
             import logging
@@ -300,7 +292,7 @@ class ProjectPage(QWidget):
 
             for conv in conversations:
                 logger.info(f"处理对话: id={conv.id}, title={conv.title}, created_at={conv.created_at}, type={type(conv.created_at)}")
-                time_text = _format_time(conv.created_at)
+                time_text = format_time(conv.created_at)
                 logger.info(f"格式化时间: {time_text}")
                 self._add_conversation_item(conv.id, conv.title, time_text)
 
@@ -313,7 +305,7 @@ class ProjectPage(QWidget):
             logger.error(traceback.format_exc())
             raise
 
-    def _add_conversation_item(self, conv_id: str, title: str, time_text: str) -> None:
+    def _add_conversation_item(self, conv_id: int, title: str, time_text: str) -> None:
         item = QListWidgetItem()
         item.setData(Qt.ItemDataRole.UserRole, conv_id)
 
@@ -338,7 +330,7 @@ class ProjectPage(QWidget):
                     self.project_list.setCurrentItem(item)
                     break
 
-    def _on_edit_project(self, project_id: str) -> None:
+    def _on_edit_project(self, project_id: int) -> None:
         """编辑项目对话框。"""
         project = self._service.get_project(project_id)
         if not project:
@@ -362,7 +354,7 @@ class ProjectPage(QWidget):
             if project_id == self._current_project_id:
                 self._load_project_detail(project_id)
 
-    def _on_delete_project(self, project_id: str) -> None:
+    def _on_delete_project(self, project_id: int) -> None:
         """删除项目确认对话框（带随机数字二次确认）。"""
         project = self._service.get_project(project_id)
         if not project:
@@ -473,7 +465,7 @@ class ProjectPage(QWidget):
             return
         self.new_conversation_clicked.emit(self._current_project_id)
 
-    def _on_delete_conversation(self, conv_id: str) -> None:
+    def _on_delete_conversation(self, conv_id: int) -> None:
         """删除对话确认。"""
         dlg = QDialog(self.window())
         dlg.setWindowTitle("确认删除")
@@ -548,12 +540,12 @@ class ProjectPage(QWidget):
         for project in projects:
             self._add_project_item(project)
 
-    def add_conversation_to_current_project(self, conv_id: str, title: str) -> None:
+    def add_conversation_to_current_project(self, conv_id: int, title: str) -> None:
         """向当前项目添加对话。"""
-        time_text = _format_time(datetime.now())
+        time_text = format_time(now_ms())
         self._add_conversation_item(conv_id, title, time_text)
 
-    def update_conversation_title(self, conv_id: str, title: str) -> None:
+    def update_conversation_title(self, conv_id: int, title: str) -> None:
         """更新对话标题。"""
         for i in range(self.conversation_list.count()):
             item = self.conversation_list.item(i)
@@ -563,7 +555,7 @@ class ProjectPage(QWidget):
                     widget._title_label.setText(title)
                 break
 
-    def select_conversation(self, conv_id: str) -> None:
+    def select_conversation(self, conv_id: int) -> None:
         """选中指定对话。"""
         for i in range(self.conversation_list.count()):
             item = self.conversation_list.item(i)

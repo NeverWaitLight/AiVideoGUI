@@ -3,9 +3,16 @@
 import logging
 from typing import Optional
 
-from sqlalchemy import create_engine
+from sqlalchemy import BigInteger, create_engine, event
 from sqlalchemy.engine import Engine
+from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import DeclarativeBase, Session, scoped_session, sessionmaker
+
+
+@compiles(BigInteger, "sqlite")
+def _compile_bigint_sqlite(type_, compiler, **kw):
+    """SQLite 只对 INTEGER PRIMARY KEY 自动递增 ROWID，BIGINT 不行。"""
+    return "INTEGER"
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +25,50 @@ class Base(DeclarativeBase):
     """所有 ORM 模型的基类。"""
 
     pass
+
+
+@event.listens_for(Base, "before_insert", propagate=True)
+def before_insert_listener(mapper, connection, target):
+    """
+    插入前自动填充时间戳字段。
+
+    为所有具有 created_at 和 updated_at 字段的实体自动填充当前毫秒时间戳。
+    只在字段为 None 或 0 时填充，避免覆盖显式设置的值。
+
+    Args:
+        mapper: SQLAlchemy mapper 对象
+        connection: 数据库连接
+        target: 被插入的实体对象
+    """
+    from utils.time_utils import now_ms
+
+    now = now_ms()
+    if hasattr(target, "created_at"):
+        created_at_value = getattr(target, "created_at", None)
+        if created_at_value is None or created_at_value == 0:
+            target.created_at = now
+    if hasattr(target, "updated_at"):
+        updated_at_value = getattr(target, "updated_at", None)
+        if updated_at_value is None or updated_at_value == 0:
+            target.updated_at = now
+
+
+@event.listens_for(Base, "before_update", propagate=True)
+def before_update_listener(mapper, connection, target):
+    """
+    更新前自动更新 updated_at 字段。
+
+    为所有具有 updated_at 字段的实体自动更新为当前毫秒时间戳。
+
+    Args:
+        mapper: SQLAlchemy mapper 对象
+        connection: 数据库连接
+        target: 被更新的实体对象
+    """
+    from utils.time_utils import now_ms
+
+    if hasattr(target, "updated_at"):
+        target.updated_at = now_ms()
 
 
 def init_engine(database_url: str, echo: bool = False, **kwargs) -> Engine:

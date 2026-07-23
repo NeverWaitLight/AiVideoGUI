@@ -22,6 +22,7 @@ class ConversationRepository(BaseRepository[ConversationEntity, Conversation]):
             id=entity.id,
             title=entity.title,
             created_at=entity.created_at,
+            updated_at=entity.updated_at,
             model_name=entity.model_name,
             provider_name=entity.provider_name,
             project_id=entity.project_id,
@@ -30,15 +31,28 @@ class ConversationRepository(BaseRepository[ConversationEntity, Conversation]):
 
     def _to_entity(self, dto: Conversation) -> ConversationEntity:
         """DTO → Entity 转换。"""
-        return ConversationEntity(
-            id=dto.id,
-            title=dto.title,
-            created_at=dto.created_at,
-            model_name=dto.model_name,
-            provider_name=dto.provider_name,
-            project_id=dto.project_id,
-            is_hidden=dto.is_hidden,
-        )
+        if dto.id == 0:
+            return ConversationEntity(
+                # 不设置 id，让数据库自动生成
+                title=dto.title,
+                created_at=dto.created_at if dto.created_at > 0 else None,
+                updated_at=dto.updated_at if dto.updated_at > 0 else None,
+                model_name=dto.model_name,
+                provider_name=dto.provider_name,
+                project_id=dto.project_id,
+                is_hidden=dto.is_hidden,
+            )
+        else:
+            return ConversationEntity(
+                id=dto.id,
+                title=dto.title,
+                created_at=dto.created_at,
+                updated_at=dto.updated_at,
+                model_name=dto.model_name,
+                provider_name=dto.provider_name,
+                project_id=dto.project_id,
+                is_hidden=dto.is_hidden,
+            )
 
     def list_all(self, is_hidden: bool = False) -> List[Conversation]:
         """
@@ -58,7 +72,7 @@ class ConversationRepository(BaseRepository[ConversationEntity, Conversation]):
         entities = self.session.execute(stmt).scalars().all()
         return [self._to_dto(e) for e in entities]
 
-    def list_by_project(self, project_id: str, is_hidden: bool | None = None) -> List[Conversation]:
+    def list_by_project(self, project_id: int, is_hidden: bool | None = None) -> List[Conversation]:
         """
         查询项目的所有对话。
 
@@ -82,7 +96,7 @@ class ConversationRepository(BaseRepository[ConversationEntity, Conversation]):
         entities = self.session.execute(stmt).scalars().all()
         return [self._to_dto(e) for e in entities]
 
-    def update_title(self, conversation_id: str, title: str) -> None:
+    def update_title(self, conversation_id: int, title: str) -> None:
         """
         更新对话标题。
 
@@ -97,7 +111,7 @@ class ConversationRepository(BaseRepository[ConversationEntity, Conversation]):
         entity.title = title
         self.session.commit()
 
-    def set_hidden(self, conversation_id: str, is_hidden: bool) -> None:
+    def set_hidden(self, conversation_id: int, is_hidden: bool) -> None:
         """
         设置对话隐藏状态。
 

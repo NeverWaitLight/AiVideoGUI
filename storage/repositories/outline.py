@@ -28,15 +28,24 @@ class OutlineRepository(BaseRepository[OutlineEntity, Outline]):
 
     def _to_entity(self, dto: Outline) -> OutlineEntity:
         """DTO → Entity 转换。"""
-        return OutlineEntity(
-            id=dto.id,
-            project_id=dto.project_id,
-            content=dto.content,
-            created_at=dto.created_at,
-            updated_at=dto.updated_at,
-        )
+        if dto.id == 0:
+            return OutlineEntity(
+                # 不设置 id，让数据库自动生成
+                project_id=dto.project_id,
+                content=dto.content,
+                created_at=dto.created_at if dto.created_at > 0 else None,
+                updated_at=dto.updated_at if dto.updated_at > 0 else None,
+            )
+        else:
+            return OutlineEntity(
+                id=dto.id,
+                project_id=dto.project_id,
+                content=dto.content,
+                created_at=dto.created_at,
+                updated_at=dto.updated_at,
+            )
 
-    def get_by_project(self, project_id: str) -> Optional[Outline]:
+    def get_by_project(self, project_id: int) -> Optional[Outline]:
         """
         查询项目的大纲。
 
@@ -50,7 +59,7 @@ class OutlineRepository(BaseRepository[OutlineEntity, Outline]):
         entity = self.session.execute(stmt).scalars().first()
         return self._to_dto(entity) if entity else None
 
-    def update_content(self, outline_id: str, content: str, updated_at) -> None:
+    def update_content(self, outline_id: int, content: str, updated_at) -> None:
         """
         更新大纲内容。
 
@@ -85,14 +94,22 @@ class OutlineHistoryRepository(BaseRepository[OutlineHistoryEntity, OutlineHisto
 
     def _to_entity(self, dto: OutlineHistory) -> OutlineHistoryEntity:
         """DTO → Entity 转换。"""
-        return OutlineHistoryEntity(
-            id=dto.id,
-            outline_id=dto.outline_id,
-            content=dto.content,
-            created_at=dto.created_at,
-        )
+        if dto.id == 0:
+            return OutlineHistoryEntity(
+                # 不设置 id，让数据库自动生成
+                outline_id=dto.outline_id,
+                content=dto.content,
+                created_at=dto.created_at if dto.created_at > 0 else None,
+            )
+        else:
+            return OutlineHistoryEntity(
+                id=dto.id,
+                outline_id=dto.outline_id,
+                content=dto.content,
+                created_at=dto.created_at,
+            )
 
-    def list_by_outline(self, outline_id: str) -> List[OutlineHistory]:
+    def list_by_outline(self, outline_id: int) -> List[OutlineHistory]:
         """
         查询大纲的所有历史版本（按时间倒序）。
 

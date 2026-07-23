@@ -1,9 +1,8 @@
 """SQLAlchemy ORM 实体模型定义。"""
 
-from datetime import datetime
 from typing import List, Optional
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import BigInteger, Boolean, Float, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -14,12 +13,13 @@ class ProjectEntity(Base):
 
     __tablename__ = "projects"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    id: Mapped[Optional[int]] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     resolution: Mapped[str] = mapped_column(String(20), nullable=False, default="720P")
     aspect_ratio: Mapped[str] = mapped_column(String(10), nullable=False, default="16:9")
     cover_image: Mapped[str] = mapped_column(String(500), nullable=False, default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    updated_at: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=False)
 
     # 关系（一对多）
     conversations: Mapped[List["ConversationEntity"]] = relationship(
@@ -44,13 +44,14 @@ class ConversationEntity(Base):
 
     __tablename__ = "conversations"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    id: Mapped[Optional[int]] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    updated_at: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=False)
     model_name: Mapped[str] = mapped_column(String(100), nullable=False, default="")
     provider_name: Mapped[str] = mapped_column(String(50), nullable=False, default="")
-    project_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("projects.id", ondelete="SET NULL"), nullable=False, default=""
+    project_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("projects.id", ondelete="SET NULL"), nullable=False, default=0
     )
     is_hidden: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
@@ -72,13 +73,14 @@ class MessageEntity(Base):
 
     __tablename__ = "messages"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    conversation_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False
+    id: Mapped[Optional[int]] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    conversation_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False
     )
     role: Mapped[str] = mapped_column(String(20), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    updated_at: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=False)
     task_id: Mapped[str] = mapped_column(String(100), nullable=False, default="")
     video_url: Mapped[str] = mapped_column(String(500), nullable=False, default="")
     local_path: Mapped[str] = mapped_column(String(500), nullable=False, default="")
@@ -101,15 +103,16 @@ class ActiveTaskEntity(Base):
     __tablename__ = "active_tasks"
 
     task_id: Mapped[str] = mapped_column(String(100), primary_key=True)
-    message_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("messages.id", ondelete="CASCADE"), nullable=False
+    message_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("messages.id", ondelete="CASCADE"), nullable=False
     )
     provider_name: Mapped[str] = mapped_column(String(50), nullable=False)
     model_name: Mapped[str] = mapped_column(String(100), nullable=False, default="")
     video_url: Mapped[str] = mapped_column(String(500), nullable=False, default="")
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
     save_path: Mapped[str] = mapped_column(String(500), nullable=False, default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    updated_at: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=False)
 
     # 关系
     message: Mapped["MessageEntity"] = relationship(back_populates="active_task")
@@ -120,15 +123,16 @@ class MediaFileEntity(Base):
 
     __tablename__ = "media_files"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    id: Mapped[Optional[int]] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
     media_type: Mapped[str] = mapped_column(String(20), nullable=False)
     local_path: Mapped[str] = mapped_column(String(500), nullable=False)
     file_size: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     source: Mapped[str] = mapped_column(String(50), nullable=False, default="task")
-    conversation_id: Mapped[str] = mapped_column(String(36), nullable=False, default="")
-    message_id: Mapped[str] = mapped_column(String(36), nullable=False, default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    conversation_id: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    message_id: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    created_at: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    updated_at: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=False)
 
     # 视频元数据
     thumbnail_path: Mapped[str] = mapped_column(String(500), nullable=False, default="")
@@ -148,13 +152,13 @@ class OutlineEntity(Base):
 
     __tablename__ = "outlines"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    project_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
+    id: Mapped[Optional[int]] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    project_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
     )
     content: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    updated_at: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=False)
 
     # 关系
     project: Mapped["ProjectEntity"] = relationship(back_populates="outlines")
@@ -171,12 +175,13 @@ class OutlineHistoryEntity(Base):
 
     __tablename__ = "outline_history"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    outline_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("outlines.id", ondelete="CASCADE"), nullable=False
+    id: Mapped[Optional[int]] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    outline_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("outlines.id", ondelete="CASCADE"), nullable=False
     )
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    updated_at: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=False)
 
     # 关系
     outline: Mapped["OutlineEntity"] = relationship(back_populates="history")
@@ -190,13 +195,13 @@ class ScriptEntity(Base):
 
     __tablename__ = "scripts"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    project_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
+    id: Mapped[Optional[int]] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    project_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
     )
     title: Mapped[str] = mapped_column(String(255), nullable=False, default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    updated_at: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=False)
 
     # 关系
     project: Mapped["ProjectEntity"] = relationship(back_populates="scripts")
@@ -216,9 +221,9 @@ class SceneEntity(Base):
 
     __tablename__ = "scenes"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    script_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("scripts.id", ondelete="CASCADE"), nullable=False
+    id: Mapped[Optional[int]] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    script_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("scripts.id", ondelete="CASCADE"), nullable=False
     )
     scene_number: Mapped[int] = mapped_column(Integer, nullable=False)
     location_type: Mapped[str] = mapped_column(String(50), nullable=False)
@@ -226,8 +231,8 @@ class SceneEntity(Base):
     time_type: Mapped[str] = mapped_column(String(50), nullable=False)
     time_detail: Mapped[str] = mapped_column(String(100), nullable=False, default="")
     content: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    updated_at: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=False)
 
     # 关系
     script: Mapped["ScriptEntity"] = relationship(back_populates="scenes")
@@ -244,13 +249,14 @@ class ScriptHistoryEntity(Base):
 
     __tablename__ = "script_history"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    script_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("scripts.id", ondelete="CASCADE"), nullable=False
+    id: Mapped[Optional[int]] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    script_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("scripts.id", ondelete="CASCADE"), nullable=False
     )
     title: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     scenes_snapshot: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    updated_at: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=False)
 
     # 关系
     script: Mapped["ScriptEntity"] = relationship(back_populates="history")
@@ -264,9 +270,9 @@ class ShotEntity(Base):
 
     __tablename__ = "shots"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    scene_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("scenes.id", ondelete="CASCADE"), nullable=False
+    id: Mapped[Optional[int]] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    scene_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("scenes.id", ondelete="CASCADE"), nullable=False
     )
     scene_number: Mapped[int] = mapped_column(Integer, nullable=False)
     shot_number: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -278,8 +284,8 @@ class ShotEntity(Base):
     sound_effect: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     duration: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    updated_at: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=False)
 
     # 关系
     scene: Mapped["SceneEntity"] = relationship(back_populates="shots")
@@ -296,12 +302,13 @@ class ShotHistoryEntity(Base):
 
     __tablename__ = "shot_history"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    project_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
+    id: Mapped[Optional[int]] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    project_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
     )
     shots_snapshot: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    updated_at: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=False)
 
     # 关系
     project: Mapped["ProjectEntity"] = relationship(back_populates="shot_histories")
@@ -315,17 +322,16 @@ class CharacterEntity(Base):
 
     __tablename__ = "characters"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    uuid: Mapped[str] = mapped_column(String(36), unique=True, nullable=False)
-    project_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
+    id: Mapped[Optional[int]] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    project_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     ref_code: Mapped[str] = mapped_column(String(100), nullable=False)
     design_image: Mapped[str] = mapped_column(String(500), nullable=False, default="")
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    updated_at: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=False)
 
     # 关系
     project: Mapped["ProjectEntity"] = relationship(back_populates="characters")
@@ -345,12 +351,13 @@ class CharacterHistoryEntity(Base):
 
     __tablename__ = "character_history"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    character_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("characters.uuid", ondelete="CASCADE"), nullable=False
+    id: Mapped[Optional[int]] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    character_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("characters.id", ondelete="CASCADE"), nullable=False
     )
     snapshot: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    updated_at: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=False)
 
     # 关系
     character: Mapped["CharacterEntity"] = relationship(back_populates="history")

@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import logging
-import uuid
-from datetime import datetime
 from typing import Any
 
 from PyQt6.QtCore import QObject
@@ -61,12 +59,12 @@ class VideoService(QObject):
     # ---------- 对话 ----------
 
     def create_conversation(
-        self, provider_name: str, model_name: str, title: str = "新对话", project_id: str = "", is_hidden: bool = False
+        self, provider_name: str, model_name: str, title: str = "新对话", project_id: int = 0, is_hidden: bool = False
     ) -> Conversation:
         conv = Conversation(
-            id=uuid.uuid4().hex,
+            id=0,
             title=title,
-            created_at=datetime.now(),
+            created_at=0,
             model_name=model_name,
             provider_name=provider_name,
             project_id=project_id,
@@ -75,23 +73,23 @@ class VideoService(QObject):
         self._db.create_conversation(conv)
         return conv
 
-    def add_user_message(self, conversation_id: str, content: str) -> Message:
+    def add_user_message(self, conversation_id: int, content: str) -> Message:
         msg = Message(
-            id=uuid.uuid4().hex,
+            id=0,
             conversation_id=conversation_id,
             role="user",
             content=content,
-            created_at=datetime.now(),
+            created_at=0,
             status=MessageStatus.COMPLETED,
         )
-        self._db.add_message(msg)
+        msg = self._db.add_message(msg)
         return msg
 
     # ---------- 提交任务 ----------
 
     def submit_task(
         self,
-        conversation_id: str,
+        conversation_id: int,
         prompt: str,
         provider_name: str,
         params: dict[str, Any] | None = None,
@@ -102,15 +100,15 @@ class VideoService(QObject):
         task_id = provider.submit(prompt, params)
 
         assistant_msg = Message(
-            id=uuid.uuid4().hex,
+            id=0,
             conversation_id=conversation_id,
             role="assistant",
             content="",
-            created_at=datetime.now(),
+            created_at=0,
             task_id=task_id,
             status=MessageStatus.GENERATING,
         )
-        self._db.add_message(assistant_msg)
+        assistant_msg = self._db.add_message(assistant_msg)
         self._db.add_active_task(
             task_id=task_id,
             message_id=assistant_msg.id,

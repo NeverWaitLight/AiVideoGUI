@@ -39,9 +39,9 @@ def projects_dir(root: str) -> str:
     return os.path.join(root, "workspace", "projects")
 
 
-def project_dir(root: str, project_id: str) -> str:
+def project_dir(root: str, project_id: int) -> str:
     """单个项目的文件目录。"""
-    return os.path.join(root, "workspace", "projects", project_id)
+    return os.path.join(root, "workspace", "projects", str(project_id))
 
 
 def thumbnail_dir(base_dir: str) -> str:

@@ -34,8 +34,8 @@ class TestPaths(unittest.TestCase):
         self.assertEqual(result, os.path.join("/app", "workspace", "projects"))
 
     def test_project_dir(self):
-        result = paths.project_dir("/app", "abc-123")
-        self.assertEqual(result, os.path.join("/app", "workspace", "projects", "abc-123"))
+        result = paths.project_dir("/app", 12345)
+        self.assertEqual(result, os.path.join("/app", "workspace", "projects", "12345"))
 
     def test_thumbnail_dir(self):
         result = paths.thumbnail_dir("/app/workspace/chat")

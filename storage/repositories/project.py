@@ -24,19 +24,32 @@ class ProjectRepository(BaseRepository[ProjectEntity, Project]):
             resolution=entity.resolution,
             aspect_ratio=entity.aspect_ratio,
             created_at=entity.created_at,
+            updated_at=entity.updated_at,
             cover_image=entity.cover_image,
         )
 
     def _to_entity(self, dto: Project) -> ProjectEntity:
         """DTO → Entity 转换。"""
-        return ProjectEntity(
-            id=dto.id,
-            name=dto.name,
-            resolution=dto.resolution,
-            aspect_ratio=dto.aspect_ratio,
-            created_at=dto.created_at,
-            cover_image=dto.cover_image,
-        )
+        # 如果 ID 为 0，则不设置 ID，让数据库自动分配
+        if dto.id == 0:
+            return ProjectEntity(
+                name=dto.name,
+                resolution=dto.resolution,
+                aspect_ratio=dto.aspect_ratio,
+                cover_image=dto.cover_image,
+                created_at=dto.created_at if dto.created_at > 0 else None,
+                updated_at=dto.updated_at if dto.updated_at > 0 else None,
+            )
+        else:
+            return ProjectEntity(
+                id=dto.id,
+                name=dto.name,
+                resolution=dto.resolution,
+                aspect_ratio=dto.aspect_ratio,
+                created_at=dto.created_at,
+                updated_at=dto.updated_at,
+                cover_image=dto.cover_image,
+            )
 
     def list_all(self) -> List[Project]:
         """查询所有项目（按创建时间倒序）。"""
@@ -46,7 +59,7 @@ class ProjectRepository(BaseRepository[ProjectEntity, Project]):
 
     def update_project(
         self,
-        project_id: str,
+        project_id: int,
         name: str,
         resolution: str,
         aspect_ratio: str,

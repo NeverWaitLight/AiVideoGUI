@@ -3,8 +3,6 @@
 import logging
 import os
 import shutil
-import uuid
-from datetime import datetime
 from pathlib import Path
 
 from models.data_models import MediaFile, MediaType
@@ -48,9 +46,9 @@ class MediaService:
 
     def register_task_result(
         self,
-        message_id: str,
+        message_id: int,
         local_path: str,
-        conversation_id: str = "",
+        conversation_id: int = 0,
     ) -> None:
         """视频任务完成后自动入库（防重复）。"""
         if self._db.get_media_file_by_message(message_id):
@@ -93,7 +91,7 @@ class MediaService:
                 logger.warning("视频元数据提取失败，将使用默认值：%s", e)
 
         media = MediaFile(
-            id=uuid.uuid4().hex,
+            id=0,
             filename=filename,
             media_type=media_type,
             local_path=local_path,
@@ -101,7 +99,7 @@ class MediaService:
             source="task",
             conversation_id=conversation_id,
             message_id=message_id,
-            created_at=datetime.now(),
+            created_at=0,
             thumbnail_path=thumbnail_path,
             duration=duration,
             width=width,
@@ -110,7 +108,7 @@ class MediaService:
         self._db.add_media_file(media)
         logger.info("素材自动入库：%s", filename)
 
-    def import_files(self, file_paths: list[str], project_id: str = "") -> list[MediaFile]:
+    def import_files(self, file_paths: list[str], project_id: int = 0) -> list[MediaFile]:
         """将外部文件复制到目标目录并入库。project_id 非空时存入项目目录，否则存入 chat 目录。"""
         target_dir = paths.project_dir(self._root, project_id) if project_id else self._chat_dir
         os.makedirs(target_dir, exist_ok=True)
@@ -163,13 +161,13 @@ class MediaService:
                     logger.warning("导入视频元数据提取失败，将使用默认值：%s", e)
 
             media = MediaFile(
-                id=uuid.uuid4().hex,
+                id=0,
                 filename=os.path.basename(dest_path),
                 media_type=media_type,
                 local_path=dest_path,
                 file_size=file_size,
                 source="import",
-                created_at=datetime.now(),
+                created_at=0,
                 thumbnail_path=thumbnail_path,
                 duration=duration,
                 width=width,
@@ -185,7 +183,7 @@ class MediaService:
         self,
         media_type: str | None = None,
         keyword: str | None = None,
-        project_id: str | None = None,
+        project_id: int | None = None,
     ) -> list[MediaFile]:
         """查询素材列表，可选按项目过滤。"""
         return self._db.list_media_files(
@@ -194,7 +192,7 @@ class MediaService:
             project_id=project_id
         )
 
-    def delete_file(self, media_id: str) -> bool:
+    def delete_file(self, media_id: int) -> bool:
         """删除单个素材（文件 + 缩略图 + 数据库记录）。"""
         media = self._db.delete_media_file(media_id)
         if not media:
@@ -206,7 +204,7 @@ class MediaService:
         logger.info("删除素材：%s", media.filename)
         return True
 
-    def delete_files(self, media_ids: list[str]) -> int:
+    def delete_files(self, media_ids: list[int]) -> int:
         """批量删除素材，返回成功删除数量。"""
         count = 0
         for mid in media_ids:

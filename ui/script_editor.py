@@ -29,6 +29,7 @@ from qfluentwidgets import (
 
 from models.data_models import Script, ScriptHistory, Scene, SceneLocation, SceneTime
 from service.script_service import ScriptService
+from utils.time_utils import ms_to_datetime
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +37,7 @@ logger = logging.getLogger(__name__)
 class SceneCard(CardWidget):
     """场次卡片：显示场次摘要信息。"""
 
-    scene_clicked = pyqtSignal(str)  # scene_id
+    scene_clicked = pyqtSignal(int)  # scene_id
 
     def __init__(self, scene: Scene, parent: QWidget | None = None):
         super().__init__(parent)
@@ -352,7 +353,7 @@ class SceneDetailEditor(QWidget):
 class HistoryListItem(QWidget):
     """历史版本列表项。"""
 
-    restore_clicked = pyqtSignal(str)  # history_id
+    restore_clicked = pyqtSignal(int)  # history_id
 
     def __init__(self, history: ScriptHistory, parent: QWidget | None = None):
         super().__init__(parent)
@@ -365,7 +366,7 @@ class HistoryListItem(QWidget):
         layout.setSpacing(8)
 
         # 时间标签
-        time_label = QLabel(self._history.created_at.strftime("%Y-%m-%d %H:%M:%S"))
+        time_label = QLabel(ms_to_datetime(self._history.created_at).strftime("%Y-%m-%d %H:%M:%S"))
         time_label.setStyleSheet("font-size: 13px; color: #666;")
         layout.addWidget(time_label, stretch=1)
 
@@ -380,7 +381,7 @@ class ScriptEditor(QWidget):
     """剧本编辑器页面：场次列表视图。"""
 
     back_clicked = pyqtSignal()
-    generate_storyboard_clicked = pyqtSignal(str)  # 发送 project_id
+    generate_storyboard_clicked = pyqtSignal(int)  # 发送 project_id
 
     def __init__(
         self,
@@ -390,7 +391,7 @@ class ScriptEditor(QWidget):
         super().__init__(parent)
         self._service = script_service
         self._current_script: Script | None = None
-        self._current_project_id: str | None = None
+        self._current_project_id: int = 0
         self._setup_ui()
 
     def _setup_ui(self) -> None:
@@ -525,7 +526,7 @@ class ScriptEditor(QWidget):
 
         return widget
 
-    def load_script(self, project_id: str, generated_title: str = "", generated_scenes: list[dict] | None = None) -> None:
+    def load_script(self, project_id: int, generated_title: str = "", generated_scenes: list[dict] | None = None) -> None:
         """加载项目剧本。
 
         Args:

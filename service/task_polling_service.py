@@ -6,7 +6,6 @@ import logging
 import os
 import shutil
 import time
-import uuid
 from typing import Any
 
 from PyQt6.QtCore import QObject, QThread, pyqtSignal
@@ -16,6 +15,7 @@ from models.data_models import MessageStatus, TaskStatus
 from providers.base import VideoProvider
 from storage.database import DatabaseManager
 from utils import paths
+from utils.time_utils import ms_to_datetime, now_ms
 
 logger = logging.getLogger(__name__)
 
@@ -23,10 +23,10 @@ logger = logging.getLogger(__name__)
 class TaskPollingService(QObject):
     """全局任务轮询服务：应用启动时运行，根据 active_tasks 表自动启停。"""
 
-    status_changed = pyqtSignal(str, str)
-    download_progress = pyqtSignal(str, int, int)
-    task_finished = pyqtSignal(str, str)
-    task_failed = pyqtSignal(str, str)
+    status_changed = pyqtSignal(int, str)
+    download_progress = pyqtSignal(int, int, int)
+    task_finished = pyqtSignal(int, str)
+    task_failed = pyqtSignal(int, str)
 
     def __init__(
         self,
@@ -101,7 +101,7 @@ class TaskPollingService(QObject):
 
     # ---------- Worker 信号处理 ----------
 
-    def _on_status_changed(self, message_id: str, status: str) -> None:
+    def _on_status_changed(self, message_id: int, status: str) -> None:
         _TASK_TO_MSG_STATUS = {
             "pending": MessageStatus.GENERATING,
             "running": MessageStatus.GENERATING,
@@ -113,10 +113,10 @@ class TaskPollingService(QObject):
             self._db.update_message_status(message_id, msg_status)
         self.status_changed.emit(message_id, status)
 
-    def _on_download_progress(self, message_id: str, downloaded: int, total: int) -> None:
+    def _on_download_progress(self, message_id: int, downloaded: int, total: int) -> None:
         self.download_progress.emit(message_id, downloaded, total)
 
-    def _on_task_finished(self, message_id: str, local_path: str) -> None:
+    def _on_task_finished(self, message_id: int, local_path: str) -> None:
         msg = self._db.get_message(message_id)
         self._db.update_message_status(message_id, MessageStatus.COMPLETED, local_path=local_path)
         if msg and self._media_service:
@@ -126,7 +126,7 @@ class TaskPollingService(QObject):
                 logger.warning("素材自动入库失败：%s", e)
         self.task_finished.emit(message_id, local_path)
 
-    def _on_task_failed(self, message_id: str, error: str) -> None:
+    def _on_task_failed(self, message_id: int, error: str) -> None:
         self._db.update_message_status(message_id, MessageStatus.FAILED, error_message=error)
         self.task_failed.emit(message_id, error)
 
@@ -134,10 +134,10 @@ class TaskPollingService(QObject):
 class _PollingWorker(QThread):
     """后台轮询线程：周期性扫描 active_tasks 表，按任务创建时间执行轮询策略。"""
 
-    status_changed = pyqtSignal(str, str)
-    download_progress = pyqtSignal(str, int, int)
-    task_finished = pyqtSignal(str, str)
-    task_failed = pyqtSignal(str, str)
+    status_changed = pyqtSignal(int, str)
+    download_progress = pyqtSignal(int, int, int)
+    task_finished = pyqtSignal(int, str)
+    task_failed = pyqtSignal(int, str)
 
     def __init__(
         self,
@@ -269,7 +269,7 @@ class _PollingWorker(QThread):
         self,
         provider: VideoProvider,
         task_id: str,
-        message_id: str,
+        message_id: int,
         video_url: str,
         model_name: str,
         prompt: str,
@@ -277,32 +277,31 @@ class _PollingWorker(QThread):
     ) -> None:
         """下载视频并标记任务完成。"""
         try:
-            # 确定保存目录：有 save_path 时为项目视频，否则为对话视频
-            if save_path:
-                # 项目视频：通过 message → conversation → project_id 解析项目目录
-                msg = self._db.get_message(message_id)
-                project_id = ""
-                if msg:
-                    conv = self._db.get_conversation(msg.conversation_id)
-                    if conv:
-                        project_id = conv.project_id
-                if project_id:
-                    target_dir = paths.project_dir(self._root, project_id)
-                else:
-                    target_dir = paths.chat_dir(self._root)
-                save_path = os.path.join(target_dir, save_path)
+            # 获取对话和项目信息
+            msg = self._db.get_message(message_id)
+            project_id = 0
+            if msg:
+                conv = self._db.get_conversation(msg.conversation_id)
+                if conv:
+                    project_id = conv.project_id
+
+            # 第一步：根据 project_id 决定目标目录
+            if project_id:
+                target_dir = paths.project_dir(self._root, project_id)
             else:
-                # 对话视频：保存到 chat 目录
-                from datetime import datetime
                 target_dir = paths.chat_dir(self._root)
-                now = datetime.now()
-                stamp = now.strftime("%Y%m%d_%H%M%S")
-                safe_prompt = "".join(c for c in prompt[:20] if c.isalnum() or c in " _-").strip() or "video"
-                filename = f"{stamp}_{model_name}_{safe_prompt}.mp4"
-                save_path = os.path.join(target_dir, filename)
+
+            # 第二步：根据 save_path 决定文件名
+            if save_path:
+                # 有预设文件名（分镜视频：1-1-1.mp4）
+                final_path = os.path.join(target_dir, save_path)
+            else:
+                # 自动生成文件名（聊天视频：chat-{message_id}.mp4）
+                filename = f"chat-{message_id}.mp4"
+                final_path = os.path.join(target_dir, filename)
 
             os.makedirs(self._cache_dir, exist_ok=True)
-            tmp_path = os.path.join(self._cache_dir, f"{uuid.uuid4().hex}.mp4.part")
+            tmp_path = os.path.join(self._cache_dir, f"{now_ms()}.mp4.part")
 
             def on_progress(downloaded: int, total: int) -> None:
                 self.download_progress.emit(message_id, downloaded, total)
@@ -310,13 +309,13 @@ class _PollingWorker(QThread):
             self.status_changed.emit(message_id, MessageStatus.DOWNLOADING.value)
             provider.download(video_url, tmp_path, progress_callback=on_progress)
 
-            os.makedirs(os.path.dirname(save_path), exist_ok=True)
-            shutil.move(tmp_path, save_path)
+            os.makedirs(os.path.dirname(final_path), exist_ok=True)
+            shutil.move(tmp_path, final_path)
 
-            self.task_finished.emit(message_id, save_path)
+            self.task_finished.emit(message_id, final_path)
             self._db.remove_active_task(task_id)
             self._task_poll_count.pop(task_id, None)
-            logger.info("任务完成 task_id=%s local_path=%s", task_id, save_path)
+            logger.info("任务完成 task_id=%s local_path=%s", task_id, final_path)
 
         except Exception as e:
             logger.exception("下载失败 task_id=%s", task_id)

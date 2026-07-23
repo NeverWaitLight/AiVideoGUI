@@ -1,8 +1,6 @@
 """分镜头服务层：管理分镜 CRUD、历史版本、AI 生成。"""
 
 import logging
-import uuid
-from datetime import datetime
 
 from models.data_models import Shot, ShotHistory, ShotSize
 from storage.database import DatabaseManager
@@ -18,17 +16,17 @@ class ShotService:
 
     # ---------- 分镜 CRUD ----------
 
-    def list_shots(self, scene_id: str | None = None, project_id: str | None = None, scene_number: int | None = None) -> list[Shot]:
+    def list_shots(self, scene_id: int | None = None, project_id: int | None = None, scene_number: int | None = None) -> list[Shot]:
         """获取分镜列表。可按场次ID、项目ID或场次号过滤。"""
         return self._db.list_shots(scene_id=scene_id, project_id=project_id, scene_number=scene_number)
 
-    def get_shot(self, shot_id: str) -> Shot | None:
+    def get_shot(self, shot_id: int) -> Shot | None:
         """获取单个分镜。"""
         return self._db.get_shot(shot_id)
 
     def create_shot(
         self,
-        scene_id: str,
+        scene_id: int,
         scene_number: int,
         shot_number: int,
         shot_size: ShotSize = ShotSize.MEDIUM_SHOT,
@@ -42,7 +40,7 @@ class ShotService:
     ) -> Shot:
         """创建新分镜。"""
         shot = Shot(
-            id=str(uuid.uuid4()),
+            id=0,
             scene_id=scene_id,
             scene_number=scene_number,
             shot_number=shot_number,
@@ -54,8 +52,8 @@ class ShotService:
             sound_effect=sound_effect,
             duration=duration,
             notes=notes,
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
+            created_at=0,
+            updated_at=0,
         )
         self._db.create_shot(shot)
         logger.info(f"创建分镜：scene_number={scene_number}, shot_number={shot_number}")
@@ -68,7 +66,7 @@ class ShotService:
 
     def update_shot(
         self,
-        shot_id: str,
+        shot_id: int,
         design_image: str | None = None,
         shot_size: ShotSize | None = None,
         camera_movement: str | None = None,
@@ -92,14 +90,14 @@ class ShotService:
         )
         logger.info(f"更新分镜：shot_id={shot_id}")
 
-    def delete_shot(self, shot_id: str) -> None:
+    def delete_shot(self, shot_id: int) -> None:
         """删除分镜。"""
         self._db.delete_shot(shot_id)
         logger.info(f"删除分镜：shot_id={shot_id}")
 
     # ---------- 历史版本管理 ----------
 
-    def save_history(self, project_id: str) -> None:
+    def save_history(self, project_id: int) -> None:
         """保存当前所有分镜到历史版本。"""
         shots = self._db.list_shots(project_id=project_id)
         if not shots:
@@ -108,11 +106,11 @@ class ShotService:
         self._db.create_shot_history(project_id, shots)
         logger.info(f"保存分镜历史：project_id={project_id}, 共 {len(shots)} 个分镜")
 
-    def list_history(self, project_id: str) -> list[ShotHistory]:
+    def list_history(self, project_id: int) -> list[ShotHistory]:
         """获取历史版本列表。"""
         return self._db.list_shot_history(project_id)
 
-    def restore_from_history(self, project_id: str, history_id: str) -> None:
+    def restore_from_history(self, project_id: int, history_id: int) -> None:
         """从历史版本恢复分镜。"""
         self._db.restore_shots_from_history(project_id, history_id)
         logger.info(f"恢复分镜历史：project_id={project_id}, history_id={history_id}")

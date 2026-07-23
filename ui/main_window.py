@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 import os
 import subprocess
-from datetime import datetime
 
 from PyQt6.QtCore import Qt, QTimer, QObject, pyqtSignal
 from PyQt6.QtWidgets import (
@@ -31,7 +30,6 @@ from service.task_polling_service import TaskPollingService
 from service.text_model_service import TextModelService
 from service.video_service import VideoService, _PROVIDER_REGISTRY
 from storage.database import DatabaseManager
-from utils import paths
 from ui.character_page import CharacterPage
 from ui.chat_area import ChatArea
 from ui.media_library import MediaLibrary
@@ -46,16 +44,10 @@ from ui.sidebar import Sidebar
 from ui.styles import apply_fluent_theme
 from ui.tab_bar import TabBar
 from ui.widgets import VideoStatusCard
+from utils import paths
+from utils.time_utils import format_time, now_ms
 
 logger = logging.getLogger(__name__)
-
-
-def _format_time(dt: datetime) -> str:
-    """将 datetime 格式化为显示时间（今天 HH:MM，其他 MM-DD HH:MM）。"""
-    now = datetime.now()
-    if dt.date() == now.date():
-        return dt.strftime("%H:%M")
-    return dt.strftime("%m-%d %H:%M")
 
 
 def _workspace_root() -> str:
@@ -91,7 +83,7 @@ class _BatchGenerationController(QObject):
         self._index = 0
         self._success = 0
         self._failed = 0
-        self._current_message_id: str | None = None
+        self._current_message_id: int = 0
         self._stopped = False
 
     def start(self) -> None:
@@ -157,7 +149,7 @@ class _BatchGenerationController(QObject):
                 params=params,
                 save_path=save_path,
             )
-            self._current_message_id = msg.task_id
+            self._current_message_id = msg.id
             self.progress.emit(self._index, len(self._shot_list), scene_number, shot_number, f"任务已提交，等待生成... (task: {msg.task_id[:12]}...)")
             logger.info("批量生成 [%d/%d] 场%d镜%d 已提交 task_id=%s save_path=%s",
                         self._index + 1, len(self._shot_list), scene_number, shot_number, msg.task_id, save_path)
@@ -172,9 +164,8 @@ class _BatchGenerationController(QObject):
                 return
             self._submit_next()
 
-    def _on_task_finished(self, message_id: str, local_path: str) -> None:
-        msg = self._service._db.get_message(message_id)
-        if not msg or msg.task_id != self._current_message_id:
+    def _on_task_finished(self, message_id: int, local_path: str) -> None:
+        if message_id != self._current_message_id:
             return
 
         shot = self._shot_list[self._index]
@@ -190,9 +181,8 @@ class _BatchGenerationController(QObject):
             return
         self._submit_next()
 
-    def _on_task_failed(self, message_id: str, error: str) -> None:
-        msg = self._service._db.get_message(message_id)
-        if not msg or msg.task_id != self._current_message_id:
+    def _on_task_failed(self, message_id: int, error: str) -> None:
+        if message_id != self._current_message_id:
             return
 
         shot = self._shot_list[self._index]
@@ -221,10 +211,10 @@ class MainWindow(QMainWindow):
         # 应用 Fluent 主题
         apply_fluent_theme()
 
-        self._current_conversation_id: str | None = None
-        self._video_cards: dict[str, VideoStatusCard] = {}
+        self._current_conversation_id: int = 0
+        self._video_cards: dict[int, VideoStatusCard] = {}
         self._current_mode: int = 0  # 0: 直接生成, 1: 项目管理
-        self._current_project_id: str | None = None
+        self._current_project_id: int = 0
 
         # ── 初始化基础设施 ──
         root = _workspace_root()
@@ -482,7 +472,7 @@ class MainWindow(QMainWindow):
         # 只加载没有项目关联的对话到侧边栏（直接生成模式）
         for conv in convs:
             if not conv.project_id:
-                time_text = conv.created_at.strftime("%Y-%m-%d %H:%M")
+                time_text = format_time(conv.created_at)
                 self.sidebar.add_conversation(conv.id, conv.title, time_text, at_top=False)
 
         # 找到最新的非项目对话
@@ -495,10 +485,10 @@ class MainWindow(QMainWindow):
         # 加载项目列表
         self.project_page.load_projects()
 
-    def _load_messages(self, conversation_id: str) -> None:
+    def _load_messages(self, conversation_id: int) -> None:
         self.chat_area.clear_messages()
         for msg in self._db.list_messages(conversation_id):
-            time_str = _format_time(msg.created_at)
+            time_str = format_time(msg.created_at)
             if msg.role == "user":
                 self.chat_area.add_user_message(msg.content, time_str)
             else:
@@ -543,7 +533,7 @@ class MainWindow(QMainWindow):
             self.project_conversation_widget.hide()
             self.project_grid_page.load_projects()
 
-    def _on_project_grid_selected(self, project_id: str) -> None:
+    def _on_project_grid_selected(self, project_id: int) -> None:
         """从网格页面点击项目，进入详情页面。"""
         self._current_project_id = project_id
         # 隐藏网格页面，显示详情页面
@@ -551,7 +541,7 @@ class MainWindow(QMainWindow):
         self.project_detail_page.show()
         self.project_detail_page.set_project(project_id)
 
-    def _on_project_module_selected(self, project_id: str, module_name: str) -> None:
+    def _on_project_module_selected(self, project_id: int, module_name: str) -> None:
         """项目模块被选中。"""
         self._current_project_id = project_id
 
@@ -742,7 +732,7 @@ class MainWindow(QMainWindow):
         # 保持 worker 引用避免被回收
         self._script_worker = worker
 
-    def _on_generate_storyboard(self, project_id: str) -> None:
+    def _on_generate_storyboard(self, project_id: int) -> None:
         """生成分镜（从剧本编辑器触发）。"""
         if not project_id:
             return
@@ -857,10 +847,8 @@ class MainWindow(QMainWindow):
         # 保持 worker 引用避免被回收
         self._storyboard_worker = worker
 
-    def _save_extracted_characters(self, project_id: str, characters: list[dict]) -> None:
+    def _save_extracted_characters(self, project_id: int, characters: list[dict]) -> None:
         """将 AI 提取的角色保存到数据库（跳过已存在的引用代号）。"""
-        import uuid
-        from datetime import datetime
         from models.data_models import Character
 
         new_chars = []
@@ -875,20 +863,19 @@ class MainWindow(QMainWindow):
                 continue
             new_chars.append(Character(
                 id=0,
-                uuid=str(uuid.uuid4()),
                 project_id=project_id,
                 name=char_data.get("name", ""),
                 ref_code=ref_code,
                 description=char_data.get("description", ""),
-                created_at=datetime.now(),
-                updated_at=datetime.now(),
+                created_at=now_ms(),
+                updated_at=now_ms(),
             ))
 
         if new_chars:
             self._character_service.batch_create_characters(new_chars)
             logger.info(f"自动保存 {len(new_chars)} 个角色到项目 {project_id}")
 
-    def _on_shot_video_generation(self, shot_id: str, scene_number: int, shot_number: int, prompt: str, project_id: str) -> None:
+    def _on_shot_video_generation(self, shot_id: int, scene_number: int, shot_number: int, prompt: str, project_id: int) -> None:
         """处理分镜视频生成请求。"""
         logger.info(f"分镜视频生成请求：shot_id={shot_id}, scene={scene_number}, shot={shot_number}, project={project_id}")
 
@@ -1054,15 +1041,15 @@ class MainWindow(QMainWindow):
         provider_cfg = self._config.get_provider(provider_name)
         model_name = provider_cfg.default_model if provider_cfg else "wan2.7-t2v"
 
-        conv = self._service.create_conversation(provider_name, model_name, "新对话", project_id="")
-        time_text = conv.created_at.strftime("%Y-%m-%d %H:%M")
+        conv = self._service.create_conversation(provider_name, model_name, "新对话", project_id=0)
+        time_text = format_time(conv.created_at)
         self.sidebar.add_conversation(conv.id, conv.title, time_text)
         self.sidebar.select_conversation(conv.id)
         self._current_conversation_id = conv.id
         self.chat_area.set_header(conv.title, model_name)
         self.chat_area.clear_messages()
 
-    def _on_conversation_selected(self, conv_id: str) -> None:
+    def _on_conversation_selected(self, conv_id: int) -> None:
         self.media_library.hide()
         self.chat_area.show()
         self._current_conversation_id = conv_id
@@ -1071,10 +1058,10 @@ class MainWindow(QMainWindow):
             self.chat_area.set_header(convs[0].title, convs[0].model_name)
         self._load_messages(conv_id)
 
-    def _on_conversation_deleted(self, conv_id: str) -> None:
+    def _on_conversation_deleted(self, conv_id: int) -> None:
         self._db.delete_conversation(conv_id)
         if self._current_conversation_id == conv_id:
-            self._current_conversation_id = None
+            self._current_conversation_id = 0
             self.chat_area.set_header("AI 视频生成", "未选择模型")
             self.chat_area.clear_messages()
 
@@ -1084,7 +1071,7 @@ class MainWindow(QMainWindow):
         self.media_library.show()
         self.media_library.load_files(project_id=None)
 
-    def _on_jump_to_conversation(self, conversation_id: str, message_id: str) -> None:
+    def _on_jump_to_conversation(self, conversation_id: int, message_id: int) -> None:
         """从素材库跳转到对话，并定位到指定消息。"""
         # 切换到聊天区域
         self.media_library.hide()
@@ -1105,7 +1092,7 @@ class MainWindow(QMainWindow):
         # 定位到目标消息
         self._scroll_to_message(message_id)
 
-    def _on_title_ready(self, conv_id: str, title: str) -> None:
+    def _on_title_ready(self, conv_id: int, title: str) -> None:
         self._db.update_conversation_title(conv_id, title)
 
         # 更新直接生成模式的侧边栏
@@ -1142,7 +1129,7 @@ class MainWindow(QMainWindow):
         conv_id = self._current_conversation_id
         is_first_message = len(self._db.list_messages(conv_id)) == 0
 
-        now_str = _format_time(datetime.now())
+        now_str = format_time(now_ms())
         self.chat_area.add_user_message(text, now_str)
         self._service.add_user_message(conv_id, text)
 
@@ -1166,7 +1153,7 @@ class MainWindow(QMainWindow):
 
     # ───────── VideoService 信号 ─────────
 
-    def _on_status_changed(self, message_id: str, status: str) -> None:
+    def _on_status_changed(self, message_id: int, status: str) -> None:
         card = self._video_cards.get(message_id)
         if not card:
             return
@@ -1175,14 +1162,14 @@ class MainWindow(QMainWindow):
         elif status in ("generating", "running", "pending"):
             card.set_generating()
 
-    def _on_download_progress(self, message_id: str, downloaded: int, total: int) -> None:
+    def _on_download_progress(self, message_id: int, downloaded: int, total: int) -> None:
         card = self._video_cards.get(message_id)
         if not card or total <= 0:
             return
         pct = int(downloaded * 100 / total)
         card.set_downloading(pct)
 
-    def _on_task_finished(self, message_id: str, local_path: str) -> None:
+    def _on_task_finished(self, message_id: int, local_path: str) -> None:
         card = self._video_cards.get(message_id)
         if card:
             meta = self._db.get_video_metadata_by_message(message_id) or {}
@@ -1194,7 +1181,7 @@ class MainWindow(QMainWindow):
             )
             card.play_btn.clicked.connect(lambda _, p=local_path: self._play_video(p))
 
-    def _on_task_failed(self, message_id: str, error: str) -> None:
+    def _on_task_failed(self, message_id: int, error: str) -> None:
         card = self._video_cards.get(message_id)
         if card:
             card.set_failed(error)
@@ -1240,7 +1227,7 @@ class MainWindow(QMainWindow):
                 self.chat_area.title_label.text(), model
             )
 
-    def _scroll_to_message(self, message_id: str) -> None:
+    def _scroll_to_message(self, message_id: int) -> None:
         """滚动到指定消息位置。"""
         card = self._video_cards.get(message_id)
         if not card:
@@ -1263,7 +1250,7 @@ class MainWindow(QMainWindow):
 
     # ───────── 项目管理模式事件 ─────────
 
-    def _on_project_new_conversation(self, project_id: str) -> None:
+    def _on_project_new_conversation(self, project_id: int) -> None:
         """项目模式：新建对话。"""
         self._current_project_id = project_id
         project = self._project_service.get_project(project_id)
@@ -1285,7 +1272,7 @@ class MainWindow(QMainWindow):
         self.project_chat_area.set_header(conv.title, model_name)
         self.project_chat_area.clear_messages()
 
-    def _on_project_conversation_selected(self, project_id: str, conv_id: str) -> None:
+    def _on_project_conversation_selected(self, project_id: int, conv_id: int) -> None:
         """项目模式：选中对话。"""
         self._current_project_id = project_id
         self._current_conversation_id = conv_id
@@ -1294,11 +1281,11 @@ class MainWindow(QMainWindow):
             self.project_chat_area.set_header(convs[0].title, convs[0].model_name)
         self._load_messages_for_project(conv_id)
 
-    def _load_messages_for_project(self, conversation_id: str) -> None:
+    def _load_messages_for_project(self, conversation_id: int) -> None:
         """为项目模式加载消息。"""
         self.project_chat_area.clear_messages()
         for msg in self._db.list_messages(conversation_id):
-            time_str = _format_time(msg.created_at)
+            time_str = format_time(msg.created_at)
             if msg.role == "user":
                 self.project_chat_area.add_user_message(msg.content, time_str)
             else:
@@ -1322,11 +1309,11 @@ class MainWindow(QMainWindow):
                     card.set_generating()
         QTimer.singleShot(0, self.project_chat_area._scroll_to_bottom)
 
-    def _on_project_conversation_deleted(self, conv_id: str) -> None:
+    def _on_project_conversation_deleted(self, conv_id: int) -> None:
         """项目模式：删除对话。"""
         self._db.delete_conversation(conv_id)
         if self._current_conversation_id == conv_id:
-            self._current_conversation_id = None
+            self._current_conversation_id = 0
             self.project_chat_area.set_header("选择对话", "")
             self.project_chat_area.clear_messages()
 
@@ -1348,7 +1335,7 @@ class MainWindow(QMainWindow):
         conv_id = self._current_conversation_id
         is_first_message = len(self._db.list_messages(conv_id)) == 0
 
-        now_str = _format_time(datetime.now())
+        now_str = format_time(now_ms())
         self.project_chat_area.add_user_message(text, now_str)
         self._service.add_user_message(conv_id, text)
 
@@ -1363,8 +1350,10 @@ class MainWindow(QMainWindow):
             params["ratio"] = project.aspect_ratio
 
         try:
+            # 项目聊天视频：save_path 留空，让轮询服务根据 message_id 自动生成
+            # 轮询服务会根据 project_id 决定保存目录，并使用 "chat-{message_id}.mp4" 命名
             assistant_msg = self._service.submit_task(
-                self._current_conversation_id, text, provider_name, params
+                self._current_conversation_id, text, provider_name, params, save_path=""
             )
         except Exception as e:
             logger.exception("提交任务失败")
