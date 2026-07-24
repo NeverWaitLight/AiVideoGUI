@@ -10,7 +10,7 @@ from storage.database import DatabaseManager
 
 
 class TestScreenplayHistoryAutoSave(unittest.TestCase):
-    """测试 Screenplay 场次更新时自动保存历史版本。"""
+    """测试 Screenplay 场次创建/更新时自动保存历史版本。"""
 
     def setUp(self):
         """创建临时数据库。"""
@@ -57,6 +57,15 @@ class TestScreenplayHistoryAutoSave(unittest.TestCase):
         ))
         return project, scene
 
+    def test_auto_save_history_on_insert(self):
+        """测试创建场次时自动保存初始快照。"""
+        project, scene = self._create_project_and_scene("初始内容")
+
+        history = self.db.list_screenplay_history(project.id)
+        self.assertEqual(len(history), 1, "创建场次后应自动保存 1 条历史")
+        self.assertEqual(history[0].content, "初始内容")
+        self.assertEqual(history[0].screenplay_id, scene.id)
+
     def test_auto_save_history_on_content_update(self):
         """测试更新场次 content 时自动保存历史。"""
         project, scene = self._create_project_and_scene("初始内容")
@@ -64,7 +73,7 @@ class TestScreenplayHistoryAutoSave(unittest.TestCase):
         self.db.update_scene(scene.id, content="修改后的内容")
 
         timestamps = self.db.list_screenplay_history_timestamps(project.id)
-        self.assertEqual(len(timestamps), 1, "应该自动保存了 1 条历史记录")
+        self.assertEqual(len(timestamps), 2, "创建+更新后应有 2 条历史记录")
 
         history = self.db.list_screenplay_history_by_timestamp(project.id, timestamps[0])
         self.assertEqual(len(history), 1)
@@ -81,17 +90,18 @@ class TestScreenplayHistoryAutoSave(unittest.TestCase):
         self.db.update_scene(scene.id, location="书房")
 
         history = self.db.list_screenplay_history(project.id)
-        self.assertEqual(len(history), 1, "应该自动保存了 1 条历史记录")
+        self.assertEqual(len(history), 2, "创建+更新后应有 2 条历史记录")
         self.assertEqual(history[0].location, "书房")
 
     def test_no_history_on_updated_at_only(self):
         """测试仅更新 updated_at 时不保存历史。"""
         project, scene = self._create_project_and_scene()
 
+        # 创建时已有 1 条历史（after_insert）
         self.db.update_scene(scene.id)
 
         history = self.db.list_screenplay_history(project.id)
-        self.assertEqual(len(history), 0, "仅更新 updated_at 不应保存历史")
+        self.assertEqual(len(history), 1, "仅更新 updated_at 不应新增历史")
 
     def test_multiple_updates_accumulate(self):
         """测试多次更新累积历史记录。"""
@@ -101,7 +111,7 @@ class TestScreenplayHistoryAutoSave(unittest.TestCase):
         self.db.update_scene(scene.id, content="版本3")
 
         history = self.db.list_screenplay_history(project.id)
-        self.assertEqual(len(history), 2, "应该累积保存了 2 条历史记录")
+        self.assertEqual(len(history), 3, "创建+2次更新应有 3 条历史记录")
 
     def test_history_contains_all_fields(self):
         """测试历史记录包含与 screenplay 表一致的所有字段。"""
@@ -111,7 +121,7 @@ class TestScreenplayHistoryAutoSave(unittest.TestCase):
                              time_type=SceneTime.NIGHT.value, time_detail="晚上8点")
 
         history = self.db.list_screenplay_history(project.id)
-        self.assertEqual(len(history), 1)
+        self.assertEqual(len(history), 2, "创建+更新后应有 2 条历史记录")
         h = history[0]
         self.assertEqual(h.screenplay_id, scene.id)
         self.assertEqual(h.project_id, project.id)

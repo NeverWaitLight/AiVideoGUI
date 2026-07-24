@@ -1,11 +1,15 @@
-"""ORM 历史版本自动保存监听器。"""
+"""ORM 历史版本自动保存监听器。
 
+为所有拥有 history 表的实体注册 after_insert + after_update 事件，
+在创建和关键字段变更时自动保存历史快照。
+"""
+
+import json
 import time
 import uuid
 from datetime import datetime
 
-from sqlalchemy import event
-from sqlalchemy.orm import Session
+from sqlalchemy import event, select
 
 from storage.orm.models import (
     CharacterEntity,
@@ -22,6 +26,95 @@ from storage.orm.models import (
 _listeners_registered = False
 
 
+# ── 共用写入函数 ──────────────────────────────────────────────
+
+
+def _save_story_outline_history(connection, target: StoryOutlineEntity):
+    """将 StoryOutline 快照写入 story_outline_history。"""
+    connection.execute(
+        StoryOutlineHistoryEntity.__table__.insert(),
+        {
+            "story_outline_id": target.id,
+            "project_id": target.project_id,
+            "content": target.content,
+            "created_at": int(time.time() * 1000),
+        },
+    )
+
+
+def _save_screenplay_history(connection, target: ScreenplayEntity):
+    """将 Screenplay 快照写入 screenplay_history。"""
+    connection.execute(
+        ScreenplayHistoryEntity.__table__.insert(),
+        {
+            "screenplay_id": target.id,
+            "project_id": target.project_id,
+            "scene_number": target.scene_number,
+            "location_type": target.location_type,
+            "location": target.location,
+            "time_type": target.time_type,
+            "time_detail": target.time_detail,
+            "content": target.content,
+            "created_at": int(time.time() * 1000),
+        },
+    )
+
+
+def _save_storyboard_history(connection, target: StoryboardEntity):
+    """将 Storyboard 快照写入 storyboard_history。"""
+    result = connection.execute(
+        select(ScreenplayEntity.project_id).where(
+            ScreenplayEntity.id == target.scene_id
+        )
+    )
+    project_id = result.scalar()
+    if project_id is None:
+        return
+
+    connection.execute(
+        StoryboardHistoryEntity.__table__.insert(),
+        {
+            "storyboard_id": target.id,
+            "project_id": project_id,
+            "scene_id": target.scene_id,
+            "scene_number": target.scene_number,
+            "shot_number": target.shot_number,
+            "design_image": target.design_image,
+            "shot_size": target.shot_size,
+            "camera_movement": target.camera_movement,
+            "visual_content": target.visual_content,
+            "dialogue": target.dialogue,
+            "sound_effect": target.sound_effect,
+            "duration": target.duration,
+            "notes": target.notes,
+            "created_at": int(time.time() * 1000),
+        },
+    )
+
+
+def _save_character_history(connection, target: CharacterEntity):
+    """将 Character 快照写入 character_history（JSON 快照）。"""
+    snapshot = json.dumps({
+        "name": target.name,
+        "ref_code": target.ref_code,
+        "description": target.description,
+        "design_image": target.design_image,
+    }, ensure_ascii=False)
+
+    connection.execute(
+        CharacterHistoryEntity.__table__.insert(),
+        {
+            "id": str(uuid.uuid4()),
+            "character_id": target.uuid,
+            "snapshot": snapshot,
+            "created_at": datetime.now(),
+        },
+    )
+
+
+# ── 监听器注册 ──────────────────────────────────────────────
+
+
 def setup_history_listeners():
     """注册所有历史版本自动保存监听器（仅注册一次）。"""
     global _listeners_registered
@@ -29,41 +122,31 @@ def setup_history_listeners():
     if _listeners_registered:
         return
 
-    # StoryOutline 更新时自动保存历史
+    # ── StoryOutline ────────────────────────────────────────
+
+    @event.listens_for(StoryOutlineEntity, "after_insert", propagate=True)
+    def on_story_outline_insert(mapper, connection, target: StoryOutlineEntity):
+        """StoryOutline 创建后自动保存初始快照。"""
+        _save_story_outline_history(connection, target)
+
     @event.listens_for(StoryOutlineEntity, "after_update", propagate=True)
     def on_story_outline_update(mapper, connection, target: StoryOutlineEntity):
-        """
-        StoryOutline 更新后自动保存到 story_outline_history。
-
-        注意：只在 content 字段变化时保存历史版本，避免 updated_at 更新触发重复保存。
-        """
-        # 获取 Session 来检查哪些字段被修改
+        """StoryOutline 更新后自动保存历史（仅 content 变化时）。"""
         state = target._sa_instance_state
-        history = state.attrs.content.history
+        if state.attrs.content.history.has_changes():
+            _save_story_outline_history(connection, target)
 
-        # 只有 content 字段有变化时才保存历史
-        if history.has_changes():
-            # 不设置 id 字段，让数据库自动生成自增ID
-            connection.execute(
-                StoryOutlineHistoryEntity.__table__.insert(),
-                {
-                    "story_outline_id": target.id,
-                    "project_id": target.project_id,
-                    "content": target.content,
-                    "created_at": int(time.time() * 1000),
-                },
-            )
+    # ── Screenplay ──────────────────────────────────────────
 
-    # Screenplay 更新时自动保存历史
+    @event.listens_for(ScreenplayEntity, "after_insert", propagate=True)
+    def on_screenplay_insert(mapper, connection, target: ScreenplayEntity):
+        """Screenplay 场次创建后自动保存初始快照。"""
+        _save_screenplay_history(connection, target)
+
     @event.listens_for(ScreenplayEntity, "after_update", propagate=True)
     def on_screenplay_update(mapper, connection, target: ScreenplayEntity):
-        """
-        Screenplay 场次更新后自动保存到 screenplay_history。
-
-        注意：只在关键字段变化时保存，避免 updated_at 更新触发重复保存。
-        """
+        """Screenplay 场次更新后自动保存历史（仅关键字段变化时）。"""
         state = target._sa_instance_state
-
         key_fields_changed = any([
             state.attrs.location_type.history.has_changes(),
             state.attrs.location.history.has_changes(),
@@ -71,35 +154,20 @@ def setup_history_listeners():
             state.attrs.time_detail.history.has_changes(),
             state.attrs.content.history.has_changes(),
         ])
-
         if key_fields_changed:
-            connection.execute(
-                ScreenplayHistoryEntity.__table__.insert(),
-                {
-                    "screenplay_id": target.id,
-                    "project_id": target.project_id,
-                    "scene_number": target.scene_number,
-                    "location_type": target.location_type,
-                    "location": target.location,
-                    "time_type": target.time_type,
-                    "time_detail": target.time_detail,
-                    "content": target.content,
-                    "created_at": int(time.time() * 1000),
-                },
-            )
+            _save_screenplay_history(connection, target)
 
-    # Storyboard 更新时自动保存历史
+    # ── Storyboard ──────────────────────────────────────────
+
+    @event.listens_for(StoryboardEntity, "after_insert", propagate=True)
+    def on_storyboard_insert(mapper, connection, target: StoryboardEntity):
+        """Storyboard 创建后自动保存初始快照。"""
+        _save_storyboard_history(connection, target)
+
     @event.listens_for(StoryboardEntity, "after_update", propagate=True)
     def on_storyboard_update(mapper, connection, target: StoryboardEntity):
-        """
-        Storyboard 更新后自动保存到 storyboard_history。
-
-        注意：只在关键字段变化时保存历史版本，避免 updated_at 更新触发重复保存。
-        """
-        from sqlalchemy import select
-
+        """Storyboard 更新后自动保存历史（仅关键字段变化时）。"""
         state = target._sa_instance_state
-
         key_fields_changed = any([
             state.attrs.shot_size.history.has_changes(),
             state.attrs.camera_movement.history.has_changes(),
@@ -110,76 +178,27 @@ def setup_history_listeners():
             state.attrs.notes.history.has_changes(),
             state.attrs.design_image.history.has_changes(),
         ])
-
         if key_fields_changed:
-            # 通过 scene_id 查询 project_id
-            result = connection.execute(
-                select(ScreenplayEntity.project_id).where(
-                    ScreenplayEntity.id == target.scene_id
-                )
-            )
-            project_id = result.scalar()
-            if project_id is None:
-                return
+            _save_storyboard_history(connection, target)
 
-            connection.execute(
-                StoryboardHistoryEntity.__table__.insert(),
-                {
-                    "storyboard_id": target.id,
-                    "project_id": project_id,
-                    "scene_id": target.scene_id,
-                    "scene_number": target.scene_number,
-                    "shot_number": target.shot_number,
-                    "design_image": target.design_image,
-                    "shot_size": target.shot_size,
-                    "camera_movement": target.camera_movement,
-                    "visual_content": target.visual_content,
-                    "dialogue": target.dialogue,
-                    "sound_effect": target.sound_effect,
-                    "duration": target.duration,
-                    "notes": target.notes,
-                    "created_at": int(time.time() * 1000),
-                },
-            )
+    # ── Character ───────────────────────────────────────────
 
-    # Character 更新时自动保存历史
+    @event.listens_for(CharacterEntity, "after_insert", propagate=True)
+    def on_character_insert(mapper, connection, target: CharacterEntity):
+        """Character 创建后自动保存初始快照。"""
+        _save_character_history(connection, target)
+
     @event.listens_for(CharacterEntity, "after_update", propagate=True)
     def on_character_update(mapper, connection, target: CharacterEntity):
-        """
-        Character 更新后自动保存到 character_history。
-
-        注意：只在关键字段变化时保存历史版本。
-        """
-        import json
-
+        """Character 更新后自动保存历史（仅关键字段变化时）。"""
         state = target._sa_instance_state
-
-        # 检查是否有关键字段变化（name, ref_code, description, design_image）
         key_fields_changed = any([
             state.attrs.name.history.has_changes(),
             state.attrs.ref_code.history.has_changes(),
             state.attrs.description.history.has_changes(),
             state.attrs.design_image.history.has_changes(),
         ])
-
         if key_fields_changed:
-            snapshot = json.dumps({
-                "name": target.name,
-                "ref_code": target.ref_code,
-                "description": target.description,
-                "design_image": target.design_image,
-            }, ensure_ascii=False)
-
-            connection.execute(
-                CharacterHistoryEntity.__table__.insert(),
-                {
-                    "id": str(uuid.uuid4()),
-                    "character_id": target.uuid,
-                    "snapshot": snapshot,
-                    "created_at": datetime.now(),
-                },
-            )
+            _save_character_history(connection, target)
 
     _listeners_registered = True
-
-
