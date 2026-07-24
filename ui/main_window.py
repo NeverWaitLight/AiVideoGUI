@@ -930,7 +930,7 @@ class MainWindow(QMainWindow):
             # 预计算保存路径（相对于 workspace）：projects/{project_id}/场次号-镜头号-生成次数.mp4
             seq = self._db.get_next_storyboard_seq(scene_number, shot_number)
             save_path = os.path.join(
-                paths.projects_dir(""), project_id, f"{scene_number}-{shot_number}-{seq}.mp4"
+                paths.projects_dir(""), str(project_id), f"{scene_number}-{shot_number}-{seq}.mp4"
             )
 
             msg = self._service.submit_task(
