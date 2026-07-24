@@ -14,7 +14,7 @@ class ProjectEntity(Base):
 
     __tablename__ = "projects"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[Optional[int]] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
     resolution: Mapped[str] = mapped_column(String(20), nullable=False, default="720P")
     aspect_ratio: Mapped[str] = mapped_column(String(10), nullable=False, default="16:9")
@@ -51,7 +51,7 @@ class ConversationEntity(Base):
     model_name: Mapped[str] = mapped_column(String(100), nullable=False, default="")
     provider_name: Mapped[str] = mapped_column(String(50), nullable=False, default="")
     project_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("projects.id", ondelete="SET NULL"), nullable=False, default=0
+        Integer, ForeignKey("projects.id", ondelete="SET NULL"), nullable=False, default=0
     )
     is_hidden: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
@@ -173,9 +173,9 @@ class OutlineEntity(Base):
 
     __tablename__ = "outlines"
 
-    id: Mapped[Optional[int]] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[Optional[int]] = mapped_column(Integer, primary_key=True, autoincrement=True)
     project_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
+        Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
     )
     content: Mapped[str] = mapped_column(Text, nullable=False, default="")
     created_at: Mapped[int] = mapped_column(BigInteger, nullable=False)  # 13位时间戳（毫秒）
@@ -196,11 +196,11 @@ class OutlineHistoryEntity(Base):
 
     __tablename__ = "outline_history"
 
-    id: Mapped[Optional[int]] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[Optional[int]] = mapped_column(Integer, primary_key=True, autoincrement=True)
     raw_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("outlines.id", ondelete="CASCADE"), nullable=False
+        Integer, ForeignKey("outlines.id", ondelete="CASCADE"), nullable=False
     )
-    project_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    project_id: Mapped[int] = mapped_column(Integer, nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[int] = mapped_column(BigInteger, nullable=False)  # 13位时间戳（毫秒）
 
@@ -218,7 +218,7 @@ class ScriptEntity(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     project_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
+        Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
     )
     title: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
@@ -324,7 +324,7 @@ class ShotHistoryEntity(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     project_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
+        Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
     )
     shots_snapshot: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
@@ -341,10 +341,10 @@ class CharacterEntity(Base):
 
     __tablename__ = "characters"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[Optional[int]] = mapped_column(Integer, primary_key=True, autoincrement=True)
     uuid: Mapped[str] = mapped_column(String(36), unique=True, nullable=False)
     project_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
+        Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     ref_code: Mapped[str] = mapped_column(String(100), nullable=False)

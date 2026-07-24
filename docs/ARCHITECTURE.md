@@ -36,6 +36,43 @@
 
 **数据流：** 视频文件 → `VideoMetadataExtractor.extract_all()` → `MediaFile` 对象（携带元数据） → `DatabaseManager.add_media_file()` → SQLite `media_files` 表。
 
+## SQLite 数据库类型约定
+
+SQLAlchemy 映射到 SQLite 时需遵循以下类型规则：
+
+**SQLite 存储类型：**
+
+| SQLite 存储类 | 含义            | 示例        |
+| ---------- | ------------- | --------- |
+| `NULL`     | 空值            | `NULL`    |
+| `INTEGER`  | 有符号整数，最多 64 位 | `123`     |
+| `REAL`     | 64 位 IEEE 浮点数 | `3.14`    |
+| `TEXT`     | 文本字符串         | `'hello'` |
+| `BLOB`     | 二进制数据         | 图片、文件等    |
+
+**SQLAlchemy 类型映射规则：**
+
+本项目使用 SQLite 作为数据库。SQLite 的 `INTEGER` 是 64 位有符号整数（-2^63 到 2^63-1），足以容纳任何整数需求（包括 13 位毫秒时间戳）。
+
+1. **自增主键** → `mapped_column(Integer, primary_key=True, autoincrement=True)`
+   - SQLite 只对 `INTEGER PRIMARY KEY` 支持自动递增
+   - 必须使用 `Mapped[Optional[int]]` 类型标注（允许创建时为 None）
+   - 示例：`id: Mapped[Optional[int]] = mapped_column(Integer, primary_key=True, autoincrement=True)`
+
+2. **所有其他整数字段** → `mapped_column(Integer)`
+   - 外键引用、毫秒时间戳、文件大小、计数等统一使用 `Integer`
+   - 示例：
+     ```python
+     project_id: Mapped[int] = mapped_column(Integer, ForeignKey("projects.id", ...))
+     created_at: Mapped[int] = mapped_column(Integer, nullable=False)  # 13位毫秒时间戳
+     file_size: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+     ```
+
+**关键理解：**
+- SQLite 的 `INTEGER` 是 64 位，足以存储任何整数需求
+- 所有整数字段统一使用 `Integer` 类型，无需区分大小
+- 自增主键必须使用 `Optional[int]` 类型标注
+
 ## ORM 事件监听器自动保存历史
 
 使用 SQLAlchemy 的事件监听机制实现历史版本自动保存，业务代码无需关心历史持久化逻辑。
