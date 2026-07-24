@@ -279,22 +279,11 @@ class _PollingWorker(QThread):
     ) -> None:
         """下载视频并标记任务完成。"""
         try:
-            # 确定保存目录：有 save_path 时为项目视频，否则为对话视频
+            # 确定保存路径：有 save_path 时为 workspace 相对路径，否则为对话视频
+            workspace = paths.workspace_dir(self._root)
             if save_path:
-                # 项目视频：通过 message → conversation → project_id 解析项目目录
-                msg = self._db.get_message(message_id)
-                project_id = ""
-                if msg:
-                    conv = self._db.get_conversation(msg.conversation_id)
-                    if conv:
-                        project_id = conv.project_id
-                if project_id:
-                    target_dir = paths.project_dir(self._root, project_id)
-                else:
-                    target_dir = paths.chat_dir(self._root)
-                save_path = os.path.join(target_dir, save_path)
+                save_path = os.path.join(workspace, save_path)
             else:
-                # 对话视频：保存到 chat 目录
                 from datetime import datetime
                 target_dir = paths.chat_dir(self._root)
                 now = datetime.now()
