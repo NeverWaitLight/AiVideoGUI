@@ -26,7 +26,7 @@ from service.media_service import MediaService
 from service.story_outline_service import StoryOutlineService
 from service.project_service import ProjectService
 from service.screenplay_service import ScreenplayService
-from service.shot_service import ShotService
+from service.storyboard_service import StoryboardService
 from service.task_polling_service import TaskPollingService
 from service.text_model_service import TextModelService
 from service.video_service import VideoService, _PROVIDER_REGISTRY
@@ -41,7 +41,7 @@ from ui.project_grid_page import ProjectGridPage
 from ui.project_page import ProjectPage
 from ui.screenplay_editor import ScreenplayEditor
 from ui.settings_dialog import SettingsDialog
-from ui.shot_editor import ShotEditor
+from ui.storyboard_editor import StoryboardEditor
 from ui.sidebar import Sidebar
 from ui.styles import apply_fluent_theme
 from ui.tab_bar import TabBar
@@ -264,7 +264,7 @@ class MainWindow(QMainWindow):
         self._screenplay_service = ScreenplayService(self._db)
 
         # 分镜服务
-        self._shot_service = ShotService(self._db)
+        self._storyboard_service = StoryboardService(self._db)
 
         # 角色服务
         self._character_service = CharacterService(self._db)
@@ -387,9 +387,9 @@ class MainWindow(QMainWindow):
         self.screenplay_editor.hide()
 
         # 第三层：分镜编辑器
-        self.shot_editor = ShotEditor(self._shot_service, self._screenplay_service)
-        layout.addWidget(self.shot_editor)
-        self.shot_editor.hide()
+        self.storyboard_editor = StoryboardEditor(self._storyboard_service, self._screenplay_service)
+        layout.addWidget(self.storyboard_editor)
+        self.storyboard_editor.hide()
 
         # 第三层：角色管理页
         self.character_page = CharacterPage(self._character_service)
@@ -451,9 +451,9 @@ class MainWindow(QMainWindow):
         self.screenplay_editor.generate_storyboard_clicked.connect(self._on_generate_storyboard)
 
         # 分镜编辑器信号
-        self.shot_editor.back_clicked.connect(self._on_shot_editor_back)
-        self.shot_editor.video_generation_requested.connect(self._on_shot_video_generation)
-        self.shot_editor.batch_video_generation_requested.connect(self._on_batch_video_generation)
+        self.storyboard_editor.back_clicked.connect(self._on_shot_editor_back)
+        self.storyboard_editor.video_generation_requested.connect(self._on_shot_video_generation)
+        self.storyboard_editor.batch_video_generation_requested.connect(self._on_batch_video_generation)
 
         # 角色管理页信号
         self.character_page.back_clicked.connect(self._on_character_page_back)
@@ -573,7 +573,7 @@ class MainWindow(QMainWindow):
             self.project_media_library.hide()
             self.story_outline_editor.hide()
             self.screenplay_editor.hide()
-            self.shot_editor.hide()
+            self.storyboard_editor.hide()
             self.character_page.hide()
             self.video_player_page.show()
             self.video_player_page.load_playlist(project_id)
@@ -583,7 +583,7 @@ class MainWindow(QMainWindow):
             self.project_conversation_widget.hide()
             self.project_media_library.hide()
             self.screenplay_editor.hide()
-            self.shot_editor.hide()
+            self.storyboard_editor.hide()
             self.character_page.hide()
             self.video_player_page.hide()
             self.story_outline_editor.show()
@@ -594,7 +594,7 @@ class MainWindow(QMainWindow):
             self.project_conversation_widget.hide()
             self.project_media_library.hide()
             self.story_outline_editor.hide()
-            self.shot_editor.hide()
+            self.storyboard_editor.hide()
             self.character_page.hide()
             self.video_player_page.hide()
             self.screenplay_editor.show()
@@ -605,7 +605,7 @@ class MainWindow(QMainWindow):
             self.project_conversation_widget.hide()
             self.story_outline_editor.hide()
             self.screenplay_editor.hide()
-            self.shot_editor.hide()
+            self.storyboard_editor.hide()
             self.character_page.hide()
             self.video_player_page.hide()
             self.project_media_library.show()
@@ -616,15 +616,15 @@ class MainWindow(QMainWindow):
             self.project_detail_page.hide()
             self.character_page.hide()
             self.video_player_page.hide()
-            self.shot_editor.show()
-            self.shot_editor.load_project(project_id)
+            self.storyboard_editor.show()
+            self.storyboard_editor.load_project(project_id)
         elif module_name == "character":
             # 进入角色管理
             logger.info(f"打开项目 {project_id} 的角色模块")
             self.project_detail_page.hide()
             self.story_outline_editor.hide()
             self.screenplay_editor.hide()
-            self.shot_editor.hide()
+            self.storyboard_editor.hide()
             self.video_player_page.hide()
             self.project_media_library.hide()
             self.character_page.show()
@@ -659,7 +659,7 @@ class MainWindow(QMainWindow):
 
     def _on_shot_editor_back(self) -> None:
         """从分镜编辑器返回项目详情页。"""
-        self.shot_editor.hide()
+        self.storyboard_editor.hide()
         self.project_detail_page.show()
         if self._current_project_id:
             self.project_detail_page.set_project(self._current_project_id)
@@ -839,8 +839,8 @@ class MainWindow(QMainWindow):
                     self._save_extracted_characters(project_id, characters)
 
                 self.screenplay_editor.hide()
-                self.shot_editor.show()
-                self.shot_editor.load_project(project_id, shots)
+                self.storyboard_editor.show()
+                self.storyboard_editor.load_project(project_id, shots)
                 char_info = f"，{len(characters)} 个角色" if characters else ""
                 QMessageBox.information(self, "成功", f"分镜生成完成，共 {len(shots)} 个镜头{char_info}！")
             except Exception as e:
@@ -971,14 +971,14 @@ class MainWindow(QMainWindow):
         project = self._project_service.get_project(project_id)
         if not project:
             QMessageBox.warning(self, "错误", "项目不存在")
-            self.shot_editor._generate_all_btn.setEnabled(True)
+            self.storyboard_editor._generate_all_btn.setEnabled(True)
             return
 
         provider_name = self._config.settings.default_provider or "dashscope"
         provider_cfg = self._config.get_provider(provider_name)
         if not provider_cfg or not provider_cfg.api_key:
             QMessageBox.warning(self, "配置错误", f"未配置 {provider_name} 的 API Key")
-            self.shot_editor._generate_all_btn.setEnabled(True)
+            self.storyboard_editor._generate_all_btn.setEnabled(True)
             return
 
         model_name = provider_cfg.default_model if provider_cfg else "wan2.7-t2v"
@@ -1037,7 +1037,7 @@ class MainWindow(QMainWindow):
 
         def on_finished(success: int, failed: int, stopped: bool) -> None:
             dialog.close()
-            self.shot_editor._generate_all_btn.setEnabled(True)
+            self.storyboard_editor._generate_all_btn.setEnabled(True)
             title = "批量生成已停止" if stopped else "批量生成完成"
             QMessageBox.information(
                 self, title,

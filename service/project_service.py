@@ -92,8 +92,8 @@ class ProjectService:
         #    - story_outline_history (ON DELETE CASCADE)
         #    - screenplay (ON DELETE CASCADE)
         #    - screenplay_history (ON DELETE CASCADE)
-        #    - shots (ON DELETE CASCADE)
-        #    - shot_history (ON DELETE CASCADE)
+        #    - storyboard (ON DELETE CASCADE)
+        #    - storyboard_history (ON DELETE CASCADE)
 
         # 3. 删除项目（会清除对话的 project_id 关联）
         self._db.delete_project(project_id)

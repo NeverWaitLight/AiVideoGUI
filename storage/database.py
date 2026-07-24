@@ -17,8 +17,8 @@ from models.data_models import (
     MessageStatus,
     Scene,
     ScreenplayHistory,
-    Shot,
-    ShotHistory,
+    Storyboard,
+    StoryboardHistory,
     StoryOutline,
     StoryOutlineHistory,
 )
@@ -31,7 +31,7 @@ from storage.repositories.message import MessageRepository
 from storage.repositories.story_outline import StoryOutlineHistoryRepository, StoryOutlineRepository
 from storage.repositories.project import ProjectRepository
 from storage.repositories.screenplay import ScreenplayHistoryRepository, ScreenplayRepository
-from storage.repositories.shot import ShotHistoryRepository, ShotRepository
+from storage.repositories.storyboard import StoryboardHistoryRepository, StoryboardRepository
 
 logger = logging.getLogger(__name__)
 
@@ -597,14 +597,14 @@ class DatabaseManager:
                     updated_at=now_ms,
                 ))
 
-    # ========== Shot 相关方法 ==========
+    # ========== Storyboard 相关方法 ==========
 
-    def list_shots(
+    def list_storyboards(
         self,
         scene_id: str | None = None,
         project_id: int | None = None,
         scene_number: int | None = None,
-    ) -> list[Shot]:
+    ) -> list[Storyboard]:
         """
         查询分镜。
 
@@ -617,42 +617,42 @@ class DatabaseManager:
             分镜列表
         """
         session = self._get_session()
-        repo = ShotRepository(session)
+        repo = StoryboardRepository(session)
 
         if scene_id:
             return repo.list_by_scene(scene_id)
         elif project_id:
-            shots = repo.list_by_project(project_id)
+            storyboards = repo.list_by_project(project_id)
             if scene_number is not None:
-                shots = [s for s in shots if s.scene_number == scene_number]
-            return shots
+                storyboards = [s for s in storyboards if s.scene_number == scene_number]
+            return storyboards
         else:
             return []
 
-    def get_shot(self, shot_id: str) -> Shot | None:
+    def get_storyboard(self, storyboard_id: str) -> Storyboard | None:
         """查询分镜。"""
         session = self._get_session()
-        repo = ShotRepository(session)
-        return repo.get_by_id(shot_id)
+        repo = StoryboardRepository(session)
+        return repo.get_by_id(storyboard_id)
 
-    def create_shot(self, shot: Shot) -> None:
+    def create_storyboard(self, storyboard: Storyboard) -> None:
         """创建分镜。"""
         with self._lock:
             session = self._get_session()
-            repo = ShotRepository(session)
-            repo.create(shot)
+            repo = StoryboardRepository(session)
+            repo.create(storyboard)
 
-    def batch_create_shots(self, shots: list[Shot]) -> None:
+    def batch_create_storyboards(self, storyboards: list[Storyboard]) -> None:
         """批量创建分镜。"""
         with self._lock:
             session = self._get_session()
-            repo = ShotRepository(session)
-            for shot in shots:
-                repo.create(shot)
+            repo = StoryboardRepository(session)
+            for storyboard in storyboards:
+                repo.create(storyboard)
 
-    def update_shot(
+    def update_storyboard(
         self,
-        shot_id: str,
+        storyboard_id: str,
         design_image: str | None = None,
         shot_size: str | None = None,
         camera_movement: str | None = None,
@@ -667,9 +667,9 @@ class DatabaseManager:
         """更新分镜。"""
         with self._lock:
             session = self._get_session()
-            from storage.orm.models import ShotEntity
+            from storage.orm.models import StoryboardEntity
 
-            entity = session.get(ShotEntity, shot_id)
+            entity = session.get(StoryboardEntity, storyboard_id)
             if entity:
                 if scene_number is not None:
                     entity.scene_number = scene_number
@@ -694,22 +694,22 @@ class DatabaseManager:
                 entity.updated_at = datetime.now()
                 session.commit()
 
-    def delete_shot(self, shot_id: str) -> None:
+    def delete_storyboard(self, storyboard_id: str) -> None:
         """删除分镜。"""
         with self._lock:
             session = self._get_session()
-            repo = ShotRepository(session)
-            repo.delete(shot_id)
+            repo = StoryboardRepository(session)
+            repo.delete(storyboard_id)
 
-    def create_shot_history(self, project_id: int, shots: list[Shot]) -> None:
+    def create_storyboard_history(self, project_id: int, storyboards: list[Storyboard]) -> None:
         """创建分镜历史快照。"""
         with self._lock:
             session = self._get_session()
-            repo = ShotHistoryRepository(session)
+            repo = StoryboardHistoryRepository(session)
             import uuid
 
-            # 将 shots 序列化为 JSON
-            shots_data = [
+            # 将 storyboards 序列化为 JSON
+            storyboards_data = [
                 {
                     "scene_number": s.scene_number,
                     "shot_number": s.shot_number,
@@ -722,37 +722,37 @@ class DatabaseManager:
                     "duration": s.duration,
                     "notes": s.notes,
                 }
-                for s in shots
+                for s in storyboards
             ]
 
-            repo.create(ShotHistory(
+            repo.create(StoryboardHistory(
                 id=str(uuid.uuid4()),
                 project_id=project_id,
-                shots_snapshot=json.dumps(shots_data, ensure_ascii=False),
+                storyboard_snapshot=json.dumps(storyboards_data, ensure_ascii=False),
                 created_at=datetime.now(),
             ))
 
-    def list_shot_history(self, project_id: int) -> list[ShotHistory]:
+    def list_storyboard_history(self, project_id: int) -> list[StoryboardHistory]:
         """查询项目的所有分镜历史版本。"""
         session = self._get_session()
-        repo = ShotHistoryRepository(session)
+        repo = StoryboardHistoryRepository(session)
         return repo.list_by_project(project_id)
 
-    def restore_shots_from_history(self, project_id: int, history_id: str) -> None:
+    def restore_storyboards_from_history(self, project_id: int, history_id: str) -> None:
         """从历史版本恢复分镜。"""
         with self._lock:
             session = self._get_session()
-            history_repo = ShotHistoryRepository(session)
+            history_repo = StoryboardHistoryRepository(session)
             history = history_repo.get_by_id(history_id)
 
             if not history:
                 return
 
             # 删除当前所有分镜
-            shot_repo = ShotRepository(session)
-            current_shots = shot_repo.list_by_project(project_id)
-            for shot in current_shots:
-                shot_repo.delete(shot.id)
+            storyboard_repo = StoryboardRepository(session)
+            current_storyboards = storyboard_repo.list_by_project(project_id)
+            for storyboard in current_storyboards:
+                storyboard_repo.delete(storyboard.id)
 
             # 获取项目的剧本和场次
             screenplay_repo = ScreenplayRepository(session)
@@ -760,28 +760,28 @@ class DatabaseManager:
             scene_map = {s.scene_number: s.id for s in scenes}
 
             # 恢复分镜
-            shots_data = json.loads(history.shots_snapshot)
+            storyboards_data = json.loads(history.storyboard_snapshot)
             import uuid
 
-            for shot_data in shots_data:
-                scene_number = shot_data["scene_number"]
+            for storyboard_data in storyboards_data:
+                scene_number = storyboard_data["scene_number"]
                 scene_id = scene_map.get(scene_number)
                 if not scene_id:
                     continue
 
-                shot_repo.create(Shot(
+                storyboard_repo.create(Storyboard(
                     id=str(uuid.uuid4()),
                     scene_id=scene_id,
-                    scene_number=shot_data["scene_number"],
-                    shot_number=shot_data["shot_number"],
-                    design_image=shot_data.get("design_image", ""),
-                    shot_size=shot_data.get("shot_size", "medium_shot"),
-                    camera_movement=shot_data.get("camera_movement", ""),
-                    visual_content=shot_data.get("visual_content", ""),
-                    dialogue=shot_data.get("dialogue", ""),
-                    sound_effect=shot_data.get("sound_effect", ""),
-                    duration=shot_data.get("duration", 0.0),
-                    notes=shot_data.get("notes", ""),
+                    scene_number=storyboard_data["scene_number"],
+                    shot_number=storyboard_data["shot_number"],
+                    design_image=storyboard_data.get("design_image", ""),
+                    shot_size=storyboard_data.get("shot_size", "medium_shot"),
+                    camera_movement=storyboard_data.get("camera_movement", ""),
+                    visual_content=storyboard_data.get("visual_content", ""),
+                    dialogue=storyboard_data.get("dialogue", ""),
+                    sound_effect=storyboard_data.get("sound_effect", ""),
+                    duration=storyboard_data.get("duration", 0.0),
+                    notes=storyboard_data.get("notes", ""),
                     created_at=datetime.now(),
                     updated_at=datetime.now(),
                 ))

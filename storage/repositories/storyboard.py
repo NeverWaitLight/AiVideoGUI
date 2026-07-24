@@ -5,20 +5,20 @@ from typing import List
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from models.data_models import Shot, ShotHistory, ShotSize
-from storage.orm.models import ShotEntity, ShotHistoryEntity, ScreenplayEntity
+from models.data_models import Storyboard, StoryboardHistory, ShotSize
+from storage.orm.models import StoryboardEntity, StoryboardHistoryEntity, ScreenplayEntity
 from storage.repositories.base import BaseRepository
 
 
-class ShotRepository(BaseRepository[ShotEntity, Shot]):
+class StoryboardRepository(BaseRepository[StoryboardEntity, Storyboard]):
     """分镜 Repository。"""
 
     def __init__(self, session: Session):
-        super().__init__(session, ShotEntity)
+        super().__init__(session, StoryboardEntity)
 
-    def _to_dto(self, entity: ShotEntity) -> Shot:
+    def _to_dto(self, entity: StoryboardEntity) -> Storyboard:
         """Entity → DTO 转换。"""
-        return Shot(
+        return Storyboard(
             id=entity.id,
             scene_id=entity.scene_id,
             scene_number=entity.scene_number,
@@ -35,9 +35,9 @@ class ShotRepository(BaseRepository[ShotEntity, Shot]):
             updated_at=entity.updated_at,
         )
 
-    def _to_entity(self, dto: Shot) -> ShotEntity:
+    def _to_entity(self, dto: Storyboard) -> StoryboardEntity:
         """DTO → Entity 转换。"""
-        return ShotEntity(
+        return StoryboardEntity(
             id=dto.id,
             scene_id=dto.scene_id,
             scene_number=dto.scene_number,
@@ -54,7 +54,7 @@ class ShotRepository(BaseRepository[ShotEntity, Shot]):
             updated_at=dto.updated_at,
         )
 
-    def list_by_scene(self, scene_id: int) -> List[Shot]:
+    def list_by_scene(self, scene_id: int) -> List[Storyboard]:
         """
         查询场次的所有分镜（按镜头号升序）。
 
@@ -65,14 +65,14 @@ class ShotRepository(BaseRepository[ShotEntity, Shot]):
             分镜列表
         """
         stmt = (
-            select(ShotEntity)
-            .where(ShotEntity.scene_id == scene_id)
-            .order_by(ShotEntity.shot_number.asc())
+            select(StoryboardEntity)
+            .where(StoryboardEntity.scene_id == scene_id)
+            .order_by(StoryboardEntity.shot_number.asc())
         )
         entities = self.session.execute(stmt).scalars().all()
         return [self._to_dto(e) for e in entities]
 
-    def list_by_project(self, project_id: int) -> List[Shot]:
+    def list_by_project(self, project_id: int) -> List[Storyboard]:
         """
         查询项目的所有分镜（通过 JOIN 查询）。
 
@@ -83,10 +83,10 @@ class ShotRepository(BaseRepository[ShotEntity, Shot]):
             分镜列表
         """
         stmt = (
-            select(ShotEntity)
-            .join(ScreenplayEntity, ShotEntity.scene_id == ScreenplayEntity.id)
+            select(StoryboardEntity)
+            .join(ScreenplayEntity, StoryboardEntity.scene_id == ScreenplayEntity.id)
             .where(ScreenplayEntity.project_id == project_id)
-            .order_by(ShotEntity.scene_number.asc(), ShotEntity.shot_number.asc())
+            .order_by(StoryboardEntity.scene_number.asc(), StoryboardEntity.shot_number.asc())
         )
         entities = self.session.execute(stmt).scalars().all()
         return [self._to_dto(e) for e in entities]
@@ -98,36 +98,36 @@ class ShotRepository(BaseRepository[ShotEntity, Shot]):
         Args:
             scene_id: 场次 ID（整数）
         """
-        stmt = delete(ShotEntity).where(ShotEntity.scene_id == scene_id)
+        stmt = delete(StoryboardEntity).where(StoryboardEntity.scene_id == scene_id)
         self.session.execute(stmt)
         self.session.commit()
 
 
-class ShotHistoryRepository(BaseRepository[ShotHistoryEntity, ShotHistory]):
+class StoryboardHistoryRepository(BaseRepository[StoryboardHistoryEntity, StoryboardHistory]):
     """分镜历史 Repository。"""
 
     def __init__(self, session: Session):
-        super().__init__(session, ShotHistoryEntity)
+        super().__init__(session, StoryboardHistoryEntity)
 
-    def _to_dto(self, entity: ShotHistoryEntity) -> ShotHistory:
+    def _to_dto(self, entity: StoryboardHistoryEntity) -> StoryboardHistory:
         """Entity → DTO 转换。"""
-        return ShotHistory(
+        return StoryboardHistory(
             id=entity.id,
             project_id=entity.project_id,
-            shots_snapshot=entity.shots_snapshot,
+            storyboard_snapshot=entity.storyboard_snapshot,
             created_at=entity.created_at,
         )
 
-    def _to_entity(self, dto: ShotHistory) -> ShotHistoryEntity:
+    def _to_entity(self, dto: StoryboardHistory) -> StoryboardHistoryEntity:
         """DTO → Entity 转换。"""
-        return ShotHistoryEntity(
+        return StoryboardHistoryEntity(
             id=dto.id,
             project_id=dto.project_id,
-            shots_snapshot=dto.shots_snapshot,
+            storyboard_snapshot=dto.storyboard_snapshot,
             created_at=dto.created_at,
         )
 
-    def list_by_project(self, project_id: int) -> List[ShotHistory]:
+    def list_by_project(self, project_id: int) -> List[StoryboardHistory]:
         """
         查询项目的所有分镜历史（按时间倒序）。
 
@@ -138,9 +138,9 @@ class ShotHistoryRepository(BaseRepository[ShotHistoryEntity, ShotHistory]):
             历史版本列表
         """
         stmt = (
-            select(ShotHistoryEntity)
-            .where(ShotHistoryEntity.project_id == project_id)
-            .order_by(ShotHistoryEntity.created_at.desc())
+            select(StoryboardHistoryEntity)
+            .where(StoryboardHistoryEntity.project_id == project_id)
+            .order_by(StoryboardHistoryEntity.created_at.desc())
         )
         entities = self.session.execute(stmt).scalars().all()
         return [self._to_dto(e) for e in entities]

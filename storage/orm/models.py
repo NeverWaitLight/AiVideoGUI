@@ -32,7 +32,7 @@ class ProjectEntity(Base):
     screenplays: Mapped[List["ScreenplayEntity"]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )
-    shot_histories: Mapped[List["ShotHistoryEntity"]] = relationship(
+    storyboard_histories: Mapped[List["StoryboardHistoryEntity"]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )
     characters: Mapped[List["CharacterEntity"]] = relationship(
@@ -244,7 +244,7 @@ class ScreenplayEntity(Base):
 
     # 关系
     project: Mapped["ProjectEntity"] = relationship(back_populates="screenplays")
-    shots: Mapped[List["ShotEntity"]] = relationship(
+    storyboards: Mapped[List["StoryboardEntity"]] = relationship(
         back_populates="scene", cascade="all, delete-orphan"
     )
     history: Mapped[List["ScreenplayHistoryEntity"]] = relationship(
@@ -286,10 +286,10 @@ class ScreenplayHistoryEntity(Base):
     __table_args__ = (Index("idx_screenplay_history_screenplay", "screenplay_id", "created_at"),)
 
 
-class ShotEntity(Base):
+class StoryboardEntity(Base):
     """分镜表。"""
 
-    __tablename__ = "shots"
+    __tablename__ = "storyboard"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     scene_id: Mapped[int] = mapped_column(
@@ -309,32 +309,32 @@ class ShotEntity(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
     # 关系
-    scene: Mapped["ScreenplayEntity"] = relationship(back_populates="shots")
+    scene: Mapped["ScreenplayEntity"] = relationship(back_populates="storyboards")
 
     # 索引
     __table_args__ = (
-        Index("idx_shot_scene", "scene_id", "shot_number"),
-        Index("idx_shot_scene_number", "scene_number"),
+        Index("idx_storyboard_scene", "scene_id", "shot_number"),
+        Index("idx_storyboard_scene_number", "scene_number"),
     )
 
 
-class ShotHistoryEntity(Base):
+class StoryboardHistoryEntity(Base):
     """分镜历史表。"""
 
-    __tablename__ = "shot_history"
+    __tablename__ = "storyboard_history"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     project_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
     )
-    shots_snapshot: Mapped[str] = mapped_column(Text, nullable=False)
+    storyboard_snapshot: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
     # 关系
-    project: Mapped["ProjectEntity"] = relationship(back_populates="shot_histories")
+    project: Mapped["ProjectEntity"] = relationship(back_populates="storyboard_histories")
 
     # 索引
-    __table_args__ = (Index("idx_history_shot", "project_id", "created_at"),)
+    __table_args__ = (Index("idx_history_storyboard", "project_id", "created_at"),)
 
 
 class CharacterEntity(Base):

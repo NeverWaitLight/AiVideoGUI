@@ -189,7 +189,7 @@ class ScreenplayHistory:
 
 
 @dataclass
-class Shot:
+class Storyboard:
     """分镜头数据结构"""
     id: str
     scene_id: int  # 所属场次ID（整数，关联 screenplay.id）
@@ -208,11 +208,11 @@ class Shot:
 
 
 @dataclass
-class ShotHistory:
+class StoryboardHistory:
     """分镜历史版本（快照整个项目的所有分镜）"""
     id: str
     project_id: int  # 关联项目ID（分镜是项目级别的）
-    shots_snapshot: str  # 所有分镜的JSON快照
+    storyboard_snapshot: str  # 所有分镜的JSON快照
     created_at: datetime  # 该版本创建时间
 
 

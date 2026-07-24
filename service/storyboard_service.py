@@ -4,13 +4,13 @@ import logging
 import uuid
 from datetime import datetime
 
-from models.data_models import Shot, ShotHistory, ShotSize
+from models.data_models import Storyboard, StoryboardHistory, ShotSize
 from storage.database import DatabaseManager
 
 logger = logging.getLogger(__name__)
 
 
-class ShotService:
+class StoryboardService:
     """分镜头业务逻辑服务。"""
 
     def __init__(self, db: DatabaseManager) -> None:
@@ -18,15 +18,15 @@ class ShotService:
 
     # ---------- 分镜 CRUD ----------
 
-    def list_shots(self, scene_id: str | None = None, project_id: int | None = None, scene_number: int | None = None) -> list[Shot]:
+    def list_storyboards(self, scene_id: str | None = None, project_id: int | None = None, scene_number: int | None = None) -> list[Storyboard]:
         """获取分镜列表。可按场次ID、项目ID或场次号过滤。"""
-        return self._db.list_shots(scene_id=scene_id, project_id=project_id, scene_number=scene_number)
+        return self._db.list_storyboards(scene_id=scene_id, project_id=project_id, scene_number=scene_number)
 
-    def get_shot(self, shot_id: str) -> Shot | None:
+    def get_storyboard(self, storyboard_id: str) -> Storyboard | None:
         """获取单个分镜。"""
-        return self._db.get_shot(shot_id)
+        return self._db.get_storyboard(storyboard_id)
 
-    def create_shot(
+    def create_storyboard(
         self,
         scene_id: str,
         scene_number: int,
@@ -39,9 +39,9 @@ class ShotService:
         duration: float = 0.0,
         notes: str = "",
         design_image: str = "",
-    ) -> Shot:
+    ) -> Storyboard:
         """创建新分镜。"""
-        shot = Shot(
+        storyboard = Storyboard(
             id=str(uuid.uuid4()),
             scene_id=scene_id,
             scene_number=scene_number,
@@ -57,18 +57,18 @@ class ShotService:
             created_at=datetime.now(),
             updated_at=datetime.now(),
         )
-        self._db.create_shot(shot)
+        self._db.create_storyboard(storyboard)
         logger.info(f"创建分镜：scene_number={scene_number}, shot_number={shot_number}")
-        return shot
+        return storyboard
 
-    def batch_create_shots(self, shots: list[Shot]) -> None:
+    def batch_create_storyboards(self, storyboards: list[Storyboard]) -> None:
         """批量创建分镜（用于 AI 生成后导入）。"""
-        self._db.batch_create_shots(shots)
-        logger.info(f"批量创建 {len(shots)} 个分镜")
+        self._db.batch_create_storyboards(storyboards)
+        logger.info(f"批量创建 {len(storyboards)} 个分镜")
 
-    def update_shot(
+    def update_storyboard(
         self,
-        shot_id: str,
+        storyboard_id: str,
         design_image: str | None = None,
         shot_size: ShotSize | None = None,
         camera_movement: str | None = None,
@@ -79,8 +79,8 @@ class ShotService:
         notes: str | None = None,
     ) -> None:
         """更新分镜信息。"""
-        self._db.update_shot(
-            shot_id=shot_id,
+        self._db.update_storyboard(
+            storyboard_id=storyboard_id,
             design_image=design_image,
             shot_size=shot_size,
             camera_movement=camera_movement,
@@ -90,29 +90,29 @@ class ShotService:
             duration=duration,
             notes=notes,
         )
-        logger.info(f"更新分镜：shot_id={shot_id}")
+        logger.info(f"更新分镜：storyboard_id={storyboard_id}")
 
-    def delete_shot(self, shot_id: str) -> None:
+    def delete_storyboard(self, storyboard_id: str) -> None:
         """删除分镜。"""
-        self._db.delete_shot(shot_id)
-        logger.info(f"删除分镜：shot_id={shot_id}")
+        self._db.delete_storyboard(storyboard_id)
+        logger.info(f"删除分镜：storyboard_id={storyboard_id}")
 
     # ---------- 历史版本管理 ----------
 
     def save_history(self, project_id: int) -> None:
         """保存当前所有分镜到历史版本。"""
-        shots = self._db.list_shots(project_id=project_id)
-        if not shots:
+        storyboards = self._db.list_storyboards(project_id=project_id)
+        if not storyboards:
             logger.warning(f"项目 {project_id} 没有分镜，无法保存历史")
             return
-        self._db.create_shot_history(project_id, shots)
-        logger.info(f"保存分镜历史：project_id={project_id}, 共 {len(shots)} 个分镜")
+        self._db.create_storyboard_history(project_id, storyboards)
+        logger.info(f"保存分镜历史：project_id={project_id}, 共 {len(storyboards)} 个分镜")
 
-    def list_history(self, project_id: int) -> list[ShotHistory]:
+    def list_history(self, project_id: int) -> list[StoryboardHistory]:
         """获取历史版本列表。"""
-        return self._db.list_shot_history(project_id)
+        return self._db.list_storyboard_history(project_id)
 
     def restore_from_history(self, project_id: int, history_id: str) -> None:
         """从历史版本恢复分镜。"""
-        self._db.restore_shots_from_history(project_id, history_id)
+        self._db.restore_storyboards_from_history(project_id, history_id)
         logger.info(f"恢复分镜历史：project_id={project_id}, history_id={history_id}")
