@@ -35,3 +35,27 @@
 **数据库变更：** `media_files` 表新增 `thumbnail_path`（TEXT）、`duration`（REAL）、`width`（INTEGER）、`height`（INTEGER）四列，应用启动时通过 `_migrate()` 自动增量迁移，已有记录填充默认值。
 
 **数据流：** 视频文件 → `VideoMetadataExtractor.extract_all()` → `MediaFile` 对象（携带元数据） → `DatabaseManager.add_media_file()` → SQLite `media_files` 表。
+
+## ORM 事件监听器自动保存历史
+
+使用 SQLAlchemy 的事件监听机制实现历史版本自动保存，业务代码无需关心历史持久化逻辑。
+
+**核心组件：** `history_listener.py`（位于 `storage/orm/`），在应用启动时由 `init_engine()` 自动注册监听器。
+
+**监听策略：**
+
+- **OutlineEntity** — 监听 `after_update` 事件，仅在 `content` 字段变化时保存历史到 `outline_history` 表（避免 `updated_at` 更新触发重复保存）
+- **CharacterEntity** — 监听 `after_update` 事件，仅在关键字段（`name`、`ref_code`、`description`、`design_image`）变化时保存历史到 `character_history` 表
+- **防重复注册** — 使用全局标志 `_listeners_registered` 确保监听器仅注册一次（测试环境多次初始化引擎时的保护机制）
+
+**历史表设计约定：**
+
+- **`raw_id`** — 指向原始实体的外键（统一命名，避免与 `outline_id`/`script_id` 混淆）
+- **`project_id`** — 冗余字段，方便按项目查询历史记录
+- **`created_at`** — 历史版本创建时间
+- **内容字段** — `content`（Outline）或 `snapshot`（Character，JSON 序列化）
+
+**架构优势：** 历史保存与业务逻辑解耦；所有 Entity 更新自动触发，不会遗漏；扩展新实体只需在监听器中注册；修改历史逻辑只需改一处代码。
+
+**已实现的监听器：** Outline（大纲）、Character（角色）。Script 和 Shot 因需要序列化关联实体（场次/分镜列表），仍保留手动保存逻辑。
+
