@@ -19,8 +19,8 @@ class ProjectEntity(Base):
     resolution: Mapped[str] = mapped_column(String(20), nullable=False, default="720P")
     aspect_ratio: Mapped[str] = mapped_column(String(10), nullable=False, default="16:9")
     cover_image: Mapped[str] = mapped_column(String(500), nullable=False, default="")
-    created_at: Mapped[int] = mapped_column(BigInteger, nullable=False)  # 13位时间戳（毫秒）
-    updated_at: Mapped[int] = mapped_column(BigInteger, nullable=False)  # 13位时间戳（毫秒）
+    created_at: Mapped[int] = mapped_column(Integer, nullable=False)  # 13位时间戳（毫秒）
+    updated_at: Mapped[int] = mapped_column(Integer, nullable=False)  # 13位时间戳（毫秒）
 
     # 关系（一对多）
     conversations: Mapped[List["ConversationEntity"]] = relationship(
@@ -178,8 +178,8 @@ class OutlineEntity(Base):
         Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
     )
     content: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    created_at: Mapped[int] = mapped_column(BigInteger, nullable=False)  # 13位时间戳（毫秒）
-    updated_at: Mapped[int] = mapped_column(BigInteger, nullable=False)  # 13位时间戳（毫秒）
+    created_at: Mapped[int] = mapped_column(Integer, nullable=False)  # 13位时间戳（毫秒）
+    updated_at: Mapped[int] = mapped_column(Integer, nullable=False)  # 13位时间戳（毫秒）
 
     # 关系
     project: Mapped["ProjectEntity"] = relationship(back_populates="outlines")
@@ -202,7 +202,7 @@ class OutlineHistoryEntity(Base):
     )
     project_id: Mapped[int] = mapped_column(Integer, nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[int] = mapped_column(BigInteger, nullable=False)  # 13位时间戳（毫秒）
+    created_at: Mapped[int] = mapped_column(Integer, nullable=False)  # 13位时间戳（毫秒）
 
     # 关系
     outline: Mapped["OutlineEntity"] = relationship(back_populates="history")
