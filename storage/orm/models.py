@@ -14,7 +14,7 @@ class ProjectEntity(Base):
 
     __tablename__ = "projects"
 
-    id: Mapped[Optional[int]] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[Optional[int]] = mapped_column(Integer, primary_key=True, autoincrement=True, nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
     resolution: Mapped[str] = mapped_column(String(20), nullable=False, default="720P")
     aspect_ratio: Mapped[str] = mapped_column(String(10), nullable=False, default="16:9")
@@ -170,7 +170,7 @@ class StoryOutlineEntity(Base):
 
     __tablename__ = "story_outlines"
 
-    id: Mapped[Optional[int]] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[Optional[int]] = mapped_column(Integer, primary_key=True, autoincrement=True, nullable=False)
     project_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
     )
@@ -193,7 +193,7 @@ class StoryOutlineHistoryEntity(Base):
 
     __tablename__ = "story_outline_history"
 
-    id: Mapped[Optional[int]] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[Optional[int]] = mapped_column(Integer, primary_key=True, autoincrement=True, nullable=False)
     story_outline_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("story_outlines.id", ondelete="CASCADE"), nullable=False
     )
@@ -214,7 +214,7 @@ class ScreenplayEntity(Base):
     __tablename__ = "screenplay"
 
     # 主键
-    id: Mapped[Optional[int]] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[Optional[int]] = mapped_column(Integer, primary_key=True, autoincrement=True, nullable=False)
 
     # 项目关联
     project_id: Mapped[int] = mapped_column(
@@ -260,7 +260,7 @@ class ScreenplayHistoryEntity(Base):
 
     __tablename__ = "screenplay_history"
 
-    id: Mapped[Optional[int]] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[Optional[int]] = mapped_column(Integer, primary_key=True, autoincrement=True, nullable=False)
     screenplay_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("screenplay.id", ondelete="CASCADE"), nullable=False
     )
@@ -323,7 +323,7 @@ class StoryboardHistoryEntity(Base):
 
     __tablename__ = "storyboard_history"
 
-    id: Mapped[Optional[int]] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[Optional[int]] = mapped_column(Integer, primary_key=True, autoincrement=True, nullable=False)
     storyboard_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("storyboard.id", ondelete="CASCADE"), nullable=False
     )
@@ -359,7 +359,7 @@ class CharacterEntity(Base):
 
     __tablename__ = "characters"
 
-    id: Mapped[Optional[int]] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[Optional[int]] = mapped_column(Integer, primary_key=True, autoincrement=True, nullable=False)
     uuid: Mapped[str] = mapped_column(String(36), unique=True, nullable=False)
     project_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
@@ -385,19 +385,29 @@ class CharacterEntity(Base):
 
 
 class CharacterHistoryEntity(Base):
-    """角色编辑历史表。"""
+    """角色编辑历史表（逐条快照，字段与 characters 表一致）。"""
 
     __tablename__ = "character_history"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    id: Mapped[Optional[int]] = mapped_column(Integer, primary_key=True, autoincrement=True, nullable=False)
     character_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("characters.uuid", ondelete="CASCADE"), nullable=False
     )
-    snapshot: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    project_id: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    # 角色信息（与 CharacterEntity 字段一致）
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    ref_code: Mapped[str] = mapped_column(String(100), nullable=False)
+    design_image: Mapped[str] = mapped_column(String(500), nullable=False, default="")
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+
+    created_at: Mapped[int] = mapped_column(Integer, nullable=False)  # 13位时间戳（毫秒）
 
     # 关系
     character: Mapped["CharacterEntity"] = relationship(back_populates="history")
 
     # 索引
-    __table_args__ = (Index("idx_history_character", "character_id", "created_at"),)
+    __table_args__ = (
+        Index("idx_history_character", "character_id", "created_at"),
+        Index("idx_character_history_project", "project_id", "created_at"),
+    )
