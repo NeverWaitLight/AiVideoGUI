@@ -444,22 +444,11 @@ class DatabaseManager:
             repo.create(outline)
 
     def update_outline(self, outline_id: str, content: str) -> None:
-        """更新大纲内容。"""
+        """更新大纲内容（历史版本自动保存由 ORM 监听器处理）。"""
         with self._lock:
             session = self._get_session()
             repo = OutlineRepository(session)
             repo.update_content(outline_id, content, datetime.now())
-
-            # 自动保存历史版本
-            history_repo = OutlineHistoryRepository(session)
-            import uuid
-
-            history_repo.create(OutlineHistory(
-                id=str(uuid.uuid4()),
-                outline_id=outline_id,
-                content=content,
-                created_at=datetime.now(),
-            ))
 
     def list_outline_history(self, outline_id: str) -> list[OutlineHistory]:
         """查询大纲的所有历史版本。"""

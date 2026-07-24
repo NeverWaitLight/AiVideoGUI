@@ -196,9 +196,10 @@ class OutlineHistoryEntity(Base):
     __tablename__ = "outline_history"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    outline_id: Mapped[str] = mapped_column(
+    raw_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("outlines.id", ondelete="CASCADE"), nullable=False
     )
+    project_id: Mapped[str] = mapped_column(String(36), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
@@ -206,7 +207,7 @@ class OutlineHistoryEntity(Base):
     outline: Mapped["OutlineEntity"] = relationship(back_populates="history")
 
     # 索引
-    __table_args__ = (Index("idx_history_outline", "outline_id", "created_at"),)
+    __table_args__ = (Index("idx_history_outline", "raw_id", "created_at"),)
 
 
 class ScriptEntity(Base):

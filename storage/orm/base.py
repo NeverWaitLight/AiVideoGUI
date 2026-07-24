@@ -52,6 +52,10 @@ def init_engine(database_url: str, echo: bool = False, **kwargs) -> Engine:
         )
     )
 
+    # 注册历史版本自动保存监听器
+    from storage.orm.history_listener import setup_history_listeners
+    setup_history_listeners()
+
     logger.info("数据库引擎初始化完成：%s", database_url)
     return engine
 

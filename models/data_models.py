@@ -124,7 +124,8 @@ class Outline:
 @dataclass
 class OutlineHistory:
     id: str
-    outline_id: str
+    raw_id: str
+    project_id: str
     content: str  # 历史版本的大纲内容
     created_at: datetime  # 该版本创建时间
 

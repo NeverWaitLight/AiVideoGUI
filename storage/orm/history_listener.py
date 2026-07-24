@@ -1,0 +1,97 @@
+"""ORM 历史版本自动保存监听器。"""
+
+import uuid
+from datetime import datetime
+
+from sqlalchemy import event
+from sqlalchemy.orm import Session
+
+from storage.orm.models import (
+    CharacterEntity,
+    CharacterHistoryEntity,
+    OutlineEntity,
+    OutlineHistoryEntity,
+    SceneEntity,
+    ScriptEntity,
+    ScriptHistoryEntity,
+    ShotEntity,
+    ShotHistoryEntity,
+)
+
+# 全局标志，防止重复注册
+_listeners_registered = False
+
+
+def setup_history_listeners():
+    """注册所有历史版本自动保存监听器（仅注册一次）。"""
+    global _listeners_registered
+
+    if _listeners_registered:
+        return
+
+    # Outline 更新时自动保存历史
+    @event.listens_for(OutlineEntity, "after_update", propagate=True)
+    def on_outline_update(mapper, connection, target: OutlineEntity):
+        """
+        Outline 更新后自动保存到 outline_history。
+
+        注意：只在 content 字段变化时保存历史版本，避免 updated_at 更新触发重复保存。
+        """
+        # 获取 Session 来检查哪些字段被修改
+        state = target._sa_instance_state
+        history = state.attrs.content.history
+
+        # 只有 content 字段有变化时才保存历史
+        if history.has_changes():
+            connection.execute(
+                OutlineHistoryEntity.__table__.insert(),
+                {
+                    "id": str(uuid.uuid4()),
+                    "raw_id": target.id,
+                    "project_id": target.project_id,
+                    "content": target.content,
+                    "created_at": datetime.now(),
+                },
+            )
+
+    # Character 更新时自动保存历史
+    @event.listens_for(CharacterEntity, "after_update", propagate=True)
+    def on_character_update(mapper, connection, target: CharacterEntity):
+        """
+        Character 更新后自动保存到 character_history。
+
+        注意：只在关键字段变化时保存历史版本。
+        """
+        import json
+
+        state = target._sa_instance_state
+
+        # 检查是否有关键字段变化（name, ref_code, description, design_image）
+        key_fields_changed = any([
+            state.attrs.name.history.has_changes(),
+            state.attrs.ref_code.history.has_changes(),
+            state.attrs.description.history.has_changes(),
+            state.attrs.design_image.history.has_changes(),
+        ])
+
+        if key_fields_changed:
+            snapshot = json.dumps({
+                "name": target.name,
+                "ref_code": target.ref_code,
+                "description": target.description,
+                "design_image": target.design_image,
+            }, ensure_ascii=False)
+
+            connection.execute(
+                CharacterHistoryEntity.__table__.insert(),
+                {
+                    "id": str(uuid.uuid4()),
+                    "character_id": target.uuid,
+                    "snapshot": snapshot,
+                    "created_at": datetime.now(),
+                },
+            )
+
+    _listeners_registered = True
+
+
