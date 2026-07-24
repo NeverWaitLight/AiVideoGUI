@@ -99,7 +99,7 @@ class VideoService(QObject):
     ) -> Message:
         """提交视频生成任务，写入数据库后由 TaskPollingService 接管轮询。"""
         provider = self.get_provider(provider_name)
-        task_id = provider.submit(prompt, params)
+        provider_task_id = provider.submit(prompt, params)
 
         assistant_msg = Message(
             id=uuid.uuid4().hex,
@@ -107,17 +107,26 @@ class VideoService(QObject):
             role="assistant",
             content="",
             created_at=datetime.now(),
-            task_id=task_id,
+            task_id=provider_task_id,
             status=MessageStatus.GENERATING,
         )
         self._db.add_message(assistant_msg)
-        self._db.add_active_task(
-            task_id=task_id,
+
+        active_task_id = self._db.add_active_task(
+            provider_task_id=provider_task_id,
             message_id=assistant_msg.id,
             provider_name=provider_name,
             model_name=provider._config.default_model,
             save_path=save_path,
+            prompt=prompt,
         )
 
-        logger.info("任务已提交 message=%s task=%s provider=%s save_path=%s", assistant_msg.id, task_id, provider_name, save_path)
+        logger.info(
+            "任务已提交 message=%s provider_task=%s active_task=%s provider=%s save_path=%s",
+            assistant_msg.id,
+            provider_task_id,
+            active_task_id,
+            provider_name,
+            save_path,
+        )
         return assistant_msg

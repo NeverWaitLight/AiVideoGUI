@@ -100,19 +100,42 @@ class ActiveTaskEntity(Base):
 
     __tablename__ = "active_tasks"
 
-    task_id: Mapped[str] = mapped_column(String(100), primary_key=True)
+    # 自增主键
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+
+    # Provider 任务 ID（原 task_id）
+    provider_task_id: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+
+    # 外键关联
     message_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("messages.id", ondelete="CASCADE"), nullable=False
     )
+
+    # Provider 元数据
     provider_name: Mapped[str] = mapped_column(String(50), nullable=False)
     model_name: Mapped[str] = mapped_column(String(100), nullable=False, default="")
-    video_url: Mapped[str] = mapped_column(String(500), nullable=False, default="")
+
+    # 任务状态
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
+    completed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    # 视频生成参数
+    prompt: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    video_url: Mapped[str] = mapped_column(String(500), nullable=False, default="")
     save_path: Mapped[str] = mapped_column(String(500), nullable=False, default="")
+
+    # 时间戳
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now, onupdate=datetime.now)
 
     # 关系
     message: Mapped["MessageEntity"] = relationship(back_populates="active_task")
+
+    # 索引
+    __table_args__ = (
+        Index("idx_active_task_completed", "completed"),
+        Index("idx_active_task_provider_task_id", "provider_task_id"),
+    )
 
 
 class MediaFileEntity(Base):

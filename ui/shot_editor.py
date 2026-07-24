@@ -708,7 +708,7 @@ class ShotEditor(QWidget):
             QMessageBox.critical(self, "错误", f"删除失败：{e}")
 
     def _on_generate_all(self) -> None:
-        """生成所有分镜的视频（串行）。"""
+        """生成所有分镜的视频（并行提交）。"""
         if not hasattr(self, "_shot_cards") or not self._shot_cards:
             QMessageBox.warning(self, "提示", "没有可生成的分镜")
             return
@@ -737,7 +737,7 @@ class ShotEditor(QWidget):
         reply = QMessageBox.question(
             self,
             "确认批量生成",
-            f"将按顺序串行生成 {len(shot_list)} 个分镜视频，每个任务完成后才会开始下一个。\n确定继续？",
+            f"将一次性提交 {len(shot_list)} 个分镜视频生成任务到供应商。\n所有任务将并行生成，无需等待前一个完成。\n确定继续？",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if reply != QMessageBox.StandardButton.Yes:

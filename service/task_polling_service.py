@@ -159,7 +159,7 @@ class _PollingWorker(QThread):
         self._root = workspace_root
         self._cache_dir = cache_dir
         self._stopped = False
-        self._task_poll_count: dict[str, int] = {}  # task_id -> 已轮询次数
+        self._task_poll_count: dict[int, int] = {}  # internal task id -> 已轮询次数
 
     def stop(self) -> None:
         self._stopped = True
@@ -205,7 +205,8 @@ class _PollingWorker(QThread):
 
     def _process_task(self, task_info: dict[str, Any]) -> None:
         """处理单个任务：检查是否需要轮询、执行状态查询、下载视频。"""
-        task_id = task_info["task_id"]
+        internal_task_id = task_info["id"]
+        provider_task_id = task_info["provider_task_id"]
         message_id = task_info["message_id"]
         provider_name = task_info["provider_name"]
         model_name = task_info["model_name"]
@@ -213,42 +214,42 @@ class _PollingWorker(QThread):
         # 检查消息状态
         msg = self._db.get_message(message_id)
         if not msg:
-            logger.warning("任务关联消息不存在，清理残留 task_id=%s", task_id)
-            self._db.remove_active_task(task_id)
-            self._task_poll_count.pop(task_id, None)
+            logger.warning("任务关联消息不存在，标记完成 internal_id=%s provider_task=%s", internal_task_id, provider_task_id)
+            self._db.mark_task_completed(internal_task_id)
+            self._task_poll_count.pop(internal_task_id, None)
             return
 
-        # 消息已是终态，清理任务
+        # 消息已是终态，标记任务完成
         if msg.status in (MessageStatus.COMPLETED, MessageStatus.FAILED):
-            self._db.remove_active_task(task_id)
-            self._task_poll_count.pop(task_id, None)
+            self._db.mark_task_completed(internal_task_id)
+            self._task_poll_count.pop(internal_task_id, None)
             return
 
         # 检查是否超过最大轮询次数
-        poll_count = self._task_poll_count.get(task_id, 0)
+        poll_count = self._task_poll_count.get(internal_task_id, 0)
         if poll_count >= self._max_polls_per_task:
             error_msg = f"轮询超时（已查询 {poll_count} 次，任务仍未完成）"
-            logger.warning("任务超时 task_id=%s message_id=%s", task_id, message_id)
+            logger.warning("任务超时 internal_id=%s provider_task=%s message=%s", internal_task_id, provider_task_id, message_id)
             self.task_failed.emit(message_id, error_msg)
-            self._db.remove_active_task(task_id)
-            self._task_poll_count.pop(task_id, None)
+            self._db.mark_task_completed(internal_task_id)
+            self._task_poll_count.pop(internal_task_id, None)
             return
 
         # 执行状态查询
         try:
             provider = self._service.get_provider(provider_name)
-            result = provider.check_status(task_id)
-            self._task_poll_count[task_id] = poll_count + 1
+            result = provider.check_status(provider_task_id)
+            self._task_poll_count[internal_task_id] = poll_count + 1
 
             self.status_changed.emit(message_id, result.status.value)
-            self._db.update_active_task(task_id, result.status.value, video_url=result.video_url or "")
+            self._db.update_active_task(internal_task_id, result.status.value, video_url=result.video_url or "")
 
             if result.status == TaskStatus.SUCCEEDED:
                 if not result.video_url:
                     raise RuntimeError("任务成功但未返回视频地址")
                 self._download_and_finish(
                     provider=provider,
-                    task_id=task_id,
+                    internal_task_id=internal_task_id,
                     message_id=message_id,
                     video_url=result.video_url,
                     model_name=model_name,
@@ -258,17 +259,17 @@ class _PollingWorker(QThread):
             elif result.status == TaskStatus.FAILED:
                 error_msg = result.error_message or "未知原因"
                 self.task_failed.emit(message_id, f"任务失败：{error_msg}")
-                self._db.remove_active_task(task_id)
-                self._task_poll_count.pop(task_id, None)
+                self._db.mark_task_completed(internal_task_id)
+                self._task_poll_count.pop(internal_task_id, None)
 
         except Exception as e:
-            logger.warning("轮询异常 task_id=%s（第 %d 次）：%s", task_id, poll_count + 1, e)
-            self._task_poll_count[task_id] = poll_count + 1
+            logger.warning("轮询异常 internal_id=%s provider_task=%s（第 %d 次）：%s", internal_task_id, provider_task_id, poll_count + 1, e)
+            self._task_poll_count[internal_task_id] = poll_count + 1
 
     def _download_and_finish(
         self,
         provider: VideoProvider,
-        task_id: str,
+        internal_task_id: int,
         message_id: str,
         video_url: str,
         model_name: str,
@@ -314,12 +315,12 @@ class _PollingWorker(QThread):
             shutil.move(tmp_path, save_path)
 
             self.task_finished.emit(message_id, save_path)
-            self._db.remove_active_task(task_id)
-            self._task_poll_count.pop(task_id, None)
-            logger.info("任务完成 task_id=%s local_path=%s", task_id, save_path)
+            self._db.mark_task_completed(internal_task_id)
+            self._task_poll_count.pop(internal_task_id, None)
+            logger.info("任务完成 internal_id=%s local_path=%s", internal_task_id, save_path)
 
         except Exception as e:
-            logger.exception("下载失败 task_id=%s", task_id)
+            logger.exception("下载失败 internal_id=%s", internal_task_id)
             self.task_failed.emit(message_id, f"下载失败：{e}")
-            self._db.remove_active_task(task_id)
-            self._task_poll_count.pop(task_id, None)
+            self._db.mark_task_completed(internal_task_id)
+            self._task_poll_count.pop(internal_task_id, None)

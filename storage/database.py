@@ -144,48 +144,85 @@ class DatabaseManager:
 
     def add_active_task(
         self,
-        task_id: str,
+        provider_task_id: str,
         message_id: str,
         provider_name: str,
         model_name: str,
-        save_path: str = "",
-        video_url: str = "",
-        status: str = "pending",
-    ) -> None:
-        """添加活跃任务。"""
+        save_path: str,
+        prompt: str,
+    ) -> int:
+        """
+        添加活跃任务。
+
+        Args:
+            provider_task_id: Provider 返回的任务 ID
+            message_id: 关联的消息 ID
+            provider_name: Provider 名称
+            model_name: 模型名称
+            save_path: 保存路径
+            prompt: 完整的视频生成 Prompt
+
+        Returns:
+            新记录的自增 ID
+        """
         with self._lock:
             session = self._get_session()
             repo = ActiveTaskRepository(session)
-            repo.create({
-                "task_id": task_id,
-                "message_id": message_id,
-                "provider_name": provider_name,
-                "model_name": model_name,
-                "video_url": video_url,
-                "status": status,
-                "save_path": save_path,
-                "created_at": datetime.now(),
-            })
+            return repo.add(
+                provider_task_id=provider_task_id,
+                message_id=message_id,
+                provider_name=provider_name,
+                model_name=model_name,
+                save_path=save_path,
+                prompt=prompt,
+            )
 
     def list_active_tasks(self) -> list[dict]:
-        """查询所有活跃任务。"""
+        """查询所有活跃任务（未完成的任务）。"""
         session = self._get_session()
         repo = ActiveTaskRepository(session)
-        return repo.list_all()
+        return repo.list_active_tasks()
 
-    def update_active_task(self, task_id: str, status: str, video_url: str = "") -> None:
-        """更新任务状态。"""
+    def update_active_task(self, task_id: int, status: str, video_url: str = "") -> None:
+        """
+        更新任务状态。
+
+        Args:
+            task_id: 任务 ID（自增主键）
+            status: 任务状态
+            video_url: 视频 URL（可选）
+        """
         with self._lock:
             session = self._get_session()
             repo = ActiveTaskRepository(session)
             repo.update_status(task_id, status, video_url)
 
-    def remove_active_task(self, task_id: str) -> None:
-        """移除活跃任务。"""
+    def mark_task_completed(self, task_id: int) -> None:
+        """
+        标记任务为已完成。
+
+        Args:
+            task_id: 任务 ID（自增主键）
+        """
         with self._lock:
             session = self._get_session()
             repo = ActiveTaskRepository(session)
-            repo.remove_task(task_id)
+            repo.mark_completed(task_id)
+
+    def list_completed_tasks(self, limit: int = 50, offset: int = 0) -> list[dict]:
+        """
+        查询已完成任务（分页）。
+
+        Args:
+            limit: 每页数量
+            offset: 偏移量
+
+        Returns:
+            任务字典列表
+        """
+        session = self._get_session()
+        repo = ActiveTaskRepository(session)
+        return repo.list_completed_tasks(limit, offset)
 
     def get_next_storyboard_seq(self, scene_number: int, shot_number: int) -> int:
         """

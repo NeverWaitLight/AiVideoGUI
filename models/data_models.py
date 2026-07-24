@@ -239,3 +239,20 @@ class CharacterHistory:
     character_id: str  # 关联角色的UUID
     snapshot: str  # JSON快照（name + ref_code + description + design_image）
     created_at: datetime  # 该版本创建时间
+
+
+@dataclass
+class ActiveTask:
+    """活跃任务记录"""
+    id: int
+    provider_task_id: str
+    message_id: str
+    provider_name: str
+    model_name: str
+    status: str
+    completed: bool
+    prompt: str
+    video_url: str
+    save_path: str
+    created_at: datetime
+    updated_at: datetime

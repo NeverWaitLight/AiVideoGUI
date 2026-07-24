@@ -64,9 +64,9 @@ def _workspace_root() -> str:
 
 
 class _BatchGenerationController(QObject):
-    """批量串行生成控制器：逐个提交任务，等待完成后再提交下一个。"""
+    """批量并行生成控制器：一次性提交所有任务到供应商，不等待前一个完成。"""
 
-    progress = pyqtSignal(int, int, int, int, str)  # index, total, scene, shot, status
+    progress = pyqtSignal(int, int, str)  # submitted_count, total, status
     all_done = pyqtSignal(int, int)  # success_count, failed_count
     terminated = pyqtSignal(int, int)  # success_count, failed_count
 
@@ -89,25 +89,76 @@ class _BatchGenerationController(QObject):
         self._model_name = model_name
         self._project = project
         self._provider_cfg = provider_cfg
-        self._index = 0
         self._success = 0
         self._failed = 0
-        self._current_message_id: str | None = None
+        self._submitted_task_ids: set[str] = set()  # 追踪已提交的任务 ID
         self._stopped = False
 
     def start(self) -> None:
+        """一次性提交所有任务到供应商。"""
         self._stopped = False
         self._polling.task_finished.connect(self._on_task_finished)
         self._polling.task_failed.connect(self._on_task_failed)
-        self._submit_next()
+
+        # 并行提交所有任务
+        submitted = 0
+        for i, shot in enumerate(self._shot_list):
+            if self._stopped:
+                break
+
+            scene_number = shot["scene_number"]
+            shot_number = shot["shot_number"]
+            prompt = shot["prompt"]
+            project_id = shot["project_id"]
+
+            self.progress.emit(submitted, len(self._shot_list), f"正在提交场{scene_number}镜{shot_number}...")
+
+            try:
+                conv_title = f"分镜视频-场{scene_number}镜{shot_number}"
+                conv = self._service.create_conversation(
+                    self._provider_name, self._model_name, conv_title,
+                    project_id=project_id, is_hidden=True,
+                )
+
+                params = (self._provider_cfg.default_params if self._provider_cfg else {}).copy()
+                params["resolution"] = self._project.resolution
+                params["ratio"] = self._project.aspect_ratio
+
+                # 预计算保存路径（相对于下载目录）：场次号-镜头号-生成次数.mp4
+                seq = self._service._db.get_next_storyboard_seq(scene_number, shot_number)
+                save_path = f"{scene_number}-{shot_number}-{seq}.mp4"
+
+                msg = self._service.submit_task(
+                    conversation_id=conv.id,
+                    prompt=prompt,
+                    provider_name=self._provider_name,
+                    params=params,
+                    save_path=save_path,
+                )
+                self._submitted_task_ids.add(msg.task_id)
+                submitted += 1
+                logger.info("批量生成 [%d/%d] 场%d镜%d 已提交 task_id=%s save_path=%s",
+                            submitted, len(self._shot_list), scene_number, shot_number, msg.task_id, save_path)
+
+            except Exception as e:
+                logger.exception(f"批量生成提交失败：场{scene_number}镜{shot_number}")
+                self._failed += 1
+                self.progress.emit(submitted, len(self._shot_list), f"场{scene_number}镜{shot_number} 提交失败：{e}")
+
+        if submitted > 0:
+            self.progress.emit(submitted, len(self._shot_list), f"已提交 {submitted} 个任务，等待生成完成...")
+            logger.info(f"批量生成：共提交 {submitted}/{len(self._shot_list)} 个任务")
+        else:
+            self._cleanup_and_finish()
 
     def stop(self) -> None:
-        """停止继续提交新任务，当前任务仍会在后台轮询完成。"""
+        """停止监听任务完成（已提交的任务仍会在后台轮询完成）。"""
         if self._stopped:
             return
         self._stopped = True
-        self.progress.emit(self._index, len(self._shot_list), 0, 0, "正在停止...")
-        logger.info("批量生成已收到停止请求，当前任务完成后不再继续")
+        self.progress.emit(0, len(self._shot_list), "正在停止...")
+        logger.info("批量生成已收到停止请求")
+        self._cleanup_and_terminate()
 
     def _cleanup_and_terminate(self) -> None:
         """断开轮询信号并通知 UI 终止。"""
@@ -118,96 +169,54 @@ class _BatchGenerationController(QObject):
             pass
         self.terminated.emit(self._success, self._failed)
 
-    def _submit_next(self) -> None:
-        if self._stopped:
-            self._cleanup_and_terminate()
-            return
-        if self._index >= len(self._shot_list):
+    def _cleanup_and_finish(self) -> None:
+        """断开轮询信号并通知 UI 全部完成。"""
+        try:
             self._polling.task_finished.disconnect(self._on_task_finished)
             self._polling.task_failed.disconnect(self._on_task_failed)
-            self.all_done.emit(self._success, self._failed)
-            return
-
-        shot = self._shot_list[self._index]
-        scene_number = shot["scene_number"]
-        shot_number = shot["shot_number"]
-        prompt = shot["prompt"]
-        project_id = shot["project_id"]
-
-        self.progress.emit(self._index, len(self._shot_list), scene_number, shot_number, "正在提交任务...")
-
-        try:
-            conv_title = f"分镜视频-场{scene_number}镜{shot_number}"
-            conv = self._service.create_conversation(
-                self._provider_name, self._model_name, conv_title,
-                project_id=project_id, is_hidden=True,
-            )
-
-            params = (self._provider_cfg.default_params if self._provider_cfg else {}).copy()
-            params["resolution"] = self._project.resolution
-            params["ratio"] = self._project.aspect_ratio
-
-            # 预计算保存路径（相对于下载目录）：场次号-镜头号-生成次数.mp4
-            seq = self._service._db.get_next_storyboard_seq(scene_number, shot_number)
-            save_path = f"{scene_number}-{shot_number}-{seq}.mp4"
-
-            msg = self._service.submit_task(
-                conversation_id=conv.id,
-                prompt=prompt,
-                provider_name=self._provider_name,
-                params=params,
-                save_path=save_path,
-            )
-            self._current_message_id = msg.task_id
-            self.progress.emit(self._index, len(self._shot_list), scene_number, shot_number, f"任务已提交，等待生成... (task: {msg.task_id[:12]}...)")
-            logger.info("批量生成 [%d/%d] 场%d镜%d 已提交 task_id=%s save_path=%s",
-                        self._index + 1, len(self._shot_list), scene_number, shot_number, msg.task_id, save_path)
-
-        except Exception as e:
-            logger.exception(f"批量生成提交失败：场{scene_number}镜{shot_number}")
-            self._failed += 1
-            self._index += 1
-            self.progress.emit(self._index - 1, len(self._shot_list), scene_number, shot_number, f"提交失败：{e}")
-            if self._stopped:
-                self._cleanup_and_terminate()
-                return
-            self._submit_next()
+        except RuntimeError:
+            pass
+        self.all_done.emit(self._success, self._failed)
 
     def _on_task_finished(self, message_id: str, local_path: str) -> None:
+        """任务完成回调，检查是否属于本批次。"""
         msg = self._service._db.get_message(message_id)
-        if not msg or msg.task_id != self._current_message_id:
+        if not msg or msg.task_id not in self._submitted_task_ids:
             return
 
-        shot = self._shot_list[self._index]
         self._success += 1
-        self._index += 1
+        completed = self._success + self._failed
+        total_submitted = len(self._submitted_task_ids)
+
         self.progress.emit(
-            self._index - 1, len(self._shot_list),
-            shot["scene_number"], shot["shot_number"], "已完成"
+            completed, total_submitted,
+            f"已完成 {self._success}/{total_submitted}，失败 {self._failed}"
         )
-        logger.info(f"批量生成 [{self._index}/{len(self._shot_list)}] 场{shot['scene_number']}镜{shot['shot_number']} 完成")
-        if self._stopped:
-            self._cleanup_and_terminate()
-            return
-        self._submit_next()
+        logger.info(f"批量生成进度：{self._success} 成功，{self._failed} 失败，共 {total_submitted} 个任务")
+
+        # 检查是否全部完成
+        if completed >= total_submitted:
+            self._cleanup_and_finish()
 
     def _on_task_failed(self, message_id: str, error: str) -> None:
+        """任务失败回调，检查是否属于本批次。"""
         msg = self._service._db.get_message(message_id)
-        if not msg or msg.task_id != self._current_message_id:
+        if not msg or msg.task_id not in self._submitted_task_ids:
             return
 
-        shot = self._shot_list[self._index]
         self._failed += 1
-        self._index += 1
+        completed = self._success + self._failed
+        total_submitted = len(self._submitted_task_ids)
+
         self.progress.emit(
-            self._index - 1, len(self._shot_list),
-            shot["scene_number"], shot["shot_number"], f"失败：{error}"
+            completed, total_submitted,
+            f"已完成 {self._success}/{total_submitted}，失败 {self._failed}"
         )
-        logger.warning(f"批量生成 [{self._index}/{len(self._shot_list)}] 场{shot['scene_number']}镜{shot['shot_number']} 失败：{error}")
-        if self._stopped:
-            self._cleanup_and_terminate()
-            return
-        self._submit_next()
+        logger.warning(f"批量生成进度：{self._success} 成功，{self._failed} 失败，共 {total_submitted} 个任务")
+
+        # 检查是否全部完成
+        if completed >= total_submitted:
+            self._cleanup_and_finish()
 
 
 class MainWindow(QMainWindow):
@@ -992,7 +1001,7 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "错误", f"提交任务失败：{e}")
 
     def _on_batch_video_generation(self, shot_list: list) -> None:
-        """批量串行生成分镜视频。"""
+        """批量并行生成分镜视频。"""
         if not shot_list:
             return
 
@@ -1093,9 +1102,9 @@ class MainWindow(QMainWindow):
             provider_cfg=provider_cfg,
         )
 
-        def on_progress(index: int, total: int, scene: int, shot: int, status: str) -> None:
-            progress_bar.setValue(index)
-            status_label.setText(f"正在生成第 {index + 1}/{total} 个视频：场{scene}镜{shot}")
+        def on_progress(completed: int, total: int, status: str) -> None:
+            progress_bar.setValue(completed)
+            status_label.setText(f"已提交 {total} 个任务")
             detail_label.setText(status)
 
         def on_finished(success: int, failed: int, stopped: bool) -> None:
