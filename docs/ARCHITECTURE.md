@@ -81,18 +81,18 @@ SQLAlchemy 映射到 SQLite 时需遵循以下类型规则：
 
 **监听策略：**
 
-- **OutlineEntity** — 监听 `after_update` 事件，仅在 `content` 字段变化时保存历史到 `outline_history` 表（避免 `updated_at` 更新触发重复保存）
+- **StoryOutlineEntity** — 监听 `after_update` 事件，仅在 `content` 字段变化时保存历史到 `story_outline_history` 表（避免 `updated_at` 更新触发重复保存）
 - **CharacterEntity** — 监听 `after_update` 事件，仅在关键字段（`name`、`ref_code`、`description`、`design_image`）变化时保存历史到 `character_history` 表
 - **防重复注册** — 使用全局标志 `_listeners_registered` 确保监听器仅注册一次（测试环境多次初始化引擎时的保护机制）
 
 **历史表设计约定：**
 
-- **`raw_id`** — 指向原始实体的外键（统一命名，避免与 `outline_id`/`script_id` 混淆）
+- **`story_outline_id`** — 指向原始故事大纲实体的外键
 - **`project_id`** — 冗余字段，方便按项目查询历史记录
 - **`created_at`** — 历史版本创建时间
-- **内容字段** — `content`（Outline）或 `snapshot`（Character，JSON 序列化）
+- **内容字段** — `content`（StoryOutline）或 `snapshot`（Character，JSON 序列化）
 
 **架构优势：** 历史保存与业务逻辑解耦；所有 Entity 更新自动触发，不会遗漏；扩展新实体只需在监听器中注册；修改历史逻辑只需改一处代码。
 
-**已实现的监听器：** Outline（大纲）、Character（角色）。Script 和 Shot 因需要序列化关联实体（场次/分镜列表），仍保留手动保存逻辑。
+**已实现的监听器：** StoryOutline（故事大纲）、Character（角色）。Script 和 Shot 因需要序列化关联实体（场次/分镜列表），仍保留手动保存逻辑。
 

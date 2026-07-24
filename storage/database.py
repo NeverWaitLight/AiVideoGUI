@@ -15,12 +15,12 @@ from models.data_models import (
     MediaType,
     Message,
     MessageStatus,
-    Outline,
-    OutlineHistory,
     Scene,
     ScriptHistory,
     Shot,
     ShotHistory,
+    StoryOutline,
+    StoryOutlineHistory,
 )
 from storage.orm.base import create_all_tables, ensure_columns, get_session, init_engine
 from storage.repositories.active_task import ActiveTaskRepository
@@ -28,7 +28,7 @@ from storage.repositories.character import CharacterHistoryRepository, Character
 from storage.repositories.conversation import ConversationRepository
 from storage.repositories.media import MediaRepository
 from storage.repositories.message import MessageRepository
-from storage.repositories.outline import OutlineHistoryRepository, OutlineRepository
+from storage.repositories.story_outline import StoryOutlineHistoryRepository, StoryOutlineRepository
 from storage.repositories.project import ProjectRepository
 from storage.repositories.script import ScriptHistoryRepository, ScriptRepository
 from storage.repositories.shot import ShotHistoryRepository, ShotRepository
@@ -424,44 +424,44 @@ class DatabaseManager:
         repo = ProjectRepository(session)
         return repo.exists_by_name(name, exclude_id)
 
-    # ========== Outline 相关方法 ==========
+    # ========== StoryOutline 相关方法 ==========
 
-    def get_outline(self, project_id: int) -> Outline | None:
-        """查询项目的大纲。"""
+    def get_story_outline(self, project_id: int) -> StoryOutline | None:
+        """查询项目的故事大纲。"""
         session = self._get_session()
-        repo = OutlineRepository(session)
+        repo = StoryOutlineRepository(session)
         return repo.get_by_project(project_id)
 
-    def create_outline(self, outline: Outline) -> Outline:
-        """创建大纲。"""
+    def create_story_outline(self, story_outline: StoryOutline) -> StoryOutline:
+        """创建故事大纲。"""
         with self._lock:
             session = self._get_session()
-            repo = OutlineRepository(session)
-            return repo.create(outline)
+            repo = StoryOutlineRepository(session)
+            return repo.create(story_outline)
 
-    def update_outline(self, outline_id: int, content: str) -> None:
-        """更新大纲内容（历史版本自动保存由 ORM 监听器处理）。"""
+    def update_story_outline(self, story_outline_id: int, content: str) -> None:
+        """更新故事大纲内容（历史版本自动保存由 ORM 监听器处理）。"""
         with self._lock:
             session = self._get_session()
-            repo = OutlineRepository(session)
-            repo.update_content(outline_id, content, int(time.time() * 1000))
+            repo = StoryOutlineRepository(session)
+            repo.update_content(story_outline_id, content, int(time.time() * 1000))
 
-    def list_outline_history(self, outline_id: int) -> list[OutlineHistory]:
-        """查询大纲的所有历史版本。"""
+    def list_story_outline_history(self, story_outline_id: int) -> list[StoryOutlineHistory]:
+        """查询故事大纲的所有历史版本。"""
         session = self._get_session()
-        repo = OutlineHistoryRepository(session)
-        return repo.list_by_outline(outline_id)
+        repo = StoryOutlineHistoryRepository(session)
+        return repo.list_by_story_outline(story_outline_id)
 
-    def restore_outline_from_history(self, outline_id: int, history_id: int) -> None:
-        """从历史版本恢复大纲。"""
+    def restore_story_outline_from_history(self, story_outline_id: int, history_id: int) -> None:
+        """从历史版本恢复故事大纲。"""
         with self._lock:
             session = self._get_session()
-            history_repo = OutlineHistoryRepository(session)
+            history_repo = StoryOutlineHistoryRepository(session)
             history = history_repo.get_by_id(history_id)
 
             if history:
-                outline_repo = OutlineRepository(session)
-                outline_repo.update_content(outline_id, history.content, int(time.time() * 1000))
+                outline_repo = StoryOutlineRepository(session)
+                outline_repo.update_content(story_outline_id, history.content, int(time.time() * 1000))
 
     # ========== Script 相关方法 ==========
 

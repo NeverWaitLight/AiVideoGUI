@@ -23,7 +23,7 @@ from config.manager import ConfigManager
 from service.character_service import CharacterService
 from service.chat_service import ChatService
 from service.media_service import MediaService
-from service.outline_service import OutlineService
+from service.story_outline_service import StoryOutlineService
 from service.project_service import ProjectService
 from service.script_service import ScriptService
 from service.shot_service import ShotService
@@ -35,7 +35,7 @@ from utils import paths
 from ui.character_page import CharacterPage
 from ui.chat_area import ChatArea
 from ui.media_library import MediaLibrary
-from ui.outline_editor import OutlineEditor
+from ui.story_outline_editor import StoryOutlineEditor
 from ui.project_detail_page import ProjectDetailPage
 from ui.project_grid_page import ProjectGridPage
 from ui.project_page import ProjectPage
@@ -257,8 +257,8 @@ class MainWindow(QMainWindow):
         # 项目服务
         self._project_service = ProjectService(self._db, self._root)
 
-        # 大纲服务
-        self._outline_service = OutlineService(self._db)
+        # 故事大纲服务
+        self._story_outline_service = StoryOutlineService(self._db)
 
         # 剧本服务
         self._script_service = ScriptService(self._db)
@@ -376,10 +376,10 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.project_media_library)
         self.project_media_library.hide()
 
-        # 第三层：大纲编辑器
-        self.outline_editor = OutlineEditor(self._outline_service, self._text_model_service)
-        layout.addWidget(self.outline_editor)
-        self.outline_editor.hide()
+        # 第三层：故事大纲编辑器
+        self.story_outline_editor = StoryOutlineEditor(self._story_outline_service, self._text_model_service)
+        layout.addWidget(self.story_outline_editor)
+        self.story_outline_editor.hide()
 
         # 第三层：剧本编辑器
         self.script_editor = ScriptEditor(self._script_service)
@@ -442,9 +442,9 @@ class MainWindow(QMainWindow):
         # 项目素材库信号
         self.project_media_library.back_clicked.connect(self._on_project_media_back)
 
-        # 大纲编辑器信号
-        self.outline_editor.back_clicked.connect(self._on_outline_editor_back)
-        self.outline_editor.next_step_clicked.connect(self._on_outline_next_step)
+        # 故事大纲编辑器信号
+        self.story_outline_editor.back_clicked.connect(self._on_story_outline_editor_back)
+        self.story_outline_editor.next_step_clicked.connect(self._on_story_outline_next_step)
 
         # 剧本编辑器信号
         self.script_editor.back_clicked.connect(self._on_script_editor_back)
@@ -550,7 +550,7 @@ class MainWindow(QMainWindow):
             self.project_grid_page.show()
             self.project_detail_page.hide()
             self.project_media_library.hide()
-            self.outline_editor.hide()
+            self.story_outline_editor.hide()
             self.project_conversation_widget.hide()
             self.project_grid_page.load_projects()
 
@@ -571,14 +571,14 @@ class MainWindow(QMainWindow):
             self.project_detail_page.hide()
             self.project_conversation_widget.hide()
             self.project_media_library.hide()
-            self.outline_editor.hide()
+            self.story_outline_editor.hide()
             self.script_editor.hide()
             self.shot_editor.hide()
             self.character_page.hide()
             self.video_player_page.show()
             self.video_player_page.load_playlist(project_id)
         elif module_name == "outline":
-            # 进入大纲编辑器
+            # 进入故事大纲编辑器
             self.project_detail_page.hide()
             self.project_conversation_widget.hide()
             self.project_media_library.hide()
@@ -586,14 +586,14 @@ class MainWindow(QMainWindow):
             self.shot_editor.hide()
             self.character_page.hide()
             self.video_player_page.hide()
-            self.outline_editor.show()
-            self.outline_editor.load_outline(project_id)
+            self.story_outline_editor.show()
+            self.story_outline_editor.load_story_outline(project_id)
         elif module_name == "script":
             # 进入剧本编辑器
             self.project_detail_page.hide()
             self.project_conversation_widget.hide()
             self.project_media_library.hide()
-            self.outline_editor.hide()
+            self.story_outline_editor.hide()
             self.shot_editor.hide()
             self.character_page.hide()
             self.video_player_page.hide()
@@ -603,7 +603,7 @@ class MainWindow(QMainWindow):
             # 进入项目素材库
             self.project_detail_page.hide()
             self.project_conversation_widget.hide()
-            self.outline_editor.hide()
+            self.story_outline_editor.hide()
             self.script_editor.hide()
             self.shot_editor.hide()
             self.character_page.hide()
@@ -622,7 +622,7 @@ class MainWindow(QMainWindow):
             # 进入角色管理
             logger.info(f"打开项目 {project_id} 的角色模块")
             self.project_detail_page.hide()
-            self.outline_editor.hide()
+            self.story_outline_editor.hide()
             self.script_editor.hide()
             self.shot_editor.hide()
             self.video_player_page.hide()
@@ -643,9 +643,9 @@ class MainWindow(QMainWindow):
         if self._current_project_id:
             self.project_detail_page.set_project(self._current_project_id)
 
-    def _on_outline_editor_back(self) -> None:
-        """从大纲编辑器返回项目详情页。"""
-        self.outline_editor.hide()
+    def _on_story_outline_editor_back(self) -> None:
+        """从故事大纲编辑器返回项目详情页。"""
+        self.story_outline_editor.hide()
         self.project_detail_page.show()
         if self._current_project_id:
             self.project_detail_page.set_project(self._current_project_id)
@@ -678,7 +678,7 @@ class MainWindow(QMainWindow):
         if self._current_project_id:
             self.project_detail_page.set_project(self._current_project_id)
 
-    def _on_outline_next_step(self, outline_content: str) -> None:
+    def _on_story_outline_next_step(self, outline_content: str) -> None:
         """大纲下一步：生成剧本并跳转到剧本编辑器。"""
         if not self._current_project_id:
             return
@@ -729,7 +729,7 @@ class MainWindow(QMainWindow):
         def on_success(title: str, scenes: list):
             try:
                 self._script_dialog.close()
-                self.outline_editor.hide()
+                self.story_outline_editor.hide()
                 self.script_editor.show()
                 self.script_editor.load_script(self._current_project_id, title, scenes)
                 QMessageBox.information(self, "成功", f"剧本生成完成，共 {len(scenes)} 场！")

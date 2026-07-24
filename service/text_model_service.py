@@ -18,14 +18,14 @@ class TextModelService:
     def __init__(self, config_manager: ConfigManager) -> None:
         self._config = config_manager
 
-    def optimize_outline(
+    def optimize_story_outline(
         self,
         original_content: str,
         user_requirement: str,
         model: str | None = None,
     ) -> str:
         """
-        使用大模型优化大纲内容。
+        使用大模型优化故事大纲内容。
 
         Args:
             original_content: 原始大纲内容

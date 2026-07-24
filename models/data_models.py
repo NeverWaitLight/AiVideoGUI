@@ -114,7 +114,7 @@ class Project:
 
 
 @dataclass
-class Outline:
+class StoryOutline:
     id: int  # 自增ID
     project_id: int
     content: str  # 大纲文本内容
@@ -123,9 +123,9 @@ class Outline:
 
 
 @dataclass
-class OutlineHistory:
+class StoryOutlineHistory:
     id: int  # 自增ID
-    outline_id: int  # 指向原始大纲ID
+    story_outline_id: int  # 指向原始大纲ID
     project_id: int
     content: str  # 历史版本的大纲内容
     created_at: int  # 13位时间戳（毫秒）

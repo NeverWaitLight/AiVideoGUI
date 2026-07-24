@@ -10,8 +10,8 @@ from sqlalchemy.orm import Session
 from storage.orm.models import (
     CharacterEntity,
     CharacterHistoryEntity,
-    OutlineEntity,
-    OutlineHistoryEntity,
+    StoryOutlineEntity,
+    StoryOutlineHistoryEntity,
     ScriptEntity,
     ScriptHistoryEntity,
     ShotEntity,
@@ -29,11 +29,11 @@ def setup_history_listeners():
     if _listeners_registered:
         return
 
-    # Outline 更新时自动保存历史
-    @event.listens_for(OutlineEntity, "after_update", propagate=True)
-    def on_outline_update(mapper, connection, target: OutlineEntity):
+    # StoryOutline 更新时自动保存历史
+    @event.listens_for(StoryOutlineEntity, "after_update", propagate=True)
+    def on_story_outline_update(mapper, connection, target: StoryOutlineEntity):
         """
-        Outline 更新后自动保存到 outline_history。
+        StoryOutline 更新后自动保存到 story_outline_history。
 
         注意：只在 content 字段变化时保存历史版本，避免 updated_at 更新触发重复保存。
         """
@@ -45,9 +45,9 @@ def setup_history_listeners():
         if history.has_changes():
             # 不设置 id 字段，让数据库自动生成自增ID
             connection.execute(
-                OutlineHistoryEntity.__table__.insert(),
+                StoryOutlineHistoryEntity.__table__.insert(),
                 {
-                    "outline_id": target.id,
+                    "story_outline_id": target.id,
                     "project_id": target.project_id,
                     "content": target.content,
                     "created_at": int(time.time() * 1000),

@@ -88,8 +88,8 @@ class ProjectService:
             self._db.delete_media_file(media.id)
 
         # 2. 数据库级联删除会自动处理：
-        #    - outlines (ON DELETE CASCADE)
-        #    - outline_history (ON DELETE CASCADE)
+        #    - story_outlines (ON DELETE CASCADE)
+        #    - story_outline_history (ON DELETE CASCADE)
         #    - scripts (ON DELETE CASCADE)
         #    - scenes (ON DELETE CASCADE)
         #    - script_history (ON DELETE CASCADE)

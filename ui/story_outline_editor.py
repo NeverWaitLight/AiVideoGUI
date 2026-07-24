@@ -1,4 +1,4 @@
-"""大纲编辑器：支持编辑、AI 对话修改和历史版本管理。"""
+"""故事大纲编辑器：支持编辑、AI 对话修改和历史版本管理。"""
 
 from __future__ import annotations
 
@@ -27,8 +27,8 @@ from qfluentwidgets import (
     TextEdit,
 )
 
-from models.data_models import Outline, OutlineHistory
-from service.outline_service import OutlineService
+from models.data_models import StoryOutline, StoryOutlineHistory
+from service.story_outline_service import StoryOutlineService
 from service.text_model_service import TextModelService
 from utils.time_formatter import format_timestamp, get_current_timestamp_ms
 
@@ -38,8 +38,8 @@ logger = logging.getLogger(__name__)
 class OptimizeWorker(QThread):
     """AI 优化后台线程。"""
 
-    finished = pyqtSignal(str)  # 优化后的内容
-    failed = pyqtSignal(str)  # 错误消息
+    finished = pyqtSignal(str)
+    failed = pyqtSignal(str)
 
     def __init__(
         self,
@@ -56,7 +56,7 @@ class OptimizeWorker(QThread):
 
     def run(self) -> None:
         try:
-            result = self._service.optimize_outline(
+            result = self._service.optimize_story_outline(
                 self._original, self._requirement, self._model
             )
             self.finished.emit(result)
@@ -68,9 +68,9 @@ class OptimizeWorker(QThread):
 class HistoryListItem(QWidget):
     """历史版本列表项。"""
 
-    restore_clicked = pyqtSignal(int)  # history_id
+    restore_clicked = pyqtSignal(int)
 
-    def __init__(self, history: OutlineHistory, parent: QWidget | None = None):
+    def __init__(self, history: StoryOutlineHistory, parent: QWidget | None = None):
         super().__init__(parent)
         self._history = history
         self._setup_ui()
@@ -93,17 +93,17 @@ class HistoryListItem(QWidget):
 class HistoryDialog(QDialog):
     """历史版本弹出对话框。"""
 
-    restore_requested = pyqtSignal(int)  # history_id
+    restore_requested = pyqtSignal(int)
 
     def __init__(
         self,
-        outline_id: int,
-        outline_service: OutlineService,
+        story_outline_id: int,
+        story_outline_service: StoryOutlineService,
         parent: QWidget | None = None,
     ):
         super().__init__(parent)
-        self._outline_id = outline_id
-        self._service = outline_service
+        self._story_outline_id = story_outline_id
+        self._service = story_outline_service
         self.setWindowTitle("历史版本")
         self.setFixedSize(400, 500)
         self._setup_ui()
@@ -138,7 +138,7 @@ class HistoryDialog(QDialog):
 
     def _load_history(self) -> None:
         self._list.clear()
-        history_list = self._service.list_history(self._outline_id)
+        history_list = self._service.list_history(self._story_outline_id)
 
         if not history_list:
             empty_item = QListWidgetItem(self._list)
@@ -197,15 +197,15 @@ class _ChatBubble(QWidget):
         outer.addWidget(frame)
 
         if is_user:
-            pass  # stretch already pushes frame right
+            pass
         else:
             outer.addStretch(1)
 
 
-class OutlineChatPanel(QWidget):
+class StoryOutlineChatPanel(QWidget):
     """右侧 AI 对话面板，用于通过对话修改大纲内容。"""
 
-    content_updated = pyqtSignal(str)  # AI 返回的新内容
+    content_updated = pyqtSignal(str)
 
     def __init__(
         self,
@@ -223,7 +223,6 @@ class OutlineChatPanel(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        # 标题
         header = QLabel("  AI 助手")
         header.setFixedHeight(44)
         header.setStyleSheet(
@@ -232,7 +231,6 @@ class OutlineChatPanel(QWidget):
         )
         layout.addWidget(header)
 
-        # 消息滚动区域
         self._scroll = QScrollArea()
         self._scroll.setWidgetResizable(True)
         self._scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -248,7 +246,6 @@ class OutlineChatPanel(QWidget):
         self._scroll.setWidget(self._container)
         layout.addWidget(self._scroll, stretch=1)
 
-        # 输入区域
         input_area = QWidget()
         input_area.setStyleSheet(
             "QWidget { background: #FAFAFA; border-top: 1px solid #E0E0E0; }"
@@ -300,7 +297,6 @@ class OutlineChatPanel(QWidget):
         self._add_bubble("user", text)
         self._input.clear()
 
-        # 显示加载状态
         self._add_bubble("assistant", "正在思考中…")
         loading_bubble = self._msg_layout.itemAt(self._msg_layout.count() - 2).widget()
 
@@ -338,22 +334,22 @@ class OutlineChatPanel(QWidget):
         return super().eventFilter(obj, event)
 
 
-class OutlineEditor(QWidget):
-    """大纲编辑器页面。"""
+class StoryOutlineEditor(QWidget):
+    """故事大纲编辑器页面。"""
 
     back_clicked = pyqtSignal()
-    next_step_clicked = pyqtSignal(str)  # outline_content
+    next_step_clicked = pyqtSignal(str)
 
     def __init__(
         self,
-        outline_service: OutlineService,
+        story_outline_service: StoryOutlineService,
         text_service: TextModelService,
         parent: QWidget | None = None,
     ):
         super().__init__(parent)
-        self._service = outline_service
+        self._service = story_outline_service
         self._text_service = text_service
-        self._current_outline: Outline | None = None
+        self._current_outline: StoryOutline | None = None
         self._current_project_id: int | None = None
         self._setup_ui()
 
@@ -362,7 +358,6 @@ class OutlineEditor(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        # 顶部工具栏
         toolbar = QWidget()
         toolbar.setStyleSheet("background: white; border-bottom: 1px solid #E0E0E0;")
         toolbar.setFixedHeight(60)
@@ -370,7 +365,6 @@ class OutlineEditor(QWidget):
         toolbar_layout.setContentsMargins(20, 12, 20, 12)
         toolbar_layout.setSpacing(12)
 
-        # 返回按钮
         back_btn = ToolButton(FluentIcon.RETURN)
         back_btn.setFixedSize(36, 36)
         back_btn.setIconSize(QSize(18, 18))
@@ -379,12 +373,10 @@ class OutlineEditor(QWidget):
         back_btn.clicked.connect(self.back_clicked.emit)
         toolbar_layout.addWidget(back_btn)
 
-        # 标题
         title_label = QLabel("大纲编辑")
         title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #333;")
         toolbar_layout.addWidget(title_label, stretch=1)
 
-        # 历史记录按钮（图标）
         self.history_btn = ToolButton(FluentIcon.HISTORY)
         self.history_btn.setFixedSize(36, 36)
         self.history_btn.setIconSize(QSize(18, 18))
@@ -393,13 +385,11 @@ class OutlineEditor(QWidget):
         self.history_btn.clicked.connect(self._on_show_history)
         toolbar_layout.addWidget(self.history_btn)
 
-        # 保存按钮
         self.save_btn = PrimaryPushButton("保存")
         self.save_btn.setFixedHeight(36)
         self.save_btn.clicked.connect(self._on_save)
         toolbar_layout.addWidget(self.save_btn)
 
-        # 生成剧本按钮
         self.next_btn = PrimaryPushButton("生成剧本")
         self.next_btn.setIcon(FluentIcon.RIGHT_ARROW)
         self.next_btn.setFixedHeight(36)
@@ -408,10 +398,8 @@ class OutlineEditor(QWidget):
 
         layout.addWidget(toolbar)
 
-        # 主内容区域：左侧编辑器 + 右侧 AI 对话面板
         splitter = QSplitter(Qt.Orientation.Horizontal)
 
-        # 左侧：编辑器
         editor_widget = QWidget()
         editor_layout = QVBoxLayout(editor_widget)
         editor_layout.setContentsMargins(20, 20, 20, 20)
@@ -440,8 +428,7 @@ class OutlineEditor(QWidget):
         )
         editor_layout.addWidget(self.text_edit, stretch=1)
 
-        # 右侧：AI 对话面板
-        self._chat_panel = OutlineChatPanel(self._text_service)
+        self._chat_panel = StoryOutlineChatPanel(self._text_service)
         self._chat_panel.setMinimumWidth(300)
         self._chat_panel.content_updated.connect(self._on_chat_content_updated)
 
@@ -453,10 +440,10 @@ class OutlineEditor(QWidget):
 
         layout.addWidget(splitter, stretch=1)
 
-    def load_outline(self, project_id: int) -> None:
-        """加载项目大纲。"""
+    def load_story_outline(self, project_id: int) -> None:
+        """加载项目故事大纲。"""
         self._current_project_id = project_id
-        self._current_outline = self._service.get_or_create_outline(project_id)
+        self._current_outline = self._service.get_or_create_story_outline(project_id)
 
         self.text_edit.setPlainText(self._current_outline.content)
         self._chat_panel.set_current_content(self._current_outline.content)
@@ -489,7 +476,7 @@ class OutlineEditor(QWidget):
             return
 
         try:
-            self._service.update_outline(self._current_outline.id, content)
+            self._service.update_story_outline(self._current_outline.id, content)
             self._current_outline.content = content
             self._current_outline.updated_at = get_current_timestamp_ms()
             self._chat_panel.set_current_content(content)
@@ -520,7 +507,7 @@ class OutlineEditor(QWidget):
             self._service.restore_from_history(self._current_outline.id, history_id)
 
             if self._current_project_id:
-                self.load_outline(self._current_project_id)
+                self.load_story_outline(self._current_project_id)
 
             QMessageBox.information(self, "成功", "已恢复到历史版本")
             logger.info(f"恢复大纲历史版本：{history_id}")
@@ -549,7 +536,7 @@ class OutlineEditor(QWidget):
                 return
             elif reply == QMessageBox.StandardButton.Yes:
                 try:
-                    self._service.update_outline(self._current_outline.id, current_content)
+                    self._service.update_story_outline(self._current_outline.id, current_content)
                     self._current_outline.content = current_content
                     self._current_outline.updated_at = get_current_timestamp_ms()
                     logger.info(f"保存大纲：{self._current_outline.id}")
