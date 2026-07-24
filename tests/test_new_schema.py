@@ -68,9 +68,15 @@ for scene in scenes:
 db.create_screenplay_history(created_project.id, scenes)
 print(f"\n[OK] 保存历史版本")
 
-# 查询历史版本
-history_list = db.list_screenplay_history(created_project.id)
-print(f"[OK] 查询历史版本：共 {len(history_list)} 个版本")
+# 查询历史版本（按时间戳分组）
+timestamps = db.list_screenplay_history_timestamps(created_project.id)
+print(f"[OK] 查询历史版本：共 {len(timestamps)} 个时间戳")
+
+# 按时间戳查询具体场次历史
+history_scenes = db.list_screenplay_history_by_timestamp(created_project.id, timestamps[0])
+print(f"[OK] 时间戳 {timestamps[0]} 包含 {len(history_scenes)} 场历史记录")
+for h in history_scenes:
+    print(f"  - 第 {h.scene_number} 场：{h.location} ({h.location_type.value})")
 
 # 更新场次
 db.update_scene(

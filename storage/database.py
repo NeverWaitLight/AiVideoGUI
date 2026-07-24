@@ -526,30 +526,25 @@ class DatabaseManager:
             repo.delete(scene_id)
 
     def create_screenplay_history(self, project_id: int, scenes: list[Scene]) -> None:
-        """创建剧本历史快照。"""
+        """创建剧本历史快照（为每个场次各保存一条历史记录）。"""
         with self._lock:
             session = self._get_session()
             repo = ScreenplayHistoryRepository(session)
+            now_ms = int(time.time() * 1000)
 
-            # 将 scenes 序列化为 JSON
-            scenes_data = [
-                {
-                    "scene_number": s.scene_number,
-                    "location_type": s.location_type.value if hasattr(s.location_type, "value") else s.location_type,
-                    "location": s.location,
-                    "time_type": s.time_type.value if hasattr(s.time_type, "value") else s.time_type,
-                    "time_detail": s.time_detail,
-                    "content": s.content,
-                }
-                for s in scenes
-            ]
-
-            repo.create(ScreenplayHistory(
-                id=0,  # 自增ID，数据库自动生成
-                project_id=project_id,
-                scenes_snapshot=json.dumps(scenes_data, ensure_ascii=False),
-                created_at=int(time.time() * 1000),
-            ))
+            for s in scenes:
+                repo.create(ScreenplayHistory(
+                    id=0,  # 自增ID，数据库自动生成
+                    screenplay_id=s.id,
+                    project_id=project_id,
+                    scene_number=s.scene_number,
+                    location_type=s.location_type,
+                    location=s.location,
+                    time_type=s.time_type,
+                    time_detail=s.time_detail,
+                    content=s.content,
+                    created_at=now_ms,
+                ))
 
     def list_screenplay_history(self, project_id: int) -> list[ScreenplayHistory]:
         """查询项目的所有历史版本。"""
@@ -557,14 +552,29 @@ class DatabaseManager:
         repo = ScreenplayHistoryRepository(session)
         return repo.list_by_project(project_id)
 
-    def restore_screenplay_from_history(self, project_id: int, history_id: int) -> None:
-        """从历史版本恢复剧本。"""
+    def list_screenplay_history_timestamps(self, project_id: int) -> list[int]:
+        """查询项目的所有不同保存时间戳（按时间倒序）。"""
+        session = self._get_session()
+        repo = ScreenplayHistoryRepository(session)
+        return repo.distinct_timestamps_by_project(project_id)
+
+    def list_screenplay_history_by_timestamp(
+        self, project_id: int, created_at: int
+    ) -> list[ScreenplayHistory]:
+        """查询项目在指定时间戳保存的所有场次历史。"""
+        session = self._get_session()
+        repo = ScreenplayHistoryRepository(session)
+        return repo.list_by_project_and_timestamp(project_id, created_at)
+
+    def restore_screenplay_from_history(self, project_id: int, created_at: int) -> None:
+        """从历史版本恢复剧本（按时间戳取回该次快照的所有场次）。"""
         with self._lock:
             session = self._get_session()
             history_repo = ScreenplayHistoryRepository(session)
-            history = history_repo.get_by_id(history_id)
 
-            if not history:
+            # 按时间戳取出该次快照的所有场次
+            history_items = history_repo.list_by_project_and_timestamp(project_id, created_at)
+            if not history_items:
                 return
 
             # 删除当前所有场次
@@ -572,19 +582,17 @@ class DatabaseManager:
             scene_repo.delete_by_project(project_id)
 
             # 恢复场次
-            scenes_data = json.loads(history.scenes_snapshot)
-
             now_ms = int(time.time() * 1000)
-            for scene_data in scenes_data:
+            for h in history_items:
                 scene_repo.create(Scene(
                     id=0,  # 自增ID
                     project_id=project_id,
-                    scene_number=scene_data["scene_number"],
-                    location_type=scene_data["location_type"],
-                    location=scene_data["location"],
-                    time_type=scene_data["time_type"],
-                    time_detail=scene_data.get("time_detail", ""),
-                    content=scene_data.get("content", ""),
+                    scene_number=h.scene_number,
+                    location_type=h.location_type,
+                    location=h.location,
+                    time_type=h.time_type,
+                    time_detail=h.time_detail,
+                    content=h.content,
                     created_at=now_ms,
                     updated_at=now_ms,
                 ))

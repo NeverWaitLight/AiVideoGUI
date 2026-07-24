@@ -27,7 +27,7 @@ from qfluentwidgets import (
     CardWidget,
 )
 
-from models.data_models import ScreenplayHistory, Scene, SceneLocation, SceneTime
+from models.data_models import Scene, SceneLocation, SceneTime
 from service.screenplay_service import ScreenplayService
 
 logger = logging.getLogger(__name__)
@@ -350,29 +350,33 @@ class SceneDetailEditor(QWidget):
 
 
 class HistoryListItem(QWidget):
-    """历史版本列表项。"""
+    """历史版本列表项（按保存时间戳分组）。"""
 
-    restore_clicked = pyqtSignal(str)  # history_id
+    restore_clicked = pyqtSignal(int)  # created_at 时间戳（毫秒）
 
-    def __init__(self, history: ScreenplayHistory, parent: QWidget | None = None):
+    def __init__(self, created_at: int, scene_count: int, parent: QWidget | None = None):
         super().__init__(parent)
-        self._history = history
-        self._setup_ui()
+        self._created_at = created_at
+        self._setup_ui(scene_count)
 
-    def _setup_ui(self) -> None:
+    def _setup_ui(self, scene_count: int) -> None:
+        from datetime import datetime
+
         layout = QHBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(8)
 
-        # 时间标签
-        time_label = QLabel(self._history.created_at.strftime("%Y-%m-%d %H:%M:%S"))
+        # 时间标签（毫秒时间戳 → 格式化时间）
+        dt = datetime.fromtimestamp(self._created_at / 1000)
+        time_text = dt.strftime("%Y-%m-%d %H:%M:%S")
+        time_label = QLabel(f"{time_text}（{scene_count} 场）")
         time_label.setStyleSheet("font-size: 13px; color: #666;")
         layout.addWidget(time_label, stretch=1)
 
         # 恢复按钮
         restore_btn = PushButton("恢复")
         restore_btn.setFixedHeight(28)
-        restore_btn.clicked.connect(lambda: self.restore_clicked.emit(self._history.id))
+        restore_btn.clicked.connect(lambda: self.restore_clicked.emit(self._created_at))
         layout.addWidget(restore_btn)
 
 
@@ -579,15 +583,15 @@ class ScreenplayEditor(QWidget):
             )
 
     def _load_history(self) -> None:
-        """加载历史版本列表。"""
+        """加载历史版本列表（按保存时间戳分组）。"""
         self.history_list.clear()
 
         if not self._current_project_id:
             return
 
-        history_list = self._service.list_history(self._current_project_id)
+        timestamps = self._service.list_history_timestamps(self._current_project_id)
 
-        if not history_list:
+        if not timestamps:
             empty_item = QListWidgetItem(self.history_list)
             empty_widget = QLabel("暂无历史版本")
             empty_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -597,9 +601,10 @@ class ScreenplayEditor(QWidget):
             self.history_list.setItemWidget(empty_item, empty_widget)
             return
 
-        for history in history_list:
+        for ts in timestamps:
+            scenes = self._service.list_history_by_timestamp(self._current_project_id, ts)
             item = QListWidgetItem(self.history_list)
-            widget = HistoryListItem(history)
+            widget = HistoryListItem(ts, len(scenes))
             widget.restore_clicked.connect(self._on_restore)
             item.setSizeHint(widget.sizeHint())
             self.history_list.addItem(item)
@@ -637,8 +642,8 @@ class ScreenplayEditor(QWidget):
             logger.exception("保存历史版本失败")
             QMessageBox.critical(self, "错误", f"保存失败：{e}")
 
-    def _on_restore(self, history_id: str) -> None:
-        """恢复历史版本。"""
+    def _on_restore(self, created_at: int) -> None:
+        """恢复历史版本（按时间戳）。"""
         if not self._current_project_id:
             return
 
@@ -653,13 +658,13 @@ class ScreenplayEditor(QWidget):
             return
 
         try:
-            self._service.restore_from_history(self._current_project_id, int(history_id))
+            self._service.restore_from_history(self._current_project_id, created_at)
 
             # 重新加载剧本
             self.load_script(self._current_project_id)
 
             QMessageBox.information(self, "成功", "已恢复到历史版本")
-            logger.info(f"恢复剧本历史版本：{history_id}")
+            logger.info(f"恢复剧本历史版本：时间戳 {created_at}")
 
         except Exception as e:
             logger.exception("恢复历史版本失败")

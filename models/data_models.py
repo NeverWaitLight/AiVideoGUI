@@ -175,11 +175,17 @@ class Scene:
 
 @dataclass
 class ScreenplayHistory:
-    """剧本历史版本（快照整个项目的所有场次）"""
+    """剧本历史版本（逐场次快照，字段与 Scene 一致）"""
     id: int  # 自增ID
+    screenplay_id: int  # 指向原始场次ID
     project_id: int  # 关联项目ID
-    scenes_snapshot: str  # 所有场次的JSON快照
-    created_at: int  # 13位时间戳（毫秒）
+    scene_number: int  # 场次号
+    location_type: SceneLocation  # 内景/外景
+    location: str  # 地点
+    time_type: SceneTime  # 时间类型
+    time_detail: str = ""  # 详细时间描述
+    content: str = ""  # 场次内容
+    created_at: int = 0  # 13位时间戳（毫秒）
 
 
 @dataclass

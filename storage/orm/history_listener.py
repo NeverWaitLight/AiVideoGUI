@@ -10,12 +10,10 @@ from sqlalchemy.orm import Session
 from storage.orm.models import (
     CharacterEntity,
     CharacterHistoryEntity,
-    StoryOutlineEntity,
-    StoryOutlineHistoryEntity,
     ScreenplayEntity,
     ScreenplayHistoryEntity,
-    ShotEntity,
-    ShotHistoryEntity,
+    StoryOutlineEntity,
+    StoryOutlineHistoryEntity,
 )
 
 # 全局标志，防止重复注册
@@ -49,6 +47,40 @@ def setup_history_listeners():
                 {
                     "story_outline_id": target.id,
                     "project_id": target.project_id,
+                    "content": target.content,
+                    "created_at": int(time.time() * 1000),
+                },
+            )
+
+    # Screenplay 更新时自动保存历史
+    @event.listens_for(ScreenplayEntity, "after_update", propagate=True)
+    def on_screenplay_update(mapper, connection, target: ScreenplayEntity):
+        """
+        Screenplay 场次更新后自动保存到 screenplay_history。
+
+        注意：只在关键字段变化时保存，避免 updated_at 更新触发重复保存。
+        """
+        state = target._sa_instance_state
+
+        key_fields_changed = any([
+            state.attrs.location_type.history.has_changes(),
+            state.attrs.location.history.has_changes(),
+            state.attrs.time_type.history.has_changes(),
+            state.attrs.time_detail.history.has_changes(),
+            state.attrs.content.history.has_changes(),
+        ])
+
+        if key_fields_changed:
+            connection.execute(
+                ScreenplayHistoryEntity.__table__.insert(),
+                {
+                    "screenplay_id": target.id,
+                    "project_id": target.project_id,
+                    "scene_number": target.scene_number,
+                    "location_type": target.location_type,
+                    "location": target.location,
+                    "time_type": target.time_type,
+                    "time_detail": target.time_detail,
                     "content": target.content,
                     "created_at": int(time.time() * 1000),
                 },

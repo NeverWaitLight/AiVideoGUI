@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import time
 
-from models.data_models import ScreenplayHistory, Scene, SceneLocation, SceneTime
+from models.data_models import Scene, SceneLocation, SceneTime
 from storage.database import DatabaseManager
 
 logger = logging.getLogger(__name__)
@@ -84,14 +84,18 @@ class ScreenplayService:
         self._db.create_screenplay_history(project_id, scenes)
         logger.info(f"保存剧本历史：项目 {project_id}，共 {len(scenes)} 场")
 
-    def list_history(self, project_id: int) -> list[ScreenplayHistory]:
-        """获取剧本历史版本列表。"""
-        return self._db.list_screenplay_history(project_id)
+    def list_history_timestamps(self, project_id: int) -> list[int]:
+        """获取剧本历史版本的保存时间戳列表（按时间倒序）。"""
+        return self._db.list_screenplay_history_timestamps(project_id)
 
-    def restore_from_history(self, project_id: int, history_id: int) -> None:
-        """从历史版本恢复剧本。"""
-        self._db.restore_screenplay_from_history(project_id, history_id)
-        logger.info(f"恢复剧本历史版本：{history_id}")
+    def list_history_by_timestamp(self, project_id: int, created_at: int) -> list[Scene]:
+        """获取指定时间戳保存的所有场次历史。"""
+        return self._db.list_screenplay_history_by_timestamp(project_id, created_at)
+
+    def restore_from_history(self, project_id: int, created_at: int) -> None:
+        """从历史版本恢复剧本（按时间戳）。"""
+        self._db.restore_screenplay_from_history(project_id, created_at)
+        logger.info(f"恢复剧本历史版本：时间戳 {created_at}")
 
     def batch_create_scenes(self, project_id: int, scenes_data: list[dict]) -> list[Scene]:
         """批量创建场次（用于 AI 生成剧本）。

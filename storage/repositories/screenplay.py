@@ -103,20 +103,50 @@ class ScreenplayHistoryRepository(BaseRepository[ScreenplayHistoryEntity, Screen
     def _to_dto(self, entity: ScreenplayHistoryEntity) -> ScreenplayHistory:
         """Entity → DTO 转换。"""
         return ScreenplayHistory(
-            id=entity.id,
+            id=entity.id if entity.id is not None else 0,
+            screenplay_id=entity.screenplay_id,
             project_id=entity.project_id,
-            scenes_snapshot=entity.scenes_snapshot,
+            scene_number=entity.scene_number,
+            location_type=SceneLocation(entity.location_type) if isinstance(entity.location_type, str) else entity.location_type,
+            location=entity.location,
+            time_type=SceneTime(entity.time_type) if isinstance(entity.time_type, str) else entity.time_type,
+            time_detail=entity.time_detail,
+            content=entity.content,
             created_at=entity.created_at,
         )
 
     def _to_entity(self, dto: ScreenplayHistory) -> ScreenplayHistoryEntity:
         """DTO → Entity 转换。"""
         return ScreenplayHistoryEntity(
-            id=dto.id,
+            id=dto.id if dto.id else None,  # 0 转为 None 以触发自增
+            screenplay_id=dto.screenplay_id,
             project_id=dto.project_id,
-            scenes_snapshot=dto.scenes_snapshot,
+            scene_number=dto.scene_number,
+            location_type=dto.location_type.value if isinstance(dto.location_type, SceneLocation) else dto.location_type,
+            location=dto.location,
+            time_type=dto.time_type.value if isinstance(dto.time_type, SceneTime) else dto.time_type,
+            time_detail=dto.time_detail,
+            content=dto.content,
             created_at=dto.created_at,
         )
+
+    def list_by_screenplay(self, screenplay_id: int) -> List[ScreenplayHistory]:
+        """
+        查询单个场次的所有历史版本（按时间倒序）。
+
+        Args:
+            screenplay_id: 场次 ID
+
+        Returns:
+            历史版本列表
+        """
+        stmt = (
+            select(ScreenplayHistoryEntity)
+            .where(ScreenplayHistoryEntity.screenplay_id == screenplay_id)
+            .order_by(ScreenplayHistoryEntity.created_at.desc())
+        )
+        entities = self.session.execute(stmt).scalars().all()
+        return [self._to_dto(e) for e in entities]
 
     def list_by_project(self, project_id: int) -> List[ScreenplayHistory]:
         """
@@ -135,3 +165,44 @@ class ScreenplayHistoryRepository(BaseRepository[ScreenplayHistoryEntity, Screen
         )
         entities = self.session.execute(stmt).scalars().all()
         return [self._to_dto(e) for e in entities]
+
+    def list_by_project_and_timestamp(self, project_id: int, created_at: int) -> List[ScreenplayHistory]:
+        """
+        查询项目在指定时间戳保存的所有场次历史（一次快照）。
+
+        Args:
+            project_id: 项目 ID
+            created_at: 保存时间戳（毫秒）
+
+        Returns:
+            该次快照的所有场次历史
+        """
+        stmt = (
+            select(ScreenplayHistoryEntity)
+            .where(
+                ScreenplayHistoryEntity.project_id == project_id,
+                ScreenplayHistoryEntity.created_at == created_at,
+            )
+            .order_by(ScreenplayHistoryEntity.scene_number.asc())
+        )
+        entities = self.session.execute(stmt).scalars().all()
+        return [self._to_dto(e) for e in entities]
+
+    def distinct_timestamps_by_project(self, project_id: int) -> List[int]:
+        """
+        查询项目的所有不同保存时间戳（按时间倒序）。
+
+        Args:
+            project_id: 项目 ID
+
+        Returns:
+            去重的时间戳列表
+        """
+        from sqlalchemy import distinct
+
+        stmt = (
+            select(distinct(ScreenplayHistoryEntity.created_at))
+            .where(ScreenplayHistoryEntity.project_id == project_id)
+            .order_by(ScreenplayHistoryEntity.created_at.desc())
+        )
+        return list(self.session.execute(stmt).scalars().all())
