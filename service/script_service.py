@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import logging
+import time
 import uuid
-from datetime import datetime
 
 from models.data_models import Script, ScriptHistory, Scene, SceneLocation, SceneTime
 from storage.database import DatabaseManager
@@ -25,28 +25,28 @@ class ScriptService:
             return script
 
         # 创建新剧本
-        now = datetime.now()
+        now_ms = int(time.time() * 1000)
         script = Script(
-            id=str(uuid.uuid4()),
+            id=0,  # 自增ID，数据库自动生成
             project_id=project_id,
             title="",
-            created_at=now,
-            updated_at=now,
+            created_at=now_ms,
+            updated_at=now_ms,
         )
-        self._db.create_script(script)
-        logger.info(f"创建新剧本：{script.id}")
-        return script
+        created_script = self._db.create_script(script)
+        logger.info(f"创建新剧本：项目 {project_id}，ID: {created_script.id}")
+        return created_script
 
     def get_script_by_project(self, project_id: int) -> Script | None:
         """根据项目ID获取剧本。"""
         return self._db.get_script(project_id)
 
-    def update_script_title(self, script_id: str, title: str) -> None:
+    def update_script_title(self, script_id: int, title: str) -> None:
         """更新剧本标题。"""
         self._db.update_script(script_id, title)
         logger.info(f"更新剧本标题：{script_id}")
 
-    def list_scenes(self, script_id: str) -> list[Scene]:
+    def list_scenes(self, script_id: int) -> list[Scene]:
         """获取剧本的所有场次。"""
         return self._db.list_scenes(script_id)
 
@@ -56,7 +56,7 @@ class ScriptService:
 
     def create_scene(
         self,
-        script_id: str,
+        script_id: int,
         scene_number: int,
         location_type: SceneLocation,
         location: str,
@@ -65,7 +65,7 @@ class ScriptService:
         content: str,
     ) -> Scene:
         """创建场次。"""
-        now = datetime.now()
+        now_ms = int(time.time() * 1000)
         scene = Scene(
             id=str(uuid.uuid4()),
             script_id=script_id,
@@ -75,8 +75,8 @@ class ScriptService:
             time_type=time_type,
             time_detail=time_detail,
             content=content,
-            created_at=now,
-            updated_at=now,
+            created_at=now_ms,
+            updated_at=now_ms,
         )
         self._db.create_scene(scene)
         logger.info(f"创建场次：{scene.id}，场次号：{scene_number}")
@@ -107,22 +107,22 @@ class ScriptService:
         self._db.delete_scene(scene_id)
         logger.info(f"删除场次：{scene_id}")
 
-    def save_history(self, script_id: str, title: str) -> None:
+    def save_history(self, script_id: int, title: str) -> None:
         """保存剧本历史版本（快照所有场次）。"""
         scenes = self._db.list_scenes(script_id)
         self._db.create_script_history(script_id, title, scenes)
         logger.info(f"保存剧本历史：{script_id}，共 {len(scenes)} 场")
 
-    def list_history(self, script_id: str) -> list[ScriptHistory]:
+    def list_history(self, script_id: int) -> list[ScriptHistory]:
         """获取剧本历史版本列表。"""
         return self._db.list_script_history(script_id)
 
-    def restore_from_history(self, script_id: str, history_id: str) -> None:
+    def restore_from_history(self, script_id: int, history_id: int) -> None:
         """从历史版本恢复剧本。"""
         self._db.restore_script_from_history(script_id, history_id)
         logger.info(f"恢复剧本历史版本：{history_id}")
 
-    def batch_create_scenes(self, script_id: str, scenes_data: list[dict]) -> list[Scene]:
+    def batch_create_scenes(self, script_id: int, scenes_data: list[dict]) -> list[Scene]:
         """批量创建场次（用于 AI 生成剧本）。
 
         Args:

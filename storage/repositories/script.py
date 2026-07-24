@@ -50,14 +50,14 @@ class ScriptRepository(BaseRepository[ScriptEntity, Script]):
         entity = self.session.execute(stmt).scalars().first()
         return self._to_dto(entity) if entity else None
 
-    def update_script(self, script_id: str, title: str, updated_at) -> None:
+    def update_script(self, script_id: int, title: str, updated_at: int) -> None:
         """
         更新剧本。
 
         Args:
             script_id: 剧本 ID
             title: 标题
-            updated_at: 更新时间
+            updated_at: 更新时间（13位毫秒时间戳）
         """
         entity = self.session.get(ScriptEntity, script_id)
         if not entity:
@@ -94,7 +94,7 @@ class ScriptHistoryRepository(BaseRepository[ScriptHistoryEntity, ScriptHistory]
             created_at=dto.created_at,
         )
 
-    def list_by_script(self, script_id: str) -> List[ScriptHistory]:
+    def list_by_script(self, script_id: int) -> List[ScriptHistory]:
         """
         查询剧本的所有历史版本（按时间倒序）。
 
@@ -149,7 +149,7 @@ class SceneRepository(BaseRepository[SceneEntity, Scene]):
             updated_at=dto.updated_at,
         )
 
-    def list_by_script(self, script_id: str) -> List[Scene]:
+    def list_by_script(self, script_id: int) -> List[Scene]:
         """
         查询剧本的所有场次（按场次号升序）。
 
@@ -167,7 +167,7 @@ class SceneRepository(BaseRepository[SceneEntity, Scene]):
         entities = self.session.execute(stmt).scalars().all()
         return [self._to_dto(e) for e in entities]
 
-    def delete_by_script(self, script_id: str) -> None:
+    def delete_by_script(self, script_id: int) -> None:
         """
         删除剧本的所有场次。
 

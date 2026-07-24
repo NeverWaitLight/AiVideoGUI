@@ -48,7 +48,7 @@ def setup_history_listeners():
             connection.execute(
                 OutlineHistoryEntity.__table__.insert(),
                 {
-                    "raw_id": target.id,
+                    "outline_id": target.id,
                     "project_id": target.project_id,
                     "content": target.content,
                     "created_at": int(time.time() * 1000),

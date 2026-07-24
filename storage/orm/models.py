@@ -197,7 +197,7 @@ class OutlineHistoryEntity(Base):
     __tablename__ = "outline_history"
 
     id: Mapped[Optional[int]] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    raw_id: Mapped[int] = mapped_column(
+    outline_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("outlines.id", ondelete="CASCADE"), nullable=False
     )
     project_id: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -208,7 +208,7 @@ class OutlineHistoryEntity(Base):
     outline: Mapped["OutlineEntity"] = relationship(back_populates="history")
 
     # 索引
-    __table_args__ = (Index("idx_history_outline", "raw_id", "created_at"),)
+    __table_args__ = (Index("idx_history_outline", "outline_id", "created_at"),)
 
 
 class ScriptEntity(Base):
@@ -216,13 +216,13 @@ class ScriptEntity(Base):
 
     __tablename__ = "scripts"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    id: Mapped[Optional[int]] = mapped_column(Integer, primary_key=True, autoincrement=True)
     project_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
     )
     title: Mapped[str] = mapped_column(String(255), nullable=False, default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[int] = mapped_column(Integer, nullable=False)  # 13位时间戳（毫秒）
+    updated_at: Mapped[int] = mapped_column(Integer, nullable=False)  # 13位时间戳（毫秒）
 
     # 关系
     project: Mapped["ProjectEntity"] = relationship(back_populates="scripts")
@@ -243,8 +243,8 @@ class SceneEntity(Base):
     __tablename__ = "scenes"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    script_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("scripts.id", ondelete="CASCADE"), nullable=False
+    script_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("scripts.id", ondelete="CASCADE"), nullable=False
     )
     scene_number: Mapped[int] = mapped_column(Integer, nullable=False)
     location_type: Mapped[str] = mapped_column(String(50), nullable=False)
@@ -252,8 +252,8 @@ class SceneEntity(Base):
     time_type: Mapped[str] = mapped_column(String(50), nullable=False)
     time_detail: Mapped[str] = mapped_column(String(100), nullable=False, default="")
     content: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[int] = mapped_column(Integer, nullable=False)  # 13位时间戳（毫秒）
+    updated_at: Mapped[int] = mapped_column(Integer, nullable=False)  # 13位时间戳（毫秒）
 
     # 关系
     script: Mapped["ScriptEntity"] = relationship(back_populates="scenes")
@@ -270,13 +270,13 @@ class ScriptHistoryEntity(Base):
 
     __tablename__ = "script_history"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    script_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("scripts.id", ondelete="CASCADE"), nullable=False
+    id: Mapped[Optional[int]] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    script_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("scripts.id", ondelete="CASCADE"), nullable=False
     )
     title: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     scenes_snapshot: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[int] = mapped_column(Integer, nullable=False)  # 13位时间戳（毫秒）
 
     # 关系
     script: Mapped["ScriptEntity"] = relationship(back_populates="history")

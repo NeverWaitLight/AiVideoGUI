@@ -125,7 +125,7 @@ class Outline:
 @dataclass
 class OutlineHistory:
     id: int  # 自增ID
-    raw_id: int  # 指向原始大纲ID
+    outline_id: int  # 指向原始大纲ID
     project_id: int
     content: str  # 历史版本的大纲内容
     created_at: int  # 13位时间戳（毫秒）
@@ -162,34 +162,34 @@ class ShotSize(enum.Enum):
 class Scene:
     """场次数据结构"""
     id: str
-    script_id: str  # 所属剧本ID
+    script_id: int  # 所属剧本ID（整数）
     scene_number: int  # 场次号（从1开始）
     location_type: SceneLocation  # 内景/外景
     location: str  # 地点（如"审讯室"、"老城区街道"）
     time_type: SceneTime  # 时间类型（日/夜/晨/黄昏等）
     time_detail: str = ""  # 详细时间描述（可选，如"下午3点"）
     content: str = ""  # 场次具体内容（动作描述+对话）
-    created_at: datetime = field(default_factory=datetime.now)
-    updated_at: datetime = field(default_factory=datetime.now)
+    created_at: int = 0  # 13位时间戳（毫秒）
+    updated_at: int = 0  # 13位时间戳（毫秒）
 
 
 @dataclass
 class Script:
-    id: str
+    id: int  # 自增ID
     project_id: int
     title: str = ""  # 剧本标题
-    created_at: datetime = field(default_factory=datetime.now)
-    updated_at: datetime = field(default_factory=datetime.now)
+    created_at: int = 0  # 13位时间戳（毫秒）
+    updated_at: int = 0  # 13位时间戳（毫秒）
 
 
 @dataclass
 class ScriptHistory:
     """剧本历史版本（快照整个剧本的所有场次）"""
-    id: str
-    script_id: str
+    id: int  # 自增ID
+    script_id: int  # 关联剧本ID（整数）
     title: str  # 剧本标题
     scenes_snapshot: str  # 所有场次的JSON快照
-    created_at: datetime  # 该版本创建时间
+    created_at: int  # 13位时间戳（毫秒）
 
 
 @dataclass

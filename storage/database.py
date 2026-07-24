@@ -472,21 +472,23 @@ class DatabaseManager:
         repo = ScriptRepository(session)
         return repo.get_by_project(project_id)
 
-    def create_script(self, script: Script) -> None:
+    def create_script(self, script: Script) -> Script:
         """创建剧本。"""
         with self._lock:
             session = self._get_session()
             repo = ScriptRepository(session)
-            repo.create(script)
+            entity = repo.create(script)
+            # 返回带有数据库生成ID的Script
+            return repo._to_dto(entity)
 
-    def update_script(self, script_id: str, title: str) -> None:
+    def update_script(self, script_id: int, title: str) -> None:
         """更新剧本标题。"""
         with self._lock:
             session = self._get_session()
             repo = ScriptRepository(session)
-            repo.update_script(script_id, title, datetime.now())
+            repo.update_script(script_id, title, int(time.time() * 1000))
 
-    def list_scenes(self, script_id: str) -> list[Scene]:
+    def list_scenes(self, script_id: int) -> list[Scene]:
         """查询剧本的所有场次。"""
         session = self._get_session()
         repo = SceneRepository(session)
@@ -534,7 +536,7 @@ class DatabaseManager:
                     entity.time_detail = time_detail
                 if content is not None:
                     entity.content = content
-                entity.updated_at = datetime.now()
+                entity.updated_at = int(time.time() * 1000)
                 session.commit()
 
     def delete_scene(self, scene_id: str) -> None:
@@ -544,12 +546,11 @@ class DatabaseManager:
             repo = SceneRepository(session)
             repo.delete(scene_id)
 
-    def create_script_history(self, script_id: str, title: str, scenes: list[Scene]) -> None:
+    def create_script_history(self, script_id: int, title: str, scenes: list[Scene]) -> None:
         """创建剧本历史快照。"""
         with self._lock:
             session = self._get_session()
             repo = ScriptHistoryRepository(session)
-            import uuid
 
             # 将 scenes 序列化为 JSON
             scenes_data = [
@@ -565,20 +566,20 @@ class DatabaseManager:
             ]
 
             repo.create(ScriptHistory(
-                id=str(uuid.uuid4()),
+                id=0,  # 自增ID，数据库自动生成
                 script_id=script_id,
                 title=title,
                 scenes_snapshot=json.dumps(scenes_data, ensure_ascii=False),
-                created_at=datetime.now(),
+                created_at=int(time.time() * 1000),
             ))
 
-    def list_script_history(self, script_id: str) -> list[ScriptHistory]:
+    def list_script_history(self, script_id: int) -> list[ScriptHistory]:
         """查询剧本的所有历史版本。"""
         session = self._get_session()
         repo = ScriptHistoryRepository(session)
         return repo.list_by_script(script_id)
 
-    def restore_script_from_history(self, script_id: str, history_id: str) -> None:
+    def restore_script_from_history(self, script_id: int, history_id: int) -> None:
         """从历史版本恢复剧本。"""
         with self._lock:
             session = self._get_session()
@@ -596,6 +597,7 @@ class DatabaseManager:
             scenes_data = json.loads(history.scenes_snapshot)
             import uuid
 
+            now_ms = int(time.time() * 1000)
             for scene_data in scenes_data:
                 scene_repo.create(Scene(
                     id=str(uuid.uuid4()),
@@ -606,13 +608,13 @@ class DatabaseManager:
                     time_type=scene_data["time_type"],
                     time_detail=scene_data.get("time_detail", ""),
                     content=scene_data.get("content", ""),
-                    created_at=datetime.now(),
-                    updated_at=datetime.now(),
+                    created_at=now_ms,
+                    updated_at=now_ms,
                 ))
 
             # 更新剧本标题
             script_repo = ScriptRepository(session)
-            script_repo.update_script(script_id, history.title, datetime.now())
+            script_repo.update_script(script_id, history.title, now_ms)
 
     # ========== Shot 相关方法 ==========
 

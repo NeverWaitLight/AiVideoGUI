@@ -79,7 +79,7 @@ class OutlineHistoryRepository(BaseRepository[OutlineHistoryEntity, OutlineHisto
         """Entity → DTO 转换。"""
         return OutlineHistory(
             id=entity.id if entity.id is not None else 0,
-            raw_id=entity.raw_id,
+            outline_id=entity.outline_id,
             project_id=entity.project_id,
             content=entity.content,
             created_at=entity.created_at,
@@ -89,7 +89,7 @@ class OutlineHistoryRepository(BaseRepository[OutlineHistoryEntity, OutlineHisto
         """DTO → Entity 转换。"""
         return OutlineHistoryEntity(
             id=dto.id,
-            raw_id=dto.raw_id,
+            outline_id=dto.outline_id,
             project_id=dto.project_id,
             content=dto.content,
             created_at=dto.created_at,
@@ -107,7 +107,7 @@ class OutlineHistoryRepository(BaseRepository[OutlineHistoryEntity, OutlineHisto
         """
         stmt = (
             select(OutlineHistoryEntity)
-            .where(OutlineHistoryEntity.raw_id == outline_id)
+            .where(OutlineHistoryEntity.outline_id == outline_id)
             .order_by(OutlineHistoryEntity.created_at.desc())
         )
         entities = self.session.execute(stmt).scalars().all()
