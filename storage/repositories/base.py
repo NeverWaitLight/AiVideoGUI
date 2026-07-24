@@ -79,8 +79,8 @@ class BaseRepository(Generic[EntityType, DTOType]):
         """
         entity = self._to_entity(dto)
         self.session.add(entity)
+        self.session.flush()  # flush 后数据库生成的 ID 会自动填充到 entity
         self.session.commit()
-        self.session.refresh(entity)
         return self._to_dto(entity)
 
     def delete(self, id: str | int) -> bool:

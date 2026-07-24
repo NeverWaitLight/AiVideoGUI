@@ -1,5 +1,6 @@
 """ORM 历史版本自动保存监听器。"""
 
+import time
 import uuid
 from datetime import datetime
 
@@ -43,14 +44,14 @@ def setup_history_listeners():
 
         # 只有 content 字段有变化时才保存历史
         if history.has_changes():
+            # 不设置 id 字段，让数据库自动生成自增ID
             connection.execute(
                 OutlineHistoryEntity.__table__.insert(),
                 {
-                    "id": str(uuid.uuid4()),
                     "raw_id": target.id,
                     "project_id": target.project_id,
                     "content": target.content,
-                    "created_at": datetime.now(),
+                    "created_at": int(time.time() * 1000),
                 },
             )
 

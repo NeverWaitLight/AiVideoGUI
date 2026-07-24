@@ -87,7 +87,7 @@ class ModuleCard(CardWidget):
 class ProjectDetailPage(QWidget):
     """项目详情页面，显示项目信息和各模块入口。"""
 
-    module_selected = pyqtSignal(str, str)  # project_id, module_name
+    module_selected = pyqtSignal(int, str)  # project_id, module_name
     back_clicked = pyqtSignal()
 
     def __init__(self, project_service: ProjectService, db: DatabaseManager, parent: QWidget | None = None):

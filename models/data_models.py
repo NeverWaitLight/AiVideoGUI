@@ -115,20 +115,20 @@ class Project:
 
 @dataclass
 class Outline:
-    id: str
+    id: int  # 自增ID
     project_id: int
     content: str  # 大纲文本内容
-    created_at: datetime
-    updated_at: datetime
+    created_at: int  # 13位时间戳（毫秒）
+    updated_at: int  # 13位时间戳（毫秒）
 
 
 @dataclass
 class OutlineHistory:
-    id: str
-    raw_id: str
+    id: int  # 自增ID
+    raw_id: int  # 指向原始大纲ID
     project_id: int
     content: str  # 历史版本的大纲内容
-    created_at: datetime  # 该版本创建时间
+    created_at: int  # 13位时间戳（毫秒）
 
 
 class SceneLocation(enum.Enum):

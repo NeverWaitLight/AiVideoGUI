@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import List, Optional
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import BigInteger, Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -173,13 +173,13 @@ class OutlineEntity(Base):
 
     __tablename__ = "outlines"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    id: Mapped[Optional[int]] = mapped_column(Integer, primary_key=True, autoincrement=True)
     project_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
     )
     content: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[int] = mapped_column(BigInteger, nullable=False)  # 13位时间戳（毫秒）
+    updated_at: Mapped[int] = mapped_column(BigInteger, nullable=False)  # 13位时间戳（毫秒）
 
     # 关系
     project: Mapped["ProjectEntity"] = relationship(back_populates="outlines")
@@ -196,13 +196,13 @@ class OutlineHistoryEntity(Base):
 
     __tablename__ = "outline_history"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    raw_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("outlines.id", ondelete="CASCADE"), nullable=False
+    id: Mapped[Optional[int]] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    raw_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("outlines.id", ondelete="CASCADE"), nullable=False
     )
     project_id: Mapped[int] = mapped_column(Integer, nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[int] = mapped_column(BigInteger, nullable=False)  # 13位时间戳（毫秒）
 
     # 关系
     outline: Mapped["OutlineEntity"] = relationship(back_populates="history")

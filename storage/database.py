@@ -3,6 +3,7 @@
 import json
 import logging
 import threading
+import time
 from datetime import datetime
 from typing import Optional
 
@@ -432,27 +433,27 @@ class DatabaseManager:
         repo = OutlineRepository(session)
         return repo.get_by_project(project_id)
 
-    def create_outline(self, outline: Outline) -> None:
+    def create_outline(self, outline: Outline) -> Outline:
         """创建大纲。"""
         with self._lock:
             session = self._get_session()
             repo = OutlineRepository(session)
-            repo.create(outline)
+            return repo.create(outline)
 
-    def update_outline(self, outline_id: str, content: str) -> None:
+    def update_outline(self, outline_id: int, content: str) -> None:
         """更新大纲内容（历史版本自动保存由 ORM 监听器处理）。"""
         with self._lock:
             session = self._get_session()
             repo = OutlineRepository(session)
-            repo.update_content(outline_id, content, datetime.now())
+            repo.update_content(outline_id, content, int(time.time() * 1000))
 
-    def list_outline_history(self, outline_id: str) -> list[OutlineHistory]:
+    def list_outline_history(self, outline_id: int) -> list[OutlineHistory]:
         """查询大纲的所有历史版本。"""
         session = self._get_session()
         repo = OutlineHistoryRepository(session)
         return repo.list_by_outline(outline_id)
 
-    def restore_outline_from_history(self, outline_id: str, history_id: str) -> None:
+    def restore_outline_from_history(self, outline_id: int, history_id: int) -> None:
         """从历史版本恢复大纲。"""
         with self._lock:
             session = self._get_session()
@@ -461,7 +462,7 @@ class DatabaseManager:
 
             if history:
                 outline_repo = OutlineRepository(session)
-                outline_repo.update_content(outline_id, history.content, datetime.now())
+                outline_repo.update_content(outline_id, history.content, int(time.time() * 1000))
 
     # ========== Script 相关方法 ==========
 

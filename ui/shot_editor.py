@@ -398,7 +398,7 @@ class ShotEditor(QWidget):
     """分镜编辑器主界面"""
 
     back_clicked = pyqtSignal()
-    video_generation_requested = pyqtSignal(str, int, int, str, str)  # shot_id, scene_number, shot_number, prompt, project_id
+    video_generation_requested = pyqtSignal(str, int, int, str, int)  # shot_id, scene_number, shot_number, prompt, project_id
     batch_video_generation_requested = pyqtSignal(list)  # list of dict: {shot_id, scene_number, shot_number, prompt, project_id}
 
     def __init__(self, shot_service: ShotService, script_service: ScriptService, parent=None):

@@ -380,7 +380,7 @@ class ScriptEditor(QWidget):
     """剧本编辑器页面：场次列表视图。"""
 
     back_clicked = pyqtSignal()
-    generate_storyboard_clicked = pyqtSignal(str)  # 发送 project_id
+    generate_storyboard_clicked = pyqtSignal(int)  # 发送 project_id
 
     def __init__(
         self,

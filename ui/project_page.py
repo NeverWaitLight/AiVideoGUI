@@ -151,8 +151,8 @@ class ProjectPage(QWidget):
     """项目管理页面。"""
 
     project_selected = pyqtSignal(int)  # project_id
-    conversation_selected = pyqtSignal(str, str)  # project_id, conversation_id
-    new_conversation_clicked = pyqtSignal(str)  # project_id
+    conversation_selected = pyqtSignal(int, str)  # project_id, conversation_id
+    new_conversation_clicked = pyqtSignal(int)  # project_id
     conversation_deleted = pyqtSignal(str)  # conversation_id
 
     def __init__(self, project_service: ProjectService, parent: QWidget | None = None):

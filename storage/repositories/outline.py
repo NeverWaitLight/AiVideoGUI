@@ -19,7 +19,7 @@ class OutlineRepository(BaseRepository[OutlineEntity, Outline]):
     def _to_dto(self, entity: OutlineEntity) -> Outline:
         """Entity → DTO 转换。"""
         return Outline(
-            id=entity.id,
+            id=entity.id if entity.id is not None else 0,
             project_id=entity.project_id,
             content=entity.content,
             created_at=entity.created_at,
@@ -28,13 +28,14 @@ class OutlineRepository(BaseRepository[OutlineEntity, Outline]):
 
     def _to_entity(self, dto: Outline) -> OutlineEntity:
         """DTO → Entity 转换。"""
-        return OutlineEntity(
-            id=dto.id,
+        # 创建时不设置 id，让数据库自动生成；更新时从数据库加载现有 Entity
+        entity = OutlineEntity(
             project_id=dto.project_id,
             content=dto.content,
             created_at=dto.created_at,
             updated_at=dto.updated_at,
         )
+        return entity
 
     def get_by_project(self, project_id: int) -> Optional[Outline]:
         """
@@ -50,14 +51,14 @@ class OutlineRepository(BaseRepository[OutlineEntity, Outline]):
         entity = self.session.execute(stmt).scalars().first()
         return self._to_dto(entity) if entity else None
 
-    def update_content(self, outline_id: str, content: str, updated_at) -> None:
+    def update_content(self, outline_id: int, content: str, updated_at: int) -> None:
         """
         更新大纲内容。
 
         Args:
             outline_id: 大纲 ID
             content: 新内容
-            updated_at: 更新时间
+            updated_at: 更新时间（13位时间戳毫秒）
         """
         entity = self.session.get(OutlineEntity, outline_id)
         if not entity:
@@ -77,7 +78,7 @@ class OutlineHistoryRepository(BaseRepository[OutlineHistoryEntity, OutlineHisto
     def _to_dto(self, entity: OutlineHistoryEntity) -> OutlineHistory:
         """Entity → DTO 转换。"""
         return OutlineHistory(
-            id=entity.id,
+            id=entity.id if entity.id is not None else 0,
             raw_id=entity.raw_id,
             project_id=entity.project_id,
             content=entity.content,
@@ -94,7 +95,7 @@ class OutlineHistoryRepository(BaseRepository[OutlineHistoryEntity, OutlineHisto
             created_at=dto.created_at,
         )
 
-    def list_by_outline(self, outline_id: str) -> List[OutlineHistory]:
+    def list_by_outline(self, outline_id: int) -> List[OutlineHistory]:
         """
         查询大纲的所有历史版本（按时间倒序）。
 
