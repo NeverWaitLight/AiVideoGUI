@@ -18,7 +18,6 @@ from models.data_models import (
     Outline,
     OutlineHistory,
     Scene,
-    Script,
     ScriptHistory,
     Shot,
     ShotHistory,
@@ -31,7 +30,7 @@ from storage.repositories.media import MediaRepository
 from storage.repositories.message import MessageRepository
 from storage.repositories.outline import OutlineHistoryRepository, OutlineRepository
 from storage.repositories.project import ProjectRepository
-from storage.repositories.script import SceneRepository, ScriptHistoryRepository, ScriptRepository
+from storage.repositories.script import ScriptHistoryRepository, ScriptRepository
 from storage.repositories.shot import ShotHistoryRepository, ShotRepository
 
 logger = logging.getLogger(__name__)
@@ -466,50 +465,30 @@ class DatabaseManager:
 
     # ========== Script 相关方法 ==========
 
-    def get_script(self, project_id: int) -> Script | None:
-        """查询项目的剧本。"""
+    def list_scenes(self, project_id: int) -> list[Scene]:
+        """查询项目的所有场次。"""
         session = self._get_session()
         repo = ScriptRepository(session)
-        return repo.get_by_project(project_id)
+        return repo.list_by_project(project_id)
 
-    def create_script(self, script: Script) -> Script:
-        """创建剧本。"""
-        with self._lock:
-            session = self._get_session()
-            repo = ScriptRepository(session)
-            entity = repo.create(script)
-            # 返回带有数据库生成ID的Script
-            return repo._to_dto(entity)
-
-    def update_script(self, script_id: int, title: str) -> None:
-        """更新剧本标题。"""
-        with self._lock:
-            session = self._get_session()
-            repo = ScriptRepository(session)
-            repo.update_script(script_id, title, int(time.time() * 1000))
-
-    def list_scenes(self, script_id: int) -> list[Scene]:
-        """查询剧本的所有场次。"""
-        session = self._get_session()
-        repo = SceneRepository(session)
-        return repo.list_by_script(script_id)
-
-    def get_scene(self, scene_id: str) -> Scene | None:
+    def get_scene(self, scene_id: int) -> Scene | None:
         """查询场次。"""
         session = self._get_session()
-        repo = SceneRepository(session)
+        repo = ScriptRepository(session)
         return repo.get_by_id(scene_id)
 
-    def create_scene(self, scene: Scene) -> None:
+    def create_scene(self, scene: Scene) -> Scene:
         """创建场次。"""
         with self._lock:
             session = self._get_session()
-            repo = SceneRepository(session)
-            repo.create(scene)
+            repo = ScriptRepository(session)
+            entity = repo.create(scene)
+            # 返回带有数据库生成ID的Scene
+            return repo._to_dto(entity)
 
     def update_scene(
         self,
-        scene_id: str,
+        scene_id: int,
         location_type: str | None = None,
         location: str | None = None,
         time_type: str | None = None,
@@ -520,9 +499,9 @@ class DatabaseManager:
         """更新场次。"""
         with self._lock:
             session = self._get_session()
-            from storage.orm.models import SceneEntity
+            from storage.orm.models import ScriptEntity
 
-            entity = session.get(SceneEntity, scene_id)
+            entity = session.get(ScriptEntity, scene_id)
             if entity:
                 if scene_number is not None:
                     entity.scene_number = scene_number
@@ -539,14 +518,14 @@ class DatabaseManager:
                 entity.updated_at = int(time.time() * 1000)
                 session.commit()
 
-    def delete_scene(self, scene_id: str) -> None:
+    def delete_scene(self, scene_id: int) -> None:
         """删除场次。"""
         with self._lock:
             session = self._get_session()
-            repo = SceneRepository(session)
+            repo = ScriptRepository(session)
             repo.delete(scene_id)
 
-    def create_script_history(self, script_id: int, title: str, scenes: list[Scene]) -> None:
+    def create_script_history(self, project_id: int, scenes: list[Scene]) -> None:
         """创建剧本历史快照。"""
         with self._lock:
             session = self._get_session()
@@ -567,19 +546,18 @@ class DatabaseManager:
 
             repo.create(ScriptHistory(
                 id=0,  # 自增ID，数据库自动生成
-                script_id=script_id,
-                title=title,
+                project_id=project_id,
                 scenes_snapshot=json.dumps(scenes_data, ensure_ascii=False),
                 created_at=int(time.time() * 1000),
             ))
 
-    def list_script_history(self, script_id: int) -> list[ScriptHistory]:
-        """查询剧本的所有历史版本。"""
+    def list_script_history(self, project_id: int) -> list[ScriptHistory]:
+        """查询项目的所有历史版本。"""
         session = self._get_session()
         repo = ScriptHistoryRepository(session)
-        return repo.list_by_script(script_id)
+        return repo.list_by_project(project_id)
 
-    def restore_script_from_history(self, script_id: int, history_id: int) -> None:
+    def restore_script_from_history(self, project_id: int, history_id: int) -> None:
         """从历史版本恢复剧本。"""
         with self._lock:
             session = self._get_session()
@@ -590,18 +568,17 @@ class DatabaseManager:
                 return
 
             # 删除当前所有场次
-            scene_repo = SceneRepository(session)
-            scene_repo.delete_by_script(script_id)
+            scene_repo = ScriptRepository(session)
+            scene_repo.delete_by_project(project_id)
 
             # 恢复场次
             scenes_data = json.loads(history.scenes_snapshot)
-            import uuid
 
             now_ms = int(time.time() * 1000)
             for scene_data in scenes_data:
                 scene_repo.create(Scene(
-                    id=str(uuid.uuid4()),
-                    script_id=script_id,
+                    id=0,  # 自增ID
+                    project_id=project_id,
                     scene_number=scene_data["scene_number"],
                     location_type=scene_data["location_type"],
                     location=scene_data["location"],
@@ -611,10 +588,6 @@ class DatabaseManager:
                     created_at=now_ms,
                     updated_at=now_ms,
                 ))
-
-            # 更新剧本标题
-            script_repo = ScriptRepository(session)
-            script_repo.update_script(script_id, history.title, now_ms)
 
     # ========== Shot 相关方法 ==========
 

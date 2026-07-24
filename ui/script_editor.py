@@ -27,7 +27,7 @@ from qfluentwidgets import (
     CardWidget,
 )
 
-from models.data_models import Script, ScriptHistory, Scene, SceneLocation, SceneTime
+from models.data_models import ScriptHistory, Scene, SceneLocation, SceneTime
 from service.script_service import ScriptService
 
 logger = logging.getLogger(__name__)
@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 class SceneCard(CardWidget):
     """场次卡片：显示场次摘要信息。"""
 
-    scene_clicked = pyqtSignal(str)  # scene_id
+    scene_clicked = pyqtSignal(int)  # scene_id (整数)
 
     def __init__(self, scene: Scene, parent: QWidget | None = None):
         super().__init__(parent)
@@ -253,7 +253,7 @@ class SceneDetailEditor(QWidget):
         scroll.setWidget(editor_container)
         layout.addWidget(scroll, stretch=1)
 
-    def load_scene(self, scene_id: str) -> None:
+    def load_scene(self, scene_id: int) -> None:
         """加载场次数据。"""
         self._current_scene = self._service.get_scene(scene_id)
         if not self._current_scene:
@@ -389,7 +389,6 @@ class ScriptEditor(QWidget):
     ):
         super().__init__(parent)
         self._service = script_service
-        self._current_script: Script | None = None
         self._current_project_id: int | None = None
         self._setup_ui()
 
@@ -530,18 +529,14 @@ class ScriptEditor(QWidget):
 
         Args:
             project_id: 项目 ID
-            generated_title: AI 生成的剧本标题（可选）
+            generated_title: AI 生成的剧本标题（可选，已废弃）
             generated_scenes: AI 生成的场次列表（可选）
         """
         self._current_project_id = project_id
-        self._current_script = self._service.get_or_create_script(project_id)
 
-        # 如果有生成的场次数据且当前剧本为空，批量创建场次
-        if generated_scenes and not self._service.list_scenes(self._current_script.id):
-            self._service.batch_create_scenes(self._current_script.id, generated_scenes)
-            if generated_title:
-                self._service.update_script_title(self._current_script.id, generated_title)
-                self._current_script.title = generated_title
+        # 如果有生成的场次数据且当前项目无场次，批量创建场次
+        if generated_scenes and not self._service.list_scenes(project_id):
+            self._service.batch_create_scenes(project_id, generated_scenes)
             logger.info(f"批量创建场次完成：{len(generated_scenes)} 场")
 
         # 加载场次列表
@@ -562,10 +557,10 @@ class ScriptEditor(QWidget):
             if item.widget():
                 item.widget().deleteLater()
 
-        if not self._current_script:
+        if not self._current_project_id:
             return
 
-        scenes = self._service.list_scenes(self._current_script.id)
+        scenes = self._service.list_scenes(self._current_project_id)
 
         if not scenes:
             # 显示空状态
@@ -587,10 +582,10 @@ class ScriptEditor(QWidget):
         """加载历史版本列表。"""
         self.history_list.clear()
 
-        if not self._current_script:
+        if not self._current_project_id:
             return
 
-        history_list = self._service.list_history(self._current_script.id)
+        history_list = self._service.list_history(self._current_project_id)
 
         if not history_list:
             empty_item = QListWidgetItem(self.history_list)
@@ -610,7 +605,7 @@ class ScriptEditor(QWidget):
             self.history_list.addItem(item)
             self.history_list.setItemWidget(item, widget)
 
-    def _on_scene_clicked(self, scene_id: str) -> None:
+    def _on_scene_clicked(self, scene_id: int) -> None:
         """点击场次卡片，进入详情编辑。"""
         self.detail_editor.load_scene(scene_id)
         self.list_view.hide()
@@ -629,15 +624,14 @@ class ScriptEditor(QWidget):
 
     def _on_save_history(self) -> None:
         """保存历史版本。"""
-        if not self._current_script:
+        if not self._current_project_id:
             return
 
         try:
-            title = self._current_script.title
-            self._service.save_history(self._current_script.id, title)
+            self._service.save_history(self._current_project_id)
             self._load_history()
             QMessageBox.information(self, "成功", "历史版本已保存")
-            logger.info(f"保存剧本历史版本：{self._current_script.id}")
+            logger.info(f"保存剧本历史版本：项目 {self._current_project_id}")
 
         except Exception as e:
             logger.exception("保存历史版本失败")
@@ -645,7 +639,7 @@ class ScriptEditor(QWidget):
 
     def _on_restore(self, history_id: str) -> None:
         """恢复历史版本。"""
-        if not self._current_script:
+        if not self._current_project_id:
             return
 
         reply = QMessageBox.question(
@@ -659,11 +653,10 @@ class ScriptEditor(QWidget):
             return
 
         try:
-            self._service.restore_from_history(self._current_script.id, history_id)
+            self._service.restore_from_history(self._current_project_id, int(history_id))
 
             # 重新加载剧本
-            if self._current_project_id:
-                self.load_script(self._current_project_id)
+            self.load_script(self._current_project_id)
 
             QMessageBox.information(self, "成功", "已恢复到历史版本")
             logger.info(f"恢复剧本历史版本：{history_id}")
@@ -678,11 +671,7 @@ class ScriptEditor(QWidget):
             return
 
         # 检查是否有场次
-        if not self._current_script:
-            QMessageBox.warning(self, "提示", "请先生成剧本内容")
-            return
-
-        scenes = self._service.list_scenes(self._current_script.id)
+        scenes = self._service.list_scenes(self._current_project_id)
         if not scenes:
             QMessageBox.warning(self, "提示", "剧本中没有场次，无法生成分镜")
             return

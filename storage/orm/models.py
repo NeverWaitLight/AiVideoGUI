@@ -32,6 +32,9 @@ class ProjectEntity(Base):
     scripts: Mapped[List["ScriptEntity"]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )
+    script_histories: Mapped[List["ScriptHistoryEntity"]] = relationship(
+        back_populates="project", cascade="all, delete-orphan"
+    )
     shot_histories: Mapped[List["ShotHistoryEntity"]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )
@@ -212,77 +215,66 @@ class OutlineHistoryEntity(Base):
 
 
 class ScriptEntity(Base):
-    """剧本表。"""
+    """剧本场次表（一场戏一条记录）。"""
 
     __tablename__ = "scripts"
 
+    # 主键
     id: Mapped[Optional[int]] = mapped_column(Integer, primary_key=True, autoincrement=True)
+
+    # 项目关联
     project_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
     )
-    title: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+
+    # 场次信息
+    scene_number: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    # 地点信息
+    location_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    location: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    # 时间信息
+    time_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    time_detail: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+
+    # 场次内容
+    content: Mapped[str] = mapped_column(Text, nullable=False, default="")
+
+    # 时间戳
     created_at: Mapped[int] = mapped_column(Integer, nullable=False)  # 13位时间戳（毫秒）
     updated_at: Mapped[int] = mapped_column(Integer, nullable=False)  # 13位时间戳（毫秒）
 
     # 关系
     project: Mapped["ProjectEntity"] = relationship(back_populates="scripts")
-    scenes: Mapped[List["SceneEntity"]] = relationship(
-        back_populates="script", cascade="all, delete-orphan"
-    )
-    history: Mapped[List["ScriptHistoryEntity"]] = relationship(
-        back_populates="script", cascade="all, delete-orphan"
-    )
-
-    # 索引
-    __table_args__ = (Index("idx_script_project", "project_id"),)
-
-
-class SceneEntity(Base):
-    """场次表。"""
-
-    __tablename__ = "scenes"
-
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    script_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("scripts.id", ondelete="CASCADE"), nullable=False
-    )
-    scene_number: Mapped[int] = mapped_column(Integer, nullable=False)
-    location_type: Mapped[str] = mapped_column(String(50), nullable=False)
-    location: Mapped[str] = mapped_column(String(255), nullable=False)
-    time_type: Mapped[str] = mapped_column(String(50), nullable=False)
-    time_detail: Mapped[str] = mapped_column(String(100), nullable=False, default="")
-    content: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    created_at: Mapped[int] = mapped_column(Integer, nullable=False)  # 13位时间戳（毫秒）
-    updated_at: Mapped[int] = mapped_column(Integer, nullable=False)  # 13位时间戳（毫秒）
-
-    # 关系
-    script: Mapped["ScriptEntity"] = relationship(back_populates="scenes")
     shots: Mapped[List["ShotEntity"]] = relationship(
         back_populates="scene", cascade="all, delete-orphan"
     )
 
     # 索引
-    __table_args__ = (Index("idx_scene_script", "script_id", "scene_number"),)
+    __table_args__ = (
+        Index("idx_script_project", "project_id"),
+        Index("idx_script_project_scene", "project_id", "scene_number"),
+    )
 
 
 class ScriptHistoryEntity(Base):
-    """剧本历史表。"""
+    """剧本历史表（存储整个剧本的场次快照）。"""
 
     __tablename__ = "script_history"
 
     id: Mapped[Optional[int]] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    script_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("scripts.id", ondelete="CASCADE"), nullable=False
+    project_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
     )
-    title: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     scenes_snapshot: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[int] = mapped_column(Integer, nullable=False)  # 13位时间戳（毫秒）
 
     # 关系
-    script: Mapped["ScriptEntity"] = relationship(back_populates="history")
+    project: Mapped["ProjectEntity"] = relationship(back_populates="script_histories")
 
     # 索引
-    __table_args__ = (Index("idx_history_script", "script_id", "created_at"),)
+    __table_args__ = (Index("idx_script_history_project", "project_id", "created_at"),)
 
 
 class ShotEntity(Base):
@@ -291,8 +283,8 @@ class ShotEntity(Base):
     __tablename__ = "shots"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    scene_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("scenes.id", ondelete="CASCADE"), nullable=False
+    scene_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("scripts.id", ondelete="CASCADE"), nullable=False
     )
     scene_number: Mapped[int] = mapped_column(Integer, nullable=False)
     shot_number: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -308,7 +300,7 @@ class ShotEntity(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
     # 关系
-    scene: Mapped["SceneEntity"] = relationship(back_populates="shots")
+    scene: Mapped["ScriptEntity"] = relationship(back_populates="shots")
 
     # 索引
     __table_args__ = (

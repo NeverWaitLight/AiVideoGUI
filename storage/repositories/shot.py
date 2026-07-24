@@ -6,7 +6,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from models.data_models import Shot, ShotHistory, ShotSize
-from storage.orm.models import ShotEntity, ShotHistoryEntity, SceneEntity, ScriptEntity
+from storage.orm.models import ShotEntity, ShotHistoryEntity, ScriptEntity
 from storage.repositories.base import BaseRepository
 
 
@@ -54,12 +54,12 @@ class ShotRepository(BaseRepository[ShotEntity, Shot]):
             updated_at=dto.updated_at,
         )
 
-    def list_by_scene(self, scene_id: str) -> List[Shot]:
+    def list_by_scene(self, scene_id: int) -> List[Shot]:
         """
         查询场次的所有分镜（按镜头号升序）。
 
         Args:
-            scene_id: 场次 ID
+            scene_id: 场次 ID（整数）
 
         Returns:
             分镜列表
@@ -74,7 +74,7 @@ class ShotRepository(BaseRepository[ShotEntity, Shot]):
 
     def list_by_project(self, project_id: int) -> List[Shot]:
         """
-        查询项目的所有分镜（通过 JOIN 跨 3 表查询）。
+        查询项目的所有分镜（通过 JOIN 查询）。
 
         Args:
             project_id: 项目 ID
@@ -84,20 +84,19 @@ class ShotRepository(BaseRepository[ShotEntity, Shot]):
         """
         stmt = (
             select(ShotEntity)
-            .join(SceneEntity, ShotEntity.scene_id == SceneEntity.id)
-            .join(ScriptEntity, SceneEntity.script_id == ScriptEntity.id)
+            .join(ScriptEntity, ShotEntity.scene_id == ScriptEntity.id)
             .where(ScriptEntity.project_id == project_id)
             .order_by(ShotEntity.scene_number.asc(), ShotEntity.shot_number.asc())
         )
         entities = self.session.execute(stmt).scalars().all()
         return [self._to_dto(e) for e in entities]
 
-    def delete_by_scene(self, scene_id: str) -> None:
+    def delete_by_scene(self, scene_id: int) -> None:
         """
         删除场次的所有分镜。
 
         Args:
-            scene_id: 场次 ID
+            scene_id: 场次 ID（整数）
         """
         stmt = delete(ShotEntity).where(ShotEntity.scene_id == scene_id)
         self.session.execute(stmt)

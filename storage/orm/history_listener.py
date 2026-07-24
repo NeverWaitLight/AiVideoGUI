@@ -12,7 +12,6 @@ from storage.orm.models import (
     CharacterHistoryEntity,
     OutlineEntity,
     OutlineHistoryEntity,
-    SceneEntity,
     ScriptEntity,
     ScriptHistoryEntity,
     ShotEntity,

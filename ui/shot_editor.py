@@ -516,10 +516,8 @@ class ShotEditor(QWidget):
         logger.info(f"加载项目分镜：project_id={project_id}")
 
         # 加载场次列表（用于过滤器）
-        script = self._script_service.get_script_by_project(project_id)
-        if script:
-            self._scenes = self._script_service.list_scenes(script.id)
-            self._populate_scene_filter()
+        self._scenes = self._script_service.list_scenes(project_id)
+        self._populate_scene_filter()
 
         # 如果有生成的分镜数据且数据库为空，批量创建
         existing_shots = self._shot_service.list_shots(project_id=project_id)
