@@ -344,7 +344,7 @@ class CharacterPage(QWidget):
     def __init__(self, character_service: CharacterService, parent: QWidget | None = None):
         super().__init__(parent)
         self._character_service = character_service
-        self._current_project_id: str | None = None
+        self._current_project_id: int | None = None
         self._cards: list[CharacterCard] = []
         self._setup_ui()
 
@@ -425,7 +425,7 @@ class CharacterPage(QWidget):
 
         layout.addWidget(status_bar)
 
-    def load_project(self, project_id: str) -> None:
+    def load_project(self, project_id: int) -> None:
         """加载项目的角色数据。"""
         self._current_project_id = project_id
         self._render_cards()

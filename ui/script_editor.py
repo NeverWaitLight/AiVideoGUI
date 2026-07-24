@@ -390,7 +390,7 @@ class ScriptEditor(QWidget):
         super().__init__(parent)
         self._service = script_service
         self._current_script: Script | None = None
-        self._current_project_id: str | None = None
+        self._current_project_id: int | None = None
         self._setup_ui()
 
     def _setup_ui(self) -> None:
@@ -525,7 +525,7 @@ class ScriptEditor(QWidget):
 
         return widget
 
-    def load_script(self, project_id: str, generated_title: str = "", generated_scenes: list[dict] | None = None) -> None:
+    def load_script(self, project_id: int, generated_title: str = "", generated_scenes: list[dict] | None = None) -> None:
         """加载项目剧本。
 
         Args:

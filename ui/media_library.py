@@ -345,7 +345,7 @@ class MediaLibrary(QWidget):
         self._cards: list[_MediaCard] = []
         self._current_type: str | None = None
         self._current_keyword: str | None = None
-        self._current_project_id: str | None = None
+        self._current_project_id: int | None = None
         self._current_files: list[MediaFile] = []
         self._setup_ui()
         self._search_timer = QTimer(self)
@@ -449,7 +449,7 @@ class MediaLibrary(QWidget):
 
     # ───────── 公共方法 ─────────
 
-    def load_files(self, project_id: str | None = None) -> None:
+    def load_files(self, project_id: int | None = None) -> None:
         """加载素材文件，可选按项目过滤。"""
         self._current_project_id = project_id
         if project_id:

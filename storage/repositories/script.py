@@ -36,7 +36,7 @@ class ScriptRepository(BaseRepository[ScriptEntity, Script]):
             updated_at=dto.updated_at,
         )
 
-    def get_by_project(self, project_id: str) -> Optional[Script]:
+    def get_by_project(self, project_id: int) -> Optional[Script]:
         """
         查询项目的剧本。
 

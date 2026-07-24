@@ -58,7 +58,7 @@ class ConversationRepository(BaseRepository[ConversationEntity, Conversation]):
         entities = self.session.execute(stmt).scalars().all()
         return [self._to_dto(e) for e in entities]
 
-    def list_by_project(self, project_id: str, is_hidden: bool | None = None) -> List[Conversation]:
+    def list_by_project(self, project_id: int, is_hidden: bool | None = None) -> List[Conversation]:
         """
         查询项目的所有对话。
 

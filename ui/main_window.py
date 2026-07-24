@@ -235,7 +235,7 @@ class MainWindow(QMainWindow):
         self._current_conversation_id: str | None = None
         self._video_cards: dict[str, VideoStatusCard] = {}
         self._current_mode: int = 0  # 0: 直接生成, 1: 项目管理
-        self._current_project_id: str | None = None
+        self._current_project_id: int | None = None
 
         # ── 初始化基础设施 ──
         root = _workspace_root()
@@ -554,7 +554,7 @@ class MainWindow(QMainWindow):
             self.project_conversation_widget.hide()
             self.project_grid_page.load_projects()
 
-    def _on_project_grid_selected(self, project_id: str) -> None:
+    def _on_project_grid_selected(self, project_id: int) -> None:
         """从网格页面点击项目，进入详情页面。"""
         self._current_project_id = project_id
         # 隐藏网格页面，显示详情页面
@@ -562,7 +562,7 @@ class MainWindow(QMainWindow):
         self.project_detail_page.show()
         self.project_detail_page.set_project(project_id)
 
-    def _on_project_module_selected(self, project_id: str, module_name: str) -> None:
+    def _on_project_module_selected(self, project_id: int, module_name: str) -> None:
         """项目模块被选中。"""
         self._current_project_id = project_id
 
@@ -753,7 +753,7 @@ class MainWindow(QMainWindow):
         # 保持 worker 引用避免被回收
         self._script_worker = worker
 
-    def _on_generate_storyboard(self, project_id: str) -> None:
+    def _on_generate_storyboard(self, project_id: int) -> None:
         """生成分镜（从剧本编辑器触发）。"""
         if not project_id:
             return
@@ -868,7 +868,7 @@ class MainWindow(QMainWindow):
         # 保持 worker 引用避免被回收
         self._storyboard_worker = worker
 
-    def _save_extracted_characters(self, project_id: str, characters: list[dict]) -> None:
+    def _save_extracted_characters(self, project_id: int, characters: list[dict]) -> None:
         """将 AI 提取的角色保存到数据库（跳过已存在的引用代号）。"""
         import uuid
         from datetime import datetime
@@ -899,7 +899,7 @@ class MainWindow(QMainWindow):
             self._character_service.batch_create_characters(new_chars)
             logger.info(f"自动保存 {len(new_chars)} 个角色到项目 {project_id}")
 
-    def _on_shot_video_generation(self, shot_id: str, scene_number: int, shot_number: int, prompt: str, project_id: str) -> None:
+    def _on_shot_video_generation(self, shot_id: str, scene_number: int, shot_number: int, prompt: str, project_id: int) -> None:
         """处理分镜视频生成请求。"""
         logger.info(f"分镜视频生成请求：shot_id={shot_id}, scene={scene_number}, shot={shot_number}, project={project_id}")
 
@@ -1276,7 +1276,7 @@ class MainWindow(QMainWindow):
 
     # ───────── 项目管理模式事件 ─────────
 
-    def _on_project_new_conversation(self, project_id: str) -> None:
+    def _on_project_new_conversation(self, project_id: int) -> None:
         """项目模式：新建对话。"""
         self._current_project_id = project_id
         project = self._project_service.get_project(project_id)
@@ -1298,7 +1298,7 @@ class MainWindow(QMainWindow):
         self.project_chat_area.set_header(conv.title, model_name)
         self.project_chat_area.clear_messages()
 
-    def _on_project_conversation_selected(self, project_id: str, conv_id: str) -> None:
+    def _on_project_conversation_selected(self, project_id: int, conv_id: str) -> None:
         """项目模式：选中对话。"""
         self._current_project_id = project_id
         self._current_conversation_id = conv_id

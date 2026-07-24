@@ -18,7 +18,7 @@ from qfluentwidgets import PrimaryPushButton, PushButton, ToolButton, ListWidget
 class _ConversationRow(QWidget):
     """对话列表行控件：左侧标题+时间，右侧垂直居中删除按钮。"""
 
-    delete_clicked = pyqtSignal(str)
+    delete_clicked = pyqtSignal(int)
 
     def __init__(self, conv_id: str, title: str, time_text: str, parent: QWidget | None = None):
         super().__init__(parent)

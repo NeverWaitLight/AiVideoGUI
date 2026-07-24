@@ -22,56 +22,62 @@ class ProjectService:
         self._db = db
         self._root = workspace_root
 
-    def create_project(self, name: str, resolution: str = "720P", aspect_ratio: str = "16:9", cover_image: str = "") -> Project:
-        """创建新项目。"""
-        project_id = str(uuid.uuid4())
-        self._db.create_project(project_id, name, resolution, aspect_ratio, cover_image)
+    def create_project(self, name: str, resolution: str = "720P", aspect_ratio: str = "16:9", cover_image: str = "") -> Project | None:
+        """
+        创建新项目。
+
+        Args:
+            name: 项目名称
+            resolution: 分辨率
+            aspect_ratio: 宽高比
+            cover_image: 封面图路径
+
+        Returns:
+            创建的项目对象，如果名称重复则返回 None
+        """
+        # 检查名称是否已存在
+        if self._db.project_name_exists(name):
+            logger.warning(f"项目名称已存在：{name}")
+            return None
+
+        now_ts = int(datetime.now().timestamp() * 1000)
+        project = self._db.create_project(name, resolution, aspect_ratio, cover_image)
         # 预创建项目目录
-        proj_dir = paths.project_dir(self._root, project_id)
+        proj_dir = paths.project_dir(self._root, project.id)
         os.makedirs(proj_dir, exist_ok=True)
-        return Project(
-            id=project_id,
-            name=name,
-            resolution=resolution,
-            aspect_ratio=aspect_ratio,
-            created_at=datetime.now(),
-            cover_image=cover_image,
-        )
+        return project
 
     def list_projects(self) -> list[Project]:
         """列出所有项目。"""
-        rows = self._db.list_projects()
-        return [
-            Project(
-                id=r["id"],
-                name=r["name"],
-                resolution=r["resolution"],
-                aspect_ratio=r["aspect_ratio"],
-                created_at=r["created_at"],
-                cover_image=r.get("cover_image", ""),
-            )
-            for r in rows
-        ]
+        return self._db.list_projects()
 
-    def get_project(self, project_id: str) -> Project | None:
+    def get_project(self, project_id: int) -> Project | None:
         """获取单个项目。"""
-        row = self._db.get_project(project_id)
-        if not row:
-            return None
-        return Project(
-            id=row["id"],
-            name=row["name"],
-            resolution=row["resolution"],
-            aspect_ratio=row["aspect_ratio"],
-            created_at=row["created_at"],
-            cover_image=row.get("cover_image", ""),
-        )
+        return self._db.get_project(project_id)
 
-    def update_project(self, project_id: str, name: str, resolution: str, aspect_ratio: str, cover_image: str = "") -> None:
-        """更新项目信息。"""
+    def update_project(self, project_id: int, name: str, resolution: str, aspect_ratio: str, cover_image: str = "") -> bool:
+        """
+        更新项目信息。
+
+        Args:
+            project_id: 项目 ID
+            name: 项目名称
+            resolution: 分辨率
+            aspect_ratio: 宽高比
+            cover_image: 封面图路径
+
+        Returns:
+            True 表示更新成功，False 表示名称重复
+        """
+        # 检查名称是否与其他项目重复
+        if self._db.project_name_exists(name, exclude_id=project_id):
+            logger.warning(f"项目名称已存在：{name}")
+            return False
+
         self._db.update_project(project_id, name, resolution, aspect_ratio, cover_image)
+        return True
 
-    def delete_project(self, project_id: str) -> None:
+    def delete_project(self, project_id: int) -> None:
         """删除项目（级联删除所有关联数据和文件）。"""
         logger.info(f"开始删除项目：project_id={project_id}")
 
@@ -104,11 +110,11 @@ class ProjectService:
 
         logger.info(f"项目删除完成：project_id={project_id}")
 
-    def list_project_conversations(self, project_id: str) -> list[Conversation]:
+    def list_project_conversations(self, project_id: int) -> list[Conversation]:
         """列出项目下的所有对话。"""
         return self._db.list_project_conversations(project_id)
 
-    def get_project_video_count(self, project_id: str) -> int:
+    def get_project_video_count(self, project_id: int) -> int:
         """获取项目下的视频总数。"""
         convs = self._db.list_project_conversations(project_id)
         count = 0

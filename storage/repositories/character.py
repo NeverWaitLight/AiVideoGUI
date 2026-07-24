@@ -53,7 +53,7 @@ class CharacterRepository(BaseRepository[CharacterEntity, Character]):
             entity.id = dto.id
         return entity
 
-    def list_by_project(self, project_id: str) -> List[Character]:
+    def list_by_project(self, project_id: int) -> List[Character]:
         """查询项目的所有角色（按自增ID升序）。"""
         stmt = (
             select(CharacterEntity)
@@ -63,7 +63,7 @@ class CharacterRepository(BaseRepository[CharacterEntity, Character]):
         entities = self.session.execute(stmt).scalars().all()
         return [self._to_dto(e) for e in entities]
 
-    def get_by_ref_code(self, project_id: str, ref_code: str) -> Optional[Character]:
+    def get_by_ref_code(self, project_id: int, ref_code: str) -> Optional[Character]:
         """根据引用代号查询角色。"""
         stmt = (
             select(CharacterEntity)

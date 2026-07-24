@@ -1,5 +1,6 @@
 """项目 Repository。"""
 
+from datetime import datetime
 from typing import List
 
 from sqlalchemy import select
@@ -24,19 +25,24 @@ class ProjectRepository(BaseRepository[ProjectEntity, Project]):
             resolution=entity.resolution,
             aspect_ratio=entity.aspect_ratio,
             created_at=entity.created_at,
+            updated_at=entity.updated_at,
             cover_image=entity.cover_image,
         )
 
     def _to_entity(self, dto: Project) -> ProjectEntity:
         """DTO → Entity 转换。"""
-        return ProjectEntity(
-            id=dto.id,
+        entity = ProjectEntity(
             name=dto.name,
             resolution=dto.resolution,
             aspect_ratio=dto.aspect_ratio,
             created_at=dto.created_at,
+            updated_at=dto.updated_at,
             cover_image=dto.cover_image,
         )
+        # 仅在更新时设置 id（id > 0）
+        if dto.id > 0:
+            entity.id = dto.id
+        return entity
 
     def list_all(self) -> List[Project]:
         """查询所有项目（按创建时间倒序）。"""
@@ -44,9 +50,26 @@ class ProjectRepository(BaseRepository[ProjectEntity, Project]):
         entities = self.session.execute(stmt).scalars().all()
         return [self._to_dto(e) for e in entities]
 
+    def exists_by_name(self, name: str, exclude_id: int | None = None) -> bool:
+        """
+        检查项目名称是否已存在。
+
+        Args:
+            name: 项目名称
+            exclude_id: 排除的项目 ID（用于更新时检查）
+
+        Returns:
+            True 表示名称已存在，False 表示不存在
+        """
+        stmt = select(ProjectEntity).where(ProjectEntity.name == name)
+        if exclude_id is not None:
+            stmt = stmt.where(ProjectEntity.id != exclude_id)
+        entity = self.session.execute(stmt).scalars().first()
+        return entity is not None
+
     def update_project(
         self,
-        project_id: str,
+        project_id: int,
         name: str,
         resolution: str,
         aspect_ratio: str,
@@ -70,4 +93,5 @@ class ProjectRepository(BaseRepository[ProjectEntity, Project]):
         entity.resolution = resolution
         entity.aspect_ratio = aspect_ratio
         entity.cover_image = cover_image
+        entity.updated_at = int(datetime.now().timestamp() * 1000)
         self.session.commit()

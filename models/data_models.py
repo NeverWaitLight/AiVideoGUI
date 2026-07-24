@@ -32,7 +32,7 @@ class Conversation:
     created_at: datetime
     model_name: str = ""
     provider_name: str = ""
-    project_id: str = ""
+    project_id: int = 0
     is_hidden: bool = False
 
 
@@ -104,18 +104,19 @@ class MediaFile:
 
 @dataclass
 class Project:
-    id: str
+    id: int
     name: str
     resolution: str  # 如 "720P"、"1080P"、"2K"、"4K"
     aspect_ratio: str  # 如 "16:9"
-    created_at: datetime
+    created_at: int  # 13位时间戳（毫秒）
+    updated_at: int  # 13位时间戳（毫秒）
     cover_image: str = ""  # 封面图路径
 
 
 @dataclass
 class Outline:
     id: str
-    project_id: str
+    project_id: int
     content: str  # 大纲文本内容
     created_at: datetime
     updated_at: datetime
@@ -125,7 +126,7 @@ class Outline:
 class OutlineHistory:
     id: str
     raw_id: str
-    project_id: str
+    project_id: int
     content: str  # 历史版本的大纲内容
     created_at: datetime  # 该版本创建时间
 
@@ -175,7 +176,7 @@ class Scene:
 @dataclass
 class Script:
     id: str
-    project_id: str
+    project_id: int
     title: str = ""  # 剧本标题
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
@@ -214,7 +215,7 @@ class Shot:
 class ShotHistory:
     """分镜历史版本（快照整个项目的所有分镜）"""
     id: str
-    project_id: str  # 关联项目ID（分镜是项目级别的）
+    project_id: int  # 关联项目ID（分镜是项目级别的）
     shots_snapshot: str  # 所有分镜的JSON快照
     created_at: datetime  # 该版本创建时间
 
@@ -224,7 +225,7 @@ class Character:
     """角色数据结构"""
     id: int  # 自增ID
     uuid: str  # UUID标识
-    project_id: str  # 所属项目ID
+    project_id: int  # 所属项目ID
     name: str  # 角色名
     ref_code: str  # 引用代号（如 CHAR_A）
     design_image: str = ""  # 角色设计图路径（可为空）

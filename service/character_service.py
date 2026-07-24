@@ -16,7 +16,7 @@ class CharacterService:
     def __init__(self, db: DatabaseManager) -> None:
         self._db = db
 
-    def list_characters(self, project_id: str) -> list[Character]:
+    def list_characters(self, project_id: int) -> list[Character]:
         """获取项目的所有角色。"""
         return self._db.list_characters(project_id)
 
@@ -26,7 +26,7 @@ class CharacterService:
 
     def create_character(
         self,
-        project_id: str,
+        project_id: int,
         name: str,
         ref_code: str,
         description: str = "",
@@ -89,7 +89,7 @@ class CharacterService:
         self._db.batch_create_characters(characters)
         logger.info(f"批量创建 {len(characters)} 个角色")
 
-    def get_by_ref_code(self, project_id: str, ref_code: str) -> Character | None:
+    def get_by_ref_code(self, project_id: int, ref_code: str) -> Character | None:
         """根据引用代号查找角色。"""
         return self._db.get_character_by_ref_code(project_id, ref_code)
 
@@ -142,7 +142,7 @@ class CharacterService:
         return "" if has_structured_tags else description
 
     def enrich_prompt_with_characters(
-        self, visual_content: str, project_id: str
+        self, visual_content: str, project_id: int
     ) -> str:
         """将角色的固定外貌特征拼接到视频生成提示词中。
 

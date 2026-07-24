@@ -18,7 +18,7 @@ class ScriptService:
     def __init__(self, db: DatabaseManager) -> None:
         self._db = db
 
-    def get_or_create_script(self, project_id: str) -> Script:
+    def get_or_create_script(self, project_id: int) -> Script:
         """获取或创建项目剧本。"""
         script = self._db.get_script(project_id)
         if script:
@@ -37,7 +37,7 @@ class ScriptService:
         logger.info(f"创建新剧本：{script.id}")
         return script
 
-    def get_script_by_project(self, project_id: str) -> Script | None:
+    def get_script_by_project(self, project_id: int) -> Script | None:
         """根据项目ID获取剧本。"""
         return self._db.get_script(project_id)
 

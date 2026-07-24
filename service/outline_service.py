@@ -16,7 +16,7 @@ class OutlineService:
     def __init__(self, db: DatabaseManager) -> None:
         self._db = db
 
-    def get_or_create_outline(self, project_id: str) -> Outline:
+    def get_or_create_outline(self, project_id: int) -> Outline:
         """获取或创建项目大纲（每个项目只有一个大纲）。"""
         outline = self._db.get_outline(project_id)
         if outline:

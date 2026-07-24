@@ -405,7 +405,7 @@ class ShotEditor(QWidget):
         super().__init__(parent)
         self._shot_service = shot_service
         self._script_service = script_service
-        self._current_project_id: str | None = None
+        self._current_project_id: int | None = None
         self._scenes: list[Scene] = []
         self._setup_ui()
 
@@ -510,7 +510,7 @@ class ShotEditor(QWidget):
         self.detail_editor.hide()
         layout.addWidget(self.detail_editor)
 
-    def load_project(self, project_id: str, generated_shots: list[dict] | None = None):
+    def load_project(self, project_id: int, generated_shots: list[dict] | None = None):
         """加载项目分镜"""
         self._current_project_id = project_id
         logger.info(f"加载项目分镜：project_id={project_id}")

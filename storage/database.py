@@ -94,7 +94,7 @@ class DatabaseManager:
             repo = ConversationRepository(session)
             repo.update_title(conversation_id, title)
 
-    def list_project_conversations(self, project_id: str) -> list[Conversation]:
+    def list_project_conversations(self, project_id: int) -> list[Conversation]:
         """查询项目的所有对话。"""
         session = self._get_session()
         repo = ConversationRepository(session)
@@ -254,7 +254,7 @@ class DatabaseManager:
         self,
         media_type: Optional[MediaType | str] = None,
         keyword: Optional[str] = None,
-        project_id: Optional[str] = None,
+        project_id: Optional[int] = None,
         conversation_id: Optional[str] = None,
     ) -> list[MediaFile]:
         """
@@ -353,63 +353,44 @@ class DatabaseManager:
 
     def create_project(
         self,
-        project_id: str,
         name: str,
         resolution: str,
         aspect_ratio: str,
         cover_image: str = "",
-    ) -> None:
+    ) -> Project:
         """创建项目。"""
         with self._lock:
             session = self._get_session()
             repo = ProjectRepository(session)
             from models.data_models import Project
 
-            repo.create(Project(
-                id=project_id,
+            now_ts = int(datetime.now().timestamp() * 1000)
+            project = Project(
+                id=0,  # 自增字段，由数据库生成
                 name=name,
                 resolution=resolution,
                 aspect_ratio=aspect_ratio,
-                created_at=datetime.now(),
+                created_at=now_ts,
+                updated_at=now_ts,
                 cover_image=cover_image,
-            ))
+            )
+            return repo.create(project)
 
-    def list_projects(self) -> list[dict]:
-        """查询所有项目（返回字典格式以保持兼容性）。"""
+    def list_projects(self) -> list[Project]:
+        """查询所有项目。"""
         session = self._get_session()
         repo = ProjectRepository(session)
-        projects = repo.list_all()
-        return [
-            {
-                "id": p.id,
-                "name": p.name,
-                "resolution": p.resolution,
-                "aspect_ratio": p.aspect_ratio,
-                "created_at": p.created_at,
-                "cover_image": p.cover_image,
-            }
-            for p in projects
-        ]
+        return repo.list_all()
 
-    def get_project(self, project_id: str) -> dict | None:
+    def get_project(self, project_id: int) -> Project | None:
         """查询项目。"""
         session = self._get_session()
         repo = ProjectRepository(session)
-        project = repo.get_by_id(project_id)
-        if project:
-            return {
-                "id": project.id,
-                "name": project.name,
-                "resolution": project.resolution,
-                "aspect_ratio": project.aspect_ratio,
-                "created_at": project.created_at,
-                "cover_image": project.cover_image,
-            }
-        return None
+        return repo.get_by_id(project_id)
 
     def update_project(
         self,
-        project_id: str,
+        project_id: int,
         name: str,
         resolution: str,
         aspect_ratio: str,
@@ -421,16 +402,31 @@ class DatabaseManager:
             repo = ProjectRepository(session)
             repo.update_project(project_id, name, resolution, aspect_ratio, cover_image)
 
-    def delete_project(self, project_id: str) -> None:
+    def delete_project(self, project_id: int) -> None:
         """删除项目。"""
         with self._lock:
             session = self._get_session()
             repo = ProjectRepository(session)
             repo.delete(project_id)
 
+    def project_name_exists(self, name: str, exclude_id: int | None = None) -> bool:
+        """
+        检查项目名称是否已存在。
+
+        Args:
+            name: 项目名称
+            exclude_id: 排除的项目 ID（用于更新时检查）
+
+        Returns:
+            True 表示名称已存在，False 表示不存在
+        """
+        session = self._get_session()
+        repo = ProjectRepository(session)
+        return repo.exists_by_name(name, exclude_id)
+
     # ========== Outline 相关方法 ==========
 
-    def get_outline(self, project_id: str) -> Outline | None:
+    def get_outline(self, project_id: int) -> Outline | None:
         """查询项目的大纲。"""
         session = self._get_session()
         repo = OutlineRepository(session)
@@ -469,7 +465,7 @@ class DatabaseManager:
 
     # ========== Script 相关方法 ==========
 
-    def get_script(self, project_id: str) -> Script | None:
+    def get_script(self, project_id: int) -> Script | None:
         """查询项目的剧本。"""
         session = self._get_session()
         repo = ScriptRepository(session)
@@ -622,7 +618,7 @@ class DatabaseManager:
     def list_shots(
         self,
         scene_id: str | None = None,
-        project_id: str | None = None,
+        project_id: int | None = None,
         scene_number: int | None = None,
     ) -> list[Shot]:
         """
@@ -721,7 +717,7 @@ class DatabaseManager:
             repo = ShotRepository(session)
             repo.delete(shot_id)
 
-    def create_shot_history(self, project_id: str, shots: list[Shot]) -> None:
+    def create_shot_history(self, project_id: int, shots: list[Shot]) -> None:
         """创建分镜历史快照。"""
         with self._lock:
             session = self._get_session()
@@ -752,13 +748,13 @@ class DatabaseManager:
                 created_at=datetime.now(),
             ))
 
-    def list_shot_history(self, project_id: str) -> list[ShotHistory]:
+    def list_shot_history(self, project_id: int) -> list[ShotHistory]:
         """查询项目的所有分镜历史版本。"""
         session = self._get_session()
         repo = ShotHistoryRepository(session)
         return repo.list_by_project(project_id)
 
-    def restore_shots_from_history(self, project_id: str, history_id: str) -> None:
+    def restore_shots_from_history(self, project_id: int, history_id: str) -> None:
         """从历史版本恢复分镜。"""
         with self._lock:
             session = self._get_session()
@@ -813,7 +809,7 @@ class DatabaseManager:
 
     # ========== Character 相关方法 ==========
 
-    def list_characters(self, project_id: str) -> list[Character]:
+    def list_characters(self, project_id: int) -> list[Character]:
         """查询项目的所有角色。"""
         session = self._get_session()
         repo = CharacterRepository(session)
@@ -853,7 +849,7 @@ class DatabaseManager:
             repo = CharacterRepository(session)
             repo.delete(character_uuid)
 
-    def get_character_by_ref_code(self, project_id: str, ref_code: str) -> Character | None:
+    def get_character_by_ref_code(self, project_id: int, ref_code: str) -> Character | None:
         """根据引用代号查询角色。"""
         session = self._get_session()
         repo = CharacterRepository(session)

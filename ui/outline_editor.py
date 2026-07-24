@@ -354,7 +354,7 @@ class OutlineEditor(QWidget):
         self._service = outline_service
         self._text_service = text_service
         self._current_outline: Outline | None = None
-        self._current_project_id: str | None = None
+        self._current_project_id: int | None = None
         self._setup_ui()
 
     def _setup_ui(self) -> None:
@@ -453,7 +453,7 @@ class OutlineEditor(QWidget):
 
         layout.addWidget(splitter, stretch=1)
 
-    def load_outline(self, project_id: str) -> None:
+    def load_outline(self, project_id: int) -> None:
         """加载项目大纲。"""
         self._current_project_id = project_id
         self._current_outline = self._service.get_or_create_outline(project_id)

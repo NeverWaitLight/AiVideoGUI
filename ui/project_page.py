@@ -44,10 +44,10 @@ def _format_time(dt: datetime) -> str:
 class _ProjectRow(QWidget):
     """项目列表行控件。"""
 
-    delete_clicked = pyqtSignal(str)
-    edit_clicked = pyqtSignal(str)
+    delete_clicked = pyqtSignal(int)
+    edit_clicked = pyqtSignal(int)
 
-    def __init__(self, project_id: str, name: str, info: str, parent: QWidget | None = None):
+    def __init__(self, project_id: int, name: str, info: str, parent: QWidget | None = None):
         super().__init__(parent)
         self._project_id = project_id
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
@@ -104,7 +104,7 @@ class _ProjectRow(QWidget):
 class _ConversationRow(QWidget):
     """对话列表行控件。"""
 
-    delete_clicked = pyqtSignal(str)
+    delete_clicked = pyqtSignal(int)
 
     def __init__(self, conv_id: str, title: str, time_text: str, parent: QWidget | None = None):
         super().__init__(parent)
@@ -150,7 +150,7 @@ class _ConversationRow(QWidget):
 class ProjectPage(QWidget):
     """项目管理页面。"""
 
-    project_selected = pyqtSignal(str)  # project_id
+    project_selected = pyqtSignal(int)  # project_id
     conversation_selected = pyqtSignal(str, str)  # project_id, conversation_id
     new_conversation_clicked = pyqtSignal(str)  # project_id
     conversation_deleted = pyqtSignal(str)  # conversation_id
@@ -158,7 +158,7 @@ class ProjectPage(QWidget):
     def __init__(self, project_service: ProjectService, parent: QWidget | None = None):
         super().__init__(parent)
         self._service = project_service
-        self._current_project_id: str | None = None
+        self._current_project_id: int | None = None
         self._setup_ui()
 
     def _setup_ui(self) -> None:
@@ -274,7 +274,7 @@ class ProjectPage(QWidget):
             if conv_id and self._current_project_id:
                 self.conversation_selected.emit(self._current_project_id, conv_id)
 
-    def _load_project_detail(self, project_id: str) -> None:
+    def _load_project_detail(self, project_id: int) -> None:
         """加载项目详情和对话列表。"""
         try:
             import logging
@@ -330,6 +330,14 @@ class ProjectPage(QWidget):
         if dialog.exec():
             name, resolution, aspect_ratio = dialog.get_values()
             project = self._service.create_project(name, resolution, aspect_ratio)
+            if project is None:
+                # 名称重复，提示用户
+                QMessageBox.warning(
+                    self,
+                    "项目名称重复",
+                    f"\"{name}\" 已存在"
+                )
+                return
             self._add_project_item(project)
             # 选中新建的项目
             for i in range(self.project_list.count()):
@@ -338,7 +346,7 @@ class ProjectPage(QWidget):
                     self.project_list.setCurrentItem(item)
                     break
 
-    def _on_edit_project(self, project_id: str) -> None:
+    def _on_edit_project(self, project_id: int) -> None:
         """编辑项目对话框。"""
         project = self._service.get_project(project_id)
         if not project:
@@ -347,7 +355,15 @@ class ProjectPage(QWidget):
         dialog = _ProjectDialog(self, project)
         if dialog.exec():
             name, resolution, aspect_ratio = dialog.get_values()
-            self._service.update_project(project_id, name, resolution, aspect_ratio)
+            success = self._service.update_project(project_id, name, resolution, aspect_ratio)
+            if not success:
+                # 名称重复，提示用户
+                QMessageBox.warning(
+                    self,
+                    "项目名称重复",
+                    f"\"{name}\" 已存在"
+                )
+                return
             # 更新列表显示
             for i in range(self.project_list.count()):
                 item = self.project_list.item(i)
@@ -362,7 +378,7 @@ class ProjectPage(QWidget):
             if project_id == self._current_project_id:
                 self._load_project_detail(project_id)
 
-    def _on_delete_project(self, project_id: str) -> None:
+    def _on_delete_project(self, project_id: int) -> None:
         """删除项目确认对话框（带随机数字二次确认）。"""
         project = self._service.get_project(project_id)
         if not project:

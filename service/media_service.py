@@ -110,7 +110,7 @@ class MediaService:
         self._db.add_media_file(media)
         logger.info("素材自动入库：%s", filename)
 
-    def import_files(self, file_paths: list[str], project_id: str = "") -> list[MediaFile]:
+    def import_files(self, file_paths: list[str], project_id: int = "") -> list[MediaFile]:
         """将外部文件复制到目标目录并入库。project_id 非空时存入项目目录，否则存入 chat 目录。"""
         target_dir = paths.project_dir(self._root, project_id) if project_id else self._chat_dir
         os.makedirs(target_dir, exist_ok=True)
@@ -185,7 +185,7 @@ class MediaService:
         self,
         media_type: str | None = None,
         keyword: str | None = None,
-        project_id: str | None = None,
+        project_id: int | None = None,
     ) -> list[MediaFile]:
         """查询素材列表，可选按项目过滤。"""
         return self._db.list_media_files(

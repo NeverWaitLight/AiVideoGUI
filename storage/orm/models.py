@@ -14,12 +14,13 @@ class ProjectEntity(Base):
 
     __tablename__ = "projects"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
     resolution: Mapped[str] = mapped_column(String(20), nullable=False, default="720P")
     aspect_ratio: Mapped[str] = mapped_column(String(10), nullable=False, default="16:9")
     cover_image: Mapped[str] = mapped_column(String(500), nullable=False, default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[int] = mapped_column(Integer, nullable=False)  # 13位时间戳（毫秒）
+    updated_at: Mapped[int] = mapped_column(Integer, nullable=False)  # 13位时间戳（毫秒）
 
     # 关系（一对多）
     conversations: Mapped[List["ConversationEntity"]] = relationship(
@@ -49,8 +50,8 @@ class ConversationEntity(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     model_name: Mapped[str] = mapped_column(String(100), nullable=False, default="")
     provider_name: Mapped[str] = mapped_column(String(50), nullable=False, default="")
-    project_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("projects.id", ondelete="SET NULL"), nullable=False, default=""
+    project_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("projects.id", ondelete="SET NULL"), nullable=False, default=0
     )
     is_hidden: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
@@ -173,8 +174,8 @@ class OutlineEntity(Base):
     __tablename__ = "outlines"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    project_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
+    project_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
     )
     content: Mapped[str] = mapped_column(Text, nullable=False, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
@@ -199,7 +200,7 @@ class OutlineHistoryEntity(Base):
     raw_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("outlines.id", ondelete="CASCADE"), nullable=False
     )
-    project_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    project_id: Mapped[int] = mapped_column(Integer, nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
@@ -216,8 +217,8 @@ class ScriptEntity(Base):
     __tablename__ = "scripts"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    project_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
+    project_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
     )
     title: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
@@ -322,8 +323,8 @@ class ShotHistoryEntity(Base):
     __tablename__ = "shot_history"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    project_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
+    project_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
     )
     shots_snapshot: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
@@ -342,8 +343,8 @@ class CharacterEntity(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     uuid: Mapped[str] = mapped_column(String(36), unique=True, nullable=False)
-    project_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
+    project_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     ref_code: Mapped[str] = mapped_column(String(100), nullable=False)

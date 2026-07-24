@@ -36,7 +36,7 @@ class OutlineRepository(BaseRepository[OutlineEntity, Outline]):
             updated_at=dto.updated_at,
         )
 
-    def get_by_project(self, project_id: str) -> Optional[Outline]:
+    def get_by_project(self, project_id: int) -> Optional[Outline]:
         """
         查询项目的大纲。
 

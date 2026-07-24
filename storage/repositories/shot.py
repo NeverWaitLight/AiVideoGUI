@@ -72,7 +72,7 @@ class ShotRepository(BaseRepository[ShotEntity, Shot]):
         entities = self.session.execute(stmt).scalars().all()
         return [self._to_dto(e) for e in entities]
 
-    def list_by_project(self, project_id: str) -> List[Shot]:
+    def list_by_project(self, project_id: int) -> List[Shot]:
         """
         查询项目的所有分镜（通过 JOIN 跨 3 表查询）。
 
@@ -128,7 +128,7 @@ class ShotHistoryRepository(BaseRepository[ShotHistoryEntity, ShotHistory]):
             created_at=dto.created_at,
         )
 
-    def list_by_project(self, project_id: str) -> List[ShotHistory]:
+    def list_by_project(self, project_id: int) -> List[ShotHistory]:
         """
         查询项目的所有分镜历史（按时间倒序）。
 

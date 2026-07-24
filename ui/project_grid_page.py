@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 import os
 import random
-from datetime import datetime
 from pathlib import Path
 
 from PyQt6.QtCore import Qt, pyqtSignal, QSize
@@ -34,24 +33,22 @@ from qfluentwidgets import (
 
 from models.data_models import Project
 from service.project_service import ProjectService
+from utils.time_format import format_timestamp_short
 
 logger = logging.getLogger(__name__)
 
 
-def _format_time(dt: datetime) -> str:
-    """将 datetime 格式化为显示时间。"""
-    now = datetime.now()
-    if dt.date() == now.date():
-        return dt.strftime("%H:%M")
-    return dt.strftime("%m-%d %H:%M")
+def _format_time(timestamp: int) -> str:
+    """将时间戳格式化为显示时间。"""
+    return format_timestamp_short(timestamp)
 
 
 class ProjectCard(CardWidget):
     """项目卡片控件。"""
 
-    project_clicked = pyqtSignal(str)  # project_id，重命名避免与父类 clicked 信号冲突
-    edit_clicked = pyqtSignal(str)
-    delete_clicked = pyqtSignal(str)
+    project_clicked = pyqtSignal(int)  # project_id，重命名避免与父类 clicked 信号冲突
+    edit_clicked = pyqtSignal(int)
+    delete_clicked = pyqtSignal(int)
 
     def __init__(self, project: Project, parent: QWidget | None = None):
         super().__init__(parent)
@@ -305,7 +302,7 @@ class ProjectDialog(QDialog):
 class ProjectGridPage(QWidget):
     """项目网格视图页面。"""
 
-    project_selected = pyqtSignal(str)  # project_id
+    project_selected = pyqtSignal(int)  # project_id
 
     def __init__(self, project_service: ProjectService, parent: QWidget | None = None):
         super().__init__(parent)
@@ -424,15 +421,23 @@ class ProjectGridPage(QWidget):
         dialog = ProjectDialog(self)
         if dialog.exec():
             data = dialog.get_data()
-            self._service.create_project(
+            project = self._service.create_project(
                 name=data["name"],
                 resolution=data["resolution"],
                 aspect_ratio=data["aspect_ratio"],
                 cover_image=data["cover_image"],
             )
+            if project is None:
+                # 名称重复，提示用户
+                QMessageBox.warning(
+                    self,
+                    "项目名称重复",
+                    f"\"{data['name']}\" 已存在"
+                )
+                return
             self.load_projects()
 
-    def _on_edit_project(self, project_id: str) -> None:
+    def _on_edit_project(self, project_id: int) -> None:
         """编辑项目。"""
         project = self._service.get_project(project_id)
         if not project:
@@ -441,16 +446,24 @@ class ProjectGridPage(QWidget):
         dialog = ProjectDialog(self, project)
         if dialog.exec():
             data = dialog.get_data()
-            self._service.update_project(
+            success = self._service.update_project(
                 project_id=project_id,
                 name=data["name"],
                 resolution=data["resolution"],
                 aspect_ratio=data["aspect_ratio"],
                 cover_image=data["cover_image"],
             )
+            if not success:
+                # 名称重复，提示用户
+                QMessageBox.warning(
+                    self,
+                    "项目名称重复",
+                    f"\"{data['name']}\" 已存在"
+                )
+                return
             self.load_projects()
 
-    def _on_delete_project(self, project_id: str) -> None:
+    def _on_delete_project(self, project_id: int) -> None:
         """删除项目（带随机数字二次确认）。"""
         project = self._service.get_project(project_id)
         if not project:
