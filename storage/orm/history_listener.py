@@ -12,8 +12,8 @@ from storage.orm.models import (
     CharacterHistoryEntity,
     StoryOutlineEntity,
     StoryOutlineHistoryEntity,
-    ScriptEntity,
-    ScriptHistoryEntity,
+    ScreenplayEntity,
+    ScreenplayHistoryEntity,
     ShotEntity,
     ShotHistoryEntity,
 )

@@ -5,18 +5,18 @@ from typing import List, Optional
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from models.data_models import SceneLocation, SceneTime, Scene, ScriptHistory
-from storage.orm.models import ScriptEntity, ScriptHistoryEntity
+from models.data_models import SceneLocation, SceneTime, Scene, ScreenplayHistory
+from storage.orm.models import ScreenplayEntity, ScreenplayHistoryEntity
 from storage.repositories.base import BaseRepository
 
 
-class ScriptRepository(BaseRepository[ScriptEntity, Scene]):
-    """场次 Repository（scripts 表现在就是场次表）。"""
+class ScreenplayRepository(BaseRepository[ScreenplayEntity, Scene]):
+    """场次 Repository（screenplay 表）。"""
 
     def __init__(self, session: Session):
-        super().__init__(session, ScriptEntity)
+        super().__init__(session, ScreenplayEntity)
 
-    def _to_dto(self, entity: ScriptEntity) -> Scene:
+    def _to_dto(self, entity: ScreenplayEntity) -> Scene:
         """Entity → DTO 转换。"""
         return Scene(
             id=entity.id,
@@ -31,9 +31,9 @@ class ScriptRepository(BaseRepository[ScriptEntity, Scene]):
             updated_at=entity.updated_at,
         )
 
-    def _to_entity(self, dto: Scene) -> ScriptEntity:
+    def _to_entity(self, dto: Scene) -> ScreenplayEntity:
         """DTO → Entity 转换。"""
-        return ScriptEntity(
+        return ScreenplayEntity(
             id=dto.id if dto.id else None,  # 0 转为 None 以触发自增
             project_id=dto.project_id,
             scene_number=dto.scene_number,
@@ -57,9 +57,9 @@ class ScriptRepository(BaseRepository[ScriptEntity, Scene]):
             场次列表
         """
         stmt = (
-            select(ScriptEntity)
-            .where(ScriptEntity.project_id == project_id)
-            .order_by(ScriptEntity.scene_number.asc())
+            select(ScreenplayEntity)
+            .where(ScreenplayEntity.project_id == project_id)
+            .order_by(ScreenplayEntity.scene_number.asc())
         )
         entities = self.session.execute(stmt).scalars().all()
         return [self._to_dto(e) for e in entities]
@@ -75,9 +75,9 @@ class ScriptRepository(BaseRepository[ScriptEntity, Scene]):
         Returns:
             场次对象，如果不存在则返回 None
         """
-        stmt = select(ScriptEntity).where(
-            ScriptEntity.project_id == project_id,
-            ScriptEntity.scene_number == scene_number
+        stmt = select(ScreenplayEntity).where(
+            ScreenplayEntity.project_id == project_id,
+            ScreenplayEntity.scene_number == scene_number
         )
         entity = self.session.execute(stmt).scalars().first()
         return self._to_dto(entity) if entity else None
@@ -89,36 +89,36 @@ class ScriptRepository(BaseRepository[ScriptEntity, Scene]):
         Args:
             project_id: 项目 ID
         """
-        stmt = delete(ScriptEntity).where(ScriptEntity.project_id == project_id)
+        stmt = delete(ScreenplayEntity).where(ScreenplayEntity.project_id == project_id)
         self.session.execute(stmt)
         self.session.commit()
 
 
-class ScriptHistoryRepository(BaseRepository[ScriptHistoryEntity, ScriptHistory]):
+class ScreenplayHistoryRepository(BaseRepository[ScreenplayHistoryEntity, ScreenplayHistory]):
     """剧本历史 Repository。"""
 
     def __init__(self, session: Session):
-        super().__init__(session, ScriptHistoryEntity)
+        super().__init__(session, ScreenplayHistoryEntity)
 
-    def _to_dto(self, entity: ScriptHistoryEntity) -> ScriptHistory:
+    def _to_dto(self, entity: ScreenplayHistoryEntity) -> ScreenplayHistory:
         """Entity → DTO 转换。"""
-        return ScriptHistory(
+        return ScreenplayHistory(
             id=entity.id,
             project_id=entity.project_id,
             scenes_snapshot=entity.scenes_snapshot,
             created_at=entity.created_at,
         )
 
-    def _to_entity(self, dto: ScriptHistory) -> ScriptHistoryEntity:
+    def _to_entity(self, dto: ScreenplayHistory) -> ScreenplayHistoryEntity:
         """DTO → Entity 转换。"""
-        return ScriptHistoryEntity(
+        return ScreenplayHistoryEntity(
             id=dto.id,
             project_id=dto.project_id,
             scenes_snapshot=dto.scenes_snapshot,
             created_at=dto.created_at,
         )
 
-    def list_by_project(self, project_id: int) -> List[ScriptHistory]:
+    def list_by_project(self, project_id: int) -> List[ScreenplayHistory]:
         """
         查询项目的所有历史版本（按时间倒序）。
 
@@ -129,9 +129,9 @@ class ScriptHistoryRepository(BaseRepository[ScriptHistoryEntity, ScriptHistory]
             历史版本列表
         """
         stmt = (
-            select(ScriptHistoryEntity)
-            .where(ScriptHistoryEntity.project_id == project_id)
-            .order_by(ScriptHistoryEntity.created_at.desc())
+            select(ScreenplayHistoryEntity)
+            .where(ScreenplayHistoryEntity.project_id == project_id)
+            .order_by(ScreenplayHistoryEntity.created_at.desc())
         )
         entities = self.session.execute(stmt).scalars().all()
         return [self._to_dto(e) for e in entities]

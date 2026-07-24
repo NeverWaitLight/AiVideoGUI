@@ -25,7 +25,7 @@ from service.chat_service import ChatService
 from service.media_service import MediaService
 from service.story_outline_service import StoryOutlineService
 from service.project_service import ProjectService
-from service.script_service import ScriptService
+from service.screenplay_service import ScreenplayService
 from service.shot_service import ShotService
 from service.task_polling_service import TaskPollingService
 from service.text_model_service import TextModelService
@@ -39,7 +39,7 @@ from ui.story_outline_editor import StoryOutlineEditor
 from ui.project_detail_page import ProjectDetailPage
 from ui.project_grid_page import ProjectGridPage
 from ui.project_page import ProjectPage
-from ui.script_editor import ScriptEditor
+from ui.screenplay_editor import ScreenplayEditor
 from ui.settings_dialog import SettingsDialog
 from ui.shot_editor import ShotEditor
 from ui.sidebar import Sidebar
@@ -261,7 +261,7 @@ class MainWindow(QMainWindow):
         self._story_outline_service = StoryOutlineService(self._db)
 
         # 剧本服务
-        self._script_service = ScriptService(self._db)
+        self._screenplay_service = ScreenplayService(self._db)
 
         # 分镜服务
         self._shot_service = ShotService(self._db)
@@ -382,12 +382,12 @@ class MainWindow(QMainWindow):
         self.story_outline_editor.hide()
 
         # 第三层：剧本编辑器
-        self.script_editor = ScriptEditor(self._script_service)
-        layout.addWidget(self.script_editor)
-        self.script_editor.hide()
+        self.screenplay_editor = ScreenplayEditor(self._screenplay_service)
+        layout.addWidget(self.screenplay_editor)
+        self.screenplay_editor.hide()
 
         # 第三层：分镜编辑器
-        self.shot_editor = ShotEditor(self._shot_service, self._script_service)
+        self.shot_editor = ShotEditor(self._shot_service, self._screenplay_service)
         layout.addWidget(self.shot_editor)
         self.shot_editor.hide()
 
@@ -447,8 +447,8 @@ class MainWindow(QMainWindow):
         self.story_outline_editor.next_step_clicked.connect(self._on_story_outline_next_step)
 
         # 剧本编辑器信号
-        self.script_editor.back_clicked.connect(self._on_script_editor_back)
-        self.script_editor.generate_storyboard_clicked.connect(self._on_generate_storyboard)
+        self.screenplay_editor.back_clicked.connect(self._on_screenplay_editor_back)
+        self.screenplay_editor.generate_storyboard_clicked.connect(self._on_generate_storyboard)
 
         # 分镜编辑器信号
         self.shot_editor.back_clicked.connect(self._on_shot_editor_back)
@@ -572,7 +572,7 @@ class MainWindow(QMainWindow):
             self.project_conversation_widget.hide()
             self.project_media_library.hide()
             self.story_outline_editor.hide()
-            self.script_editor.hide()
+            self.screenplay_editor.hide()
             self.shot_editor.hide()
             self.character_page.hide()
             self.video_player_page.show()
@@ -582,7 +582,7 @@ class MainWindow(QMainWindow):
             self.project_detail_page.hide()
             self.project_conversation_widget.hide()
             self.project_media_library.hide()
-            self.script_editor.hide()
+            self.screenplay_editor.hide()
             self.shot_editor.hide()
             self.character_page.hide()
             self.video_player_page.hide()
@@ -597,14 +597,14 @@ class MainWindow(QMainWindow):
             self.shot_editor.hide()
             self.character_page.hide()
             self.video_player_page.hide()
-            self.script_editor.show()
-            self.script_editor.load_script(project_id)
+            self.screenplay_editor.show()
+            self.screenplay_editor.load_script(project_id)
         elif module_name == "media":
             # 进入项目素材库
             self.project_detail_page.hide()
             self.project_conversation_widget.hide()
             self.story_outline_editor.hide()
-            self.script_editor.hide()
+            self.screenplay_editor.hide()
             self.shot_editor.hide()
             self.character_page.hide()
             self.video_player_page.hide()
@@ -623,7 +623,7 @@ class MainWindow(QMainWindow):
             logger.info(f"打开项目 {project_id} 的角色模块")
             self.project_detail_page.hide()
             self.story_outline_editor.hide()
-            self.script_editor.hide()
+            self.screenplay_editor.hide()
             self.shot_editor.hide()
             self.video_player_page.hide()
             self.project_media_library.hide()
@@ -650,9 +650,9 @@ class MainWindow(QMainWindow):
         if self._current_project_id:
             self.project_detail_page.set_project(self._current_project_id)
 
-    def _on_script_editor_back(self) -> None:
+    def _on_screenplay_editor_back(self) -> None:
         """从剧本编辑器返回项目详情页。"""
-        self.script_editor.hide()
+        self.screenplay_editor.hide()
         self.project_detail_page.show()
         if self._current_project_id:
             self.project_detail_page.set_project(self._current_project_id)
@@ -730,8 +730,8 @@ class MainWindow(QMainWindow):
             try:
                 self._script_dialog.close()
                 self.story_outline_editor.hide()
-                self.script_editor.show()
-                self.script_editor.load_script(self._current_project_id, title, scenes)
+                self.screenplay_editor.show()
+                self.screenplay_editor.load_script(self._current_project_id, title, scenes)
                 QMessageBox.information(self, "成功", f"剧本生成完成，共 {len(scenes)} 场！")
             except Exception as e:
                 logger.exception("生成剧本后处理失败")
@@ -759,18 +759,13 @@ class MainWindow(QMainWindow):
             return
 
         # 获取剧本内容（合并所有场次）
-        script = self._script_service.get_script_by_project(project_id)
-        if not script:
-            QMessageBox.warning(self, "错误", "未找到剧本")
-            return
-
-        scenes = self._script_service.list_scenes(script.id)
+        scenes = self._screenplay_service.list_scenes(project_id)
         if not scenes:
             QMessageBox.warning(self, "错误", "剧本中没有场次")
             return
 
         # 将所有场次合并为完整剧本文本
-        script_content = f"{script.title}\n\n" if script.title else ""
+        script_content = ""
         for scene in scenes:
             location_type_text = {
                 "interior": "内景",
@@ -843,7 +838,7 @@ class MainWindow(QMainWindow):
                 if characters and project_id:
                     self._save_extracted_characters(project_id, characters)
 
-                self.script_editor.hide()
+                self.screenplay_editor.hide()
                 self.shot_editor.show()
                 self.shot_editor.load_project(project_id, shots)
                 char_info = f"，{len(characters)} 个角色" if characters else ""

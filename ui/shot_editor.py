@@ -31,7 +31,7 @@ from qfluentwidgets import (
 )
 
 from models.data_models import Scene, Shot, ShotSize
-from service.script_service import ScriptService
+from service.screenplay_service import ScreenplayService
 from service.shot_service import ShotService
 
 logger = logging.getLogger(__name__)
@@ -401,10 +401,10 @@ class ShotEditor(QWidget):
     video_generation_requested = pyqtSignal(str, int, int, str, int)  # shot_id, scene_number, shot_number, prompt, project_id
     batch_video_generation_requested = pyqtSignal(list)  # list of dict: {shot_id, scene_number, shot_number, prompt, project_id}
 
-    def __init__(self, shot_service: ShotService, script_service: ScriptService, parent=None):
+    def __init__(self, shot_service: ShotService, screenplay_service: ScreenplayService, parent=None):
         super().__init__(parent)
         self._shot_service = shot_service
-        self._script_service = script_service
+        self._screenplay_service = screenplay_service
         self._current_project_id: int | None = None
         self._scenes: list[Scene] = []
         self._setup_ui()
@@ -516,7 +516,7 @@ class ShotEditor(QWidget):
         logger.info(f"加载项目分镜：project_id={project_id}")
 
         # 加载场次列表（用于过滤器）
-        self._scenes = self._script_service.list_scenes(project_id)
+        self._scenes = self._screenplay_service.list_scenes(project_id)
         self._populate_scene_filter()
 
         # 如果有生成的分镜数据且数据库为空，批量创建

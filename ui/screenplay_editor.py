@@ -27,8 +27,8 @@ from qfluentwidgets import (
     CardWidget,
 )
 
-from models.data_models import ScriptHistory, Scene, SceneLocation, SceneTime
-from service.script_service import ScriptService
+from models.data_models import ScreenplayHistory, Scene, SceneLocation, SceneTime
+from service.screenplay_service import ScreenplayService
 
 logger = logging.getLogger(__name__)
 
@@ -121,9 +121,9 @@ class SceneDetailEditor(QWidget):
     back_clicked = pyqtSignal()
     save_clicked = pyqtSignal()
 
-    def __init__(self, script_service: ScriptService, parent: QWidget | None = None):
+    def __init__(self, screenplay_service: ScreenplayService, parent: QWidget | None = None):
         super().__init__(parent)
-        self._service = script_service
+        self._service = screenplay_service
         self._current_scene: Scene | None = None
         self._setup_ui()
 
@@ -354,7 +354,7 @@ class HistoryListItem(QWidget):
 
     restore_clicked = pyqtSignal(str)  # history_id
 
-    def __init__(self, history: ScriptHistory, parent: QWidget | None = None):
+    def __init__(self, history: ScreenplayHistory, parent: QWidget | None = None):
         super().__init__(parent)
         self._history = history
         self._setup_ui()
@@ -376,7 +376,7 @@ class HistoryListItem(QWidget):
         layout.addWidget(restore_btn)
 
 
-class ScriptEditor(QWidget):
+class ScreenplayEditor(QWidget):
     """剧本编辑器页面：场次列表视图。"""
 
     back_clicked = pyqtSignal()
@@ -384,11 +384,11 @@ class ScriptEditor(QWidget):
 
     def __init__(
         self,
-        script_service: ScriptService,
+        screenplay_service: ScreenplayService,
         parent: QWidget | None = None,
     ):
         super().__init__(parent)
-        self._service = script_service
+        self._service = screenplay_service
         self._current_project_id: int | None = None
         self._setup_ui()
 

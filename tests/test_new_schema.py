@@ -1,4 +1,4 @@
-"""测试新的 scripts 表结构"""
+"""测试新的 screenplay 表结构"""
 
 import os
 import sys
@@ -65,11 +65,11 @@ for scene in scenes:
     print(f"  - 第 {scene.scene_number} 场：{scene.location} ({scene.location_type.value})")
 
 # 保存历史版本
-db.create_script_history(created_project.id, scenes)
+db.create_screenplay_history(created_project.id, scenes)
 print(f"\n[OK] 保存历史版本")
 
 # 查询历史版本
-history_list = db.list_script_history(created_project.id)
+history_list = db.list_screenplay_history(created_project.id)
 print(f"[OK] 查询历史版本：共 {len(history_list)} 个版本")
 
 # 更新场次

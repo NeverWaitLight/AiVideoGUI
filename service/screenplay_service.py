@@ -5,14 +5,14 @@ from __future__ import annotations
 import logging
 import time
 
-from models.data_models import ScriptHistory, Scene, SceneLocation, SceneTime
+from models.data_models import ScreenplayHistory, Scene, SceneLocation, SceneTime
 from storage.database import DatabaseManager
 
 logger = logging.getLogger(__name__)
 
 
-class ScriptService:
-    """剧本服务：支持场次管理（scripts 表现在就是场次表）。"""
+class ScreenplayService:
+    """剧本服务：支持场次管理（screenplay 表）。"""
 
     def __init__(self, db: DatabaseManager) -> None:
         self._db = db
@@ -81,16 +81,16 @@ class ScriptService:
     def save_history(self, project_id: int) -> None:
         """保存剧本历史版本（快照所有场次）。"""
         scenes = self._db.list_scenes(project_id)
-        self._db.create_script_history(project_id, scenes)
+        self._db.create_screenplay_history(project_id, scenes)
         logger.info(f"保存剧本历史：项目 {project_id}，共 {len(scenes)} 场")
 
-    def list_history(self, project_id: int) -> list[ScriptHistory]:
+    def list_history(self, project_id: int) -> list[ScreenplayHistory]:
         """获取剧本历史版本列表。"""
-        return self._db.list_script_history(project_id)
+        return self._db.list_screenplay_history(project_id)
 
     def restore_from_history(self, project_id: int, history_id: int) -> None:
         """从历史版本恢复剧本。"""
-        self._db.restore_script_from_history(project_id, history_id)
+        self._db.restore_screenplay_from_history(project_id, history_id)
         logger.info(f"恢复剧本历史版本：{history_id}")
 
     def batch_create_scenes(self, project_id: int, scenes_data: list[dict]) -> list[Scene]:

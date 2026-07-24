@@ -6,7 +6,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from models.data_models import Shot, ShotHistory, ShotSize
-from storage.orm.models import ShotEntity, ShotHistoryEntity, ScriptEntity
+from storage.orm.models import ShotEntity, ShotHistoryEntity, ScreenplayEntity
 from storage.repositories.base import BaseRepository
 
 
@@ -84,8 +84,8 @@ class ShotRepository(BaseRepository[ShotEntity, Shot]):
         """
         stmt = (
             select(ShotEntity)
-            .join(ScriptEntity, ShotEntity.scene_id == ScriptEntity.id)
-            .where(ScriptEntity.project_id == project_id)
+            .join(ScreenplayEntity, ShotEntity.scene_id == ScreenplayEntity.id)
+            .where(ScreenplayEntity.project_id == project_id)
             .order_by(ShotEntity.scene_number.asc(), ShotEntity.shot_number.asc())
         )
         entities = self.session.execute(stmt).scalars().all()

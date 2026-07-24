@@ -90,9 +90,8 @@ class ProjectService:
         # 2. 数据库级联删除会自动处理：
         #    - story_outlines (ON DELETE CASCADE)
         #    - story_outline_history (ON DELETE CASCADE)
-        #    - scripts (ON DELETE CASCADE)
-        #    - scenes (ON DELETE CASCADE)
-        #    - script_history (ON DELETE CASCADE)
+        #    - screenplay (ON DELETE CASCADE)
+        #    - screenplay_history (ON DELETE CASCADE)
         #    - shots (ON DELETE CASCADE)
         #    - shot_history (ON DELETE CASCADE)
 

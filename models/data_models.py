@@ -160,7 +160,7 @@ class ShotSize(enum.Enum):
 
 @dataclass
 class Scene:
-    """场次数据结构（对应 ScriptEntity）"""
+    """场次数据结构（对应 ScreenplayEntity）"""
     id: int  # 自增ID
     project_id: int  # 所属项目ID
     scene_number: int  # 场次号（从1开始）
@@ -174,7 +174,7 @@ class Scene:
 
 
 @dataclass
-class ScriptHistory:
+class ScreenplayHistory:
     """剧本历史版本（快照整个项目的所有场次）"""
     id: int  # 自增ID
     project_id: int  # 关联项目ID
@@ -186,7 +186,7 @@ class ScriptHistory:
 class Shot:
     """分镜头数据结构"""
     id: str
-    scene_id: int  # 所属场次ID（整数，关联 scripts.id）
+    scene_id: int  # 所属场次ID（整数，关联 screenplay.id）
     scene_number: int  # 场次号（冗余存储，方便查询）
     shot_number: int  # 分镜号（从1开始）
     design_image: str = ""  # 分镜设计图路径（可为空）
