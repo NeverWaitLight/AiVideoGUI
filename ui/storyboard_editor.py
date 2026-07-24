@@ -2,7 +2,7 @@
 
 import logging
 import os
-from datetime import datetime
+import time
 
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
@@ -487,13 +487,9 @@ class StoryboardEditor(QWidget):
         right_layout.setContentsMargins(16, 20, 16, 20)
         right_layout.setSpacing(12)
 
-        history_title = QLabel("历史版本")
+        history_title = QLabel("历史版本（自动保存）")
         history_title.setStyleSheet("font-size: 16px; font-weight: bold;")
         right_layout.addWidget(history_title)
-
-        self.save_history_btn = PrimaryPushButton("保存当前版本", self, FluentIcon.SAVE)
-        self.save_history_btn.clicked.connect(self._on_save_history)
-        right_layout.addWidget(self.save_history_btn)
 
         self.history_list = ListWidget(self)
         self.history_list.itemClicked.connect(self._on_history_clicked)
@@ -577,8 +573,8 @@ class StoryboardEditor(QWidget):
                 sound_effect=sound_effect,
                 duration=shot_data.get("duration", 5.0),
                 notes=shot_data.get("color_lighting", ""),  # 色调/光影作为备注
-                created_at=datetime.now(),
-                updated_at=datetime.now(),
+                created_at=int(time.time() * 1000),
+                updated_at=int(time.time() * 1000),
             )
             storyboards_to_create.append(storyboard)
 
@@ -744,29 +740,21 @@ class StoryboardEditor(QWidget):
         self._generate_all_btn.setEnabled(False)
         self.batch_video_generation_requested.emit(shot_list)
 
-    def _on_save_history(self):
-        """保存历史版本"""
-        if not self._current_project_id:
-            return
-
-        try:
-            self._storyboard_service.save_history(self._current_project_id)
-            QMessageBox.information(self, "成功", "历史版本保存成功！")
-            self._load_history()
-        except Exception as e:
-            logger.exception("保存历史失败")
-            QMessageBox.critical(self, "错误", f"保存失败：{e}")
-
     def _load_history(self):
-        """加载历史版本列表"""
+        """加载历史版本列表（按时间戳分组显示）。"""
         if not self._current_project_id:
             return
 
         self.history_list.clear()
-        histories = self._storyboard_service.list_history(self._current_project_id)
+        self._history_timestamps = self._storyboard_service.list_history_timestamps(
+            self._current_project_id
+        )
 
-        for history in histories:
-            time_str = history.created_at.strftime("%Y-%m-%d %H:%M:%S")
+        from datetime import datetime as _dt
+
+        for ts in self._history_timestamps:
+            dt = _dt.fromtimestamp(ts / 1000)
+            time_str = dt.strftime("%Y-%m-%d %H:%M:%S")
             self.history_list.addItem(time_str)
 
     def _on_history_clicked(self, item):
@@ -783,12 +771,14 @@ class StoryboardEditor(QWidget):
         if reply != QMessageBox.StandardButton.Yes:
             return
 
-        histories = self._storyboard_service.list_history(self._current_project_id)
         history_index = self.history_list.row(item)
-        if 0 <= history_index < len(histories):
-            history_id = histories[history_index].id
+        if (
+            hasattr(self, "_history_timestamps")
+            and 0 <= history_index < len(self._history_timestamps)
+        ):
+            ts = self._history_timestamps[history_index]
             try:
-                self._storyboard_service.restore_from_history(self._current_project_id, history_id)
+                self._storyboard_service.restore_from_history(self._current_project_id, ts)
                 QMessageBox.information(self, "成功", "历史版本恢复成功！")
                 self._load_storyboards()
                 self._load_history()

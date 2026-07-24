@@ -1,8 +1,8 @@
 """分镜头服务层：管理分镜 CRUD、历史版本、AI 生成。"""
 
 import logging
+import time
 import uuid
-from datetime import datetime
 
 from models.data_models import Storyboard, StoryboardHistory, ShotSize
 from storage.database import DatabaseManager
@@ -41,6 +41,7 @@ class StoryboardService:
         design_image: str = "",
     ) -> Storyboard:
         """创建新分镜。"""
+        now_ms = int(time.time() * 1000)
         storyboard = Storyboard(
             id=str(uuid.uuid4()),
             scene_id=scene_id,
@@ -54,8 +55,8 @@ class StoryboardService:
             sound_effect=sound_effect,
             duration=duration,
             notes=notes,
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
+            created_at=now_ms,
+            updated_at=now_ms,
         )
         self._db.create_storyboard(storyboard)
         logger.info(f"创建分镜：scene_number={scene_number}, shot_number={shot_number}")
@@ -78,7 +79,7 @@ class StoryboardService:
         duration: float | None = None,
         notes: str | None = None,
     ) -> None:
-        """更新分镜信息。"""
+        """更新分镜信息（历史版本自动保存由 ORM 监听器处理）。"""
         self._db.update_storyboard(
             storyboard_id=storyboard_id,
             design_image=design_image,
@@ -97,22 +98,17 @@ class StoryboardService:
         self._db.delete_storyboard(storyboard_id)
         logger.info(f"删除分镜：storyboard_id={storyboard_id}")
 
-    # ---------- 历史版本管理 ----------
+    # ---------- 历史版本管理（自动保存由 ORM 监听器处理） ----------
 
-    def save_history(self, project_id: int) -> None:
-        """保存当前所有分镜到历史版本。"""
-        storyboards = self._db.list_storyboards(project_id=project_id)
-        if not storyboards:
-            logger.warning(f"项目 {project_id} 没有分镜，无法保存历史")
-            return
-        self._db.create_storyboard_history(project_id, storyboards)
-        logger.info(f"保存分镜历史：project_id={project_id}, 共 {len(storyboards)} 个分镜")
+    def list_history_timestamps(self, project_id: int) -> list[int]:
+        """获取历史版本的时间戳列表（按时间倒序）。"""
+        return self._db.list_storyboard_history_timestamps(project_id)
 
-    def list_history(self, project_id: int) -> list[StoryboardHistory]:
-        """获取历史版本列表。"""
-        return self._db.list_storyboard_history(project_id)
+    def list_history_by_timestamp(self, project_id: int, created_at: int) -> list[StoryboardHistory]:
+        """获取指定时间戳的所有分镜历史。"""
+        return self._db.list_storyboard_history_by_timestamp(project_id, created_at)
 
-    def restore_from_history(self, project_id: int, history_id: str) -> None:
+    def restore_from_history(self, project_id: int, created_at: int) -> None:
         """从历史版本恢复分镜。"""
-        self._db.restore_storyboards_from_history(project_id, history_id)
-        logger.info(f"恢复分镜历史：project_id={project_id}, history_id={history_id}")
+        self._db.restore_storyboards_from_history(project_id, created_at)
+        logger.info(f"恢复分镜历史：project_id={project_id}, created_at={created_at}")

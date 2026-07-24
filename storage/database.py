@@ -664,7 +664,7 @@ class DatabaseManager:
         scene_number: int | None = None,
         shot_number: int | None = None,
     ) -> None:
-        """更新分镜。"""
+        """更新分镜（历史版本自动保存由 ORM 监听器处理）。"""
         with self._lock:
             session = self._get_session()
             from storage.orm.models import StoryboardEntity
@@ -691,7 +691,7 @@ class DatabaseManager:
                     entity.duration = duration
                 if notes is not None:
                     entity.notes = notes
-                entity.updated_at = datetime.now()
+                entity.updated_at = int(time.time() * 1000)
                 session.commit()
 
     def delete_storyboard(self, storyboard_id: str) -> None:
@@ -701,89 +701,61 @@ class DatabaseManager:
             repo = StoryboardRepository(session)
             repo.delete(storyboard_id)
 
-    def create_storyboard_history(self, project_id: int, storyboards: list[Storyboard]) -> None:
-        """创建分镜历史快照。"""
-        with self._lock:
-            session = self._get_session()
-            repo = StoryboardHistoryRepository(session)
-            import uuid
-
-            # 将 storyboards 序列化为 JSON
-            storyboards_data = [
-                {
-                    "scene_number": s.scene_number,
-                    "shot_number": s.shot_number,
-                    "design_image": s.design_image,
-                    "shot_size": s.shot_size,
-                    "camera_movement": s.camera_movement,
-                    "visual_content": s.visual_content,
-                    "dialogue": s.dialogue,
-                    "sound_effect": s.sound_effect,
-                    "duration": s.duration,
-                    "notes": s.notes,
-                }
-                for s in storyboards
-            ]
-
-            repo.create(StoryboardHistory(
-                id=str(uuid.uuid4()),
-                project_id=project_id,
-                storyboard_snapshot=json.dumps(storyboards_data, ensure_ascii=False),
-                created_at=datetime.now(),
-            ))
-
     def list_storyboard_history(self, project_id: int) -> list[StoryboardHistory]:
         """查询项目的所有分镜历史版本。"""
         session = self._get_session()
         repo = StoryboardHistoryRepository(session)
         return repo.list_by_project(project_id)
 
-    def restore_storyboards_from_history(self, project_id: int, history_id: str) -> None:
-        """从历史版本恢复分镜。"""
+    def list_storyboard_history_timestamps(self, project_id: int) -> list[int]:
+        """查询项目的所有不同保存时间戳（按时间倒序）。"""
+        session = self._get_session()
+        repo = StoryboardHistoryRepository(session)
+        return repo.distinct_timestamps_by_project(project_id)
+
+    def list_storyboard_history_by_timestamp(
+        self, project_id: int, created_at: int
+    ) -> list[StoryboardHistory]:
+        """查询项目在指定时间戳保存的所有分镜历史。"""
+        session = self._get_session()
+        repo = StoryboardHistoryRepository(session)
+        return repo.list_by_project_and_timestamp(project_id, created_at)
+
+    def restore_storyboards_from_history(self, project_id: int, created_at: int) -> None:
+        """从历史版本恢复分镜（按时间戳取回该次快照的所有分镜）。"""
         with self._lock:
             session = self._get_session()
             history_repo = StoryboardHistoryRepository(session)
-            history = history_repo.get_by_id(history_id)
 
-            if not history:
+            # 按时间戳取出该次快照的所有分镜
+            history_items = history_repo.list_by_project_and_timestamp(project_id, created_at)
+            if not history_items:
                 return
 
             # 删除当前所有分镜
             storyboard_repo = StoryboardRepository(session)
-            current_storyboards = storyboard_repo.list_by_project(project_id)
-            for storyboard in current_storyboards:
-                storyboard_repo.delete(storyboard.id)
-
-            # 获取项目的剧本和场次
-            screenplay_repo = ScreenplayRepository(session)
-            scenes = screenplay_repo.list_by_project(project_id)
-            scene_map = {s.scene_number: s.id for s in scenes}
+            storyboard_repo.delete_by_project(project_id)
 
             # 恢复分镜
-            storyboards_data = json.loads(history.storyboard_snapshot)
             import uuid
 
-            for storyboard_data in storyboards_data:
-                scene_number = storyboard_data["scene_number"]
-                scene_id = scene_map.get(scene_number)
-                if not scene_id:
-                    continue
-
+            now_ms = int(time.time() * 1000)
+            for h in history_items:
                 storyboard_repo.create(Storyboard(
                     id=str(uuid.uuid4()),
-                    scene_id=scene_id,
-                    scene_number=storyboard_data["scene_number"],
-                    shot_number=storyboard_data["shot_number"],
-                    design_image=storyboard_data.get("design_image", ""),
-                    shot_size=storyboard_data.get("shot_size", "medium_shot"),
-                    camera_movement=storyboard_data.get("camera_movement", ""),
-                    visual_content=storyboard_data.get("visual_content", ""),
-                    dialogue=storyboard_data.get("dialogue", ""),
-                    sound_effect=storyboard_data.get("sound_effect", ""),
-                    duration=storyboard_data.get("duration", 0.0),
-                    notes=storyboard_data.get("notes", ""),
-                    created_at=datetime.now(),
-                    updated_at=datetime.now(),
+                    scene_id=h.scene_id,
+                    scene_number=h.scene_number,
+                    shot_number=h.shot_number,
+                    design_image=h.design_image,
+                    shot_size=h.shot_size,
+                    camera_movement=h.camera_movement,
+                    visual_content=h.visual_content,
+                    dialogue=h.dialogue,
+                    sound_effect=h.sound_effect,
+                    duration=h.duration,
+                    notes=h.notes,
+                    created_at=now_ms,
+                    updated_at=now_ms,
                 ))
 
     # ========== Character 相关方法 ==========

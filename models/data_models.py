@@ -203,17 +203,28 @@ class Storyboard:
     sound_effect: str = ""  # 音效
     duration: float = 0.0  # 镜头时长（秒）
     notes: str = ""  # 备注
-    created_at: datetime = field(default_factory=datetime.now)
-    updated_at: datetime = field(default_factory=datetime.now)
+    created_at: int = 0  # 13位时间戳（毫秒）
+    updated_at: int = 0  # 13位时间戳（毫秒）
 
 
 @dataclass
 class StoryboardHistory:
-    """分镜历史版本（快照整个项目的所有分镜）"""
-    id: str
-    project_id: int  # 关联项目ID（分镜是项目级别的）
-    storyboard_snapshot: str  # 所有分镜的JSON快照
-    created_at: datetime  # 该版本创建时间
+    """分镜历史版本（逐条快照，字段与 Storyboard 一致）"""
+    id: int  # 自增ID
+    storyboard_id: str  # 指向原始分镜ID
+    project_id: int  # 关联项目ID
+    scene_id: int  # 所属场次ID
+    scene_number: int  # 场次号
+    shot_number: int  # 分镜号
+    design_image: str = ""  # 分镜设计图路径
+    shot_size: ShotSize = ShotSize.MEDIUM_SHOT  # 景别
+    camera_movement: str = ""  # 运镜方式
+    visual_content: str = ""  # 画面内容描述
+    dialogue: str = ""  # 台词
+    sound_effect: str = ""  # 音效
+    duration: float = 0.0  # 镜头时长（秒）
+    notes: str = ""  # 备注
+    created_at: int = 0  # 13位时间戳（毫秒）
 
 
 @dataclass

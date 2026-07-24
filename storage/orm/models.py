@@ -32,9 +32,6 @@ class ProjectEntity(Base):
     screenplays: Mapped[List["ScreenplayEntity"]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )
-    storyboard_histories: Mapped[List["StoryboardHistoryEntity"]] = relationship(
-        back_populates="project", cascade="all, delete-orphan"
-    )
     characters: Mapped[List["CharacterEntity"]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )
@@ -305,11 +302,14 @@ class StoryboardEntity(Base):
     sound_effect: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     duration: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[int] = mapped_column(Integer, nullable=False)  # 13位时间戳（毫秒）
+    updated_at: Mapped[int] = mapped_column(Integer, nullable=False)  # 13位时间戳（毫秒）
 
     # 关系
     scene: Mapped["ScreenplayEntity"] = relationship(back_populates="storyboards")
+    history: Mapped[List["StoryboardHistoryEntity"]] = relationship(
+        back_populates="storyboard", cascade="all, delete-orphan"
+    )
 
     # 索引
     __table_args__ = (
@@ -319,22 +319,39 @@ class StoryboardEntity(Base):
 
 
 class StoryboardHistoryEntity(Base):
-    """分镜历史表。"""
+    """分镜历史表（逐条快照，字段与 storyboard 表一致）。"""
 
     __tablename__ = "storyboard_history"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    project_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
+    id: Mapped[Optional[int]] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    storyboard_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("storyboard.id", ondelete="CASCADE"), nullable=False
     )
-    storyboard_snapshot: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    project_id: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    # 分镜信息（与 StoryboardEntity 字段一致）
+    scene_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    scene_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    shot_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    design_image: Mapped[str] = mapped_column(String(500), nullable=False, default="")
+    shot_size: Mapped[str] = mapped_column(String(50), nullable=False, default="medium_shot")
+    camera_movement: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    visual_content: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    dialogue: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    sound_effect: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    duration: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
+
+    created_at: Mapped[int] = mapped_column(Integer, nullable=False)  # 13位时间戳（毫秒）
 
     # 关系
-    project: Mapped["ProjectEntity"] = relationship(back_populates="storyboard_histories")
+    storyboard: Mapped["StoryboardEntity"] = relationship(back_populates="history")
 
     # 索引
-    __table_args__ = (Index("idx_history_storyboard", "project_id", "created_at"),)
+    __table_args__ = (
+        Index("idx_storyboard_history_storyboard", "storyboard_id", "created_at"),
+        Index("idx_storyboard_history_project", "project_id", "created_at"),
+    )
 
 
 class CharacterEntity(Base):

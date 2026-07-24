@@ -12,6 +12,8 @@ from storage.orm.models import (
     CharacterHistoryEntity,
     ScreenplayEntity,
     ScreenplayHistoryEntity,
+    StoryboardEntity,
+    StoryboardHistoryEntity,
     StoryOutlineEntity,
     StoryOutlineHistoryEntity,
 )
@@ -82,6 +84,60 @@ def setup_history_listeners():
                     "time_type": target.time_type,
                     "time_detail": target.time_detail,
                     "content": target.content,
+                    "created_at": int(time.time() * 1000),
+                },
+            )
+
+    # Storyboard 更新时自动保存历史
+    @event.listens_for(StoryboardEntity, "after_update", propagate=True)
+    def on_storyboard_update(mapper, connection, target: StoryboardEntity):
+        """
+        Storyboard 更新后自动保存到 storyboard_history。
+
+        注意：只在关键字段变化时保存历史版本，避免 updated_at 更新触发重复保存。
+        """
+        from sqlalchemy import select
+
+        state = target._sa_instance_state
+
+        key_fields_changed = any([
+            state.attrs.shot_size.history.has_changes(),
+            state.attrs.camera_movement.history.has_changes(),
+            state.attrs.visual_content.history.has_changes(),
+            state.attrs.dialogue.history.has_changes(),
+            state.attrs.sound_effect.history.has_changes(),
+            state.attrs.duration.history.has_changes(),
+            state.attrs.notes.history.has_changes(),
+            state.attrs.design_image.history.has_changes(),
+        ])
+
+        if key_fields_changed:
+            # 通过 scene_id 查询 project_id
+            result = connection.execute(
+                select(ScreenplayEntity.project_id).where(
+                    ScreenplayEntity.id == target.scene_id
+                )
+            )
+            project_id = result.scalar()
+            if project_id is None:
+                return
+
+            connection.execute(
+                StoryboardHistoryEntity.__table__.insert(),
+                {
+                    "storyboard_id": target.id,
+                    "project_id": project_id,
+                    "scene_id": target.scene_id,
+                    "scene_number": target.scene_number,
+                    "shot_number": target.shot_number,
+                    "design_image": target.design_image,
+                    "shot_size": target.shot_size,
+                    "camera_movement": target.camera_movement,
+                    "visual_content": target.visual_content,
+                    "dialogue": target.dialogue,
+                    "sound_effect": target.sound_effect,
+                    "duration": target.duration,
+                    "notes": target.notes,
                     "created_at": int(time.time() * 1000),
                 },
             )
