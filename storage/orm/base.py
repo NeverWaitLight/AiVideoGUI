@@ -3,7 +3,7 @@
 import logging
 from typing import Optional
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase, Session, scoped_session, sessionmaker
 
@@ -96,6 +96,38 @@ def create_all_tables() -> None:
         raise RuntimeError("数据库未初始化，请先调用 init_engine()")
     Base.metadata.create_all(engine)
     logger.info("数据库表创建完成")
+
+
+def ensure_columns() -> None:
+    """
+    为已有表补齐 ORM 中新增但数据库缺失的列。
+
+    SQLite 的 create_all 不会修改已有表结构，此函数通过
+    ALTER TABLE ADD COLUMN 自动补齐缺失列。
+
+    Raises:
+        RuntimeError: 如果引擎未初始化
+    """
+    if engine is None:
+        raise RuntimeError("数据库未初始化，请先调用 init_engine()")
+
+    insp = inspect(engine)
+    with engine.begin() as conn:
+        for table in Base.metadata.sorted_tables:
+            if table.name not in insp.get_table_names():
+                continue
+            existing = {c["name"] for c in insp.get_columns(table.name)}
+            for column in table.columns:
+                if column.name not in existing:
+                    col_type = column.type.compile(engine.dialect)
+                    default = column.default.arg if column.default is not None else "''"
+                    if callable(default):
+                        default = "''"
+                    if isinstance(default, str) and not default.startswith("'"):
+                        default = f"'{default}'"
+                    stmt = f'ALTER TABLE {table.name} ADD COLUMN {column.name} {col_type} DEFAULT {default} NOT NULL'
+                    conn.execute(text(stmt))
+                    logger.info("补齐列：%s.%s", table.name, column.name)
 
 
 def drop_all_tables() -> None:

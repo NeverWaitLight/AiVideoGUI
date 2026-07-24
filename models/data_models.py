@@ -254,5 +254,6 @@ class ActiveTask:
     prompt: str
     video_url: str
     save_path: str
+    error_message: str
     created_at: datetime
     updated_at: datetime

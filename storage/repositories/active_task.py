@@ -30,6 +30,7 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
             prompt=entity.prompt,
             video_url=entity.video_url,
             save_path=entity.save_path,
+            error_message=entity.error_message,
             created_at=entity.created_at,
             updated_at=entity.updated_at,
         )
@@ -47,6 +48,7 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
             prompt=dto.prompt,
             video_url=dto.video_url,
             save_path=dto.save_path,
+            error_message=dto.error_message,
             created_at=dto.created_at,
             updated_at=dto.updated_at,
         )
@@ -84,6 +86,7 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
             prompt=prompt,
             video_url="",
             save_path=save_path,
+            error_message="",
             created_at=datetime.now(),
             updated_at=datetime.now(),
         )
@@ -116,6 +119,7 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
                 "prompt": e.prompt,
                 "video_url": e.video_url,
                 "save_path": e.save_path,
+                "error_message": e.error_message,
                 "created_at": e.created_at,
                 "updated_at": e.updated_at,
             }
@@ -146,6 +150,7 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
             "prompt": entity.prompt,
             "video_url": entity.video_url,
             "save_path": entity.save_path,
+            "error_message": entity.error_message,
             "created_at": entity.created_at,
             "updated_at": entity.updated_at,
         }
@@ -177,6 +182,7 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
             "prompt": entity.prompt,
             "video_url": entity.video_url,
             "save_path": entity.save_path,
+            "error_message": entity.error_message,
             "created_at": entity.created_at,
             "updated_at": entity.updated_at,
         }
@@ -186,6 +192,7 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
         task_id: int,
         status: str,
         video_url: str = "",
+        error_message: str = "",
     ) -> None:
         """
         更新任务状态。
@@ -194,6 +201,7 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
             task_id: 任务 ID（自增主键）
             status: 任务状态
             video_url: 视频 URL（可选）
+            error_message: 错误信息（可选）
         """
         entity = self.session.get(ActiveTaskEntity, task_id)
         if not entity:
@@ -202,6 +210,8 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
         entity.status = status
         if video_url:
             entity.video_url = video_url
+        if error_message:
+            entity.error_message = error_message
         entity.updated_at = datetime.now()
         self.session.commit()
 
@@ -251,6 +261,7 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
                 "prompt": e.prompt,
                 "video_url": e.video_url,
                 "save_path": e.save_path,
+                "error_message": e.error_message,
                 "created_at": e.created_at,
                 "updated_at": e.updated_at,
             }

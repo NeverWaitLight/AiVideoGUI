@@ -258,6 +258,7 @@ class _PollingWorker(QThread):
                 )
             elif result.status == TaskStatus.FAILED:
                 error_msg = result.error_message or "未知原因"
+                self._db.update_active_task(internal_task_id, "failed", error_message=error_msg)
                 self.task_failed.emit(message_id, f"任务失败：{error_msg}")
                 self._db.mark_task_completed(internal_task_id)
                 self._task_poll_count.pop(internal_task_id, None)

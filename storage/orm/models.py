@@ -123,6 +123,7 @@ class ActiveTaskEntity(Base):
     prompt: Mapped[str] = mapped_column(Text, nullable=False, default="")
     video_url: Mapped[str] = mapped_column(String(500), nullable=False, default="")
     save_path: Mapped[str] = mapped_column(String(500), nullable=False, default="")
+    error_message: Mapped[str] = mapped_column(Text, nullable=False, default="")
 
     # 时间戳
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)

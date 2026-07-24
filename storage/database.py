@@ -22,7 +22,7 @@ from models.data_models import (
     Shot,
     ShotHistory,
 )
-from storage.orm.base import create_all_tables, get_session, init_engine
+from storage.orm.base import create_all_tables, ensure_columns, get_session, init_engine
 from storage.repositories.active_task import ActiveTaskRepository
 from storage.repositories.character import CharacterHistoryRepository, CharacterRepository
 from storage.repositories.conversation import ConversationRepository
@@ -49,6 +49,9 @@ class DatabaseManager:
 
         # 创建所有表（如果不存在）
         create_all_tables()
+
+        # 为已有表补齐新增列
+        ensure_columns()
 
         logger.info("数据库初始化完成（SQLAlchemy ORM）：%s", db_path)
 
@@ -183,7 +186,7 @@ class DatabaseManager:
         repo = ActiveTaskRepository(session)
         return repo.list_active_tasks()
 
-    def update_active_task(self, task_id: int, status: str, video_url: str = "") -> None:
+    def update_active_task(self, task_id: int, status: str, video_url: str = "", error_message: str = "") -> None:
         """
         更新任务状态。
 
@@ -191,11 +194,12 @@ class DatabaseManager:
             task_id: 任务 ID（自增主键）
             status: 任务状态
             video_url: 视频 URL（可选）
+            error_message: 错误信息（可选）
         """
         with self._lock:
             session = self._get_session()
             repo = ActiveTaskRepository(session)
-            repo.update_status(task_id, status, video_url)
+            repo.update_status(task_id, status, video_url, error_message)
 
     def mark_task_completed(self, task_id: int) -> None:
         """
