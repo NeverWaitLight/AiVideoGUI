@@ -243,11 +243,15 @@ class Character:
 
 @dataclass
 class CharacterHistory:
-    """角色编辑历史（快照单个角色的状态）"""
-    id: str
+    """角色编辑历史（逐条快照，字段与 Character 一致）"""
+    id: int  # 自增ID
     character_id: str  # 关联角色的UUID
-    snapshot: str  # JSON快照（name + ref_code + description + design_image）
-    created_at: datetime  # 该版本创建时间
+    project_id: int  # 所属项目ID
+    name: str  # 角色名
+    ref_code: str  # 引用代号
+    design_image: str = ""  # 角色设计图路径
+    description: str = ""  # 形象描述
+    created_at: int = 0  # 13位时间戳（毫秒）
 
 
 @dataclass

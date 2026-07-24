@@ -1,9 +1,7 @@
 """测试 Character 历史版本自动保存功能。"""
 
-import json
 import os
 import tempfile
-import time
 import unittest
 import uuid
 from datetime import datetime
@@ -67,10 +65,9 @@ class TestCharacterHistoryAutoSave(unittest.TestCase):
         history = self.db.list_character_history(character.uuid)
         self.assertEqual(len(history), 1, "创建角色后应自动保存 1 条历史")
 
-        snapshot = json.loads(history[0].snapshot)
-        self.assertEqual(snapshot["name"], "主角A")
-        self.assertEqual(snapshot["ref_code"], "CHAR_A")
-        self.assertEqual(snapshot["description"], "高个子男性")
+        self.assertEqual(history[0].name, "主角A")
+        self.assertEqual(history[0].ref_code, "CHAR_A")
+        self.assertEqual(history[0].description, "高个子男性")
 
     def test_auto_save_history_on_update(self):
         """测试更新角色时自动保存历史。"""
@@ -83,9 +80,8 @@ class TestCharacterHistoryAutoSave(unittest.TestCase):
         history = self.db.list_character_history(character.uuid)
         self.assertEqual(len(history), 2, "创建+更新后应有 2 条历史")
 
-        snapshot = json.loads(history[0].snapshot)
-        self.assertEqual(snapshot["name"], "主角A改名")
-        self.assertEqual(snapshot["description"], "矮个子男性")
+        self.assertEqual(history[0].name, "主角A改名")
+        self.assertEqual(history[0].description, "矮个子男性")
 
     def test_no_history_on_updated_at_only(self):
         """测试仅更新 updated_at 时不保存历史（关键字段未变）。"""
@@ -120,12 +116,12 @@ class TestCharacterHistoryAutoSave(unittest.TestCase):
         history = self.db.list_character_history(character.uuid)
         self.assertEqual(len(history), 1)
 
-        snapshot = json.loads(history[0].snapshot)
-        self.assertEqual(snapshot["name"], "角色X")
-        self.assertEqual(snapshot["ref_code"], "CHAR_X")
-        self.assertEqual(snapshot["description"], "详细描述")
-        self.assertEqual(snapshot["design_image"], "img.png")
+        self.assertEqual(history[0].name, "角色X")
+        self.assertEqual(history[0].ref_code, "CHAR_X")
+        self.assertEqual(history[0].description, "详细描述")
+        self.assertEqual(history[0].design_image, "img.png")
         self.assertEqual(history[0].character_id, character.uuid)
+        self.assertEqual(history[0].project_id, project.id)
 
 
 if __name__ == "__main__":

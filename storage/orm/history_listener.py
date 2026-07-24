@@ -4,10 +4,7 @@
 在创建和关键字段变更时自动保存历史快照。
 """
 
-import json
 import time
-import uuid
-from datetime import datetime
 
 from sqlalchemy import event, select
 
@@ -93,21 +90,17 @@ def _save_storyboard_history(connection, target: StoryboardEntity):
 
 
 def _save_character_history(connection, target: CharacterEntity):
-    """将 Character 快照写入 character_history（JSON 快照）。"""
-    snapshot = json.dumps({
-        "name": target.name,
-        "ref_code": target.ref_code,
-        "description": target.description,
-        "design_image": target.design_image,
-    }, ensure_ascii=False)
-
+    """将 Character 快照写入 character_history（字段级快照）。"""
     connection.execute(
         CharacterHistoryEntity.__table__.insert(),
         {
-            "id": str(uuid.uuid4()),
             "character_id": target.uuid,
-            "snapshot": snapshot,
-            "created_at": datetime.now(),
+            "project_id": target.project_id,
+            "name": target.name,
+            "ref_code": target.ref_code,
+            "design_image": target.design_image,
+            "description": target.description,
+            "created_at": int(time.time() * 1000),
         },
     )
 

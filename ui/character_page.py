@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import logging
 from datetime import datetime
 
@@ -153,12 +152,8 @@ class _CharacterHistoryDialog(QDialog):
         self._detail_label.setMinimumHeight(150)
 
         for h in self._history:
-            time_str = h.created_at.strftime("%Y-%m-%d %H:%M:%S")
-            try:
-                snap = json.loads(h.snapshot)
-                summary = f"{snap.get('name', '?')} ({snap.get('ref_code', '?')})"
-            except (json.JSONDecodeError, TypeError):
-                summary = "（解析失败）"
+            time_str = datetime.fromtimestamp(h.created_at / 1000).strftime("%Y-%m-%d %H:%M:%S")
+            summary = f"{h.name} ({h.ref_code})"
             self._list_widget.addItem(f"{time_str}  —  {summary}")
 
         self._list_widget.currentRowChanged.connect(self._on_row_changed)
@@ -175,16 +170,12 @@ class _CharacterHistoryDialog(QDialog):
         if row < 0 or row >= len(self._history):
             return
         h = self._history[row]
-        try:
-            snap = json.loads(h.snapshot)
-            lines = [
-                f"角色名：{snap.get('name', '')}",
-                f"引用代号：{snap.get('ref_code', '')}",
-                f"形象描述：{snap.get('description', '')}",
-            ]
-            self._detail_label.setPlainText("\n".join(lines))
-        except (json.JSONDecodeError, TypeError):
-            self._detail_label.setPlainText("（快照解析失败）")
+        lines = [
+            f"角色名：{h.name}",
+            f"引用代号：{h.ref_code}",
+            f"形象描述：{h.description}",
+        ]
+        self._detail_label.setPlainText("\n".join(lines))
 
 
 class CharacterCard(CardWidget):

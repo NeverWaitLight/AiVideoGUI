@@ -56,14 +56,11 @@ class CharacterService:
         description: str | None = None,
         design_image: str | None = None,
     ) -> None:
-        """更新角色信息（更新前保存历史快照）。"""
+        """更新角色信息（ORM 监听器自动保存历史快照）。"""
         character = self._db.get_character(character_uuid)
         if not character:
             logger.warning(f"角色不存在：{character_uuid}")
             return
-
-        # 保存历史快照
-        self._db.create_character_history(character)
 
         # 更新字段
         if name is not None:

@@ -116,16 +116,23 @@ class CharacterHistoryRepository(BaseRepository[CharacterHistoryEntity, Characte
         return CharacterHistory(
             id=entity.id,
             character_id=entity.character_id,
-            snapshot=entity.snapshot,
+            project_id=entity.project_id,
+            name=entity.name,
+            ref_code=entity.ref_code,
+            design_image=entity.design_image,
+            description=entity.description,
             created_at=entity.created_at,
         )
 
     def _to_entity(self, dto: CharacterHistory) -> CharacterHistoryEntity:
         """DTO → Entity 转换。"""
         return CharacterHistoryEntity(
-            id=dto.id,
             character_id=dto.character_id,
-            snapshot=dto.snapshot,
+            project_id=dto.project_id,
+            name=dto.name,
+            ref_code=dto.ref_code,
+            design_image=dto.design_image,
+            description=dto.description,
             created_at=dto.created_at,
         )
 

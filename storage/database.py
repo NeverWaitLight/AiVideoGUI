@@ -807,24 +807,21 @@ class DatabaseManager:
         return repo.get_by_ref_code(project_id, ref_code)
 
     def create_character_history(self, character: Character) -> None:
-        """创建角色编辑历史快照。"""
+        """创建角色编辑历史快照（ORM 监听器已自动处理，此方法仅用于手动触发）。"""
         with self._lock:
             session = self._get_session()
             repo = CharacterHistoryRepository(session)
-            import uuid
-
-            snapshot = json.dumps({
-                "name": character.name,
-                "ref_code": character.ref_code,
-                "description": character.description,
-                "design_image": character.design_image,
-            }, ensure_ascii=False)
+            import time
 
             repo.create(CharacterHistory(
-                id=str(uuid.uuid4()),
+                id=0,
                 character_id=character.uuid,
-                snapshot=snapshot,
-                created_at=datetime.now(),
+                project_id=character.project_id,
+                name=character.name,
+                ref_code=character.ref_code,
+                design_image=character.design_image,
+                description=character.description,
+                created_at=int(time.time() * 1000),
             ))
 
     def list_character_history(self, character_uuid: str) -> list[CharacterHistory]:
