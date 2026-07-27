@@ -31,11 +31,13 @@ logger = logging.getLogger(__name__)
 # (显示文本, provider_name)
 _PROVIDER_OPTIONS: list[tuple[str, str]] = [
     ("阿里万象 (DashScope)", "dashscope"),
+    ("Seedance", "seedance"),
 ]
 
 # provider_name -> 可选模型
 _MODEL_OPTIONS: dict[str, list[str]] = {
     "dashscope": ["wan2.7-t2v"],
+    "seedance": ["seedance-2.0-text-to-video", "seedance-2.0-fast-text-to-video"],
 }
 
 # ── 对话模型 ──

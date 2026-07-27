@@ -18,12 +18,14 @@ from models.data_models import (
 )
 from providers.base import VideoProvider
 from providers.dashscope import DashScopeProvider
+from providers.seedance import SeedanceProvider
 from storage.database import DatabaseManager
 
 logger = logging.getLogger(__name__)
 
 _PROVIDER_REGISTRY: dict[str, type[VideoProvider]] = {
     "dashscope": DashScopeProvider,
+    "seedance": SeedanceProvider,
 }
 
 
