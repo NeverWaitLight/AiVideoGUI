@@ -20,6 +20,8 @@ from PyQt6.QtWidgets import (
 )
 from qfluentwidgets import ToolButton, FluentIcon, TitleLabel, PushButton
 
+from ui.timeline_widget import TimelineWidget, VideoSegment, generate_segment_colors
+
 if TYPE_CHECKING:
     from models.data_models import MediaFile
     from storage.database import DatabaseManager
@@ -46,15 +48,26 @@ class VideoPlayerPage(QWidget):
         self._db = db
         self._playlist: list[PlaylistItem] = []
         self._current_index = 0
-        self._is_slider_pressed = False
 
-        # 初始化播放器组件
-        self._player = QMediaPlayer()
-        self._audio_output = QAudioOutput()
-        self._player.setAudioOutput(self._audio_output)
+        # 双播放器无缝切换方案
+        self._player1 = QMediaPlayer()
+        self._player2 = QMediaPlayer()
+        self._audio_output1 = QAudioOutput()
+        self._audio_output2 = QAudioOutput()
+        self._player1.setAudioOutput(self._audio_output1)
+        self._player2.setAudioOutput(self._audio_output2)
 
         self._video_widget = QVideoWidget()
-        self._player.setVideoOutput(self._video_widget)
+
+        # 当前活跃的播放器（0=player1, 1=player2）
+        self._active_player_index = 0
+        self._player1.setVideoOutput(self._video_widget)
+
+        # 预加载和切换优化
+        self._preload_threshold = 600   # 提前0.6秒预加载下一个视频（毫秒）
+        self._switch_threshold = 100    # 提前0.1秒切换播放器（毫秒）
+        self._next_prepared = False     # 标记下一个视频是否已准备好
+        self._next_started = False      # 标记下一个视频是否已开始播放
 
         self._setup_ui()
         self._connect_signals()
@@ -150,7 +163,7 @@ class VideoPlayerPage(QWidget):
     def _create_control_bar(self) -> QWidget:
         """创建播放控制栏。"""
         control_bar = QWidget()
-        control_bar.setFixedHeight(80)
+        control_bar.setFixedHeight(120)  # 增加高度以适应更高的时间轴
         control_bar.setStyleSheet("background: #F5F5F5; border-top: 1px solid #E0E0E0;")
 
         layout = QHBoxLayout(control_bar)
@@ -178,10 +191,9 @@ class VideoPlayerPage(QWidget):
         self.current_time_label.setStyleSheet("font-size: 13px; color: #333;")
         layout.addWidget(self.current_time_label)
 
-        # 进度条
-        self.progress_slider = QSlider(Qt.Orientation.Horizontal)
-        self.progress_slider.setRange(0, 1000)
-        layout.addWidget(self.progress_slider, stretch=1)
+        # 时间轴（替换旧的进度条）
+        self.timeline = TimelineWidget()
+        layout.addWidget(self.timeline, stretch=1)
 
         # 总时长
         self.total_time_label = QLabel("00:00")
@@ -205,20 +217,22 @@ class VideoPlayerPage(QWidget):
 
     def _connect_signals(self) -> None:
         """连接信号。"""
-        # 播放器信号
-        self._player.mediaStatusChanged.connect(self._on_media_status_changed)
-        self._player.positionChanged.connect(self._on_position_changed)
-        self._player.durationChanged.connect(self._on_duration_changed)
-        self._player.playbackStateChanged.connect(self._on_playback_state_changed)
+        # 播放器1信号
+        self._player1.mediaStatusChanged.connect(self._on_media_status_changed)
+        self._player1.positionChanged.connect(self._on_position_changed)
+        self._player1.durationChanged.connect(self._on_duration_changed)
+        self._player1.playbackStateChanged.connect(self._on_playback_state_changed)
+
+        # 播放器2信号
+        self._player2.mediaStatusChanged.connect(self._on_media_status_changed)
 
         # 控制按钮信号
         self.play_pause_btn.clicked.connect(self._toggle_play_pause)
         self.prev_btn.clicked.connect(self._play_previous)
         self.next_btn.clicked.connect(self._play_next)
 
-        # 进度条信号
-        self.progress_slider.sliderPressed.connect(self._on_slider_pressed)
-        self.progress_slider.sliderReleased.connect(self._on_slider_released)
+        # 时间轴信号
+        self.timeline.seekRequested.connect(self._on_timeline_seek)
 
         # 音量信号
         self.volume_slider.valueChanged.connect(self._on_volume_changed)
@@ -236,6 +250,9 @@ class VideoPlayerPage(QWidget):
             self.playlist_info_label.setText("0 / 0")
             logger.warning(f"项目 {project_id} 没有分镜视频")
             return
+
+        # 构建时间轴数据
+        self._build_timeline_segments()
 
         self._current_index = 0
         self._update_playlist_info()
@@ -275,6 +292,28 @@ class VideoPlayerPage(QWidget):
         logger.info(f"生成播放列表：共 {len(playlist)} 个视频")
         return playlist
 
+    def _build_timeline_segments(self) -> None:
+        """构建时间轴片段数据。"""
+        segments = []
+        colors = generate_segment_colors(len(self._playlist))
+        cumulative_time = 0
+
+        for i, item in enumerate(self._playlist):
+            duration = item.media_file.duration or 0
+            segments.append(VideoSegment(
+                scene_number=item.scene_number,
+                shot_number=item.shot_number,
+                sequence=item.sequence,
+                start_time=cumulative_time,
+                duration=duration,
+                color=colors[i],
+                thumbnail_path=item.media_file.thumbnail_path
+            ))
+            cumulative_time += duration
+
+        self.timeline.set_segments(segments)
+        logger.debug(f"时间轴片段构建完成：{len(segments)} 个片段，总时长 {cumulative_time}ms")
+
     def _play_current(self) -> None:
         """播放当前索引的视频。"""
         if not (0 <= self._current_index < len(self._playlist)):
@@ -282,16 +321,36 @@ class VideoPlayerPage(QWidget):
             return
 
         item = self._playlist[self._current_index]
-        self._player.stop()
-        self._player.setSource(QUrl.fromLocalFile(item.media_file.local_path))
+
+        # 获取当前活跃的播放器
+        active_player = self._get_active_player()
+
+        # 直接设置新源（不调用 stop，减少状态转换）
+        active_player.setSource(QUrl.fromLocalFile(item.media_file.local_path))
         self._update_overlay(item)
         self._update_playlist_info()
+
+        # 重置预加载标记
+        self._next_prepared = False
+        self._next_started = False
 
         logger.info(f"播放视频：场{item.scene_number}镜{item.shot_number}-第{item.sequence}次生成 ({item.media_file.filename})")
 
         # 显式启动播放，确保视频立即开始
-        self._player.play()
+        active_player.play()
         logger.debug("已调用 player.play() 启动播放")
+
+    def _get_active_player(self) -> QMediaPlayer:
+        """获取当前活跃的播放器。"""
+        return self._player1 if self._active_player_index == 0 else self._player2
+
+    def _get_inactive_player(self) -> QMediaPlayer:
+        """获取当前非活跃的播放器（用于预加载）。"""
+        return self._player2 if self._active_player_index == 0 else self._player1
+
+    def _get_inactive_audio(self) -> QAudioOutput:
+        """获取当前非活跃的音频输出。"""
+        return self._audio_output2 if self._active_player_index == 0 else self._audio_output1
 
     def _update_overlay(self, item: PlaylistItem) -> None:
         """更新叠加层文本。"""
@@ -325,13 +384,26 @@ class VideoPlayerPage(QWidget):
 
         if status == QMediaPlayer.MediaStatus.LoadedMedia:
             # 加载完成，确保播放（虽然 _play_current 已经调用了 play）
-            if self._player.playbackState() != QMediaPlayer.PlaybackState.PlayingState:
+            active_player = self._get_active_player()
+            if active_player.playbackState() != QMediaPlayer.PlaybackState.PlayingState:
                 logger.debug("LoadedMedia 状态下播放器未运行，调用 play()")
-                self._player.play()
+                active_player.play()
         elif status == QMediaPlayer.MediaStatus.EndOfMedia:
-            # 播放结束，切换下一个
+            # 播放结束，切换下一个（如果已准备好则立即切换）
             logger.info(f"视频播放结束 [索引 {self._current_index + 1}/{len(self._playlist)}]，自动切换下一个")
-            self._play_next()
+
+            # 检查是否还有下一个视频
+            if self._current_index < len(self._playlist) - 1:
+                self._current_index += 1
+
+                # 如果下一个视频已经开始播放，直接切换播放器
+                if self._next_started:
+                    self._instant_switch_to_next()
+                else:
+                    # 否则正常播放
+                    self._play_current()
+            else:
+                logger.info("播放列表已全部播放完毕")
         elif status == QMediaPlayer.MediaStatus.InvalidMedia:
             logger.error(f"无效的媒体文件，无法播放当前视频 [索引 {self._current_index + 1}]")
 
@@ -344,12 +416,28 @@ class VideoPlayerPage(QWidget):
 
     def _on_position_changed(self, position: int) -> None:
         """播放位置改变（更新进度条和时间）。"""
-        if not self._is_slider_pressed:
-            duration = self._player.duration()
-            if duration > 0:
-                self.progress_slider.setValue(int(position * 1000 / duration))
+        # 计算全局位置并更新时间轴
+        global_position = self._calculate_global_position(position)
+        self.timeline.set_position(global_position)
 
+        # 更新时间标签
         self.current_time_label.setText(self._format_time(position))
+
+        # 预加载和切换优化
+        active_player = self._get_active_player()
+        duration = active_player.duration()
+        if duration > 0:
+            remaining = duration - position
+
+            # 步骤1：提前0.6秒预加载下一个视频到备用播放器
+            if not self._next_prepared and remaining <= self._preload_threshold and remaining > 0:
+                self._prepare_next_video()
+                self._next_prepared = True
+
+            # 步骤2：提前0.1秒启动下一个视频播放（静音）
+            if self._next_prepared and not self._next_started and remaining <= self._switch_threshold and remaining > 0:
+                self._start_next_video_silently()
+                self._next_started = True
 
     def _on_duration_changed(self, duration: int) -> None:
         """视频时长改变。"""
@@ -357,22 +445,25 @@ class VideoPlayerPage(QWidget):
 
     def _on_volume_changed(self, value: int) -> None:
         """音量改变。"""
-        self._audio_output.setVolume(value / 100.0)
+        # 同步两个播放器的音量
+        self._audio_output1.setVolume(value / 100.0)
+        self._audio_output2.setVolume(value / 100.0)
 
     # === 控制按钮处理 ===
 
     def _toggle_play_pause(self) -> None:
         """切换播放/暂停。"""
-        if self._player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
-            self._player.pause()
+        active_player = self._get_active_player()
+        if active_player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
+            active_player.pause()
         else:
-            self._player.play()
+            active_player.play()
 
     def _play_next(self) -> None:
-        """播放下一个视频。"""
+        """播放下一个视频（手动切换）。"""
         if self._current_index < len(self._playlist) - 1:
             self._current_index += 1
-            logger.info(f"切换到下一个视频 [索引 {self._current_index + 1}/{len(self._playlist)}]")
+            logger.info(f"手动切换到下一个视频 [索引 {self._current_index + 1}/{len(self._playlist)}]")
             self._play_current()
         else:
             # 播放完毕，停止（停留在最后一帧）
@@ -387,23 +478,145 @@ class VideoPlayerPage(QWidget):
 
     def _toggle_mute(self) -> None:
         """切换静音。"""
-        is_muted = self._audio_output.isMuted()
-        self._audio_output.setMuted(not is_muted)
+        # 同步两个播放器的静音状态
+        is_muted = self._audio_output1.isMuted()
+        self._audio_output1.setMuted(not is_muted)
+        self._audio_output2.setMuted(not is_muted)
         self.volume_btn.setIcon(FluentIcon.MUTE if not is_muted else FluentIcon.VOLUME)
 
-    # === 进度条拖动处理 ===
+    # === 时间轴拖动处理 ===
 
-    def _on_slider_pressed(self) -> None:
-        """进度条按下（暂停自动更新）。"""
-        self._is_slider_pressed = True
+    def _on_timeline_seek(self, global_position: int) -> None:
+        """时间轴拖动定位。"""
+        # 查找目标视频片段
+        target_index, local_position = self._find_segment_at_position(global_position)
 
-    def _on_slider_released(self) -> None:
-        """进度条释放（跳转到目标位置）。"""
-        self._is_slider_pressed = False
-        duration = self._player.duration()
-        if duration > 0:
-            position = int(self.progress_slider.value() * duration / 1000)
-            self._player.setPosition(position)
+        if target_index is None:
+            logger.warning(f"无法找到全局位置 {global_position}ms 对应的片段")
+            return
+
+        # 切换到目标视频（如果需要）
+        if target_index != self._current_index:
+            self._current_index = target_index
+            logger.info(f"时间轴定位：切换到视频 {target_index + 1}")
+            self._play_current()
+
+        # 定位到片段内的具体时间点
+        active_player = self._get_active_player()
+        active_player.setPosition(local_position)
+        logger.debug(f"时间轴定位：全局位置 {global_position}ms → 视频 {target_index + 1} 本地位置 {local_position}ms")
+
+    def _calculate_global_position(self, local_position: int) -> int:
+        """本地位置 → 全局位置。"""
+        if not self._playlist or self._current_index < 0:
+            return 0
+
+        base_time = sum(
+            item.media_file.duration or 0
+            for item in self._playlist[:self._current_index]
+        )
+        return base_time + local_position
+
+    def _find_segment_at_position(self, global_position: int) -> tuple[int | None, int]:
+        """全局位置 → (视频索引, 本地位置)。"""
+        cumulative = 0
+        for i, item in enumerate(self._playlist):
+            duration = item.media_file.duration or 0
+            if cumulative + duration >= global_position:
+                return i, global_position - cumulative
+            cumulative += duration
+
+        # 如果超出范围，返回最后一个视频的末尾
+        if self._playlist:
+            last_duration = self._playlist[-1].media_file.duration or 0
+            return len(self._playlist) - 1, last_duration
+
+        return None, 0
+
+    def _prepare_next_video(self) -> None:
+        """在备用播放器中预加载下一个视频（关键方法）。"""
+        next_index = self._current_index + 1
+        if next_index >= len(self._playlist):
+            return  # 已经是最后一个视频
+
+        next_item = self._playlist[next_index]
+        inactive_player = self._get_inactive_player()
+
+        # 在备用播放器中加载下一个视频，但不播放
+        inactive_player.setSource(QUrl.fromLocalFile(next_item.media_file.local_path))
+
+        logger.debug(f"预加载下一个视频到备用播放器：{next_item.media_file.filename}")
+
+    def _start_next_video_silently(self) -> None:
+        """提前启动下一个视频播放（静音状态）。"""
+        inactive_player = self._get_inactive_player()
+        inactive_audio = self._get_inactive_audio()
+
+        # 静音备用播放器
+        inactive_audio.setMuted(True)
+
+        # 开始播放（此时已经加载好，可以立即开始解码）
+        inactive_player.play()
+
+        logger.debug("提前启动下一个视频播放（静音）")
+
+    def _instant_switch_to_next(self) -> None:
+        """瞬间切换到下一个视频（下一个视频已在播放中）。"""
+        next_item = self._playlist[self._current_index]
+
+        # 停止当前播放器
+        old_player = self._get_active_player()
+        old_audio = self._audio_output1 if self._active_player_index == 0 else self._audio_output2
+        old_player.stop()
+
+        # 切换活跃播放器
+        self._active_player_index = 1 - self._active_player_index
+        new_player = self._get_active_player()
+        new_audio = self._get_inactive_audio()
+
+        # 将视频输出切换到新播放器
+        new_player.setVideoOutput(self._video_widget)
+
+        # 恢复新播放器的音量（取消静音）
+        user_muted = old_audio.isMuted()
+        new_audio.setMuted(user_muted)
+
+        # 更新 UI
+        self._update_overlay(next_item)
+        self._update_playlist_info()
+
+        # 重置预加载标记
+        self._next_prepared = False
+        self._next_started = False
+
+        logger.info(f"瞬间切换到视频：场{next_item.scene_number}镜{next_item.shot_number}-第{next_item.sequence}次生成")
+
+    def _seamless_switch_to_next(self) -> None:
+        """无缝切换到下一个视频（关键方法）。"""
+        next_item = self._playlist[self._current_index]
+
+        # 停止当前播放器
+        old_player = self._get_active_player()
+        old_player.stop()
+
+        # 切换活跃播放器
+        self._active_player_index = 1 - self._active_player_index
+        new_player = self._get_active_player()
+
+        # 将视频输出切换到新播放器
+        new_player.setVideoOutput(self._video_widget)
+
+        # 更新 UI
+        self._update_overlay(next_item)
+        self._update_playlist_info()
+
+        # 重置预加载标记
+        self._next_prepared = False
+
+        # 开始播放新视频（已经加载好，立即播放）
+        new_player.play()
+
+        logger.info(f"无缝切换到视频：场{next_item.scene_number}镜{next_item.shot_number}-第{next_item.sequence}次生成")
 
     # === 工具方法 ===
 
@@ -419,6 +632,9 @@ class VideoPlayerPage(QWidget):
 
     def hideEvent(self, event) -> None:
         """页面隐藏时暂停播放。"""
-        if self._player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
-            self._player.pause()
+        # 暂停所有播放器
+        if self._player1.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
+            self._player1.pause()
+        if self._player2.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
+            self._player2.pause()
         super().hideEvent(event)
