@@ -1,4 +1,4 @@
-"""阿里百炼对话模型 Provider（OpenAI-compatible API）。"""
+"""DashScope对话模型 Provider（OpenAI-compatible API）。"""
 
 import logging
 
@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 _DEFAULT_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 
 
-class BailianChatProvider(ChatProvider):
-    """通过百炼 OpenAI-compatible 接口调用对话模型。"""
+class DashScopeChatProvider(ChatProvider):
+    """通过 DashScope OpenAI-compatible 接口调用对话模型。"""
 
     def __init__(self, config: ProviderConfig) -> None:
         super().__init__(config)

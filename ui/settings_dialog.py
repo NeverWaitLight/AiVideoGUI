@@ -23,7 +23,7 @@ from qframelesswindow import FramelessDialog
 
 from config.manager import ConfigManager
 from models.data_models import ProviderConfig
-from providers.bailian_chat import BailianChatProvider
+from providers.dashscope_chat import DashScopeChatProvider
 from utils import paths
 
 logger = logging.getLogger(__name__)
@@ -42,17 +42,17 @@ _MODEL_OPTIONS: dict[str, list[str]] = {
 
 # ── 对话模型 ──
 _CHAT_PROVIDER_OPTIONS: list[tuple[str, str]] = [
-    ("阿里百炼", "bailian"),
+    ("阿里灵积 (DashScope)", "dashscope"),
 ]
 
 # ── 图片模型 ──
 _IMAGE_PROVIDER_OPTIONS: list[tuple[str, str]] = [
-    ("阿里百炼", "bailian_image"),
+    ("阿里灵积 (DashScope)", "dashscope_image"),
 ]
 
 # provider_name -> 可选图片模型
 _IMAGE_MODEL_OPTIONS: dict[str, list[str]] = {
-    "bailian_image": ["z-image-turbo"],
+    "dashscope_image": ["wan2.6-t2i"],
 }
 
 
@@ -280,7 +280,7 @@ class SettingsDialog(FramelessDialog):
             base_url=base_url,
         )
         try:
-            provider = BailianChatProvider(cfg)
+            provider = DashScopeChatProvider(cfg)
             models = provider.list_available_models()
         except Exception as e:
             logger.warning("获取模型列表失败：%s", e)

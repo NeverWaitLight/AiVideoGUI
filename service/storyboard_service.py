@@ -76,10 +76,13 @@ class StoryboardService:
         notes: str | None = None,
     ) -> None:
         """更新分镜信息（历史版本自动保存由 ORM 监听器处理）。"""
+        # 将 ShotSize 枚举转换为字符串
+        shot_size_str = shot_size.value if isinstance(shot_size, ShotSize) else shot_size
+
         self._db.update_storyboard(
             storyboard_id=storyboard_id,
             design_image=design_image,
-            shot_size=shot_size,
+            shot_size=shot_size_str,
             camera_movement=camera_movement,
             visual_content=visual_content,
             dialogue=dialogue,

@@ -5,13 +5,13 @@ import logging
 from PyQt6.QtCore import QObject, QThread, pyqtSignal
 
 from config.manager import ConfigManager
-from providers.bailian_chat import BailianChatProvider
+from providers.dashscope_chat import DashScopeChatProvider
 from providers.chat_base import ChatProvider
 
 logger = logging.getLogger(__name__)
 
 _CHAT_PROVIDER_REGISTRY: dict[str, type[ChatProvider]] = {
-    "bailian": BailianChatProvider,
+    "dashscope": DashScopeChatProvider,
 }
 
 _TITLE_SYSTEM_PROMPT = (
@@ -66,7 +66,7 @@ class ChatService(QObject):
     def _get_provider(self) -> ChatProvider:
         if self._provider is not None:
             return self._provider
-        provider_name = self._config.settings.default_chat_provider or "bailian"
+        provider_name = self._config.settings.default_chat_provider or "dashscope"
         cfg = self._config.get_provider(provider_name)
         if cfg is None:
             raise KeyError(f"未配置的对话 Provider：{provider_name}")
