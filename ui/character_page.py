@@ -70,6 +70,7 @@ class _CharacterEditDialog(QDialog):
         self._description_edit = TextEdit()
         self._description_edit.setPlaceholderText(
             "结构化形象描述，每行一个分区：\n"
+            "[物种] 人类-黄种人 / 人类-白人 / 人类-黑人 / 动物（橘猫）/ 拟人化动物（兔子）等\n"
             "[外貌] 25岁女性，瓜子脸，柳叶眉\n"
             "[发型] 齐肩黑色直发，中分\n"
             "[发色] 自然黑\n"
@@ -249,6 +250,7 @@ class CharacterDetailPage(QWidget):
         self._description_text = TextEdit(scroll_widget)
         self._description_text.setPlaceholderText(
             "结构化形象描述，每行一个分区：\n"
+            "[物种] 人类-黄种人 / 人类-白人 / 人类-黑人 / 动物（橘猫）/ 拟人化动物（兔子）等\n"
             "[外貌] 25岁女性，瓜子脸，柳叶眉\n"
             "[发型] 齐肩黑色直发，中分\n"
             "[发色] 自然黑\n"

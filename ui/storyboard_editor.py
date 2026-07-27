@@ -640,9 +640,10 @@ class StoryboardEditor(QWidget):
 
     back_clicked = pyqtSignal()
     preview_prompt_requested = pyqtSignal(int, int)  # storyboard_id, project_id
-    video_generation_requested = pyqtSignal(int, int, int, str, int)  # shot_id, scene_number, shot_number, prompt, project_id
-    batch_video_generation_requested = pyqtSignal(list)  # list of dict: {shot_id, scene_number, shot_number, prompt, project_id}
+    video_generation_requested = pyqtSignal(int, int, int, str, int, str)  # shot_id, scene_number, shot_number, prompt, project_id, design_image
+    batch_video_generation_requested = pyqtSignal(list)  # list of dict: {shot_id, scene_number, shot_number, prompt, project_id, design_image}
     design_image_generation_requested = pyqtSignal(int, int)  # storyboard_id, project_id
+    batch_design_image_generation_requested = pyqtSignal(list)  # list of dict: {storyboard_id, scene_number, shot_number, visual_content, project_id}
 
     def __init__(self, storyboard_service: StoryboardService, screenplay_service: ScreenplayService, media_service=None, parent=None):
         super().__init__(parent)
@@ -683,6 +684,11 @@ class StoryboardEditor(QWidget):
         title_label = QLabel("分镜头脚本")
         title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #333;")
         top_layout.addWidget(title_label, stretch=1)
+
+        self._generate_all_designs_btn = PrimaryPushButton("生成所有设计图", self, FluentIcon.IMAGE_EXPORT)
+        self._generate_all_designs_btn.setFixedHeight(36)
+        self._generate_all_designs_btn.clicked.connect(self._on_generate_all_designs)
+        top_layout.addWidget(self._generate_all_designs_btn)
 
         self._generate_all_btn = PrimaryPushButton("生成所有镜头", self, FluentIcon.PLAY)
         self._generate_all_btn.setFixedHeight(36)
@@ -911,13 +917,14 @@ class StoryboardEditor(QWidget):
             QMessageBox.warning(self, "提示", "分镜画面内容为空，无法生成视频")
             return
 
-        # 发送信号给主窗口处理视频生成
+        # 发送信号给主窗口处理视频生成（传递分镜设计图）
         self.video_generation_requested.emit(
             storyboard_id,
             storyboard.scene_number,
             storyboard.shot_number,
             prompt,
-            self._current_project_id
+            self._current_project_id,
+            storyboard.design_image  # 传递分镜设计图路径
         )
 
     def _on_back_to_list(self):
@@ -1003,6 +1010,7 @@ class StoryboardEditor(QWidget):
                 "shot_number": card.storyboard.shot_number,
                 "prompt": prompt,
                 "project_id": self._current_project_id,
+                "design_image": card.storyboard.design_image,  # 传递分镜设计图
             })
 
         if not shot_list:
@@ -1020,6 +1028,49 @@ class StoryboardEditor(QWidget):
 
         self._generate_all_btn.setEnabled(False)
         self.batch_video_generation_requested.emit(shot_list)
+
+    def _on_generate_all_designs(self) -> None:
+        """生成所有分镜的设计图（逐个提交，异步处理）。"""
+        if not hasattr(self, "_storyboard_cards") or not self._storyboard_cards:
+            QMessageBox.warning(self, "提示", "没有可生成的分镜")
+            return
+
+        if not self._current_project_id:
+            return
+
+        # 收集所有分镜数据
+        shot_list = []
+        for card in self._storyboard_cards:
+            visual_content = card.storyboard.visual_content
+            if not visual_content.strip():
+                continue
+            shot_list.append({
+                "storyboard_id": card.storyboard.id,
+                "scene_number": card.storyboard.scene_number,
+                "shot_number": card.storyboard.shot_number,
+                "visual_content": visual_content,
+                "shot_size": card.storyboard.shot_size,
+                "camera_movement": card.storyboard.camera_movement,
+                "dialogue": card.storyboard.dialogue,
+                "notes": card.storyboard.notes,
+                "project_id": self._current_project_id,
+            })
+
+        if not shot_list:
+            QMessageBox.warning(self, "提示", "所有分镜的画面内容均为空，无法生成设计图")
+            return
+
+        reply = QMessageBox.question(
+            self,
+            "确认批量生成",
+            f"将为 {len(shot_list)} 个分镜生成设计图。\n生成过程可能需要较长时间，请耐心等待。\n确定继续？",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        self._generate_all_designs_btn.setEnabled(False)
+        self.batch_design_image_generation_requested.emit(shot_list)
 
     def _load_history(self):
         """加载历史版本列表（按时间戳分组显示）。"""

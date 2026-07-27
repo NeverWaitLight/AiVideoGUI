@@ -112,6 +112,7 @@ class _BatchGenerationController(QObject):
             prompt = shot["prompt"]
             project_id = shot["project_id"]
             shot_id = shot.get("shot_id", "")
+            reference_image = shot.get("reference_image", "")  # 获取参考图
 
             self.progress.emit(submitted, len(self._shot_list), f"正在提交场{scene_number}镜{shot_number}...")
 
@@ -139,11 +140,13 @@ class _BatchGenerationController(QObject):
                     params=params,
                     save_path=save_path,
                     storyboard_id=shot_id,
+                    reference_image=reference_image,  # 传递参考图
                 )
                 self._submitted_task_ids.add(msg.task_id)
                 submitted += 1
-                logger.info("批量生成 [%d/%d] 场%d镜%d 已提交 task_id=%s save_path=%s",
-                            submitted, len(self._shot_list), scene_number, shot_number, msg.task_id, save_path)
+                mode_info = "(r2v)" if reference_image else "(t2v)"
+                logger.info("批量生成 [%d/%d] 场%d镜%d 已提交 %s task_id=%s save_path=%s",
+                            submitted, len(self._shot_list), scene_number, shot_number, mode_info, msg.task_id, save_path)
 
             except Exception as e:
                 logger.exception(f"批量生成提交失败：场{scene_number}镜{shot_number}")
@@ -465,6 +468,7 @@ class MainWindow(QMainWindow):
         self.storyboard_editor.video_generation_requested.connect(self._on_shot_video_generation)
         self.storyboard_editor.batch_video_generation_requested.connect(self._on_batch_video_generation)
         self.storyboard_editor.design_image_generation_requested.connect(self._on_generate_design_image)
+        self.storyboard_editor.batch_design_image_generation_requested.connect(self._on_batch_generate_design_images)
 
         # 角色管理页信号
         self.character_page.back_clicked.connect(self._on_character_page_back)
@@ -981,12 +985,26 @@ class MainWindow(QMainWindow):
 
         dialog.exec()
 
-    def _on_shot_video_generation(self, shot_id: int, scene_number: int, shot_number: int, prompt: str, project_id: int) -> None:
+    def _on_shot_video_generation(self, shot_id: int, scene_number: int, shot_number: int, prompt: str, project_id: int, design_image: str = "") -> None:
         """处理分镜视频生成请求。"""
-        logger.info(f"分镜视频生成请求：shot_id={shot_id}, scene={scene_number}, shot={shot_number}, project={project_id}")
+        logger.info(f"分镜视频生成请求：shot_id={shot_id}, scene={scene_number}, shot={shot_number}, project={project_id}, design_image={design_image}")
 
         # 用角色形象描述增强提示词
         prompt = self._character_service.enrich_prompt_with_characters(prompt, project_id)
+
+        # 确定参考图：优先使用分镜设计图，否则查找角色设计图
+        reference_image = ""
+        if design_image and os.path.exists(design_image):
+            reference_image = design_image
+            logger.info(f"使用分镜设计图作为参考：{design_image}")
+        else:
+            # 尝试从项目角色中找到第一个有设计图的角色
+            characters = self._character_service.list_characters(project_id)
+            for char in characters:
+                if char.design_image and os.path.exists(char.design_image):
+                    reference_image = char.design_image
+                    logger.info(f"使用角色 {char.name} 的设计图作为参考：{char.design_image}")
+                    break
 
         # 获取项目属性（分辨率和比例）
         project = self._project_service.get_project(project_id)
@@ -1031,14 +1049,19 @@ class MainWindow(QMainWindow):
                 params=params,
                 save_path=save_path,
                 storyboard_id=shot_id,
+                reference_image=reference_image,  # 传递参考图路径
             )
 
             task_id = msg.task_id
 
+            # 根据是否使用参考图显示不同提示
+            mode_info = "参考生视频 (r2v)" if reference_image else "文生视频 (t2v)"
+            ref_info = f"\n参考图：{reference_image}" if reference_image else ""
+
             QMessageBox.information(
                 self,
                 "任务已提交",
-                f"分镜视频生成任务已提交\n场次：{scene_number}，镜头：{shot_number}\n保存路径：{save_path}\n分辨率：{project.resolution} ({project.aspect_ratio})\n任务ID：{task_id}\n\n视频生成完成后将自动下载到项目素材库"
+                f"分镜视频生成任务已提交 ({mode_info})\n场次：{scene_number}，镜头：{shot_number}\n保存路径：{save_path}\n分辨率：{project.resolution} ({project.aspect_ratio}){ref_info}\n任务ID：{task_id}\n\n视频生成完成后将自动下载到项目素材库"
             )
 
             logger.info("分镜视频任务已提交：task_id=%s, shot_id=%s, save_path=%s", task_id, shot_id, save_path)
@@ -1054,11 +1077,28 @@ class MainWindow(QMainWindow):
 
         project_id = shot_list[0]["project_id"]
 
-        # 用角色形象描述增强所有提示词
+        # 查询项目角色设计图（作为备选参考图）
+        characters = self._character_service.list_characters(project_id)
+        fallback_character_image = ""
+        for char in characters:
+            if char.design_image and os.path.exists(char.design_image):
+                fallback_character_image = char.design_image
+                logger.info(f"找到备选角色设计图：{char.name} - {char.design_image}")
+                break
+
+        # 用角色形象描述增强所有提示词，并确定每个分镜的参考图
         for shot_item in shot_list:
             shot_item["prompt"] = self._character_service.enrich_prompt_with_characters(
                 shot_item["prompt"], project_id
             )
+            # 确定参考图：优先使用分镜设计图，否则使用角色设计图
+            design_image = shot_item.get("design_image", "")
+            if design_image and os.path.exists(design_image):
+                shot_item["reference_image"] = design_image
+            elif fallback_character_image:
+                shot_item["reference_image"] = fallback_character_image
+            else:
+                shot_item["reference_image"] = ""
 
         project = self._project_service.get_project(project_id)
         if not project:
@@ -1298,6 +1338,181 @@ class MainWindow(QMainWindow):
 
         # 保持引用避免被回收
         self._design_image_worker = worker
+
+    def _on_batch_generate_design_images(self, shot_list: list[dict]) -> None:
+        """批量生成分镜设计图（逐个处理，显示进度）。"""
+        logger.info(f"批量生成设计图：共 {len(shot_list)} 个分镜")
+
+        if not shot_list:
+            return
+
+        # 显示进度对话框
+        from qfluentwidgets import ProgressBar
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("批量生成设计图")
+        dialog.setModal(True)
+        dialog.setFixedSize(400, 150)
+
+        layout = QVBoxLayout(dialog)
+        layout.setSpacing(16)
+
+        status_label = QLabel("准备生成...")
+        status_label.setStyleSheet("font-size: 13px; color: #666;")
+        status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(status_label)
+
+        progress_bar = ProgressBar()
+        progress_bar.setRange(0, len(shot_list))
+        progress_bar.setValue(0)
+        layout.addWidget(progress_bar)
+
+        detail_label = QLabel("")
+        detail_label.setStyleSheet("font-size: 12px; color: #999;")
+        detail_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(detail_label)
+
+        dialog.show()
+
+        # 使用 QThread 异步生成
+        from PyQt6.QtCore import QThread
+
+        class BatchDesignImageWorker(QThread):
+            progress_update = pyqtSignal(int, str, str)  # (index, status, detail)
+            finished = pyqtSignal(int, int)  # (success_count, total_count)
+            failed = pyqtSignal(str)
+
+            def __init__(self, text_service, image_service, storyboard_service, character_service, shot_list):
+                super().__init__()
+                self._text_service = text_service
+                self._image_service = image_service
+                self._storyboard_service = storyboard_service
+                self._character_service = character_service
+                self._shot_list = shot_list
+
+            def run(self):
+                success_count = 0
+                total = len(self._shot_list)
+
+                # 景别映射
+                shot_size_map = {
+                    "extreme_close_up": "特写",
+                    "close_up": "近景",
+                    "medium_shot": "中景",
+                    "full_shot": "全景",
+                    "long_shot": "远景",
+                    "extreme_long_shot": "大远景",
+                }
+
+                for idx, shot_data in enumerate(self._shot_list, start=1):
+                    try:
+                        storyboard_id = shot_data["storyboard_id"]
+                        project_id = shot_data["project_id"]
+                        scene_number = shot_data["scene_number"]
+                        shot_number = shot_data["shot_number"]
+
+                        self.progress_update.emit(
+                            idx - 1,
+                            f"正在生成 {scene_number}-{shot_number} 镜设计图...",
+                            f"({idx}/{total})"
+                        )
+
+                        # 获取角色信息
+                        visual_content = shot_data["visual_content"]
+                        characters = self._character_service.list_characters(project_id)
+                        matched_chars = []
+                        for char in characters:
+                            if char.name in visual_content or char.ref_code in visual_content:
+                                matched_chars.append(char)
+
+                        character_info = ""
+                        if matched_chars:
+                            char_parts = []
+                            for c in matched_chars:
+                                traits = self._character_service.extract_fixed_traits(c.description)
+                                if traits:
+                                    char_parts.append(f"{c.name}（{c.ref_code}）：{traits}")
+                            character_info = "\n".join(char_parts)
+
+                        # Step 1: 生成英文提示词
+                        shot_size_text = shot_size_map.get(shot_data["shot_size"].value, "中景")
+                        image_prompt = self._text_service.generate_design_image_prompt(
+                            visual_content=visual_content,
+                            shot_size=shot_size_text,
+                            camera_movement=shot_data.get("camera_movement", ""),
+                            dialogue=shot_data.get("dialogue", ""),
+                            notes=shot_data.get("notes", ""),
+                            character_info=character_info,
+                        )
+                        logger.info(f"设计图提示词 [{scene_number}-{shot_number}]：{image_prompt}")
+
+                        # Step 2: 调用图片生成 API
+                        import os
+                        from utils import paths
+                        save_path = os.path.join(
+                            paths.projects_dir(paths.workspace_root()),
+                            str(project_id),
+                            f"design-{scene_number}-{shot_number}.png",
+                        )
+                        result_path = self._image_service.generate(
+                            prompt=image_prompt,
+                            save_path=save_path,
+                        )
+
+                        # Step 3: 保存路径到数据库
+                        self._storyboard_service.update_storyboard(
+                            storyboard_id=storyboard_id,
+                            design_image=result_path,
+                        )
+                        logger.info(f"设计图生成完成 [{scene_number}-{shot_number}]：{result_path}")
+                        success_count += 1
+
+                    except Exception as e:
+                        logger.exception(f"生成设计图失败 [{scene_number}-{shot_number}]")
+                        # 继续处理下一个，不中断整个批量任务
+
+                self.finished.emit(success_count, total)
+
+        def on_progress(index: int, status: str, detail: str):
+            status_label.setText(status)
+            detail_label.setText(detail)
+            progress_bar.setValue(index)
+
+        def on_finished(success_count: int, total_count: int):
+            try:
+                dialog.close()
+            except Exception:
+                pass
+            self.storyboard_editor._generate_all_designs_btn.setEnabled(True)
+            self.storyboard_editor._load_storyboards()  # 刷新列表显示新的设计图
+            QMessageBox.information(
+                self,
+                "批量生成完成",
+                f"成功生成 {success_count}/{total_count} 个分镜设计图。"
+            )
+
+        def on_failed(error_msg: str):
+            try:
+                dialog.close()
+            except Exception:
+                pass
+            self.storyboard_editor._generate_all_designs_btn.setEnabled(True)
+            QMessageBox.critical(self, "批量生成失败", f"批量生成设计图失败：{error_msg}")
+
+        worker = BatchDesignImageWorker(
+            self._text_model_service,
+            self._image_service,
+            self._storyboard_service,
+            self._character_service,
+            shot_list,
+        )
+        worker.progress_update.connect(on_progress)
+        worker.finished.connect(on_finished)
+        worker.failed.connect(on_failed)
+        worker.start()
+
+        # 保持引用避免被回收
+        self._batch_design_image_worker = worker
 
     def _on_generate_character_design_image(self, character_uuid: str, project_id: int) -> None:
         """AI 生成角色设计图：先用文本模型生成英文提示词，再调用图片生成 API。"""

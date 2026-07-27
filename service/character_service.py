@@ -102,7 +102,7 @@ class CharacterService:
         return self._db.list_character_history(character_uuid)
 
     # 固定特征标签——跨视频保持一致，不随场景变化
-    _FIXED_TAGS = ("外貌", "发型", "发色", "瞳色", "体型")
+    _FIXED_TAGS = ("物种", "外貌", "发型", "发色", "瞳色", "体型")
 
     @classmethod
     def extract_fixed_traits(cls, description: str) -> str:
@@ -144,7 +144,7 @@ class CharacterService:
         """将角色的固定外貌特征拼接到视频生成提示词中。
 
         扫描 visual_content 中出现的角色 name 或 ref_code，
-        仅注入固定特征（发型、发色、瞳色、体型等），
+        仅注入固定特征（物种、外貌、发型、发色、瞳色、体型等），
         服装信息由分镜画面描述自行提供，避免冲突。
 
         同时将画面描述中的角色名替换为 ref_code，使视频生成模型

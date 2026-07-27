@@ -105,10 +105,23 @@ class VideoService(QObject):
         params: dict[str, Any] | None = None,
         save_path: str = "",
         storyboard_id: int = 0,
+        reference_image: str = "",
     ) -> Message:
-        """提交视频生成任务，写入数据库后由 TaskPollingService 接管轮询。"""
+        """提交视频生成任务，写入数据库后由 TaskPollingService 接管轮询。
+
+        Args:
+            reference_image: 参考图路径（分镜设计图或角色设计图）。
+                           如果提供，使用 r2v（参考生视频）；否则使用 t2v（文生视频）。
+        """
         provider = self.get_provider(provider_name)
-        provider_task_id, request_params = provider.t2v(prompt, params)
+
+        # 智能路由：有参考图用 r2v，无参考图用 t2v
+        if reference_image:
+            provider_task_id, request_params = provider.r2v(prompt, reference_image, params)
+            logger.info(f"使用参考生视频 (r2v)：reference_image={reference_image}")
+        else:
+            provider_task_id, request_params = provider.t2v(prompt, params)
+            logger.info(f"使用文生视频 (t2v)")
 
         assistant_msg = Message(
             id=uuid.uuid4().hex,
