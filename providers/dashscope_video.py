@@ -70,9 +70,8 @@ class DashScopeVideoProvider(VideoProvider):
             "parameters": api_params,
         }
 
-    def submit(self, prompt: str, params: dict[str, Any] | None = None) -> tuple[str, dict[str, Any]]:
-        """提交文生视频任务，返回 (task_id, 完整请求参数)。"""
-        payload = self.build_payload(prompt, params)
+    def _submit_task(self, payload: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+        """提交任务到 DashScope API，返回 (task_id, payload)。"""
         logger.info("提交 DashScope 任务，模型：%s", self._model)
         logger.debug("请求体：%s", payload)
 
@@ -92,6 +91,23 @@ class DashScopeVideoProvider(VideoProvider):
             raise RuntimeError(f"DashScope 未返回 task_id: {data}")
         logger.info("任务已提交，task_id=%s", task_id)
         return task_id, payload
+
+    def t2v(self, prompt: str, params: dict[str, Any] | None = None) -> tuple[str, dict[str, Any]]:
+        """文生视频：提交文本生成视频任务，返回 (task_id, 完整请求参数)。"""
+        payload = self.build_payload(prompt, params)
+        return self._submit_task(payload)
+
+    def p2v(
+        self, prompt: str, image_path: str, params: dict[str, Any] | None = None
+    ) -> tuple[str, dict[str, Any]]:
+        """图生视频：提交图片+文本生成视频任务，返回 (task_id, 完整请求参数)。"""
+        raise NotImplementedError("DashScope p2v 尚未实现")
+
+    def r2v(
+        self, prompt: str, reference_path: str, params: dict[str, Any] | None = None
+    ) -> tuple[str, dict[str, Any]]:
+        """参考生视频：提交参考素材+文本生成视频任务，返回 (task_id, 完整请求参数)。"""
+        raise NotImplementedError("DashScope r2v 尚未实现")
 
     def check_status(self, task_id: str) -> TaskResult:
         """查询任务状态。"""

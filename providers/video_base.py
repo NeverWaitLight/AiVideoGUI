@@ -21,8 +21,20 @@ class VideoProvider(ABC):
         """构建提交给 API 的完整请求体（不发起网络请求）。"""
 
     @abstractmethod
-    def submit(self, prompt: str, params: dict[str, Any] | None = None) -> tuple[str, dict[str, Any]]:
-        """提交生成任务，返回 (task_id, 完整请求参数)。"""
+    def t2v(self, prompt: str, params: dict[str, Any] | None = None) -> tuple[str, dict[str, Any]]:
+        """文生视频：提交文本生成视频任务，返回 (task_id, 完整请求参数)。"""
+
+    @abstractmethod
+    def p2v(
+        self, prompt: str, image_path: str, params: dict[str, Any] | None = None
+    ) -> tuple[str, dict[str, Any]]:
+        """图生视频：提交图片+文本生成视频任务，返回 (task_id, 完整请求参数)。"""
+
+    @abstractmethod
+    def r2v(
+        self, prompt: str, reference_path: str, params: dict[str, Any] | None = None
+    ) -> tuple[str, dict[str, Any]]:
+        """参考生视频：提交参考素材+文本生成视频任务，返回 (task_id, 完整请求参数)。"""
 
     @abstractmethod
     def check_status(self, task_id: str) -> TaskResult:

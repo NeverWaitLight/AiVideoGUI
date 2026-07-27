@@ -103,7 +103,7 @@ class VideoService(QObject):
     ) -> Message:
         """提交视频生成任务，写入数据库后由 TaskPollingService 接管轮询。"""
         provider = self.get_provider(provider_name)
-        provider_task_id, request_params = provider.submit(prompt, params)
+        provider_task_id, request_params = provider.t2v(prompt, params)
 
         assistant_msg = Message(
             id=uuid.uuid4().hex,
