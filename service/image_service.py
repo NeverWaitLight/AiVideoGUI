@@ -24,6 +24,11 @@ class ImageService:
         """获取或创建 Provider 实例（延迟加载 + 缓存）。"""
         provider_name = self._config.settings.default_image_provider or "dashscope_image"
 
+        # 未知 provider 回退到 dashscope_image（兼容旧配置）
+        if provider_name not in _PROVIDER_REGISTRY:
+            logger.warning(f"未知的图片供应商 {provider_name}，回退到 dashscope_image")
+            provider_name = "dashscope_image"
+
         if provider_name in self._providers:
             return self._providers[provider_name]
 
@@ -32,8 +37,6 @@ class ImageService:
             raise RuntimeError(f"未配置图片生成供应商 {provider_name} 的 API Key，请在设置中配置")
 
         cls = _PROVIDER_REGISTRY.get(provider_name)
-        if cls is None:
-            raise RuntimeError(f"未知的图片生成供应商：{provider_name}")
 
         provider = cls(provider_cfg)
         self._providers[provider_name] = provider

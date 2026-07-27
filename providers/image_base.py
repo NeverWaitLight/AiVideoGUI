@@ -1,7 +1,6 @@
 """图片生成 Provider 抽象基类。"""
 
 from abc import ABC, abstractmethod
-from typing import Any
 
 from models.data_models import ProviderConfig
 
@@ -23,7 +22,9 @@ class ImageProvider(ABC):
         size: str = "1280*1280",
         negative_prompt: str = "",
         n: int = 1,
-        **kwargs: Any,
+        prompt_extend: bool = True,
+        watermark: bool = False,
+        seed: int | None = None,
     ) -> str:
         """同步生成图片，返回图片 URL。"""
 
