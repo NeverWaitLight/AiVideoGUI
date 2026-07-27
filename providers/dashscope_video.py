@@ -100,8 +100,41 @@ class DashScopeVideoProvider(VideoProvider):
     def p2v(
         self, prompt: str, image_path: str, params: dict[str, Any] | None = None
     ) -> tuple[str, dict[str, Any]]:
-        """图生视频：提交图片+文本生成视频任务，返回 (task_id, 完整请求参数)。"""
-        raise NotImplementedError("DashScope p2v 尚未实现")
+        """图生视频：提交图片+文本生成视频任务，返回 (task_id, 完整请求参数)。
+
+        支持两种模式：
+        1. 首帧生视频 - 仅传入 image_path
+        2. 首尾帧生视频 - 传入 image_path + params["last_frame_path"]
+
+        参数：
+        - image_path: 首帧图片路径（URL 或 base64）
+        - params["last_frame_path"]: 尾帧图片路径（可选，URL 或 base64）
+        - params["driving_audio_path"]: 驱动音频路径（可选，URL）
+        """
+        # 复制 params 并提取 media 相关参数
+        api_params = params.copy() if params else {}
+        last_frame_path = api_params.pop("last_frame_path", None)
+        driving_audio_path = api_params.pop("driving_audio_path", None)
+
+        # 构建基础 payload（此时 api_params 已移除 media 相关参数）
+        payload = self.build_payload(prompt, api_params)
+
+        # 构建 media 数组
+        media = [{"type": "first_frame", "url": image_path}]
+
+        # 添加尾帧（如果提供）
+        if last_frame_path:
+            media.append({"type": "last_frame", "url": last_frame_path})
+
+        # 添加驱动音频（如果提供）
+        if driving_audio_path:
+            media.append({"type": "driving_audio", "url": driving_audio_path})
+
+        # 注入 media 到 payload
+        payload["input"]["media"] = media
+
+        # 提交任务
+        return self._submit_task(payload)
 
     def r2v(
         self, prompt: str, reference_path: str, params: dict[str, Any] | None = None
@@ -112,8 +145,37 @@ class DashScopeVideoProvider(VideoProvider):
     def extend(
         self, prompt: str, video_path: str, params: dict[str, Any] | None = None
     ) -> tuple[str, dict[str, Any]]:
-        """视频续写：基于已有视频继续生成后续内容，返回 (task_id, 完整请求参数)。"""
-        raise NotImplementedError("DashScope extend 尚未实现")
+        """视频续写：基于已有视频继续生成后续内容，返回 (task_id, 完整请求参数)。
+
+        支持两种模式：
+        1. 视频续写 - 仅传入 video_path
+        2. 视频+尾帧续写 - 传入 video_path + params["last_frame_path"]
+
+        参数：
+        - video_path: 首段视频路径（URL）
+        - params["last_frame_path"]: 尾帧图片路径（可选，URL 或 base64）
+
+        注意：duration 参数表示最终输出视频的总时长（包含输入视频时长）
+        """
+        # 复制 params 并提取 media 相关参数
+        api_params = params.copy() if params else {}
+        last_frame_path = api_params.pop("last_frame_path", None)
+
+        # 构建基础 payload（此时 api_params 已移除 media 相关参数）
+        payload = self.build_payload(prompt, api_params)
+
+        # 构建 media 数组
+        media = [{"type": "first_clip", "url": video_path}]
+
+        # 添加尾帧（如果提供）
+        if last_frame_path:
+            media.append({"type": "last_frame", "url": last_frame_path})
+
+        # 注入 media 到 payload
+        payload["input"]["media"] = media
+
+        # 提交任务
+        return self._submit_task(payload)
 
     def check_status(self, task_id: str) -> TaskResult:
         """查询任务状态。"""
@@ -182,6 +244,6 @@ class DashScopeVideoProvider(VideoProvider):
                 supported_resolutions=["720P", "1080P"],  # wan2.7 仅支持 720P 和 1080P
                 supported_ratios=["16:9", "9:16", "1:1", "4:3", "3:4"],  # 支持5种宽高比
                 max_duration=15,
-                description="阿里万象 wan2.7 文生视频模型",
+                description="阿里万象 wan2.7 多模态视频生成模型（支持文生视频、图生视频、视频续写）",
             ),
         ]
