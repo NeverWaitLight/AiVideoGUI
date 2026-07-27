@@ -37,6 +37,12 @@ class VideoProvider(ABC):
         """参考生视频：提交参考素材+文本生成视频任务，返回 (task_id, 完整请求参数)。"""
 
     @abstractmethod
+    def extend(
+        self, prompt: str, video_path: str, params: dict[str, Any] | None = None
+    ) -> tuple[str, dict[str, Any]]:
+        """视频续写：基于已有视频继续生成后续内容，返回 (task_id, 完整请求参数)。"""
+
+    @abstractmethod
     def check_status(self, task_id: str) -> TaskResult:
         """查询任务状态。"""
 
