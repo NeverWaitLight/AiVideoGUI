@@ -146,6 +146,12 @@ class CharacterService:
         扫描 visual_content 中出现的角色 name 或 ref_code，
         仅注入固定特征（发型、发色、瞳色、体型等），
         服装信息由分镜画面描述自行提供，避免冲突。
+
+        同时将画面描述中的角色名替换为 ref_code，使视频生成模型
+        能够将角色形象描述与画面中的动作明确关联。
+
+        自动清理描述中的 HTML 标签和 Markdown 格式控制符，
+        确保最终提示词为纯文本。
         """
         characters = self._db.list_characters(project_id)
         if not characters:
@@ -160,13 +166,55 @@ class CharacterService:
         if not matched:
             return visual_content
 
+        # 将画面描述中的角色名替换为 ref_code
+        # 按名字长度降序排列，防止短名是长名子串时产生误替换
+        replaced_content = visual_content
+        for c in sorted(matched, key=lambda ch: len(ch.name), reverse=True):
+            if c.name and c.name in replaced_content:
+                replaced_content = replaced_content.replace(c.name, c.ref_code)
+
         prefix_lines = []
         for c in matched:
             traits = self.extract_fixed_traits(c.description)
             if traits:
-                prefix_lines.append(f"[角色形象] {c.ref_code}：{traits}")
+                # 清理格式控制符
+                traits_clean = self._clean_format_markers(traits)
+                prefix_lines.append(f"[角色形象] {c.ref_code}：{traits_clean}")
 
         if not prefix_lines:
-            return visual_content
+            return replaced_content
 
-        return "\n".join(prefix_lines) + f"\n[画面] {visual_content}"
+        return "\n".join(prefix_lines) + f"\n[画面] {replaced_content}"
+
+    @staticmethod
+    def _clean_format_markers(text: str) -> str:
+        """清理文本中的 HTML 标签和 Markdown 格式控制符。
+
+        移除常见的格式控制符，确保提示词为纯文本：
+        - HTML 标签：<br>, <b>, <i>, <strong>, <em> 等
+        - Markdown 粗体/斜体：**text**, *text*, __text__, _text_
+        - Markdown 标题标记：# ## ###
+        """
+        import re
+
+        if not text:
+            return text
+
+        # 移除 HTML 标签（包括自闭合标签），替换为空格以保持词语间距
+        text = re.sub(r'<br\s*/?>', ' ', text)  # <br> 和 <br/> 替换为空格
+        text = re.sub(r'<[^>]+>', '', text)     # 其他标签直接移除
+
+        # 移除 Markdown 粗体和斜体（避免误删除普通星号和下划线）
+        text = re.sub(r'\*\*(.+?)\*\*', r'\1', text)  # **bold**
+        text = re.sub(r'__(.+?)__', r'\1', text)      # __bold__
+        text = re.sub(r'\*(.+?)\*', r'\1', text)      # *italic*
+        text = re.sub(r'_([^_]+?)_', r'\1', text)     # _italic_
+
+        # 移除 Markdown 标题标记
+        text = re.sub(r'^#{1,6}\s+', '', text, flags=re.MULTILINE)
+
+        # 清理多余空白字符（多个空格/换行符合并为单个空格）
+        text = re.sub(r'\s+', ' ', text)
+        text = text.strip()
+
+        return text
