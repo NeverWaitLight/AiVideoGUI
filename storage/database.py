@@ -153,6 +153,7 @@ class DatabaseManager:
         model_name: str,
         save_path: str,
         prompt: str,
+        storyboard_id: int = 0,
     ) -> int:
         """
         添加活跃任务。
@@ -164,6 +165,7 @@ class DatabaseManager:
             model_name: 模型名称
             save_path: 保存路径
             prompt: 完整的视频生成 Prompt
+            storyboard_id: 关联的分镜 ID（可选）
 
         Returns:
             新记录的自增 ID
@@ -178,6 +180,7 @@ class DatabaseManager:
                 model_name=model_name,
                 save_path=save_path,
                 prompt=prompt,
+                storyboard_id=storyboard_id,
             )
 
     def list_active_tasks(self) -> list[dict]:
@@ -310,6 +313,19 @@ class DatabaseManager:
             if media:
                 repo.delete(media_id)
             return media
+
+    def list_media_by_storyboard(self, storyboard_id: int) -> list[MediaFile]:
+        """查询指定分镜关联的所有素材文件。"""
+        session = self._get_session()
+        repo = MediaRepository(session)
+        return repo.list_by_storyboard(storyboard_id)
+
+    def set_featured_media(self, file_id: str, storyboard_id: int) -> None:
+        """将指定文件设为分镜封面。"""
+        with self._lock:
+            session = self._get_session()
+            repo = MediaRepository(session)
+            repo.set_featured(file_id, storyboard_id)
 
     def get_media_file_by_message(self, message_id: str) -> MediaFile | None:
         """
@@ -629,18 +645,18 @@ class DatabaseManager:
         else:
             return []
 
-    def get_storyboard(self, storyboard_id: str) -> Storyboard | None:
+    def get_storyboard(self, storyboard_id: int) -> Storyboard | None:
         """查询分镜。"""
         session = self._get_session()
         repo = StoryboardRepository(session)
         return repo.get_by_id(storyboard_id)
 
-    def create_storyboard(self, storyboard: Storyboard) -> None:
-        """创建分镜。"""
+    def create_storyboard(self, storyboard: Storyboard) -> Storyboard:
+        """创建分镜，返回含自动生成 ID 的实例。"""
         with self._lock:
             session = self._get_session()
             repo = StoryboardRepository(session)
-            repo.create(storyboard)
+            return repo.create(storyboard)
 
     def batch_create_storyboards(self, storyboards: list[Storyboard]) -> None:
         """批量创建分镜。"""
@@ -652,7 +668,7 @@ class DatabaseManager:
 
     def update_storyboard(
         self,
-        storyboard_id: str,
+        storyboard_id: int,
         design_image: str | None = None,
         shot_size: str | None = None,
         camera_movement: str | None = None,
@@ -694,7 +710,7 @@ class DatabaseManager:
                 entity.updated_at = int(time.time() * 1000)
                 session.commit()
 
-    def delete_storyboard(self, storyboard_id: str) -> None:
+    def delete_storyboard(self, storyboard_id: int) -> None:
         """删除分镜。"""
         with self._lock:
             session = self._get_session()
@@ -737,12 +753,9 @@ class DatabaseManager:
             storyboard_repo.delete_by_project(project_id)
 
             # 恢复分镜
-            import uuid
-
             now_ms = int(time.time() * 1000)
             for h in history_items:
                 storyboard_repo.create(Storyboard(
-                    id=str(uuid.uuid4()),
                     scene_id=h.scene_id,
                     scene_number=h.scene_number,
                     shot_number=h.shot_number,

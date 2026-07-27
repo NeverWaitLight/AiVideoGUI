@@ -31,6 +31,7 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
             video_url=entity.video_url,
             save_path=entity.save_path,
             error_message=entity.error_message,
+            storyboard_id=entity.storyboard_id,
             created_at=entity.created_at,
             updated_at=entity.updated_at,
         )
@@ -49,6 +50,7 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
             video_url=dto.video_url,
             save_path=dto.save_path,
             error_message=dto.error_message,
+            storyboard_id=dto.storyboard_id,
             created_at=dto.created_at,
             updated_at=dto.updated_at,
         )
@@ -61,6 +63,7 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
         model_name: str,
         save_path: str,
         prompt: str,
+        storyboard_id: int = 0,
     ) -> int:
         """
         添加新任务。
@@ -72,6 +75,7 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
             model_name: 模型名称
             save_path: 保存路径
             prompt: 完整的视频生成 Prompt
+            storyboard_id: 关联的分镜 ID（可选）
 
         Returns:
             新记录的自增 ID
@@ -87,6 +91,7 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
             video_url="",
             save_path=save_path,
             error_message="",
+            storyboard_id=storyboard_id,
             created_at=datetime.now(),
             updated_at=datetime.now(),
         )
@@ -120,6 +125,7 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
                 "video_url": e.video_url,
                 "save_path": e.save_path,
                 "error_message": e.error_message,
+                "storyboard_id": e.storyboard_id,
                 "created_at": e.created_at,
                 "updated_at": e.updated_at,
             }
@@ -151,6 +157,7 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
             "video_url": entity.video_url,
             "save_path": entity.save_path,
             "error_message": entity.error_message,
+            "storyboard_id": entity.storyboard_id,
             "created_at": entity.created_at,
             "updated_at": entity.updated_at,
         }
@@ -183,6 +190,7 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
             "video_url": entity.video_url,
             "save_path": entity.save_path,
             "error_message": entity.error_message,
+            "storyboard_id": entity.storyboard_id,
             "created_at": entity.created_at,
             "updated_at": entity.updated_at,
         }
@@ -262,6 +270,7 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
                 "video_url": e.video_url,
                 "save_path": e.save_path,
                 "error_message": e.error_message,
+                "storyboard_id": e.storyboard_id,
                 "created_at": e.created_at,
                 "updated_at": e.updated_at,
             }

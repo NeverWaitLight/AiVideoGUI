@@ -109,6 +109,7 @@ class _BatchGenerationController(QObject):
             shot_number = shot["shot_number"]
             prompt = shot["prompt"]
             project_id = shot["project_id"]
+            shot_id = shot.get("shot_id", "")
 
             self.progress.emit(submitted, len(self._shot_list), f"正在提交场{scene_number}镜{shot_number}...")
 
@@ -135,6 +136,7 @@ class _BatchGenerationController(QObject):
                     provider_name=self._provider_name,
                     params=params,
                     save_path=save_path,
+                    storyboard_id=shot_id,
                 )
                 self._submitted_task_ids.add(msg.task_id)
                 submitted += 1
@@ -179,7 +181,7 @@ class _BatchGenerationController(QObject):
             pass
         self.all_done.emit(self._success, self._failed)
 
-    def _on_task_finished(self, message_id: str, local_path: str) -> None:
+    def _on_task_finished(self, message_id: str, local_path: str, storyboard_id: int = 0) -> None:
         """任务完成回调，检查是否属于本批次。"""
         msg = self._service._db.get_message(message_id)
         if not msg or msg.task_id not in self._submitted_task_ids:
@@ -387,7 +389,9 @@ class MainWindow(QMainWindow):
         self.screenplay_editor.hide()
 
         # 第三层：分镜编辑器
-        self.storyboard_editor = StoryboardEditor(self._storyboard_service, self._screenplay_service)
+        self.storyboard_editor = StoryboardEditor(
+            self._storyboard_service, self._screenplay_service, media_service=self._media_service
+        )
         layout.addWidget(self.storyboard_editor)
         self.storyboard_editor.hide()
 
@@ -894,7 +898,7 @@ class MainWindow(QMainWindow):
             self._character_service.batch_create_characters(new_chars)
             logger.info(f"自动保存 {len(new_chars)} 个角色到项目 {project_id}")
 
-    def _on_shot_video_generation(self, shot_id: str, scene_number: int, shot_number: int, prompt: str, project_id: int) -> None:
+    def _on_shot_video_generation(self, shot_id: int, scene_number: int, shot_number: int, prompt: str, project_id: int) -> None:
         """处理分镜视频生成请求。"""
         logger.info(f"分镜视频生成请求：shot_id={shot_id}, scene={scene_number}, shot={shot_number}, project={project_id}")
 
@@ -939,6 +943,7 @@ class MainWindow(QMainWindow):
                 provider_name=provider_name,
                 params=params,
                 save_path=save_path,
+                storyboard_id=shot_id,
             )
 
             task_id = msg.task_id
@@ -1190,7 +1195,7 @@ class MainWindow(QMainWindow):
         pct = int(downloaded * 100 / total)
         card.set_downloading(pct)
 
-    def _on_task_finished(self, message_id: str, local_path: str) -> None:
+    def _on_task_finished(self, message_id: str, local_path: str, storyboard_id: int = 0) -> None:
         card = self._video_cards.get(message_id)
         if card:
             meta = self._db.get_video_metadata_by_message(message_id) or {}

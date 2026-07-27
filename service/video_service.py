@@ -96,6 +96,7 @@ class VideoService(QObject):
         provider_name: str,
         params: dict[str, Any] | None = None,
         save_path: str = "",
+        storyboard_id: int = 0,
     ) -> Message:
         """提交视频生成任务，写入数据库后由 TaskPollingService 接管轮询。"""
         provider = self.get_provider(provider_name)
@@ -119,6 +120,7 @@ class VideoService(QObject):
             model_name=provider._config.default_model,
             save_path=save_path,
             prompt=prompt,
+            storyboard_id=storyboard_id,
         )
 
         logger.info(

@@ -123,6 +123,9 @@ class ActiveTaskEntity(Base):
     save_path: Mapped[str] = mapped_column(String(500), nullable=False, default="")
     error_message: Mapped[str] = mapped_column(Text, nullable=False, default="")
 
+    # 分镜关联（可选，用于追踪视频生成来源）
+    storyboard_id: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
     # 时间戳
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now, onupdate=datetime.now)
@@ -158,10 +161,15 @@ class MediaFileEntity(Base):
     width: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     height: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
+    # 分镜关联（可选，标识视频来源于哪个分镜）
+    storyboard_id: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    featured: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
     # 索引
     __table_args__ = (
         Index("idx_media_type", "media_type"),
         Index("idx_media_created", "created_at"),
+        Index("idx_media_storyboard", "storyboard_id"),
     )
 
 
@@ -288,7 +296,7 @@ class StoryboardEntity(Base):
 
     __tablename__ = "storyboard"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    id: Mapped[Optional[int]] = mapped_column(Integer, primary_key=True, autoincrement=True, nullable=False)
     scene_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("screenplay.id", ondelete="CASCADE"), nullable=False
     )
@@ -324,8 +332,8 @@ class StoryboardHistoryEntity(Base):
     __tablename__ = "storyboard_history"
 
     id: Mapped[Optional[int]] = mapped_column(Integer, primary_key=True, autoincrement=True, nullable=False)
-    storyboard_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("storyboard.id", ondelete="CASCADE"), nullable=False
+    storyboard_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("storyboard.id", ondelete="CASCADE"), nullable=False
     )
     project_id: Mapped[int] = mapped_column(Integer, nullable=False)
 

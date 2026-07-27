@@ -51,6 +51,7 @@ class MediaService:
         message_id: str,
         local_path: str,
         conversation_id: str = "",
+        storyboard_id: int = 0,
     ) -> None:
         """视频任务完成后自动入库（防重复）。"""
         if self._db.get_media_file_by_message(message_id):
@@ -106,6 +107,7 @@ class MediaService:
             duration=duration,
             width=width,
             height=height,
+            storyboard_id=storyboard_id,
         )
         self._db.add_media_file(media)
         logger.info("素材自动入库：%s", filename)
@@ -213,6 +215,14 @@ class MediaService:
             if self.delete_file(mid):
                 count += 1
         return count
+
+    def list_by_storyboard(self, storyboard_id: int) -> list[MediaFile]:
+        """查询指定分镜关联的所有素材文件。"""
+        return self._db.list_media_by_storyboard(storyboard_id)
+
+    def set_featured(self, file_id: str, storyboard_id: int) -> None:
+        """将指定文件设为分镜封面。"""
+        self._db.set_featured_media(file_id, storyboard_id)
 
     def _resolve_dest_path(self, filename: str, target_dir: str) -> str:
         """避免目标文件重名：同名时追加序号。"""

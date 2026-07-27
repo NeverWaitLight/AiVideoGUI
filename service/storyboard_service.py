@@ -2,7 +2,6 @@
 
 import logging
 import time
-import uuid
 
 from models.data_models import Storyboard, StoryboardHistory, ShotSize
 from storage.database import DatabaseManager
@@ -22,13 +21,13 @@ class StoryboardService:
         """获取分镜列表。可按场次ID、项目ID或场次号过滤。"""
         return self._db.list_storyboards(scene_id=scene_id, project_id=project_id, scene_number=scene_number)
 
-    def get_storyboard(self, storyboard_id: str) -> Storyboard | None:
+    def get_storyboard(self, storyboard_id: int) -> Storyboard | None:
         """获取单个分镜。"""
         return self._db.get_storyboard(storyboard_id)
 
     def create_storyboard(
         self,
-        scene_id: str,
+        scene_id: int,
         scene_number: int,
         shot_number: int,
         shot_size: ShotSize = ShotSize.MEDIUM_SHOT,
@@ -43,7 +42,6 @@ class StoryboardService:
         """创建新分镜。"""
         now_ms = int(time.time() * 1000)
         storyboard = Storyboard(
-            id=str(uuid.uuid4()),
             scene_id=scene_id,
             scene_number=scene_number,
             shot_number=shot_number,
@@ -58,9 +56,7 @@ class StoryboardService:
             created_at=now_ms,
             updated_at=now_ms,
         )
-        self._db.create_storyboard(storyboard)
-        logger.info(f"创建分镜：scene_number={scene_number}, shot_number={shot_number}")
-        return storyboard
+        return self._db.create_storyboard(storyboard)
 
     def batch_create_storyboards(self, storyboards: list[Storyboard]) -> None:
         """批量创建分镜（用于 AI 生成后导入）。"""
@@ -69,7 +65,7 @@ class StoryboardService:
 
     def update_storyboard(
         self,
-        storyboard_id: str,
+        storyboard_id: int,
         design_image: str | None = None,
         shot_size: ShotSize | None = None,
         camera_movement: str | None = None,
@@ -93,7 +89,7 @@ class StoryboardService:
         )
         logger.info(f"更新分镜：storyboard_id={storyboard_id}")
 
-    def delete_storyboard(self, storyboard_id: str) -> None:
+    def delete_storyboard(self, storyboard_id: int) -> None:
         """删除分镜。"""
         self._db.delete_storyboard(storyboard_id)
         logger.info(f"删除分镜：storyboard_id={storyboard_id}")

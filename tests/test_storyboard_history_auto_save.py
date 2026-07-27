@@ -59,10 +59,9 @@ class TestStoryboardHistoryAutoSave(unittest.TestCase):
 
     def _make_storyboard(self, scene_id, scene_number=1, shot_number=1,
                          visual_content="画面内容"):
-        """辅助方法：构建 Storyboard DTO。"""
+        """辅助方法：构建 Storyboard DTO（id 由数据库自动生成）。"""
         now_ms = int(time.time() * 1000)
         return Storyboard(
-            id=f"sb-{scene_number}-{shot_number}",
             scene_id=scene_id,
             scene_number=scene_number,
             shot_number=shot_number,
@@ -81,8 +80,7 @@ class TestStoryboardHistoryAutoSave(unittest.TestCase):
     def test_auto_save_history_on_insert(self):
         """测试创建分镜时自动保存初始快照。"""
         project, scene = self._create_project_and_scene()
-        sb = self._make_storyboard(scene.id)
-        self.db.create_storyboard(sb)
+        sb = self.db.create_storyboard(self._make_storyboard(scene.id))
 
         history = self.db.list_storyboard_history(project.id)
         self.assertEqual(len(history), 1, "创建分镜后应自动保存 1 条历史")
@@ -93,8 +91,7 @@ class TestStoryboardHistoryAutoSave(unittest.TestCase):
     def test_auto_save_history_on_update(self):
         """测试更新分镜时自动保存历史。"""
         project, scene = self._create_project_and_scene()
-        sb = self._make_storyboard(scene.id)
-        self.db.create_storyboard(sb)
+        sb = self.db.create_storyboard(self._make_storyboard(scene.id))
 
         self.db.update_storyboard(
             storyboard_id=sb.id, visual_content="修改后的画面"
@@ -107,8 +104,7 @@ class TestStoryboardHistoryAutoSave(unittest.TestCase):
     def test_no_history_on_updated_at_only(self):
         """测试仅更新 updated_at 时不保存历史。"""
         project, scene = self._create_project_and_scene()
-        sb = self._make_storyboard(scene.id)
-        self.db.create_storyboard(sb)
+        sb = self.db.create_storyboard(self._make_storyboard(scene.id))
 
         self.db.update_storyboard(storyboard_id=sb.id)
 
@@ -123,9 +119,6 @@ class TestStoryboardHistoryAutoSave(unittest.TestCase):
             self._make_storyboard(scene.id, shot_number=2, visual_content="镜头2"),
             self._make_storyboard(scene.id, shot_number=3, visual_content="镜头3"),
         ]
-        # Reset IDs to avoid duplicates
-        for i, sb in enumerate(storyboards):
-            sb.id = f"sb-batch-{i}"
 
         self.db.batch_create_storyboards(storyboards)
 
@@ -136,19 +129,19 @@ class TestStoryboardHistoryAutoSave(unittest.TestCase):
         """测试历史记录包含所有分镜字段。"""
         project, scene = self._create_project_and_scene()
         now_ms = int(time.time() * 1000)
-        sb = Storyboard(
-            id="sb-full", scene_id=scene.id, scene_number=1, shot_number=1,
+        sb_dto = Storyboard(
+            scene_id=scene.id, scene_number=1, shot_number=1,
             design_image="img.png", shot_size=ShotSize.CLOSE_UP,
             camera_movement="dolly", visual_content="特写画面",
             dialogue="重要台词", sound_effect="风声",
             duration=8.5, notes="注意光影", created_at=now_ms, updated_at=now_ms,
         )
-        self.db.create_storyboard(sb)
+        sb = self.db.create_storyboard(sb_dto)
 
         history = self.db.list_storyboard_history(project.id)
         self.assertEqual(len(history), 1)
         h = history[0]
-        self.assertEqual(h.storyboard_id, "sb-full")
+        self.assertEqual(h.storyboard_id, sb.id)
         self.assertEqual(h.project_id, project.id)
         self.assertEqual(h.scene_id, scene.id)
         self.assertEqual(h.scene_number, 1)
@@ -165,8 +158,7 @@ class TestStoryboardHistoryAutoSave(unittest.TestCase):
     def test_multiple_updates_accumulate(self):
         """测试多次更新累积历史记录。"""
         project, scene = self._create_project_and_scene()
-        sb = self._make_storyboard(scene.id)
-        self.db.create_storyboard(sb)
+        sb = self.db.create_storyboard(self._make_storyboard(scene.id))
 
         self.db.update_storyboard(storyboard_id=sb.id, visual_content="版本2")
         self.db.update_storyboard(storyboard_id=sb.id, visual_content="版本3")

@@ -77,8 +77,8 @@ def _to_chinese_num(n: int) -> str:
 class StoryboardCard(CardWidget):
     """分镜卡片（横向大块，120px 高度）"""
 
-    storyboard_clicked = pyqtSignal(str)  # 发送 storyboard_id
-    generate_video_clicked = pyqtSignal(str)  # 发送 storyboard_id
+    storyboard_clicked = pyqtSignal(int)  # 发送 storyboard_id
+    generate_video_clicked = pyqtSignal(int)  # 发送 storyboard_id
 
     def __init__(self, storyboard: Storyboard, parent=None):
         super().__init__(parent)
@@ -181,10 +181,11 @@ class StoryboardDetailEditor(QWidget):
     back_clicked = pyqtSignal()
     storyboard_saved = pyqtSignal()
 
-    def __init__(self, storyboard_service: StoryboardService, parent=None):
+    def __init__(self, storyboard_service: StoryboardService, media_service=None, parent=None):
         super().__init__(parent)
         self._storyboard_service = storyboard_service
-        self._current_storyboard_id: str | None = None
+        self._media_service = media_service
+        self._current_storyboard_id: int | None = None
         self._setup_ui()
 
     def _setup_ui(self):
@@ -293,6 +294,22 @@ class StoryboardDetailEditor(QWidget):
         self.notes_edit.setMinimumHeight(60)
         scroll_layout.addWidget(self.notes_edit)
 
+        # ── 关联视频区块 ──
+        video_label = QLabel("关联视频：")
+        video_label.setStyleSheet("font-weight: bold; margin-top: 8px;")
+        scroll_layout.addWidget(video_label)
+
+        self.video_list_container = QWidget(scroll_widget)
+        self.video_list_layout = QVBoxLayout(self.video_list_container)
+        self.video_list_layout.setContentsMargins(0, 0, 0, 0)
+        self.video_list_layout.setSpacing(8)
+        scroll_layout.addWidget(self.video_list_container)
+
+        self.video_empty_label = QLabel("暂无关联视频")
+        self.video_empty_label.setStyleSheet("color: #909090; padding: 12px;")
+        self.video_empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        scroll_layout.addWidget(self.video_empty_label)
+
         scroll_layout.addStretch()
         scroll_area.setWidget(scroll_widget)
         layout.addWidget(scroll_area, 1)
@@ -302,7 +319,7 @@ class StoryboardDetailEditor(QWidget):
         save_btn.clicked.connect(self._on_save_storyboard)
         layout.addWidget(save_btn, alignment=Qt.AlignmentFlag.AlignRight)
 
-    def load_storyboard(self, storyboard_id: str):
+    def load_storyboard(self, storyboard_id: int):
         """加载分镜数据"""
         self._current_storyboard_id = storyboard_id
         storyboard = self._storyboard_service.get_storyboard(storyboard_id)
@@ -332,6 +349,139 @@ class StoryboardDetailEditor(QWidget):
         self.dialogue_edit.setPlainText(storyboard.dialogue)
         self.sound_effect_edit.setText(storyboard.sound_effect)
         self.notes_edit.setPlainText(storyboard.notes)
+
+        self._load_video_list()
+
+    def _load_video_list(self):
+        """加载并渲染关联视频列表。"""
+        # 清空现有视频行
+        while self.video_list_layout.count():
+            item = self.video_list_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        if not self._media_service or not self._current_storyboard_id:
+            self.video_empty_label.show()
+            return
+
+        videos = self._media_service.list_by_storyboard(self._current_storyboard_id)
+        if not videos:
+            self.video_empty_label.show()
+            return
+
+        self.video_empty_label.hide()
+        for media in videos:
+            row = self._create_video_row(media)
+            self.video_list_layout.addWidget(row)
+
+    def _create_video_row(self, media) -> QWidget:
+        """创建单个视频行组件。"""
+        card = CardWidget(self.video_list_container)
+        row_layout = QHBoxLayout(card)
+        row_layout.setContentsMargins(12, 8, 12, 8)
+        row_layout.setSpacing(10)
+
+        # 封面标记
+        if media.featured:
+            star_label = QLabel("★")
+            star_label.setStyleSheet("color: #f5a623; font-size: 16px;")
+            row_layout.addWidget(star_label)
+
+        # 缩略图
+        thumb_label = QLabel()
+        thumb_label.setFixedSize(64, 48)
+        thumb_label.setStyleSheet("background: #e0e0e0; border-radius: 4px;")
+        thumb_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        if media.thumbnail_path and os.path.exists(media.thumbnail_path):
+            from PyQt6.QtGui import QPixmap
+            pix = QPixmap(media.thumbnail_path)
+            if not pix.isNull():
+                thumb_label.setPixmap(pix.scaled(64, 48, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+        else:
+            thumb_label.setText("🎬")
+        row_layout.addWidget(thumb_label)
+
+        # 文件名 + 时长 + 分辨率
+        info_layout = QVBoxLayout()
+        info_layout.setSpacing(2)
+        name_label = QLabel(media.filename)
+        name_label.setStyleSheet("font-size: 13px; font-weight: 500;")
+        info_layout.addWidget(name_label)
+
+        meta_parts = []
+        if media.duration > 0:
+            mins = int(media.duration) // 60
+            secs = int(media.duration) % 60
+            meta_parts.append(f"{mins}:{secs:02d}" if mins else f"{secs}s")
+        if media.width > 0 and media.height > 0:
+            meta_parts.append(f"{media.width}×{media.height}")
+        if meta_parts:
+            meta_label = QLabel(" · ".join(meta_parts))
+            meta_label.setStyleSheet("font-size: 11px; color: #909090;")
+            info_layout.addWidget(meta_label)
+        row_layout.addLayout(info_layout, 1)
+
+        # 播放按钮
+        play_btn = PushButton("播放", card, FluentIcon.PLAY)
+        play_btn.setFixedHeight(28)
+        play_btn.setFixedWidth(60)
+        local_path = media.local_path
+        play_btn.clicked.connect(lambda _, p=local_path: self._on_play_video(p))
+        row_layout.addWidget(play_btn)
+
+        # 设为封面按钮
+        if not media.featured:
+            cover_btn = QPushButton("设为封面", card)
+            cover_btn.setFixedHeight(28)
+            cover_btn.setFixedWidth(70)
+            file_id = media.id
+            cover_btn.clicked.connect(lambda _, fid=file_id: self._on_set_featured(fid))
+            row_layout.addWidget(cover_btn)
+
+        # 删除按钮
+        del_btn = PushButton("删除", card, FluentIcon.DELETE)
+        del_btn.setFixedHeight(28)
+        del_btn.setFixedWidth(60)
+        file_id = media.id
+        del_btn.clicked.connect(lambda _, fid=file_id: self._on_delete_video(fid))
+        row_layout.addWidget(del_btn)
+
+        return card
+
+    def _on_play_video(self, file_path: str):
+        """使用系统默认播放器打开视频。"""
+        if file_path and os.path.exists(file_path):
+            os.startfile(file_path)
+
+    def _on_set_featured(self, file_id: str):
+        """将视频设为分镜封面。"""
+        if not self._media_service or not self._current_storyboard_id:
+            return
+        try:
+            self._media_service.set_featured(file_id, self._current_storyboard_id)
+            self._load_video_list()
+        except Exception as e:
+            logger.exception("设置封面失败")
+            QMessageBox.critical(self, "错误", f"设置封面失败：{e}")
+
+    def _on_delete_video(self, file_id: str):
+        """删除关联视频。"""
+        reply = QMessageBox.question(
+            self,
+            "确认删除",
+            "确定要删除此视频文件吗？\n文件将从磁盘永久删除。",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        if not self._media_service:
+            return
+        try:
+            self._media_service.delete_file(file_id)
+            self._load_video_list()
+        except Exception as e:
+            logger.exception("删除视频失败")
+            QMessageBox.critical(self, "错误", f"删除失败：{e}")
 
     def _on_save_storyboard(self):
         """保存分镜修改"""
@@ -398,13 +548,14 @@ class StoryboardEditor(QWidget):
     """分镜编辑器主界面"""
 
     back_clicked = pyqtSignal()
-    video_generation_requested = pyqtSignal(str, int, int, str, int)  # shot_id, scene_number, shot_number, prompt, project_id
+    video_generation_requested = pyqtSignal(int, int, int, str, int)  # shot_id, scene_number, shot_number, prompt, project_id
     batch_video_generation_requested = pyqtSignal(list)  # list of dict: {shot_id, scene_number, shot_number, prompt, project_id}
 
-    def __init__(self, storyboard_service: StoryboardService, screenplay_service: ScreenplayService, parent=None):
+    def __init__(self, storyboard_service: StoryboardService, screenplay_service: ScreenplayService, media_service=None, parent=None):
         super().__init__(parent)
         self._storyboard_service = storyboard_service
         self._screenplay_service = screenplay_service
+        self._media_service = media_service
         self._current_project_id: int | None = None
         self._scenes: list[Scene] = []
         self._setup_ui()
@@ -500,7 +651,9 @@ class StoryboardEditor(QWidget):
         layout.addWidget(self.list_view)
 
         # 分镜详情编辑器（初始隐藏）
-        self.detail_editor = StoryboardDetailEditor(self._storyboard_service, self)
+        self.detail_editor = StoryboardDetailEditor(
+            self._storyboard_service, media_service=self._media_service, parent=self
+        )
         self.detail_editor.back_clicked.connect(self._on_back_to_list)
         self.detail_editor.storyboard_saved.connect(self._load_storyboards)
         self.detail_editor.hide()
@@ -562,10 +715,9 @@ class StoryboardEditor(QWidget):
                 sound_effect = sound_dialogue
 
             storyboard = Storyboard(
-                id=str(__import__("uuid").uuid4()),
-                scene_id=scene.id,
                 scene_number=scene_number,
                 shot_number=shot_data["shot_number"],
+                scene_id=scene.id,
                 shot_size=ShotSize(shot_data["shot_size"]),
                 camera_movement=shot_data.get("camera_movement", ""),
                 visual_content=shot_data.get("visual_content", ""),
@@ -617,14 +769,14 @@ class StoryboardEditor(QWidget):
 
         logger.info(f"加载了 {len(shots)} 个分镜")
 
-    def _on_storyboard_clicked(self, storyboard_id: str):
+    def _on_storyboard_clicked(self, storyboard_id: int):
         """点击分镜卡片，进入详情编辑"""
         logger.info(f"点击分镜：storyboard_id={storyboard_id}")
         self.list_view.hide()
         self.detail_editor.show()
         self.detail_editor.load_storyboard(storyboard_id)
 
-    def _on_generate_video(self, storyboard_id: str):
+    def _on_generate_video(self, storyboard_id: int):
         """生成视频（从分镜卡片触发）"""
         logger.info(f"生成视频：storyboard_id={storyboard_id}")
 

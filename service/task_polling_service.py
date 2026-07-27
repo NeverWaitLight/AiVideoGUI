@@ -25,7 +25,7 @@ class TaskPollingService(QObject):
 
     status_changed = pyqtSignal(str, str)
     download_progress = pyqtSignal(str, int, int)
-    task_finished = pyqtSignal(str, str)
+    task_finished = pyqtSignal(str, str, int)
     task_failed = pyqtSignal(str, str)
 
     def __init__(
@@ -116,15 +116,17 @@ class TaskPollingService(QObject):
     def _on_download_progress(self, message_id: str, downloaded: int, total: int) -> None:
         self.download_progress.emit(message_id, downloaded, total)
 
-    def _on_task_finished(self, message_id: str, local_path: str) -> None:
+    def _on_task_finished(self, message_id: str, local_path: str, storyboard_id: int = 0) -> None:
         msg = self._db.get_message(message_id)
         self._db.update_message_status(message_id, MessageStatus.COMPLETED, local_path=local_path)
         if msg and self._media_service:
             try:
-                self._media_service.register_task_result(message_id, local_path, msg.conversation_id)
+                self._media_service.register_task_result(
+                    message_id, local_path, msg.conversation_id, storyboard_id=storyboard_id
+                )
             except Exception as e:
                 logger.warning("素材自动入库失败：%s", e)
-        self.task_finished.emit(message_id, local_path)
+        self.task_finished.emit(message_id, local_path, storyboard_id)
 
     def _on_task_failed(self, message_id: str, error: str) -> None:
         self._db.update_message_status(message_id, MessageStatus.FAILED, error_message=error)
@@ -136,7 +138,7 @@ class _PollingWorker(QThread):
 
     status_changed = pyqtSignal(str, str)
     download_progress = pyqtSignal(str, int, int)
-    task_finished = pyqtSignal(str, str)
+    task_finished = pyqtSignal(str, str, int)
     task_failed = pyqtSignal(str, str)
 
     def __init__(
@@ -255,6 +257,7 @@ class _PollingWorker(QThread):
                     model_name=model_name,
                     prompt=msg.content,
                     save_path=task_info.get("save_path", ""),
+                    storyboard_id=task_info.get("storyboard_id", ""),
                 )
             elif result.status == TaskStatus.FAILED:
                 error_msg = result.error_message or "未知原因"
@@ -276,6 +279,7 @@ class _PollingWorker(QThread):
         model_name: str,
         prompt: str,
         save_path: str = "",
+        storyboard_id: int = 0,
     ) -> None:
         """下载视频并标记任务完成。"""
         try:
@@ -304,7 +308,7 @@ class _PollingWorker(QThread):
             os.makedirs(os.path.dirname(save_path), exist_ok=True)
             shutil.move(tmp_path, save_path)
 
-            self.task_finished.emit(message_id, save_path)
+            self.task_finished.emit(message_id, save_path, storyboard_id)
             self._db.mark_task_completed(internal_task_id)
             self._task_poll_count.pop(internal_task_id, None)
             logger.info("任务完成 internal_id=%s local_path=%s", internal_task_id, save_path)

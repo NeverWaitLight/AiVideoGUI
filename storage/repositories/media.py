@@ -32,6 +32,8 @@ class MediaRepository(BaseRepository[MediaFileEntity, MediaFile]):
             duration=entity.duration,
             width=entity.width,
             height=entity.height,
+            storyboard_id=entity.storyboard_id,
+            featured=entity.featured,
         )
 
     def _to_entity(self, dto: MediaFile) -> MediaFileEntity:
@@ -50,6 +52,8 @@ class MediaRepository(BaseRepository[MediaFileEntity, MediaFile]):
             duration=dto.duration,
             width=dto.width,
             height=dto.height,
+            storyboard_id=dto.storyboard_id,
+            featured=dto.featured,
         )
 
     def list_all(self, media_type: Optional[MediaType] = None) -> List[MediaFile]:
@@ -67,6 +71,44 @@ class MediaRepository(BaseRepository[MediaFileEntity, MediaFile]):
             stmt = stmt.where(MediaFileEntity.media_type == media_type.value)
         entities = self.session.execute(stmt).scalars().all()
         return [self._to_dto(e) for e in entities]
+
+    def list_by_storyboard(self, storyboard_id: int) -> List[MediaFile]:
+        """
+        查询指定分镜关联的所有素材文件（按创建时间倒序）。
+
+        Args:
+            storyboard_id: 分镜 ID
+
+        Returns:
+            素材文件列表
+        """
+        stmt = (
+            select(MediaFileEntity)
+            .where(MediaFileEntity.storyboard_id == storyboard_id)
+            .order_by(MediaFileEntity.created_at.desc())
+        )
+        entities = self.session.execute(stmt).scalars().all()
+        return [self._to_dto(e) for e in entities]
+
+    def set_featured(self, file_id: str, storyboard_id: int) -> None:
+        """
+        将指定文件设为分镜封面（同分镜下其他文件取消封面标记）。
+
+        Args:
+            file_id: 文件 ID
+            storyboard_id: 分镜 ID
+        """
+        stmt = select(MediaFileEntity).where(
+            MediaFileEntity.storyboard_id == storyboard_id,
+            MediaFileEntity.featured == True,
+        )
+        for entity in self.session.execute(stmt).scalars().all():
+            entity.featured = False
+
+        target = self.session.get(MediaFileEntity, file_id)
+        if target:
+            target.featured = True
+        self.session.commit()
 
     def update_metadata(
         self,

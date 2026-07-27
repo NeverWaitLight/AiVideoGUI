@@ -100,6 +100,9 @@ class MediaFile:
     duration: float = 0.0  # 时长（秒）
     width: int = 0  # 分辨率宽度
     height: int = 0  # 分辨率高度
+    # 分镜关联
+    storyboard_id: int = 0  # 来源分镜 ID
+    featured: bool = False  # 是否为封面视频
 
 
 @dataclass
@@ -191,10 +194,10 @@ class ScreenplayHistory:
 @dataclass
 class Storyboard:
     """分镜头数据结构"""
-    id: str
-    scene_id: int  # 所属场次ID（整数，关联 screenplay.id）
     scene_number: int  # 场次号（冗余存储，方便查询）
     shot_number: int  # 分镜号（从1开始）
+    id: int = 0  # 自增 ID（创建时由数据库生成）
+    scene_id: int = 0  # 所属场次ID（整数，关联 screenplay.id）
     design_image: str = ""  # 分镜设计图路径（可为空）
     shot_size: ShotSize = ShotSize.MEDIUM_SHOT  # 景别
     camera_movement: str = ""  # 运镜方式（如"固定"、"慢推"、"跟拍"）
@@ -211,7 +214,7 @@ class Storyboard:
 class StoryboardHistory:
     """分镜历史版本（逐条快照，字段与 Storyboard 一致）"""
     id: int  # 自增ID
-    storyboard_id: str  # 指向原始分镜ID
+    storyboard_id: int  # 指向原始分镜ID
     project_id: int  # 关联项目ID
     scene_id: int  # 所属场次ID
     scene_number: int  # 场次号
@@ -268,5 +271,6 @@ class ActiveTask:
     video_url: str
     save_path: str
     error_message: str
+    storyboard_id: int
     created_at: datetime
     updated_at: datetime

@@ -37,8 +37,7 @@ class StoryboardRepository(BaseRepository[StoryboardEntity, Storyboard]):
 
     def _to_entity(self, dto: Storyboard) -> StoryboardEntity:
         """DTO → Entity 转换。"""
-        return StoryboardEntity(
-            id=dto.id,
+        entity = StoryboardEntity(
             scene_id=dto.scene_id,
             scene_number=dto.scene_number,
             shot_number=dto.shot_number,
@@ -53,6 +52,9 @@ class StoryboardRepository(BaseRepository[StoryboardEntity, Storyboard]):
             created_at=dto.created_at,
             updated_at=dto.updated_at,
         )
+        if dto.id > 0:
+            entity.id = dto.id
+        return entity
 
     def list_by_scene(self, scene_id: int) -> List[Storyboard]:
         """查询场次的所有分镜（按镜头号升序）。"""
