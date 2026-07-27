@@ -571,19 +571,21 @@ class TextModelService:
 
         model = model or self.DEFAULT_MODEL
 
-        system_prompt = """你是一位专业的角色设计图绘制助手。你的任务是根据角色的结构化形象描述，生成一段用于文生图模型的英文提示词（prompt），产出角色全身立绘设计图。
+        system_prompt = """你是一位专业的角色设计图绘制助手。你的任务是根据角色的结构化形象描述，生成一段用于文生图模型的英文提示词（prompt），产出角色三视图（正面、侧面、背面）设计图。
 
 **生成要求：**
 
 1. **构图规范**
-   - 采用全身立绘构图（full-body character design），展示角色从头部到脚部的完整形象
-   - 角色居中站立，姿态自然放松，略带个性特征
+   - 采用角色三视图构图（character turnaround sheet, three-view orthographic projection）
+   - 必须包含三个视角：正面视图（front view）、侧面视图（side view）、背面视图（back view）
+   - 三个视图水平排列在同一画面中，角色等高，姿态统一（站立或 T-pose）
    - 纯色或简洁渐变背景，突出角色主体
    - 采用角色设定图风格（character concept art sheet）
 
 2. **人物表现**
    - 严格按照形象描述中的每一个特征绘制：外貌、发型、发色、瞳色、体型
    - 服装按照默认服装描述绘制，包含上装、裤子、鞋袜、帽子/配饰
+   - 三个视图保持完全一致的角色特征和服装细节
    - 面部表情自然，体现角色性格
    - 注重细节一致性，确保同一角色在不同生成中保持高度可辨识度
 
@@ -594,6 +596,7 @@ class TextModelService:
 
 **输出要求：**
 - 直接输出一段英文提示词，不超过 200 个单词
+- 必须在提示词中明确包含 "character turnaround sheet", "front view", "side view", "back view" 等关键词
 - 不要包含任何解释、前缀或标注，只输出纯提示词文本"""
 
         user_prompt = f"""请根据以下角色信息生成设计图提示词：

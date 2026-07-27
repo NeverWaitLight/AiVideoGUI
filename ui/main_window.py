@@ -1195,6 +1195,26 @@ class MainWindow(QMainWindow):
             self.storyboard_editor.detail_editor.set_design_image_result("")
             return
 
+        # 检查分镜中涉及的角色是否都有设计图
+        characters = self._character_service.list_characters(project_id)
+        matched_chars = []
+        for char in characters:
+            if char.name in storyboard.visual_content or char.ref_code in storyboard.visual_content:
+                matched_chars.append(char)
+
+        if matched_chars:
+            # 检查是否有角色缺少设计图
+            chars_without_design = [c for c in matched_chars if not c.design_image or not os.path.exists(c.design_image)]
+            if chars_without_design:
+                char_names = "、".join([c.name for c in chars_without_design])
+                QMessageBox.warning(
+                    self,
+                    "缺少角色设计图",
+                    f"分镜中涉及的角色【{char_names}】还没有设计图。\n\n请先前往「角色管理」页面为这些角色生成设计图，再生成分镜设计图。"
+                )
+                self.storyboard_editor.detail_editor.set_design_image_result("")
+                return
+
         # 景别映射
         shot_size_map = {
             "extreme_close_up": "特写",
@@ -1208,11 +1228,6 @@ class MainWindow(QMainWindow):
 
         # 获取角色信息增强提示词
         character_info = ""
-        characters = self._character_service.list_characters(project_id)
-        matched_chars = []
-        for char in characters:
-            if char.name in storyboard.visual_content or char.ref_code in storyboard.visual_content:
-                matched_chars.append(char)
         if matched_chars:
             char_parts = []
             for c in matched_chars:
@@ -1345,6 +1360,36 @@ class MainWindow(QMainWindow):
 
         if not shot_list:
             return
+
+        # 检查所有分镜涉及的角色是否都有设计图
+        project_id = shot_list[0]["project_id"]
+        characters = self._character_service.list_characters(project_id)
+
+        # 收集所有分镜中涉及的角色
+        all_matched_chars = set()
+        for shot_data in shot_list:
+            visual_content = shot_data["visual_content"]
+            for char in characters:
+                if char.name in visual_content or char.ref_code in visual_content:
+                    all_matched_chars.add(char.uuid)
+
+        if all_matched_chars:
+            # 检查是否有角色缺少设计图
+            chars_without_design = []
+            for char in characters:
+                if char.uuid in all_matched_chars:
+                    if not char.design_image or not os.path.exists(char.design_image):
+                        chars_without_design.append(char)
+
+            if chars_without_design:
+                char_names = "、".join([c.name for c in chars_without_design])
+                QMessageBox.warning(
+                    self,
+                    "缺少角色设计图",
+                    f"分镜中涉及的角色【{char_names}】还没有设计图。\n\n请先前往「角色管理」页面为这些角色生成设计图，再批量生成分镜设计图。"
+                )
+                self.storyboard_editor._generate_all_designs_btn.setEnabled(True)
+                return
 
         # 显示进度对话框
         from qfluentwidgets import ProgressBar
