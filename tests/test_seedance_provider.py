@@ -1,7 +1,7 @@
 """测试 Seedance Provider 的参数映射和 API 调用。"""
 
 import unittest
-from providers.seedance import SeedanceProvider
+from providers.seedance_video import SeedanceVideoProvider
 from models.data_models import ProviderConfig
 
 
@@ -16,7 +16,7 @@ class TestSeedanceProvider(unittest.TestCase):
             base_url="https://api.evolink.ai/v1",
             default_model="seedance-2.0-text-to-video",
         )
-        self.provider = SeedanceProvider(config)
+        self.provider = SeedanceVideoProvider(config)
 
     def test_build_payload_basic(self):
         """测试基本参数构建。"""
@@ -140,7 +140,7 @@ class TestSeedanceProvider(unittest.TestCase):
             base_url="https://api.evolink.ai/v1",
             default_model="seedance-2.5-text-to-video",
         )
-        provider = SeedanceProvider(config)
+        provider = SeedanceVideoProvider(config)
 
         model_info_list = provider.get_model_info()
 

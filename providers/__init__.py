@@ -1,8 +1,15 @@
-"""Provider 层：视频生成 + 对话模型。"""
+"""Provider 层：视频生成 + 图片生成 + 对话模型。"""
 
-from providers.dashscope_chat import DashScopeChatProvider
-from providers.base import VideoProvider
 from providers.chat_base import ChatProvider
-from providers.dashscope import DashScopeProvider
+from providers.dashscope_chat import DashScopeChatProvider
+from providers.dashscope_video import DashScopeVideoProvider
+from providers.image_base import ImageProvider
+from providers.video_base import VideoProvider
 
-__all__ = ["VideoProvider", "DashScopeProvider", "ChatProvider", "DashScopeChatProvider"]
+__all__ = [
+    "VideoProvider",
+    "DashScopeVideoProvider",
+    "ImageProvider",
+    "ChatProvider",
+    "DashScopeChatProvider",
+]

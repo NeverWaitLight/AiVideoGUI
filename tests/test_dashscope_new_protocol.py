@@ -1,7 +1,7 @@
 """测试 DashScope Provider 新版 wan2.7 API 协议参数映射。"""
 
 import unittest
-from providers.dashscope import DashScopeProvider
+from providers.dashscope_video import DashScopeVideoProvider
 from models.data_models import ProviderConfig
 
 
@@ -16,7 +16,7 @@ class TestDashScopeNewProtocol(unittest.TestCase):
             base_url="https://dashscope.aliyuncs.com/api/v1",
             default_model="wan2.7-t2v",
         )
-        self.provider = DashScopeProvider(config)
+        self.provider = DashScopeVideoProvider(config)
 
     def test_basic_parameters_direct_pass_through(self):
         """测试基本参数直接传递，不转换为 width/height。"""

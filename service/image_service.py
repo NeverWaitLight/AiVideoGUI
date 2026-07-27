@@ -1,34 +1,44 @@
-"""图片生成服务：调用DashScope文生图 API 生成分镜设计图。"""
+"""图片生成服务：调用文生图 API 生成分镜设计图。"""
 
 import logging
 
 from config.manager import ConfigManager
 from providers.dashscope_image import DashScopeImageProvider
+from providers.image_base import ImageProvider
 
 logger = logging.getLogger(__name__)
 
+_PROVIDER_REGISTRY: dict[str, type[ImageProvider]] = {
+    "dashscope_image": DashScopeImageProvider,
+}
+
 
 class ImageService:
-    """图片生成服务：通过DashScope万相文生图 API 生成分镜设计图。"""
+    """图片生成服务：通过文生图 API 生成分镜设计图。"""
 
     def __init__(self, config_manager: ConfigManager) -> None:
         self._config = config_manager
-        self._provider: DashScopeImageProvider | None = None
+        self._providers: dict[str, ImageProvider] = {}
 
-    def _get_provider(self) -> DashScopeImageProvider:
+    def _get_provider(self) -> ImageProvider:
         """获取或创建 Provider 实例（延迟加载 + 缓存）。"""
-        if self._provider is not None:
-            return self._provider
-
         provider_name = self._config.settings.default_image_provider or "dashscope_image"
+
+        if provider_name in self._providers:
+            return self._providers[provider_name]
+
         provider_cfg = self._config.get_provider(provider_name)
         if not provider_cfg or not provider_cfg.api_key:
             raise RuntimeError(f"未配置图片生成供应商 {provider_name} 的 API Key，请在设置中配置")
 
-        model = provider_cfg.default_model or "wan2.6-t2i"
-        self._provider = DashScopeImageProvider(api_key=provider_cfg.api_key, model=model)
-        logger.info(f"初始化图片生成 Provider：{provider_name}，模型：{model}")
-        return self._provider
+        cls = _PROVIDER_REGISTRY.get(provider_name)
+        if cls is None:
+            raise RuntimeError(f"未知的图片生成供应商：{provider_name}")
+
+        provider = cls(provider_cfg)
+        self._providers[provider_name] = provider
+        logger.info(f"初始化图片生成 Provider：{provider_name}")
+        return provider
 
     def generate(
         self,

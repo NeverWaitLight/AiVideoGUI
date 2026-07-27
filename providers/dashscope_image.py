@@ -10,25 +10,23 @@ from typing import Any
 
 import requests
 
+from models.data_models import ProviderConfig
+from providers.image_base import ImageProvider
+
 logger = logging.getLogger(__name__)
 
 
-class DashScopeImageProvider:
+class DashScopeImageProvider(ImageProvider):
     """DashScope万相文生图实现（wan2.6-t2i）。"""
 
     BASE_URL = "https://dashscope.aliyuncs.com/api/v1"
     SUBMIT_URL = f"{BASE_URL}/services/aigc/multimodal-generation/generation"
     DEFAULT_MODEL = "wan2.6-t2i"
 
-    def __init__(self, api_key: str, model: str | None = None) -> None:
-        """初始化文生图 Provider。
-
-        Args:
-            api_key: DashScope API Key
-            model: 模型名称，默认 "wan2.6-t2i"
-        """
-        self._api_key = api_key
-        self._model = model or self.DEFAULT_MODEL
+    def __init__(self, config: ProviderConfig) -> None:
+        super().__init__(config)
+        self._api_key = config.api_key
+        self._model = config.default_model or self.DEFAULT_MODEL
 
     def _headers(self) -> dict[str, str]:
         """构建请求头。"""

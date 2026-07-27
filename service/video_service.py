@@ -16,16 +16,16 @@ from models.data_models import (
     Message,
     MessageStatus,
 )
-from providers.base import VideoProvider
-from providers.dashscope import DashScopeProvider
-from providers.seedance import SeedanceProvider
+from providers.video_base import VideoProvider
+from providers.dashscope_video import DashScopeVideoProvider
+from providers.seedance_video import SeedanceVideoProvider
 from storage.database import DatabaseManager
 
 logger = logging.getLogger(__name__)
 
 _PROVIDER_REGISTRY: dict[str, type[VideoProvider]] = {
-    "dashscope": DashScopeProvider,
-    "seedance": SeedanceProvider,
+    "dashscope": DashScopeVideoProvider,
+    "seedance": SeedanceVideoProvider,
 }
 
 

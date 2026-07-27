@@ -7,12 +7,12 @@ from typing import Any, Callable
 import requests
 
 from models.data_models import ModelInfo, ProviderConfig, TaskResult, TaskStatus
-from providers.base import VideoProvider
+from providers.video_base import VideoProvider
 
 logger = logging.getLogger(__name__)
 
 
-class DashScopeProvider(VideoProvider):
+class DashScopeVideoProvider(VideoProvider):
     """阿里万象 DashScope 视频生成实现。"""
 
     BASE_URL = "https://dashscope.aliyuncs.com/api/v1"

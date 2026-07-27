@@ -7,12 +7,12 @@ from typing import Any, Callable
 import requests
 
 from models.data_models import ModelInfo, ProviderConfig, TaskResult, TaskStatus
-from providers.base import VideoProvider
+from providers.video_base import VideoProvider
 
 logger = logging.getLogger(__name__)
 
 
-class SeedanceProvider(VideoProvider):
+class SeedanceVideoProvider(VideoProvider):
     """Seedance 视频生成实现（支持 Seedance 2.0 和 2.5）。"""
 
     BASE_URL = "https://api.evolink.ai/v1"

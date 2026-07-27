@@ -66,7 +66,7 @@ Windows 桌面端 AI 视频生成工具。用户通过聊天界面输入文字�
 返回当前 Provider 支持的模型列表及其参数能力（支持的分辨率、最大时长等），供界面层动态渲染选项。
 
 **已规划的 Provider 实现：**
-- DashScopeProvider — 阿里万象（wan2.7-t2v），异步模式，通过 X-DashScope-Async 头启用，需轮询任务状态
+- DashScopeVideoProvider — 阿里万象（wan2.7-t2v），异步模式，通过 X-DashScope-Async 头启用，需轮询任务状态
 - 后续可扩展：字节火山引擎、智谱清影、快手可灵等
 
 ## 存储设计
