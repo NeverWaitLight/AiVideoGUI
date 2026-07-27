@@ -26,8 +26,8 @@ from ui.widgets import MessageBubble, VideoStatusCard
 class ParameterPanel(QFrame):
     """视频生成参数选择面板，位于输入框上方。"""
 
-    # 支持的分辨率选项（所有画面比例通用）
-    RESOLUTIONS = ["480P", "720P", "1080P", "2K", "4K"]
+    # 支持的分辨率选项（wan2.7 仅支持 720P 和 1080P）
+    RESOLUTIONS = ["720P", "1080P"]
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
@@ -55,8 +55,8 @@ class ParameterPanel(QFrame):
         params_layout.setContentsMargins(0, 0, 0, 0)
         params_layout.setSpacing(10)
 
-        # 画面比例（第一个）
-        self._ratio_combo = self._make_combo(["16:9", "9:16", "4:3", "3:4"])
+        # 画面比例（第一个）- 支持所有5种宽高比
+        self._ratio_combo = self._make_combo(["16:9", "9:16", "1:1", "4:3", "3:4"])
         params_layout.addWidget(
             self._make_param_group("比例", self._ratio_combo), stretch=1
         )

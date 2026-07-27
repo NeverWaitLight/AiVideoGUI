@@ -17,6 +17,10 @@ class VideoProvider(ABC):
         return self._config.provider_name
 
     @abstractmethod
+    def build_payload(self, prompt: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+        """构建提交给 API 的完整请求体（不发起网络请求）。"""
+
+    @abstractmethod
     def submit(self, prompt: str, params: dict[str, Any] | None = None) -> tuple[str, dict[str, Any]]:
         """提交生成任务，返回 (task_id, 完整请求参数)。"""
 

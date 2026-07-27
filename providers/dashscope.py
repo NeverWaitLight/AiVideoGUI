@@ -35,54 +35,44 @@ class DashScopeProvider(VideoProvider):
             headers["X-DashScope-Async"] = "enable"
         return headers
 
-    def submit(self, prompt: str, params: dict[str, Any] | None = None) -> tuple[str, dict[str, Any]]:
-        """提交文生视频任务，返回 (task_id, 完整请求参数)。"""
-        # 将标准分辨率标签转换为 DashScope API 要求的宽高格式
-        resolution_map = {
-            "16:9": {
-                "480P": {"width": 854, "height": 480},
-                "720P": {"width": 1280, "height": 720},
-                "1080P": {"width": 1920, "height": 1080},
-                "2K": {"width": 2560, "height": 1440},
-                "4K": {"width": 3840, "height": 2160},
-            },
-            "9:16": {
-                "480P": {"width": 480, "height": 854},
-                "720P": {"width": 720, "height": 1280},
-                "1080P": {"width": 1080, "height": 1920},
-                "2K": {"width": 1440, "height": 2560},
-                "4K": {"width": 2160, "height": 3840},
-            },
-            "4:3": {
-                "480P": {"width": 640, "height": 480},
-                "720P": {"width": 960, "height": 720},
-                "1080P": {"width": 1440, "height": 1080},
-                "2K": {"width": 1920, "height": 1440},
-                "4K": {"width": 2880, "height": 2160},
-            },
-            "3:4": {
-                "480P": {"width": 480, "height": 640},
-                "720P": {"width": 720, "height": 960},
-                "1080P": {"width": 1080, "height": 1440},
-                "2K": {"width": 1440, "height": 1920},
-                "4K": {"width": 2160, "height": 2880},
-            },
-        }
+    def build_payload(self, prompt: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+        """构建提交给 DashScope API 的完整请求体（不发起网络请求）。
 
-        # 转换参数格式
+        新版 wan2.7 API 协议直接使用分辨率档位标签（如 "720P"）和宽高比（如 "16:9"），
+        无需转换为具体像素值。
+
+        支持的参数：
+        - resolution: 分辨率档位 ("720P" | "1080P")
+        - ratio: 宽高比 ("16:9" | "9:16" | "1:1" | "4:3" | "3:4")
+        - duration: 视频时长 (2-15秒)
+        - prompt_extend: 智能改写提示词 (bool)
+        - watermark: 添加水印 (bool)
+        - negative_prompt: 反向提示词 (str, 添加到 input 中)
+        - audio_url: 自定义音频 URL (str, 添加到 input 中)
+        - seed: 随机数种子 (int)
+        """
         api_params = params.copy() if params else {}
-        if "resolution" in api_params and "ratio" in api_params:
-            resolution_label = api_params.pop("resolution")
-            ratio = api_params["ratio"]
-            size = resolution_map.get(ratio, {}).get(resolution_label, {"width": 1280, "height": 720})
-            api_params["width"] = size["width"]
-            api_params["height"] = size["height"]
 
-        payload = {
+        # 构建 input 对象
+        input_obj = {"prompt": prompt}
+
+        # negative_prompt 和 audio_url 属于 input 字段，需要从 parameters 中提取
+        if "negative_prompt" in api_params:
+            input_obj["negative_prompt"] = api_params.pop("negative_prompt")
+
+        if "audio_url" in api_params:
+            input_obj["audio_url"] = api_params.pop("audio_url")
+
+        # 其余参数（resolution, ratio, duration, prompt_extend, watermark, seed）直接传递到 parameters
+        return {
             "model": self._model,
-            "input": {"prompt": prompt},
+            "input": input_obj,
             "parameters": api_params,
         }
+
+    def submit(self, prompt: str, params: dict[str, Any] | None = None) -> tuple[str, dict[str, Any]]:
+        """提交文生视频任务，返回 (task_id, 完整请求参数)。"""
+        payload = self.build_payload(prompt, params)
         logger.info("提交 DashScope 任务，模型：%s", self._model)
         logger.debug("请求体：%s", payload)
 
@@ -167,8 +157,8 @@ class DashScopeProvider(VideoProvider):
             ModelInfo(
                 name=self._model,
                 provider_name=self.provider_name,
-                supported_resolutions=["480P", "720P", "1080P"],
-                supported_ratios=["16:9", "9:16", "1:1"],
+                supported_resolutions=["720P", "1080P"],  # wan2.7 仅支持 720P 和 1080P
+                supported_ratios=["16:9", "9:16", "1:1", "4:3", "3:4"],  # 支持5种宽高比
                 max_duration=15,
                 description="阿里万象 wan2.7 文生视频模型",
             ),
