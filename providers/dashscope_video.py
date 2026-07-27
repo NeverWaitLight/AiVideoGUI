@@ -2,11 +2,14 @@
 
 import logging
 import os
+import re
+from pathlib import Path
 from typing import Any, Callable
 
 import requests
 
 from models.data_models import ModelInfo, ProviderConfig, TaskResult, TaskStatus
+from providers.dashscope_oss_uploader import DashScopeOSSUploader
 from providers.video_base import VideoProvider
 
 logger = logging.getLogger(__name__)
@@ -25,6 +28,60 @@ class DashScopeVideoProvider(VideoProvider):
         self._api_key = config.api_key
         self._base_url = config.base_url or self.BASE_URL
         self._model = config.default_model or self.DEFAULT_MODEL
+        self._oss_uploader = DashScopeOSSUploader(self._api_key)
+        self._db_manager = None  # 延迟注入，由外部设置
+
+    def set_database_manager(self, db_manager) -> None:
+        """注入 DatabaseManager 实例（用于 OSS 缓存）"""
+        self._db_manager = db_manager
+
+    @staticmethod
+    def _is_local_file(path: str) -> bool:
+        """判断是否为本地文件路径（而非 URL 或 oss:// 前缀）"""
+        if not path:
+            return False
+        # 排除已经是 URL 或 oss:// 的情况
+        if path.startswith(("http://", "https://", "oss://")):
+            return False
+        # 检查是否为本地文件路径
+        return Path(path).exists()
+
+    def _upload_file_if_needed(self, file_path: str) -> str:
+        """
+        如果是本地文件，上传到 OSS 并返回 oss:// URL；否则直接返回原路径。
+
+        优先使用数据库缓存，缓存命中时复用 URL，缓存未命中时上传并保存缓存。
+
+        Args:
+            file_path: 文件路径（本地路径、URL 或 oss://）
+
+        Returns:
+            oss:// URL 或原路径
+        """
+        if not self._is_local_file(file_path):
+            return file_path
+
+        logger.debug(f"检测到本地文件: {file_path}")
+
+        # 1. 尝试从数据库缓存获取
+        if self._db_manager:
+            cache = self._db_manager.get_oss_cache(file_path, self._model)
+            if cache:
+                logger.info(f"命中 OSS 缓存: {file_path} -> {cache['oss_url']}")
+                return cache["oss_url"]
+
+        # 2. 缓存未命中，上传文件
+        logger.info(f"上传文件到 OSS: {file_path}")
+        oss_url, expire_time = self._oss_uploader.upload(file_path, self._model)
+
+        # 3. 保存到数据库缓存
+        if self._db_manager:
+            try:
+                self._db_manager.save_oss_cache(file_path, self._model, oss_url)
+            except Exception as e:
+                logger.warning(f"保存 OSS 缓存失败（不影响任务提交）: {e}")
+
+        return oss_url
 
     def _headers(self, *, async_mode: bool = False) -> dict[str, str]:
         headers = {
@@ -33,6 +90,8 @@ class DashScopeVideoProvider(VideoProvider):
         }
         if async_mode:
             headers["X-DashScope-Async"] = "enable"
+        # 添加 OSS 资源解析头（用于 oss:// URL）
+        headers["X-DashScope-OssResourceResolve"] = "enable"
         return headers
 
     def build_payload(self, prompt: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -107,14 +166,21 @@ class DashScopeVideoProvider(VideoProvider):
         2. 首尾帧生视频 - 传入 image_path + params["last_frame_path"]
 
         参数：
-        - image_path: 首帧图片路径（URL 或 base64）
-        - params["last_frame_path"]: 尾帧图片路径（可选，URL 或 base64）
-        - params["driving_audio_path"]: 驱动音频路径（可选，URL）
+        - image_path: 首帧图片路径（URL、本地路径或 oss://，本地路径会自动上传）
+        - params["last_frame_path"]: 尾帧图片路径（可选，URL、本地路径或 oss://）
+        - params["driving_audio_path"]: 驱动音频路径（可选，URL、本地路径或 oss://）
         """
         # 复制 params 并提取 media 相关参数
         api_params = params.copy() if params else {}
         last_frame_path = api_params.pop("last_frame_path", None)
         driving_audio_path = api_params.pop("driving_audio_path", None)
+
+        # 上传本地文件（如果需要）
+        image_path = self._upload_file_if_needed(image_path)
+        if last_frame_path:
+            last_frame_path = self._upload_file_if_needed(last_frame_path)
+        if driving_audio_path:
+            driving_audio_path = self._upload_file_if_needed(driving_audio_path)
 
         # 构建基础 payload（此时 api_params 已移除 media 相关参数）
         payload = self.build_payload(prompt, api_params)
@@ -152,14 +218,19 @@ class DashScopeVideoProvider(VideoProvider):
         2. 视频+尾帧续写 - 传入 video_path + params["last_frame_path"]
 
         参数：
-        - video_path: 首段视频路径（URL）
-        - params["last_frame_path"]: 尾帧图片路径（可选，URL 或 base64）
+        - video_path: 首段视频路径（URL、本地路径或 oss://，本地路径会自动上传）
+        - params["last_frame_path"]: 尾帧图片路径（可选，URL、本地路径或 oss://）
 
         注意：duration 参数表示最终输出视频的总时长（包含输入视频时长）
         """
         # 复制 params 并提取 media 相关参数
         api_params = params.copy() if params else {}
         last_frame_path = api_params.pop("last_frame_path", None)
+
+        # 上传本地文件（如果需要）
+        video_path = self._upload_file_if_needed(video_path)
+        if last_frame_path:
+            last_frame_path = self._upload_file_if_needed(last_frame_path)
 
         # 构建基础 payload（此时 api_params 已移除 media 相关参数）
         payload = self.build_payload(prompt, api_params)

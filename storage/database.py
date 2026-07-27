@@ -28,6 +28,7 @@ from storage.repositories.character import CharacterHistoryRepository, Character
 from storage.repositories.conversation import ConversationRepository
 from storage.repositories.media import MediaRepository
 from storage.repositories.message import MessageRepository
+from storage.repositories.oss_cache_repository import OSSFileCacheRepository
 from storage.repositories.story_outline import StoryOutlineHistoryRepository, StoryOutlineRepository
 from storage.repositories.project import ProjectRepository
 from storage.repositories.screenplay import ScreenplayHistoryRepository, ScreenplayRepository
@@ -842,6 +843,53 @@ class DatabaseManager:
         session = self._get_session()
         repo = CharacterHistoryRepository(session)
         return repo.list_by_character(character_uuid)
+
+    # ========== OSS 文件缓存相关方法 ==========
+
+    def get_oss_cache(self, file_path: str, model_name: str) -> Optional[dict]:
+        """
+        获取有效的 OSS 缓存记录
+
+        Args:
+            file_path: 本地文件路径
+            model_name: 模型名称
+
+        Returns:
+            缓存记录字典 {"oss_url": str, "expire_at": datetime}，或 None
+        """
+        session = self._get_session()
+        repo = OSSFileCacheRepository(session)
+        cache = repo.get_valid_cache(file_path, model_name)
+
+        if cache:
+            return {"oss_url": cache.oss_url, "expire_at": cache.expire_at}
+        return None
+
+    def save_oss_cache(self, file_path: str, model_name: str, oss_url: str) -> None:
+        """
+        保存 OSS 缓存记录
+
+        Args:
+            file_path: 本地文件路径
+            model_name: 模型名称
+            oss_url: OSS URL
+        """
+        with self._lock:
+            session = self._get_session()
+            repo = OSSFileCacheRepository(session)
+            repo.save_cache(file_path, model_name, oss_url)
+
+    def cleanup_expired_oss_caches(self) -> int:
+        """
+        清理所有过期的 OSS 缓存记录
+
+        Returns:
+            删除的记录数
+        """
+        with self._lock:
+            session = self._get_session()
+            repo = OSSFileCacheRepository(session)
+            return repo.delete_expired_caches()
 
     # ========== 其他方法 ==========
 

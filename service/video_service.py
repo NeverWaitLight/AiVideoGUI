@@ -58,6 +58,11 @@ class VideoService(QObject):
         if cls is None:
             raise KeyError(f"未注册的 Provider：{name}")
         provider = cls(cfg)
+
+        # 注入 DatabaseManager（用于 OSS 缓存）
+        if hasattr(provider, "set_database_manager"):
+            provider.set_database_manager(self._db)
+
         self._providers[name] = provider
         return provider
 

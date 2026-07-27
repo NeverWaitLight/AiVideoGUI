@@ -66,6 +66,11 @@ class TaskPollingService(QObject):
         if cls is None:
             raise KeyError(f"未注册的 Provider：{name}")
         provider = cls(cfg)
+
+        # 注入 DatabaseManager（用于 OSS 缓存）
+        if hasattr(provider, "set_database_manager"):
+            provider.set_database_manager(self._db)
+
         self._providers[name] = provider
         return provider
 
@@ -179,8 +184,17 @@ class _PollingWorker(QThread):
     def run(self) -> None:
         """主循环：检查 active_tasks 表，处理待轮询任务。"""
         logger.info("轮询线程进入主循环")
+        last_cleanup_time = time.time()
+        cleanup_interval = 3600.0  # 每小时清理一次过期 OSS 缓存
+
         while not self._stopped:
             try:
+                # 定期清理过期 OSS 缓存
+                now = time.time()
+                if now - last_cleanup_time >= cleanup_interval:
+                    self._cleanup_expired_oss_caches()
+                    last_cleanup_time = now
+
                 tasks = self._db.list_active_tasks()
                 if not tasks:
                     # 表空，进入空闲模式
@@ -204,6 +218,15 @@ class _PollingWorker(QThread):
                     break
 
         logger.info("轮询线程已退出")
+
+    def _cleanup_expired_oss_caches(self) -> None:
+        """清理过期的 OSS 缓存记录（异步执行，不阻塞主循环）"""
+        try:
+            count = self._db.cleanup_expired_oss_caches()
+            if count > 0:
+                logger.info(f"已清理 {count} 条过期 OSS 缓存记录")
+        except Exception as e:
+            logger.warning(f"清理过期 OSS 缓存失败: {e}")
 
     def _process_task(self, task_info: dict[str, Any]) -> None:
         """处理单个任务：检查是否需要轮询、执行状态查询、下载视频。"""
