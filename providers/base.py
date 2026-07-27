@@ -17,8 +17,8 @@ class VideoProvider(ABC):
         return self._config.provider_name
 
     @abstractmethod
-    def submit(self, prompt: str, params: dict[str, Any] | None = None) -> str:
-        """提交生成任务，返回 task_id。"""
+    def submit(self, prompt: str, params: dict[str, Any] | None = None) -> tuple[str, dict[str, Any]]:
+        """提交生成任务，返回 (task_id, 完整请求参数)。"""
 
     @abstractmethod
     def check_status(self, task_id: str) -> TaskResult:

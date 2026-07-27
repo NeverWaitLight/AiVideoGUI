@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import uuid
 from datetime import datetime
@@ -100,7 +101,7 @@ class VideoService(QObject):
     ) -> Message:
         """提交视频生成任务，写入数据库后由 TaskPollingService 接管轮询。"""
         provider = self.get_provider(provider_name)
-        provider_task_id = provider.submit(prompt, params)
+        provider_task_id, request_params = provider.submit(prompt, params)
 
         assistant_msg = Message(
             id=uuid.uuid4().hex,
@@ -119,7 +120,7 @@ class VideoService(QObject):
             provider_name=provider_name,
             model_name=provider._config.default_model,
             save_path=save_path,
-            prompt=prompt,
+            request_params=json.dumps(request_params, ensure_ascii=False),
             storyboard_id=storyboard_id,
         )
 

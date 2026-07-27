@@ -152,7 +152,7 @@ class DatabaseManager:
         provider_name: str,
         model_name: str,
         save_path: str,
-        prompt: str,
+        request_params: str,
         storyboard_id: int = 0,
     ) -> int:
         """
@@ -164,7 +164,7 @@ class DatabaseManager:
             provider_name: Provider 名称
             model_name: 模型名称
             save_path: 保存路径
-            prompt: 完整的视频生成 Prompt
+            request_params: 完整的 API 请求参数（JSON 字符串）
             storyboard_id: 关联的分镜 ID（可选）
 
         Returns:
@@ -179,7 +179,7 @@ class DatabaseManager:
                 provider_name=provider_name,
                 model_name=model_name,
                 save_path=save_path,
-                prompt=prompt,
+                request_params=request_params,
                 storyboard_id=storyboard_id,
             )
 

@@ -267,7 +267,7 @@ class ActiveTask:
     model_name: str
     status: str
     completed: bool
-    prompt: str
+    request_params: str
     video_url: str
     save_path: str
     error_message: str

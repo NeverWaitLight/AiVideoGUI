@@ -27,7 +27,7 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
             model_name=entity.model_name,
             status=entity.status,
             completed=entity.completed,
-            prompt=entity.prompt,
+            request_params=entity.request_params,
             video_url=entity.video_url,
             save_path=entity.save_path,
             error_message=entity.error_message,
@@ -46,7 +46,7 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
             model_name=dto.model_name,
             status=dto.status,
             completed=dto.completed,
-            prompt=dto.prompt,
+            request_params=dto.request_params,
             video_url=dto.video_url,
             save_path=dto.save_path,
             error_message=dto.error_message,
@@ -62,7 +62,7 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
         provider_name: str,
         model_name: str,
         save_path: str,
-        prompt: str,
+        request_params: str,
         storyboard_id: int = 0,
     ) -> int:
         """
@@ -74,7 +74,7 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
             provider_name: Provider 名称
             model_name: 模型名称
             save_path: 保存路径
-            prompt: 完整的视频生成 Prompt
+            request_params: 完整的 API 请求参数（JSON 字符串）
             storyboard_id: 关联的分镜 ID（可选）
 
         Returns:
@@ -87,7 +87,7 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
             model_name=model_name,
             status="pending",
             completed=False,
-            prompt=prompt,
+            request_params=request_params,
             video_url="",
             save_path=save_path,
             error_message="",
@@ -121,7 +121,7 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
                 "model_name": e.model_name,
                 "status": e.status,
                 "completed": e.completed,
-                "prompt": e.prompt,
+                "request_params": e.request_params,
                 "video_url": e.video_url,
                 "save_path": e.save_path,
                 "error_message": e.error_message,
@@ -153,7 +153,7 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
             "model_name": entity.model_name,
             "status": entity.status,
             "completed": entity.completed,
-            "prompt": entity.prompt,
+            "request_params": entity.request_params,
             "video_url": entity.video_url,
             "save_path": entity.save_path,
             "error_message": entity.error_message,
@@ -186,7 +186,7 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
             "model_name": entity.model_name,
             "status": entity.status,
             "completed": entity.completed,
-            "prompt": entity.prompt,
+            "request_params": entity.request_params,
             "video_url": entity.video_url,
             "save_path": entity.save_path,
             "error_message": entity.error_message,
@@ -266,7 +266,7 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
                 "model_name": e.model_name,
                 "status": e.status,
                 "completed": e.completed,
-                "prompt": e.prompt,
+                "request_params": e.request_params,
                 "video_url": e.video_url,
                 "save_path": e.save_path,
                 "error_message": e.error_message,

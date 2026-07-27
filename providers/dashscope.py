@@ -35,8 +35,8 @@ class DashScopeProvider(VideoProvider):
             headers["X-DashScope-Async"] = "enable"
         return headers
 
-    def submit(self, prompt: str, params: dict[str, Any] | None = None) -> str:
-        """提交文生视频任务，返回 task_id。"""
+    def submit(self, prompt: str, params: dict[str, Any] | None = None) -> tuple[str, dict[str, Any]]:
+        """提交文生视频任务，返回 (task_id, 完整请求参数)。"""
         # 将标准分辨率标签转换为 DashScope API 要求的宽高格式
         resolution_map = {
             "16:9": {
@@ -101,7 +101,7 @@ class DashScopeProvider(VideoProvider):
         if not task_id:
             raise RuntimeError(f"DashScope 未返回 task_id: {data}")
         logger.info("任务已提交，task_id=%s", task_id)
-        return task_id
+        return task_id, payload
 
     def check_status(self, task_id: str) -> TaskResult:
         """查询任务状态。"""

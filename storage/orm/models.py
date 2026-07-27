@@ -117,8 +117,8 @@ class ActiveTaskEntity(Base):
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
     completed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
-    # 视频生成参数
-    prompt: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    # 视频生成请求参数（完整 JSON）
+    request_params: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
     video_url: Mapped[str] = mapped_column(String(500), nullable=False, default="")
     save_path: Mapped[str] = mapped_column(String(500), nullable=False, default="")
     error_message: Mapped[str] = mapped_column(Text, nullable=False, default="")
