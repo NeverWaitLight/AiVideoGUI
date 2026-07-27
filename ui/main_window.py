@@ -940,6 +940,10 @@ class MainWindow(QMainWindow):
         params = (provider_cfg.default_params if provider_cfg else {}).copy()
         params["resolution"] = project.resolution
         params["ratio"] = project.aspect_ratio
+        # 添加默认生成参数（如果 default_params 中未指定）
+        params.setdefault("duration", 5)
+        params.setdefault("prompt_extend", True)
+        params.setdefault("watermark", False)
 
         payload = provider.build_payload(prompt, params)
 
@@ -1008,6 +1012,10 @@ class MainWindow(QMainWindow):
             params = (provider_cfg.default_params if provider_cfg else {}).copy()
             params["resolution"] = project.resolution
             params["ratio"] = project.aspect_ratio
+            # 添加默认生成参数（如果 default_params 中未指定）
+            params.setdefault("duration", 5)
+            params.setdefault("prompt_extend", True)
+            params.setdefault("watermark", False)
 
             # 预计算保存路径（相对于 workspace）：projects/{project_id}/场次号-镜头号-生成次数.mp4
             seq = self._db.get_next_storyboard_seq(scene_number, shot_number)
@@ -1606,6 +1614,10 @@ class MainWindow(QMainWindow):
             # 将项目分辨率添加到参数（覆盖默认值）
             params["resolution"] = project.resolution
             params["ratio"] = project.aspect_ratio
+            # 添加默认生成参数（如果 default_params 中未指定）
+            params.setdefault("duration", 5)
+            params.setdefault("prompt_extend", True)
+            params.setdefault("watermark", False)
 
         try:
             assistant_msg = self._service.submit_task(
