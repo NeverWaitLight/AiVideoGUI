@@ -365,7 +365,7 @@ class StoryOutlineEditor(QWidget):
         toolbar_layout.setContentsMargins(20, 12, 20, 12)
         toolbar_layout.setSpacing(12)
 
-        back_btn = ToolButton(FluentIcon.RETURN)
+        back_btn = ToolButton(FluentIcon.LEFT_ARROW)
         back_btn.setFixedSize(36, 36)
         back_btn.setIconSize(QSize(18, 18))
         back_btn.setToolTip("返回项目详情")

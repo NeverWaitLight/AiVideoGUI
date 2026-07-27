@@ -141,7 +141,7 @@ class SceneDetailEditor(QWidget):
         toolbar_layout.setSpacing(12)
 
         # 返回按钮
-        back_btn = ToolButton(FluentIcon.RETURN)
+        back_btn = ToolButton(FluentIcon.LEFT_ARROW)
         back_btn.setFixedSize(36, 36)
         back_btn.setIconSize(QSize(18, 18))
         back_btn.setToolTip("返回场次列表")
@@ -429,7 +429,7 @@ class ScreenplayEditor(QWidget):
         toolbar_layout.setSpacing(12)
 
         # 返回按钮
-        back_btn = ToolButton(FluentIcon.RETURN)
+        back_btn = ToolButton(FluentIcon.LEFT_ARROW)
         back_btn.setFixedSize(36, 36)
         back_btn.setIconSize(QSize(18, 18))
         back_btn.setToolTip("返回项目详情")
@@ -455,6 +455,15 @@ class ScreenplayEditor(QWidget):
         self.save_history_btn.setFixedHeight(36)
         self.save_history_btn.clicked.connect(self._on_save_history)
         toolbar_layout.addWidget(self.save_history_btn)
+
+        # 历史版本按钮
+        self.history_btn = ToolButton(FluentIcon.HISTORY)
+        self.history_btn.setFixedSize(36, 36)
+        self.history_btn.setIconSize(QSize(18, 18))
+        self.history_btn.setToolTip("历史版本")
+        self.history_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.history_btn.clicked.connect(self._on_toggle_history)
+        toolbar_layout.addWidget(self.history_btn)
 
         layout.addWidget(toolbar)
 
@@ -485,10 +494,10 @@ class ScreenplayEditor(QWidget):
         self.scenes_scroll.setWidget(self.scenes_container)
         scenes_layout.addWidget(self.scenes_scroll, stretch=1)
 
-        # 右侧：历史版本
-        history_widget = QWidget()
-        history_widget.setFixedWidth(320)
-        history_layout = QVBoxLayout(history_widget)
+        # 右侧：历史版本（默认隐藏，通过历史按钮切换显示）
+        self._history_widget = QWidget()
+        self._history_widget.setFixedWidth(320)
+        history_layout = QVBoxLayout(self._history_widget)
         history_layout.setContentsMargins(20, 20, 20, 20)
         history_layout.setSpacing(12)
 
@@ -518,8 +527,10 @@ class ScreenplayEditor(QWidget):
         )
         history_layout.addWidget(self.history_list, stretch=1)
 
+        self._history_widget.hide()
+
         splitter.addWidget(scenes_widget)
-        splitter.addWidget(history_widget)
+        splitter.addWidget(self._history_widget)
         splitter.setStretchFactor(0, 1)
         splitter.setStretchFactor(1, 0)
         splitter.setSizes([700, 320])
@@ -626,6 +637,10 @@ class ScreenplayEditor(QWidget):
     def _on_detail_saved(self) -> None:
         """场次保存后刷新列表。"""
         pass  # 保存操作已在 detail_editor 中完成
+
+    def _on_toggle_history(self) -> None:
+        """切换历史版本面板的显示/隐藏。"""
+        self._history_widget.setVisible(not self._history_widget.isVisible())
 
     def _on_save_history(self) -> None:
         """保存历史版本。"""

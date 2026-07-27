@@ -366,7 +366,7 @@ class MediaLibrary(QWidget):
         tb_layout.setSpacing(12)
 
         # 返回按钮（项目模式时显示）
-        self._back_btn = ToolButton(FluentIcon.RETURN)
+        self._back_btn = ToolButton(FluentIcon.LEFT_ARROW)
         self._back_btn.setFixedSize(36, 36)
         self._back_btn.setIconSize(QSize(18, 18))
         self._back_btn.setToolTip("返回项目详情")
@@ -376,10 +376,8 @@ class MediaLibrary(QWidget):
         tb_layout.addWidget(self._back_btn)
 
         title = QLabel("素材库")
-        title.setObjectName("mediaTitle")
-        tb_layout.addWidget(title)
-
-        tb_layout.addStretch()
+        title.setStyleSheet("font-size: 16px; font-weight: bold; color: #333;")
+        tb_layout.addWidget(title, stretch=1)
 
         self._type_filter = ComboBox()
         self._type_filter.addItems(["全部", "视频", "图片", "音频"])

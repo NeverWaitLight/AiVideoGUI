@@ -4,7 +4,8 @@ import logging
 import os
 import time
 
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import QSize, Qt, pyqtSignal
+from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import (
     QFileDialog,
     QFrame,
@@ -28,6 +29,7 @@ from qfluentwidgets import (
     PushButton,
     TextEdit,
     TitleLabel,
+    ToolButton,
 )
 
 from models.data_models import Scene, Storyboard, ShotSize
@@ -78,7 +80,6 @@ class StoryboardCard(CardWidget):
     """分镜卡片（横向大块，120px 高度）"""
 
     storyboard_clicked = pyqtSignal(int)  # 发送 storyboard_id
-    preview_prompt_clicked = pyqtSignal(int)  # 发送 storyboard_id
     generate_video_clicked = pyqtSignal(int)  # 发送 storyboard_id
 
     def __init__(self, storyboard: Storyboard, parent=None):
@@ -112,6 +113,18 @@ class StoryboardCard(CardWidget):
         self._checkbox = CheckBox()
         self._checkbox.setFixedSize(24, 24)
         main_layout.addWidget(self._checkbox, alignment=Qt.AlignmentFlag.AlignVCenter)
+
+        # 设计图缩略图
+        thumb = QLabel()
+        thumb.setFixedSize(128, 72)
+        thumb.setStyleSheet("background: #E0E0E0; border-radius: 4px;")
+        thumb.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        if self.storyboard.design_image and os.path.exists(self.storyboard.design_image):
+            pixmap = QPixmap(self.storyboard.design_image)
+            if not pixmap.isNull():
+                scaled = pixmap.scaled(128, 72, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+                thumb.setPixmap(scaled)
+        main_layout.addWidget(thumb, alignment=Qt.AlignmentFlag.AlignVCenter)
 
         # 左侧：信息区域（可点击）
         info_widget = QWidget()
@@ -161,12 +174,7 @@ class StoryboardCard(CardWidget):
 
         main_layout.addWidget(info_widget, 1)
 
-        # 右侧：查看提示词按钮 + 生成视频按钮
-        preview_btn = PushButton("查看提示词", self, FluentIcon.DOCUMENT)
-        preview_btn.setFixedSize(100, 36)
-        preview_btn.clicked.connect(lambda: self.preview_prompt_clicked.emit(self.storyboard.id))
-        main_layout.addWidget(preview_btn, alignment=Qt.AlignmentFlag.AlignVCenter)
-
+        # 右侧：生成视频按钮
         generate_btn = PrimaryPushButton("生成视频", self, FluentIcon.VIDEO)
         generate_btn.setFixedSize(100, 36)
         generate_btn.clicked.connect(lambda: self.generate_video_clicked.emit(self.storyboard.id))
@@ -187,6 +195,7 @@ class StoryboardDetailEditor(QWidget):
     back_clicked = pyqtSignal()
     storyboard_saved = pyqtSignal()
     generate_design_image_clicked = pyqtSignal(int)  # storyboard_id
+    preview_prompt_clicked = pyqtSignal(int)  # storyboard_id
 
     def __init__(self, storyboard_service: StoryboardService, media_service=None, parent=None):
         super().__init__(parent)
@@ -201,16 +210,25 @@ class StoryboardDetailEditor(QWidget):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(16)
 
-        # 顶部：返回按钮 + 标题（固定）
+        # 顶部：返回按钮 + 标题 + 查看提示词按钮（固定）
         top_layout = QHBoxLayout()
-        back_btn = PushButton("返回列表", self, FluentIcon.RETURN)
+        back_btn = ToolButton(FluentIcon.LEFT_ARROW)
+        back_btn.setFixedSize(36, 36)
+        back_btn.setIconSize(QSize(18, 18))
+        back_btn.setToolTip("返回列表")
         back_btn.clicked.connect(self.back_clicked.emit)
         top_layout.addWidget(back_btn)
-        top_layout.addStretch()
-        layout.addLayout(top_layout)
 
-        title_label = TitleLabel("分镜详情编辑")
-        layout.addWidget(title_label)
+        title_label = QLabel("分镜详情编辑")
+        title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #333;")
+        top_layout.addWidget(title_label, stretch=1)
+
+        self._preview_prompt_btn = PushButton("查看提示词", self, FluentIcon.DOCUMENT)
+        self._preview_prompt_btn.setFixedSize(100, 36)
+        self._preview_prompt_btn.clicked.connect(self._on_preview_prompt)
+        top_layout.addWidget(self._preview_prompt_btn)
+
+        layout.addLayout(top_layout)
 
         # 中间滚动区域
         scroll_area = QScrollArea()
@@ -262,19 +280,26 @@ class StoryboardDetailEditor(QWidget):
         info_layout.addLayout(duration_layout)
 
         # 分镜设计图
-        design_layout = QHBoxLayout()
-        design_layout.addWidget(QLabel("设计图："))
-        self.design_image_label = QLabel("未上传")
-        self.design_image_label.setStyleSheet("color: #909090;")
-        design_layout.addWidget(self.design_image_label, 1)
+        design_label = QLabel("设计图：")
+        info_layout.addWidget(design_label)
+
+        self._design_preview = QLabel()
+        self._design_preview.setFixedSize(240, 135)
+        self._design_preview.setStyleSheet("background: #E0E0E0; border-radius: 4px;")
+        self._design_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        info_layout.addWidget(self._design_preview)
+
+        design_btn_layout = QHBoxLayout()
+        design_btn_layout.setSpacing(8)
         self._generate_design_btn = PushButton("AI 生成", scroll_widget, FluentIcon.IMAGE_EXPORT)
         self._generate_design_btn.setFixedSize(90, 32)
         self._generate_design_btn.clicked.connect(self._on_generate_design_image)
-        design_layout.addWidget(self._generate_design_btn)
+        design_btn_layout.addWidget(self._generate_design_btn)
         upload_btn = QPushButton("上传图片")
         upload_btn.clicked.connect(self._on_upload_design_image)
-        design_layout.addWidget(upload_btn)
-        info_layout.addLayout(design_layout)
+        design_btn_layout.addWidget(upload_btn)
+        design_btn_layout.addStretch()
+        info_layout.addLayout(design_btn_layout)
 
         scroll_layout.addWidget(info_card)
 
@@ -330,6 +355,22 @@ class StoryboardDetailEditor(QWidget):
         save_btn.clicked.connect(self._on_save_storyboard)
         layout.addWidget(save_btn, alignment=Qt.AlignmentFlag.AlignRight)
 
+    def _update_design_preview(self, image_path: str = "") -> None:
+        """更新设计图预览。"""
+        if image_path and os.path.exists(image_path):
+            pixmap = QPixmap(image_path)
+            if not pixmap.isNull():
+                scaled = pixmap.scaled(
+                    self._design_preview.size(),
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation,
+                )
+                self._design_preview.setPixmap(scaled)
+                return
+        self._design_preview.clear()
+        self._design_preview.setStyleSheet("background: #E0E0E0; border-radius: 4px; color: #909090;")
+        self._design_preview.setText("暂无设计图")
+
     def load_storyboard(self, storyboard_id: int):
         """加载分镜数据"""
         self._current_storyboard_id = storyboard_id
@@ -355,7 +396,7 @@ class StoryboardDetailEditor(QWidget):
 
         self.camera_input.setText(storyboard.camera_movement)
         self.duration_spin.setValue(storyboard.duration)
-        self.design_image_label.setText(storyboard.design_image if storyboard.design_image else "未上传")
+        self._update_design_preview(storyboard.design_image or "")
         self.visual_content_edit.setPlainText(storyboard.visual_content)
         self.dialogue_edit.setPlainText(storyboard.dialogue)
         self.sound_effect_edit.setText(storyboard.sound_effect)
@@ -494,6 +535,11 @@ class StoryboardDetailEditor(QWidget):
             logger.exception("删除视频失败")
             QMessageBox.critical(self, "错误", f"删除失败：{e}")
 
+    def _on_preview_prompt(self):
+        """查看提示词按钮被点击。"""
+        if self._current_storyboard_id:
+            self.preview_prompt_clicked.emit(self._current_storyboard_id)
+
     def _on_save_storyboard(self):
         """保存分镜修改"""
         if not self._current_storyboard_id:
@@ -540,7 +586,7 @@ class StoryboardDetailEditor(QWidget):
             return
 
         # 更新显示
-        self.design_image_label.setText(os.path.basename(file_path))
+        self._update_design_preview(file_path)
 
         # 保存到数据库
         if self._current_storyboard_id:
@@ -575,18 +621,18 @@ class StoryboardDetailEditor(QWidget):
         """设置设计图生成中的 UI 状态。"""
         self._generate_design_btn.setEnabled(not generating)
         if generating:
-            self.design_image_label.setText("生成中...")
+            self._design_preview.clear()
+            self._design_preview.setStyleSheet("background: #E0E0E0; border-radius: 4px; color: #909090;")
+            self._design_preview.setText("生成中...")
 
     def set_design_image_result(self, image_path: str) -> None:
         """设计图生成完成后更新显示。"""
         self._generate_design_btn.setEnabled(True)
         if image_path:
-            self.design_image_label.setText(os.path.basename(image_path))
+            self._update_design_preview(image_path)
         else:
             storyboard = self._storyboard_service.get_storyboard(self._current_storyboard_id) if self._current_storyboard_id else None
-            self.design_image_label.setText(
-                os.path.basename(storyboard.design_image) if storyboard and storyboard.design_image else "未上传"
-            )
+            self._update_design_preview(storyboard.design_image if storyboard and storyboard.design_image else "")
 
 
 class StoryboardEditor(QWidget):
@@ -627,21 +673,32 @@ class StoryboardEditor(QWidget):
 
         # 顶部：返回按钮 + 标题 + 生成所有按钮
         top_layout = QHBoxLayout()
-        back_btn = PushButton("返回", self, FluentIcon.RETURN)
+        back_btn = ToolButton(FluentIcon.LEFT_ARROW)
+        back_btn.setFixedSize(36, 36)
+        back_btn.setIconSize(QSize(18, 18))
+        back_btn.setToolTip("返回")
         back_btn.clicked.connect(self.back_clicked.emit)
         top_layout.addWidget(back_btn)
-        top_layout.addStretch()
+
+        title_label = QLabel("分镜头脚本")
+        title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #333;")
+        top_layout.addWidget(title_label, stretch=1)
 
         self._generate_all_btn = PrimaryPushButton("生成所有镜头", self, FluentIcon.PLAY)
         self._generate_all_btn.setFixedHeight(36)
         self._generate_all_btn.clicked.connect(self._on_generate_all)
         top_layout.addWidget(self._generate_all_btn)
 
-        left_layout.addLayout(top_layout)
+        # 历史版本按钮
+        self._history_btn = ToolButton(FluentIcon.HISTORY)
+        self._history_btn.setFixedSize(36, 36)
+        self._history_btn.setIconSize(QSize(18, 18))
+        self._history_btn.setToolTip("历史版本")
+        self._history_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._history_btn.clicked.connect(self._on_toggle_history)
+        top_layout.addWidget(self._history_btn)
 
-        # 标题
-        title_label = TitleLabel("分镜头脚本")
-        left_layout.addWidget(title_label)
+        left_layout.addLayout(top_layout)
 
         # 场次过滤 + 批量操作
         filter_layout = QHBoxLayout()
@@ -677,11 +734,11 @@ class StoryboardEditor(QWidget):
 
         list_layout.addWidget(left_widget, 3)
 
-        # 右侧：历史版本列表
-        right_widget = QWidget()
-        right_widget.setFixedWidth(320)
-        right_widget.setStyleSheet("background-color: #F5F5F5; border-left: 1px solid #E0E0E0;")
-        right_layout = QVBoxLayout(right_widget)
+        # 右侧：历史版本列表（默认隐藏，通过历史按钮切换显示）
+        self._history_widget = QWidget()
+        self._history_widget.setFixedWidth(320)
+        self._history_widget.setStyleSheet("background-color: #F5F5F5; border-left: 1px solid #E0E0E0;")
+        right_layout = QVBoxLayout(self._history_widget)
         right_layout.setContentsMargins(16, 20, 16, 20)
         right_layout.setSpacing(12)
 
@@ -693,7 +750,8 @@ class StoryboardEditor(QWidget):
         self.history_list.itemClicked.connect(self._on_history_clicked)
         right_layout.addWidget(self.history_list)
 
-        list_layout.addWidget(right_widget)
+        self._history_widget.hide()
+        list_layout.addWidget(self._history_widget)
 
         layout.addWidget(self.list_view)
 
@@ -704,6 +762,7 @@ class StoryboardEditor(QWidget):
         self.detail_editor.back_clicked.connect(self._on_back_to_list)
         self.detail_editor.storyboard_saved.connect(self._load_storyboards)
         self.detail_editor.generate_design_image_clicked.connect(self._on_generate_design_image)
+        self.detail_editor.preview_prompt_clicked.connect(self._on_preview_prompt)
         self.detail_editor.hide()
         layout.addWidget(self.detail_editor)
 
@@ -810,7 +869,6 @@ class StoryboardEditor(QWidget):
         for shot in shots:
             card = StoryboardCard(shot, self)
             card.storyboard_clicked.connect(self._on_storyboard_clicked)
-            card.preview_prompt_clicked.connect(self._on_preview_prompt)
             card.generate_video_clicked.connect(self._on_generate_video)
             card._checkbox.toggled.connect(self._on_card_check_changed)
             self._storyboard_cards.append(card)
@@ -866,6 +924,10 @@ class StoryboardEditor(QWidget):
         """返回列表视图"""
         self.detail_editor.hide()
         self.list_view.show()
+
+    def _on_toggle_history(self) -> None:
+        """切换历史版本面板的显示/隐藏。"""
+        self._history_widget.setVisible(not self._history_widget.isVisible())
 
     def _on_generate_design_image(self, storyboard_id: int):
         """AI 生成分镜设计图（从详情编辑器触发，转发到主窗口）。"""

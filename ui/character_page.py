@@ -352,15 +352,14 @@ class CharacterPage(QWidget):
         toolbar_layout.setContentsMargins(20, 0, 20, 0)
         toolbar_layout.setSpacing(12)
 
-        self._back_btn = ToolButton(FluentIcon.RETURN)
+        self._back_btn = ToolButton(FluentIcon.LEFT_ARROW)
         self._back_btn.setFixedSize(36, 36)
         self._back_btn.clicked.connect(self.back_clicked.emit)
         toolbar_layout.addWidget(self._back_btn)
 
-        title = TitleLabel("角色管理")
-        toolbar_layout.addWidget(title)
-
-        toolbar_layout.addStretch()
+        title = QLabel("角色管理")
+        title.setStyleSheet("font-size: 16px; font-weight: bold; color: #333;")
+        toolbar_layout.addWidget(title, stretch=1)
 
         self._select_all_cb = CheckBox("全选")
         self._select_all_cb.stateChanged.connect(self._on_select_all_toggled)

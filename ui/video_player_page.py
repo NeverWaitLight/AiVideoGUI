@@ -7,7 +7,7 @@ import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from PyQt6.QtCore import Qt, QUrl, pyqtSignal
+from PyQt6.QtCore import QSize, Qt, QUrl, pyqtSignal
 from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
 from PyQt6.QtMultimediaWidgets import QVideoWidget
 from PyQt6.QtWidgets import (
@@ -88,16 +88,16 @@ class VideoPlayerPage(QWidget):
         layout.setSpacing(16)
 
         # 返回按钮
-        self.back_btn = ToolButton(FluentIcon.RETURN)
-        self.back_btn.setFixedSize(40, 40)
+        self.back_btn = ToolButton(FluentIcon.LEFT_ARROW)
+        self.back_btn.setFixedSize(36, 36)
+        self.back_btn.setIconSize(QSize(18, 18))
         self.back_btn.clicked.connect(self.back_clicked.emit)
         layout.addWidget(self.back_btn)
 
         # 标题
-        title_label = TitleLabel("项目视频播放")
-        layout.addWidget(title_label)
-
-        layout.addStretch()
+        title_label = QLabel("项目视频播放")
+        title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #333;")
+        layout.addWidget(title_label, stretch=1)
 
         # 播放列表信息标签
         self.playlist_info_label = QLabel("0 / 0")

@@ -111,9 +111,9 @@ class ProjectDetailPage(QWidget):
         header_layout.setSpacing(16)
 
         # 返回按钮
-        back_btn = ToolButton(FluentIcon.RETURN)
-        back_btn.setFixedSize(40, 40)
-        back_btn.setIconSize(QSize(20, 20))
+        back_btn = ToolButton(FluentIcon.LEFT_ARROW)
+        back_btn.setFixedSize(36, 36)
+        back_btn.setIconSize(QSize(18, 18))
         back_btn.setToolTip("返回项目列表")
         back_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         back_btn.clicked.connect(self.back_clicked.emit)
@@ -126,7 +126,7 @@ class ProjectDetailPage(QWidget):
         info_layout.setSpacing(4)
 
         self.project_name_label = QLabel("项目名称")
-        self.project_name_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #333;")
+        self.project_name_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #333;")
         info_layout.addWidget(self.project_name_label)
 
         self.project_info_label = QLabel("项目信息")
