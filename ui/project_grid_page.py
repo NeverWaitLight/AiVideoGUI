@@ -33,6 +33,7 @@ from qfluentwidgets import (
 
 from models.data_models import Project
 from service.project_service import ProjectService
+from ui.styles import style_button
 from utils.time_format import format_timestamp_short
 
 logger = logging.getLogger(__name__)
@@ -523,20 +524,12 @@ class ProjectGridPage(QWidget):
         btn_layout.setSpacing(12)
 
         cancel_btn = PushButton("取消")
-        cancel_btn.setFixedSize(100, 36)
         cancel_btn.clicked.connect(dialog.reject)
         btn_layout.addWidget(cancel_btn)
 
         delete_btn = PushButton("删除")
-        delete_btn.setFixedSize(100, 36)
-        delete_btn.setStyleSheet(
-            "PushButton { background-color: #E81123; color: white; border: none; "
-            "border-radius: 4px; font-weight: bold; }"
-            "PushButton:hover { background-color: #C50F1F; }"
-            "PushButton:pressed { background-color: #A00D1A; }"
-            "PushButton:disabled { background-color: #CCCCCC; color: #888888; }"
-        )
-        delete_btn.setEnabled(False)  # 初始禁用
+        style_button(delete_btn, "danger")
+        delete_btn.setEnabled(False)
         btn_layout.addWidget(delete_btn)
 
         layout.addLayout(btn_layout)

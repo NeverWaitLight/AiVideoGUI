@@ -1236,7 +1236,6 @@ class MainWindow(QMainWindow):
         layout.addWidget(detail_label)
 
         stop_btn = PushButton("停止批量生成", dialog)
-        stop_btn.setFixedHeight(32)
         stop_btn.clicked.connect(lambda: stop_btn.setEnabled(False))
         layout.addWidget(stop_btn)
 

@@ -12,7 +12,6 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QMessageBox,
-    QPushButton,
     QScrollArea,
     QVBoxLayout,
     QWidget,
@@ -33,6 +32,7 @@ from qfluentwidgets import (
 )
 
 from models.data_models import Scene, Storyboard, ShotSize
+from ui.styles import style_button
 from service.screenplay_service import ScreenplayService
 from service.storyboard_service import StoryboardService
 
@@ -175,8 +175,8 @@ class StoryboardCard(CardWidget):
         main_layout.addWidget(info_widget, 1)
 
         # 右侧：生成视频按钮
-        generate_btn = PrimaryPushButton("生成视频", self, FluentIcon.VIDEO)
-        generate_btn.setFixedSize(100, 36)
+        generate_btn = PushButton("生成视频", self, FluentIcon.VIDEO)
+        style_button(generate_btn, "generate")
         generate_btn.clicked.connect(lambda: self.generate_video_clicked.emit(self.storyboard.id))
         main_layout.addWidget(generate_btn, alignment=Qt.AlignmentFlag.AlignVCenter)
 
@@ -224,7 +224,6 @@ class StoryboardDetailEditor(QWidget):
         top_layout.addWidget(title_label, stretch=1)
 
         self._preview_prompt_btn = PushButton("查看提示词", self, FluentIcon.DOCUMENT)
-        self._preview_prompt_btn.setFixedSize(100, 36)
         self._preview_prompt_btn.clicked.connect(self._on_preview_prompt)
         top_layout.addWidget(self._preview_prompt_btn)
 
@@ -292,10 +291,10 @@ class StoryboardDetailEditor(QWidget):
         design_btn_layout = QHBoxLayout()
         design_btn_layout.setSpacing(8)
         self._generate_design_btn = PushButton("AI 生成", scroll_widget, FluentIcon.IMAGE_EXPORT)
-        self._generate_design_btn.setFixedSize(90, 32)
+        style_button(self._generate_design_btn, "generate")
         self._generate_design_btn.clicked.connect(self._on_generate_design_image)
         design_btn_layout.addWidget(self._generate_design_btn)
-        upload_btn = QPushButton("上传图片")
+        upload_btn = PushButton("上传图片", scroll_widget)
         upload_btn.clicked.connect(self._on_upload_design_image)
         design_btn_layout.addWidget(upload_btn)
         design_btn_layout.addStretch()
@@ -351,7 +350,8 @@ class StoryboardDetailEditor(QWidget):
         layout.addWidget(scroll_area, 1)
 
         # 保存按钮（固定在底部）
-        save_btn = PrimaryPushButton("保存", self, FluentIcon.SAVE)
+        save_btn = PushButton("保存", self, FluentIcon.SAVE)
+        style_button(save_btn, "save")
         save_btn.clicked.connect(self._on_save_storyboard)
         layout.addWidget(save_btn, alignment=Qt.AlignmentFlag.AlignRight)
 
@@ -475,25 +475,20 @@ class StoryboardDetailEditor(QWidget):
 
         # 播放按钮
         play_btn = PushButton("播放", card, FluentIcon.PLAY)
-        play_btn.setFixedHeight(28)
-        play_btn.setFixedWidth(60)
         local_path = media.local_path
         play_btn.clicked.connect(lambda _, p=local_path: self._on_play_video(p))
         row_layout.addWidget(play_btn)
 
         # 设为封面按钮
         if not media.featured:
-            cover_btn = QPushButton("设为封面", card)
-            cover_btn.setFixedHeight(28)
-            cover_btn.setFixedWidth(70)
+            cover_btn = PushButton("设为封面", card)
             file_id = media.id
             cover_btn.clicked.connect(lambda _, fid=file_id: self._on_set_featured(fid))
             row_layout.addWidget(cover_btn)
 
         # 删除按钮
         del_btn = PushButton("删除", card, FluentIcon.DELETE)
-        del_btn.setFixedHeight(28)
-        del_btn.setFixedWidth(60)
+        style_button(del_btn, "danger")
         file_id = media.id
         del_btn.clicked.connect(lambda _, fid=file_id: self._on_delete_video(fid))
         row_layout.addWidget(del_btn)
@@ -685,13 +680,13 @@ class StoryboardEditor(QWidget):
         title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #333;")
         top_layout.addWidget(title_label, stretch=1)
 
-        self._generate_all_designs_btn = PrimaryPushButton("生成所有设计图", self, FluentIcon.IMAGE_EXPORT)
-        self._generate_all_designs_btn.setFixedHeight(36)
+        self._generate_all_designs_btn = PushButton("生成所有设计图", self, FluentIcon.IMAGE_EXPORT)
+        style_button(self._generate_all_designs_btn, "generate")
         self._generate_all_designs_btn.clicked.connect(self._on_generate_all_designs)
         top_layout.addWidget(self._generate_all_designs_btn)
 
-        self._generate_all_btn = PrimaryPushButton("生成所有镜头", self, FluentIcon.PLAY)
-        self._generate_all_btn.setFixedHeight(36)
+        self._generate_all_btn = PushButton("生成所有镜头", self, FluentIcon.PLAY)
+        style_button(self._generate_all_btn, "generate")
         self._generate_all_btn.clicked.connect(self._on_generate_all)
         top_layout.addWidget(self._generate_all_btn)
 
@@ -719,7 +714,7 @@ class StoryboardEditor(QWidget):
         filter_layout.addWidget(self._select_all_cb)
 
         self._delete_selected_btn = PushButton("删除选中", self, FluentIcon.DELETE)
-        self._delete_selected_btn.setFixedHeight(32)
+        style_button(self._delete_selected_btn, "danger")
         self._delete_selected_btn.setEnabled(False)
         self._delete_selected_btn.clicked.connect(self._on_delete_selected)
         filter_layout.addWidget(self._delete_selected_btn)

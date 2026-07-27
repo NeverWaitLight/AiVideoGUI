@@ -210,14 +210,14 @@ class ChatArea(QWidget):
         # 输入行
         input_row = QWidget()
         input_row.setStyleSheet("background: transparent;")
-        input_row.setFixedHeight(70)
+        input_row.setMinimumHeight(70)
         input_layout = QHBoxLayout(input_row)
         input_layout.setContentsMargins(0, 10, 0, 12)
         input_layout.setSpacing(10)
 
         self.input_box = TextEdit()
         self.input_box.setPlaceholderText("输入视频描述…（Enter 发送，Shift+Enter 换行）")
-        self.input_box.setFixedHeight(48)
+        self.input_box.setMinimumHeight(48)
         self.input_box.installEventFilter(self)
         input_layout.addWidget(self.input_box, stretch=1)
 

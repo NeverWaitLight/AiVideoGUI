@@ -24,6 +24,7 @@ from qframelesswindow import FramelessDialog
 from config.manager import ConfigManager
 from models.data_models import ProviderConfig
 from providers.dashscope_chat import DashScopeChatProvider
+from ui.styles import style_button
 from utils import paths
 
 logger = logging.getLogger(__name__)
@@ -189,8 +190,9 @@ class SettingsDialog(FramelessDialog):
         cancel_btn.clicked.connect(self.reject)
         btn_row.addWidget(cancel_btn)
 
-        save_btn = PrimaryPushButton("保存")
+        save_btn = PushButton("保存")
         save_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        style_button(save_btn, "save")
         save_btn.clicked.connect(self._on_save)
         btn_row.addWidget(save_btn)
 

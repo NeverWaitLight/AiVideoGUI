@@ -14,6 +14,8 @@ from PyQt6.QtWidgets import (
 )
 from qfluentwidgets import PrimaryPushButton, PushButton, ToolButton, ListWidget, RoundMenu, Action, FluentIcon
 
+from ui.styles import style_button
+
 
 class _ConversationRow(QWidget):
     """对话列表行控件：左侧标题+时间，右侧垂直居中删除按钮。"""
@@ -153,20 +155,12 @@ class Sidebar(QWidget):
 
         delete_btn = PushButton("删除")
         delete_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        delete_btn.setStyleSheet(
-            "PushButton { background-color: #E81123; color: white; border: none; "
-            "border-radius: 4px; padding: 6px 20px; min-width: 80px; min-height: 32px; }"
-            "PushButton:hover { background-color: #C50F1F; }"
-            "PushButton:pressed { background-color: #A00D1A; }"
-        )
+        style_button(delete_btn, "danger")
         delete_btn.clicked.connect(dlg.accept)
         btn_row.addWidget(delete_btn)
 
         cancel_btn = PushButton("取消")
         cancel_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        cancel_btn.setStyleSheet(
-            "PushButton { min-width: 80px; min-height: 32px; padding: 6px 20px; }"
-        )
         cancel_btn.clicked.connect(dlg.reject)
         btn_row.addWidget(cancel_btn)
 

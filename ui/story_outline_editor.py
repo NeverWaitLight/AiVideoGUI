@@ -30,6 +30,7 @@ from qfluentwidgets import (
 from models.data_models import StoryOutline, StoryOutlineHistory
 from service.story_outline_service import StoryOutlineService
 from service.text_model_service import TextModelService
+from ui.styles import style_button
 from utils.time_formatter import format_timestamp, get_current_timestamp_ms
 
 logger = logging.getLogger(__name__)
@@ -85,7 +86,6 @@ class HistoryListItem(QWidget):
         layout.addWidget(time_label, stretch=1)
 
         restore_btn = PushButton("恢复")
-        restore_btn.setFixedHeight(28)
         restore_btn.clicked.connect(lambda: self.restore_clicked.emit(self._history.id))
         layout.addWidget(restore_btn)
 
@@ -256,12 +256,12 @@ class StoryOutlineChatPanel(QWidget):
 
         self._input = TextEdit()
         self._input.setPlaceholderText("描述你想修改的内容…")
-        self._input.setFixedHeight(42)
+        self._input.setMinimumHeight(42)
         self._input.installEventFilter(self)
         input_layout.addWidget(self._input, stretch=1)
 
         self._send_btn = PrimaryPushButton("发送")
-        self._send_btn.setFixedHeight(42)
+        self._send_btn.setMinimumHeight(42)
         self._send_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._send_btn.clicked.connect(self._on_send)
         input_layout.addWidget(self._send_btn)
@@ -385,14 +385,14 @@ class StoryOutlineEditor(QWidget):
         self.history_btn.clicked.connect(self._on_show_history)
         toolbar_layout.addWidget(self.history_btn)
 
-        self.save_btn = PrimaryPushButton("保存")
-        self.save_btn.setFixedHeight(36)
+        self.save_btn = PushButton("保存")
+        style_button(self.save_btn, "save")
         self.save_btn.clicked.connect(self._on_save)
         toolbar_layout.addWidget(self.save_btn)
 
-        self.next_btn = PrimaryPushButton("生成剧本")
+        self.next_btn = PushButton("生成剧本")
         self.next_btn.setIcon(FluentIcon.RIGHT_ARROW)
-        self.next_btn.setFixedHeight(36)
+        style_button(self.next_btn, "generate")
         self.next_btn.clicked.connect(self._on_next_step)
         toolbar_layout.addWidget(self.next_btn)
 

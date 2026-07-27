@@ -29,6 +29,7 @@ from qfluentwidgets import (
 
 from models.data_models import Scene, SceneLocation, SceneTime
 from service.screenplay_service import ScreenplayService
+from ui.styles import style_button
 
 logger = logging.getLogger(__name__)
 
@@ -155,8 +156,8 @@ class SceneDetailEditor(QWidget):
         toolbar_layout.addWidget(self.title_label, stretch=1)
 
         # 保存按钮
-        self.save_btn = PrimaryPushButton("保存")
-        self.save_btn.setFixedHeight(36)
+        self.save_btn = PushButton("保存")
+        style_button(self.save_btn, "save")
         self.save_btn.clicked.connect(self._on_save)
         toolbar_layout.addWidget(self.save_btn)
 
@@ -375,7 +376,6 @@ class HistoryListItem(QWidget):
 
         # 恢复按钮
         restore_btn = PushButton("恢复")
-        restore_btn.setFixedHeight(28)
         restore_btn.clicked.connect(lambda: self.restore_clicked.emit(self._created_at))
         layout.addWidget(restore_btn)
 
@@ -443,16 +443,16 @@ class ScreenplayEditor(QWidget):
         toolbar_layout.addWidget(self.title_label, stretch=1)
 
         # 生成分镜按钮
-        self.generate_storyboard_btn = PrimaryPushButton("生成分镜")
+        self.generate_storyboard_btn = PushButton("生成分镜")
         self.generate_storyboard_btn.setIcon(FluentIcon.MOVIE)
-        self.generate_storyboard_btn.setFixedHeight(36)
+        style_button(self.generate_storyboard_btn, "generate")
         self.generate_storyboard_btn.clicked.connect(self._on_generate_storyboard)
         toolbar_layout.addWidget(self.generate_storyboard_btn)
 
         # 保存历史按钮
         self.save_history_btn = PushButton("保存历史版本")
         self.save_history_btn.setIcon(FluentIcon.SAVE)
-        self.save_history_btn.setFixedHeight(36)
+        style_button(self.save_history_btn, "save")
         self.save_history_btn.clicked.connect(self._on_save_history)
         toolbar_layout.addWidget(self.save_history_btn)
 

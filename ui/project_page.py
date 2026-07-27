@@ -29,6 +29,7 @@ from qfluentwidgets import (
 
 from models.data_models import Project
 from service.project_service import ProjectService
+from ui.styles import style_button
 
 logger = logging.getLogger(__name__)
 
@@ -436,20 +437,13 @@ class ProjectPage(QWidget):
 
         cancel_btn = PushButton("取消")
         cancel_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        cancel_btn.setStyleSheet("PushButton { min-width: 100px; min-height: 36px; padding: 6px 20px; }")
         cancel_btn.clicked.connect(dlg.reject)
         btn_row.addWidget(cancel_btn)
 
         delete_btn = PushButton("删除")
         delete_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        delete_btn.setStyleSheet(
-            "PushButton { background-color: #E81123; color: white; border: none; "
-            "border-radius: 4px; padding: 6px 20px; min-width: 100px; min-height: 36px; font-weight: bold; }"
-            "PushButton:hover { background-color: #C50F1F; }"
-            "PushButton:pressed { background-color: #A00D1A; }"
-            "PushButton:disabled { background-color: #CCCCCC; color: #888888; }"
-        )
-        delete_btn.setEnabled(False)  # 初始禁用
+        style_button(delete_btn, "danger")
+        delete_btn.setEnabled(False)
         btn_row.addWidget(delete_btn)
 
         layout.addLayout(btn_row)
@@ -516,18 +510,12 @@ class ProjectPage(QWidget):
 
         delete_btn = PushButton("删除")
         delete_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        delete_btn.setStyleSheet(
-            "PushButton { background-color: #E81123; color: white; border: none; "
-            "border-radius: 4px; padding: 6px 20px; min-width: 80px; min-height: 32px; }"
-            "PushButton:hover { background-color: #C50F1F; }"
-            "PushButton:pressed { background-color: #A00D1A; }"
-        )
+        style_button(delete_btn, "danger")
         delete_btn.clicked.connect(dlg.accept)
         btn_row.addWidget(delete_btn)
 
         cancel_btn = PushButton("取消")
         cancel_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        cancel_btn.setStyleSheet("PushButton { min-width: 80px; min-height: 32px; padding: 6px 20px; }")
         cancel_btn.clicked.connect(dlg.reject)
         btn_row.addWidget(cancel_btn)
 
@@ -643,8 +631,9 @@ class _ProjectDialog(QDialog):
         btn_row.addStretch()
         btn_row.setSpacing(12)
 
-        save_btn = PrimaryPushButton("保存" if self._project else "创建")
+        save_btn = PushButton("保存" if self._project else "创建")
         save_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        style_button(save_btn, "save")
         save_btn.clicked.connect(self.accept)
         btn_row.addWidget(save_btn)
 

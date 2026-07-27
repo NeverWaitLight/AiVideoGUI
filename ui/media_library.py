@@ -38,6 +38,7 @@ from ui.styles import (
     COLOR_MEDIA_IMAGE,
     COLOR_MEDIA_VIDEO,
     COLOR_TEXT_SECONDARY,
+    style_button,
 )
 
 logger = logging.getLogger(__name__)
@@ -396,6 +397,7 @@ class MediaLibrary(QWidget):
 
         self._delete_btn = PushButton(FluentIcon.DELETE, "删除选中")
         self._delete_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        style_button(self._delete_btn, "danger")
         self._delete_btn.setEnabled(False)
         self._delete_btn.clicked.connect(self._on_delete_selected)
         tb_layout.addWidget(self._delete_btn)

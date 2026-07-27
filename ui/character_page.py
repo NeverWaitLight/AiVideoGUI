@@ -36,6 +36,7 @@ from qfluentwidgets import (
 
 from models.data_models import Character, CharacterHistory
 from service.character_service import CharacterService
+from ui.styles import style_button
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +95,8 @@ class _CharacterEditDialog(QDialog):
         cancel_btn.clicked.connect(self.reject)
         btn_layout.addWidget(cancel_btn)
 
-        save_btn = PrimaryPushButton("保存")
+        save_btn = PushButton("保存")
+        style_button(save_btn, "save")
         save_btn.clicked.connect(self._on_save)
         btn_layout.addWidget(save_btn)
 
@@ -291,12 +293,11 @@ class CharacterDetailPage(QWidget):
         btn_layout.setSpacing(8)
 
         self._generate_design_btn = PushButton("AI 生成", scroll_widget, FluentIcon.IMAGE_EXPORT)
-        self._generate_design_btn.setFixedSize(100, 32)
+        style_button(self._generate_design_btn, "generate")
         self._generate_design_btn.clicked.connect(self._on_generate_design_image)
         btn_layout.addWidget(self._generate_design_btn)
 
         self._upload_btn = PushButton("上传图片", scroll_widget, FluentIcon.FOLDER)
-        self._upload_btn.setFixedSize(100, 32)
         self._upload_btn.clicked.connect(self._on_upload_design_image)
         btn_layout.addWidget(self._upload_btn)
 
@@ -310,7 +311,8 @@ class CharacterDetailPage(QWidget):
         layout.addWidget(scroll_area, 1)
 
         # ── 保存按钮（固定在底部） ──
-        save_btn = PrimaryPushButton("保存", self, FluentIcon.SAVE)
+        save_btn = PushButton("保存", self, FluentIcon.SAVE)
+        style_button(save_btn, "save")
         save_btn.clicked.connect(self._on_save)
         layout.addWidget(save_btn, alignment=Qt.AlignmentFlag.AlignRight)
 
@@ -534,7 +536,6 @@ class CharacterCard(CardWidget):
 
         # 右侧：历史按钮
         self._history_btn = PushButton("历史", self, FluentIcon.HISTORY)
-        self._history_btn.setFixedSize(80, 32)
         self._history_btn.clicked.connect(lambda: self.history_requested.emit(self.character.uuid))
         main_layout.addWidget(self._history_btn, alignment=Qt.AlignmentFlag.AlignVCenter)
 
@@ -566,7 +567,6 @@ class _EmptyState(QWidget):
         layout.addWidget(hint_label)
 
         add_btn = PrimaryPushButton("新增角色")
-        add_btn.setFixedSize(120, 36)
         add_btn.clicked.connect(self.add_clicked.emit)
         layout.addWidget(add_btn, alignment=Qt.AlignmentFlag.AlignCenter)
 
@@ -624,6 +624,7 @@ class CharacterPage(QWidget):
         toolbar_layout.addWidget(self._add_btn)
 
         self._delete_selected_btn = PushButton("删除选中", self, FluentIcon.DELETE)
+        style_button(self._delete_selected_btn, "danger")
         self._delete_selected_btn.setEnabled(False)
         self._delete_selected_btn.clicked.connect(self._on_delete_selected)
         toolbar_layout.addWidget(self._delete_selected_btn)
