@@ -468,6 +468,7 @@ class MainWindow(QMainWindow):
 
         # 角色管理页信号
         self.character_page.back_clicked.connect(self._on_character_page_back)
+        self.character_page.design_image_generation_requested.connect(self._on_generate_character_design_image)
 
         # 视频播放器信号
         self.video_player_page.back_clicked.connect(self._on_video_player_back)
@@ -1297,6 +1298,131 @@ class MainWindow(QMainWindow):
 
         # 保持引用避免被回收
         self._design_image_worker = worker
+
+    def _on_generate_character_design_image(self, character_uuid: str, project_id: int) -> None:
+        """AI 生成角色设计图：先用文本模型生成英文提示词，再调用图片生成 API。"""
+        logger.info(f"AI 生成角色设计图：character_uuid={character_uuid}, project_id={project_id}")
+
+        character = self._character_service.get_character(character_uuid)
+        if not character:
+            QMessageBox.warning(self, "错误", "角色不存在")
+            self.character_page.detail_page.set_design_image_result("")
+            return
+
+        if not character.description:
+            QMessageBox.warning(self, "提示", "请先编辑角色形象描述")
+            self.character_page.detail_page.set_design_image_result("")
+            return
+
+        # 更新 UI 状态为生成中
+        self.character_page.detail_page.set_generating_design(True)
+
+        # 显示进度对话框
+        from qfluentwidgets import IndeterminateProgressBar
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("生成角色设计图")
+        dialog.setModal(True)
+        dialog.setFixedSize(320, 120)
+
+        layout = QVBoxLayout(dialog)
+        layout.setSpacing(16)
+
+        progress = IndeterminateProgressBar()
+        progress.start()
+        layout.addWidget(progress)
+
+        status_label = QLabel("正在生成设计图提示词...")
+        status_label.setStyleSheet("font-size: 13px; color: #666;")
+        status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(status_label)
+
+        dialog.show()
+
+        # 使用 QThread 异步生成
+        from PyQt6.QtCore import QThread
+
+        class CharacterDesignImageWorker(QThread):
+            finished = pyqtSignal(str)
+            failed = pyqtSignal(str)
+            progress_update = pyqtSignal(str)
+
+            def __init__(self, text_service, image_service, character_service,
+                         character, project_id):
+                super().__init__()
+                self._text_service = text_service
+                self._image_service = image_service
+                self._character_service = character_service
+                self._character = character
+                self._project_id = project_id
+
+            def run(self):
+                try:
+                    # Step 1: 用文本模型生成英文图片提示词
+                    self.progress_update.emit("正在生成设计图提示词...")
+                    image_prompt = self._text_service.generate_character_design_image_prompt(
+                        character_name=self._character.name,
+                        description=self._character.description,
+                    )
+                    logger.info(f"角色设计图提示词：{image_prompt}")
+
+                    # Step 2: 调用图片生成 API
+                    self.progress_update.emit("正在调用图片生成模型...")
+                    save_path = os.path.join(
+                        paths.projects_dir(paths.workspace_root()),
+                        str(self._project_id),
+                        f"character-{self._character.uuid}.png",
+                    )
+                    result_path = self._image_service.generate(
+                        prompt=image_prompt,
+                        save_path=save_path,
+                    )
+
+                    # Step 3: 保存路径到数据库
+                    self._character_service.update_character(
+                        character_uuid=self._character.uuid,
+                        design_image=result_path,
+                    )
+                    logger.info(f"角色设计图生成完成：{result_path}")
+                    self.finished.emit(result_path)
+
+                except Exception as e:
+                    logger.exception("生成角色设计图失败")
+                    self.failed.emit(str(e))
+
+        def on_success(image_path: str):
+            try:
+                dialog.close()
+            except Exception:
+                pass
+            self.character_page.detail_page.set_design_image_result(image_path)
+            QMessageBox.information(self, "成功", "角色设计图生成完成！")
+
+        def on_failed(error_msg: str):
+            try:
+                dialog.close()
+            except Exception:
+                pass
+            self.character_page.detail_page.set_design_image_result("")
+            QMessageBox.critical(self, "生成失败", f"AI 生成角色设计图失败：{error_msg}")
+
+        def on_progress_update(text: str):
+            status_label.setText(text)
+
+        worker = CharacterDesignImageWorker(
+            self._text_model_service,
+            self._image_service,
+            self._character_service,
+            character,
+            project_id,
+        )
+        worker.finished.connect(on_success)
+        worker.failed.connect(on_failed)
+        worker.progress_update.connect(on_progress_update)
+        worker.start()
+
+        # 保持引用避免被回收
+        self._character_design_image_worker = worker
 
     # ───────── 侧边栏事件 ─────────
 

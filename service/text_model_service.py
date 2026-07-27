@@ -543,3 +543,113 @@ class TextModelService:
         except (KeyError, ValueError) as e:
             logger.exception("解析 API 响应失败")
             raise RuntimeError(f"解析响应失败：{e}")
+
+    def generate_character_design_image_prompt(
+        self,
+        character_name: str,
+        description: str,
+        model: str | None = None,
+    ) -> str:
+        """根据角色形象描述生成角色设计图的英文提示词。
+
+        Args:
+            character_name: 角色名
+            description: 结构化形象描述（含固定特征和默认服装）
+            model: 使用的模型名称，默认使用 qwen-max
+
+        Returns:
+            英文图片生成提示词
+
+        Raises:
+            RuntimeError: API 调用失败
+        """
+        provider_config = self._config.get_provider("dashscope")
+        if not provider_config or not provider_config.api_key:
+            raise RuntimeError("未配置 DashScope API Key，请在设置中配置")
+
+        model = model or self.DEFAULT_MODEL
+
+        system_prompt = """你是一位专业的角色设计图绘制助手。你的任务是根据角色的结构化形象描述，生成一段用于文生图模型的英文提示词（prompt），产出角色全身立绘设计图。
+
+**生成要求：**
+
+1. **构图规范**
+   - 采用全身立绘构图（full-body character design），展示角色从头部到脚部的完整形象
+   - 角色居中站立，姿态自然放松，略带个性特征
+   - 纯色或简洁渐变背景，突出角色主体
+   - 采用角色设定图风格（character concept art sheet）
+
+2. **人物表现**
+   - 严格按照形象描述中的每一个特征绘制：外貌、发型、发色、瞳色、体型
+   - 服装按照默认服装描述绘制，包含上装、裤子、鞋袜、帽子/配饰
+   - 面部表情自然，体现角色性格
+   - 注重细节一致性，确保同一角色在不同生成中保持高度可辨识度
+
+3. **艺术风格**
+   - 采用电影概念设计风格（cinematic concept art），兼具写实感和绘画质感
+   - 画面精致，细节丰富，适合作为影视拍摄的角色视觉参考
+   - 光影柔和均匀，确保角色各部位清晰可辨
+
+**输出要求：**
+- 直接输出一段英文提示词，不超过 200 个单词
+- 不要包含任何解释、前缀或标注，只输出纯提示词文本"""
+
+        user_prompt = f"""请根据以下角色信息生成设计图提示词：
+
+【角色名】{character_name}
+
+【形象描述】
+{description}"""
+
+        payload = {
+            "model": model,
+            "input": {
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ]
+            },
+            "parameters": {
+                "result_format": "message",
+            },
+        }
+
+        headers = {
+            "Authorization": f"Bearer {provider_config.api_key}",
+            "Content-Type": "application/json",
+        }
+
+        logger.info(f"调用文本模型生成角色设计图提示词，模型：{model}，角色：{character_name}")
+        logger.debug(f"请求体：{payload}")
+
+        try:
+            resp = requests.post(
+                self.DASHSCOPE_TEXT_URL,
+                json=payload,
+                headers=headers,
+                timeout=60,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            logger.debug(f"响应：{data}")
+
+            output = data.get("output", {})
+            choices = output.get("choices", [])
+            if not choices:
+                raise RuntimeError("API 未返回有效内容")
+
+            message = choices[0].get("message", {})
+            prompt_text = message.get("content", "").strip()
+
+            if not prompt_text:
+                raise RuntimeError("API 返回的内容为空")
+
+            logger.info("角色设计图提示词生成成功")
+            return prompt_text
+
+        except requests.exceptions.RequestException as e:
+            logger.exception("调用文本模型 API 失败")
+            raise RuntimeError(f"网络请求失败：{e}")
+        except (KeyError, ValueError) as e:
+            logger.exception("解析 API 响应失败")
+            raise RuntimeError(f"解析响应失败：{e}")

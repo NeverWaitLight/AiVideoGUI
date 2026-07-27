@@ -9,6 +9,7 @@ from PyQt6.QtCore import Qt, pyqtSignal, QSize
 from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
     QGridLayout,
@@ -42,7 +43,8 @@ class ModuleCard(CardWidget):
     ):
         super().__init__(parent)
         self._module_name = module_name
-        self.setFixedSize(280, 160)
+        self.setMinimumSize(200, 160)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self._setup_ui(title, description, icon)
 
@@ -146,7 +148,7 @@ class ProjectDetailPage(QWidget):
         # 模块网格容器
         container = QWidget()
         container_layout = QVBoxLayout(container)
-        container_layout.setContentsMargins(20, 20, 20, 20)
+        container_layout.setContentsMargins(32, 20, 32, 20)
         container_layout.setSpacing(20)
 
         # 模块标题
@@ -159,7 +161,8 @@ class ProjectDetailPage(QWidget):
         self._grid_layout = QGridLayout(grid_widget)
         self._grid_layout.setContentsMargins(0, 0, 0, 0)
         self._grid_layout.setSpacing(20)
-        self._grid_layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+        for col in range(3):
+            self._grid_layout.setColumnStretch(col, 1)
 
         # 模块卡片将在 set_project() 中动态生成
         container_layout.addWidget(grid_widget)

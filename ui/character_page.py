@@ -1,8 +1,9 @@
-"""角色管理页面：大横卡列表，支持新增、编辑、删除和查看编辑历史。"""
+"""角色管理页面：大横卡列表 + 角色详情页，支持新增、编辑、删除、查看历史、AI 生成设计图。"""
 
 from __future__ import annotations
 
 import logging
+import os
 from datetime import datetime
 
 from PyQt6.QtCore import Qt, pyqtSignal
@@ -17,6 +18,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
     QDialog,
+    QFileDialog,
     QFormLayout,
 )
 from qfluentwidgets import (
@@ -178,10 +180,253 @@ class _CharacterHistoryDialog(QDialog):
         self._detail_label.setPlainText("\n".join(lines))
 
 
-class CharacterCard(CardWidget):
-    """角色横卡（约 400x120）。"""
+class CharacterDetailPage(QWidget):
+    """角色详情页：展示角色完整信息，支持 AI 生成 / 上传设计图。"""
 
-    edit_requested = pyqtSignal(str)  # character uuid
+    back_clicked = pyqtSignal()
+    design_image_generation_requested = pyqtSignal(str, int)  # (character_uuid, project_id)
+    saved = pyqtSignal()  # 保存成功后通知列表刷新
+
+    def __init__(self, character_service: CharacterService, parent: QWidget | None = None):
+        super().__init__(parent)
+        self._character_service = character_service
+        self._current_character: Character | None = None
+        self._setup_ui()
+
+    def _setup_ui(self) -> None:
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        # ── 顶部工具栏（固定） ──
+        toolbar = QWidget()
+        toolbar.setFixedHeight(56)
+        toolbar.setStyleSheet("background-color: #FAFAFA; border-bottom: 1px solid #E8E8E8;")
+        toolbar_layout = QHBoxLayout(toolbar)
+        toolbar_layout.setContentsMargins(20, 0, 20, 0)
+        toolbar_layout.setSpacing(12)
+
+        self._back_btn = ToolButton(FluentIcon.LEFT_ARROW)
+        self._back_btn.setFixedSize(36, 36)
+        self._back_btn.clicked.connect(self.back_clicked.emit)
+        toolbar_layout.addWidget(self._back_btn)
+
+        self._title_label = QLabel("角色详情")
+        self._title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #333;")
+        toolbar_layout.addWidget(self._title_label, stretch=1)
+
+        layout.addWidget(toolbar)
+
+        # ── 中间可滚动区域 ──
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setStyleSheet("QScrollArea { border: none; }")
+        scroll_widget = QWidget()
+        scroll_layout = QVBoxLayout(scroll_widget)
+        scroll_layout.setContentsMargins(24, 16, 24, 16)
+        scroll_layout.setSpacing(16)
+
+        # 基本信息卡片
+        info_card = CardWidget(scroll_widget)
+        info_layout = QVBoxLayout(info_card)
+        info_layout.setContentsMargins(16, 16, 16, 16)
+        info_layout.setSpacing(12)
+
+        # 角色名（可编辑）
+        info_layout.addWidget(QLabel("角色名："))
+        self._name_edit = LineEdit(scroll_widget)
+        self._name_edit.setPlaceholderText("角色名字")
+        info_layout.addWidget(self._name_edit)
+
+        # 引用代号（可编辑）
+        info_layout.addWidget(QLabel("引用代号："))
+        self._ref_code_edit = LineEdit(scroll_widget)
+        self._ref_code_edit.setPlaceholderText("引用代号，如 CHAR_A")
+        info_layout.addWidget(self._ref_code_edit)
+
+        # 形象描述（可编辑）
+        info_layout.addWidget(QLabel("形象描述："))
+        self._description_text = TextEdit(scroll_widget)
+        self._description_text.setPlaceholderText(
+            "结构化形象描述，每行一个分区：\n"
+            "[外貌] 25岁女性，瓜子脸，柳叶眉\n"
+            "[发型] 齐肩黑色直发，中分\n"
+            "[发色] 自然黑\n"
+            "[瞳色] 深棕色\n"
+            "[体型] 165cm，纤细匀称\n"
+            "[上装] 白色棉质衬衫\n"
+            "[裤子] 深蓝色高腰牛仔裤\n"
+            "[鞋袜] 白色帆布鞋\n"
+            "[帽子] 无"
+        )
+        self._description_text.setMinimumHeight(200)
+        info_layout.addWidget(self._description_text)
+
+        scroll_layout.addWidget(info_card)
+
+        # 设计图卡片
+        design_card = CardWidget(scroll_widget)
+        design_layout = QVBoxLayout(design_card)
+        design_layout.setContentsMargins(16, 16, 16, 16)
+        design_layout.setSpacing(12)
+
+        design_title = QLabel("角色设计图")
+        design_title.setStyleSheet("font-weight: bold; font-size: 14px;")
+        design_layout.addWidget(design_title)
+
+        # 设计图预览
+        self._design_preview = QLabel()
+        self._design_preview.setFixedSize(320, 320)
+        self._design_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._design_preview.setStyleSheet(
+            "background-color: #F3F3F3; border-radius: 8px; border: 1px solid #E0E0E0;"
+        )
+        self._design_preview.setText("暂无设计图")
+        design_layout.addWidget(self._design_preview)
+
+        # 按钮区域
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(8)
+
+        self._generate_design_btn = PushButton("AI 生成", scroll_widget, FluentIcon.IMAGE_EXPORT)
+        self._generate_design_btn.setFixedSize(100, 32)
+        self._generate_design_btn.clicked.connect(self._on_generate_design_image)
+        btn_layout.addWidget(self._generate_design_btn)
+
+        self._upload_btn = PushButton("上传图片", scroll_widget, FluentIcon.FOLDER)
+        self._upload_btn.setFixedSize(100, 32)
+        self._upload_btn.clicked.connect(self._on_upload_design_image)
+        btn_layout.addWidget(self._upload_btn)
+
+        btn_layout.addStretch()
+        design_layout.addLayout(btn_layout)
+
+        scroll_layout.addWidget(design_card)
+
+        scroll_layout.addStretch()
+        scroll_area.setWidget(scroll_widget)
+        layout.addWidget(scroll_area, 1)
+
+        # ── 保存按钮（固定在底部） ──
+        save_btn = PrimaryPushButton("保存", self, FluentIcon.SAVE)
+        save_btn.clicked.connect(self._on_save)
+        layout.addWidget(save_btn, alignment=Qt.AlignmentFlag.AlignRight)
+
+    def _on_save(self) -> None:
+        """保存角色编辑。"""
+        if not self._current_character:
+            return
+        name = self._name_edit.text().strip()
+        ref_code = self._ref_code_edit.text().strip()
+        if not name:
+            QMessageBox.warning(self, "提示", "角色名不能为空")
+            return
+        if not ref_code:
+            QMessageBox.warning(self, "提示", "引用代号不能为空")
+            return
+        self._character_service.update_character(
+            self._current_character.uuid,
+            name=name,
+            ref_code=ref_code,
+            description=self._description_text.toPlainText().strip(),
+        )
+        self._current_character.name = name
+        self._current_character.ref_code = ref_code
+        self._current_character.description = self._description_text.toPlainText().strip()
+        self._title_label.setText(f"角色详情 — {name}")
+        self.saved.emit()
+        QMessageBox.information(self, "成功", "角色信息已保存！")
+
+    def load_character(self, character_uuid: str) -> None:
+        """加载角色数据到详情页。"""
+        char = self._character_service.get_character(character_uuid)
+        if not char:
+            QMessageBox.warning(self, "错误", "角色不存在")
+            self.back_clicked.emit()
+            return
+
+        self._current_character = char
+        self._title_label.setText(f"角色详情 — {char.name}")
+        self._name_edit.setText(char.name)
+        self._ref_code_edit.setText(char.ref_code)
+        self._description_text.setPlainText(char.description or "")
+        self._update_design_preview(char.design_image or "")
+
+    def _update_design_preview(self, image_path: str = "") -> None:
+        """更新设计图预览。"""
+        if image_path and os.path.exists(image_path):
+            pixmap = QPixmap(image_path)
+            if not pixmap.isNull():
+                scaled = pixmap.scaled(
+                    self._design_preview.size(),
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation,
+                )
+                self._design_preview.setPixmap(scaled)
+                return
+        self._design_preview.clear()
+        self._design_preview.setStyleSheet(
+            "background-color: #F3F3F3; border-radius: 8px; border: 1px solid #E0E0E0; color: #909090;"
+        )
+        self._design_preview.setText("暂无设计图")
+
+    def set_generating_design(self, generating: bool) -> None:
+        """切换设计图生成中状态。"""
+        if generating:
+            self._generate_design_btn.setEnabled(False)
+            self._generate_design_btn.setText("生成中...")
+            self._design_preview.clear()
+            self._design_preview.setStyleSheet(
+                "background-color: #F3F3F3; border-radius: 8px; border: 1px solid #E0E0E0; color: #909090;"
+            )
+            self._design_preview.setText("正在生成设计图...")
+        else:
+            self._generate_design_btn.setEnabled(True)
+            self._generate_design_btn.setText("AI 生成")
+
+    def set_design_image_result(self, image_path: str) -> None:
+        """设计图生成完成回调。"""
+        self.set_generating_design(False)
+        if image_path:
+            self._update_design_preview(image_path)
+        elif self._current_character and self._current_character.design_image:
+            self._update_design_preview(self._current_character.design_image)
+
+    def _on_generate_design_image(self) -> None:
+        """触发 AI 生成设计图。"""
+        if not self._current_character:
+            return
+        if not self._current_character.description:
+            QMessageBox.warning(self, "提示", "请先编辑角色形象描述，再生成设计图")
+            return
+        self.design_image_generation_requested.emit(
+            self._current_character.uuid,
+            self._current_character.project_id,
+        )
+
+    def _on_upload_design_image(self) -> None:
+        """上传图片作为设计图。"""
+        if not self._current_character:
+            return
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "选择设计图", "", "图片文件 (*.png *.jpg *.jpeg *.webp)"
+        )
+        if not file_path:
+            return
+        self._character_service.update_character(
+            self._current_character.uuid,
+            design_image=file_path,
+        )
+        self._current_character.design_image = file_path
+        self._update_design_preview(file_path)
+        self.saved.emit()
+        QMessageBox.information(self, "成功", "设计图上传成功！")
+
+
+class CharacterCard(CardWidget):
+    """角色横卡（约 400x120），点击卡片进入详情页。"""
+
+    open_requested = pyqtSignal(str)  # character uuid
     history_requested = pyqtSignal(str)
     delete_requested = pyqtSignal(str)
 
@@ -198,6 +443,15 @@ class CharacterCard(CardWidget):
         self._checkbox.blockSignals(True)
         self._checkbox.setChecked(checked)
         self._checkbox.blockSignals(False)
+
+    def mouseReleaseEvent(self, event):
+        """点击卡片任意区域（排除子控件）进入详情。"""
+        widget = self.childAt(event.pos())
+        if widget in (self._checkbox, self._history_btn):
+            super().mouseReleaseEvent(event)
+            return
+        self.open_requested.emit(self.character.uuid)
+        super().mouseReleaseEvent(event)
 
     def _setup_ui(self) -> None:
         self.setFixedHeight(120)
@@ -276,23 +530,11 @@ class CharacterCard(CardWidget):
 
         main_layout.addWidget(info_widget, 1)
 
-        # 右侧：操作按钮
-        btn_widget = QWidget()
-        btn_layout = QVBoxLayout(btn_widget)
-        btn_layout.setContentsMargins(0, 0, 0, 0)
-        btn_layout.setSpacing(8)
-
-        edit_btn = PushButton("编辑", self, FluentIcon.EDIT)
-        edit_btn.setFixedSize(80, 32)
-        edit_btn.clicked.connect(lambda: self.edit_requested.emit(self.character.uuid))
-        btn_layout.addWidget(edit_btn, alignment=Qt.AlignmentFlag.AlignCenter)
-
-        history_btn = PushButton("历史", self, FluentIcon.HISTORY)
-        history_btn.setFixedSize(80, 32)
-        history_btn.clicked.connect(lambda: self.history_requested.emit(self.character.uuid))
-        btn_layout.addWidget(history_btn, alignment=Qt.AlignmentFlag.AlignCenter)
-
-        main_layout.addWidget(btn_widget, alignment=Qt.AlignmentFlag.AlignVCenter)
+        # 右侧：历史按钮
+        self._history_btn = PushButton("历史", self, FluentIcon.HISTORY)
+        self._history_btn.setFixedSize(80, 32)
+        self._history_btn.clicked.connect(lambda: self.history_requested.emit(self.character.uuid))
+        main_layout.addWidget(self._history_btn, alignment=Qt.AlignmentFlag.AlignVCenter)
 
 
 class _EmptyState(QWidget):
@@ -328,9 +570,10 @@ class _EmptyState(QWidget):
 
 
 class CharacterPage(QWidget):
-    """角色管理页面：大横卡列表。"""
+    """角色管理页面：列表 ↔ 详情页双层导航。"""
 
     back_clicked = pyqtSignal()
+    design_image_generation_requested = pyqtSignal(str, int)  # (character_uuid, project_id)
 
     def __init__(self, character_service: CharacterService, parent: QWidget | None = None):
         super().__init__(parent)
@@ -344,7 +587,16 @@ class CharacterPage(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        # ── 顶部工具栏（固定） ──
+        # 顶层 QStackedWidget：0=列表视图, 1=详情视图
+        self._page_stacked = QStackedWidget()
+
+        # ── 列表视图 ──
+        list_widget = QWidget()
+        list_layout = QVBoxLayout(list_widget)
+        list_layout.setContentsMargins(0, 0, 0, 0)
+        list_layout.setSpacing(0)
+
+        # 列表顶部工具栏
         toolbar = QWidget()
         toolbar.setFixedHeight(56)
         toolbar.setStyleSheet("background-color: #FAFAFA; border-bottom: 1px solid #E8E8E8;")
@@ -374,12 +626,11 @@ class CharacterPage(QWidget):
         self._delete_selected_btn.clicked.connect(self._on_delete_selected)
         toolbar_layout.addWidget(self._delete_selected_btn)
 
-        layout.addWidget(toolbar)
+        list_layout.addWidget(toolbar)
 
-        # ── 中间可滚动区域 ──
+        # 卡片网格 vs 空状态
         self._stacked = QStackedWidget()
 
-        # 卡片网格
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -394,14 +645,13 @@ class CharacterPage(QWidget):
         scroll.setWidget(self._grid_widget)
         self._stacked.addWidget(scroll)
 
-        # 空状态
         self._empty_state = _EmptyState()
         self._empty_state.add_clicked.connect(self._on_add)
         self._stacked.addWidget(self._empty_state)
 
-        layout.addWidget(self._stacked, 1)
+        list_layout.addWidget(self._stacked, 1)
 
-        # ── 底部状态栏（固定） ──
+        # 底部状态栏
         status_bar = QWidget()
         status_bar.setFixedHeight(32)
         status_bar.setStyleSheet("background-color: #FAFAFA; border-top: 1px solid #E8E8E8;")
@@ -413,7 +663,20 @@ class CharacterPage(QWidget):
         status_layout.addWidget(self._status_label)
         status_layout.addStretch()
 
-        layout.addWidget(status_bar)
+        list_layout.addWidget(status_bar)
+
+        self._page_stacked.addWidget(list_widget)
+
+        # ── 详情视图 ──
+        self.detail_page = CharacterDetailPage(self._character_service)
+        self.detail_page.back_clicked.connect(self._on_detail_back)
+        self.detail_page.design_image_generation_requested.connect(
+            self.design_image_generation_requested.emit
+        )
+        self.detail_page.saved.connect(self._on_detail_saved)
+        self._page_stacked.addWidget(self.detail_page)
+
+        layout.addWidget(self._page_stacked, 1)
 
     def load_project(self, project_id: int) -> None:
         """加载项目的角色数据。"""
@@ -444,7 +707,7 @@ class CharacterPage(QWidget):
         cols = 2
         for i, char in enumerate(characters):
             card = CharacterCard(char)
-            card.edit_requested.connect(self._on_edit)
+            card.open_requested.connect(self._on_detail)
             card.history_requested.connect(self._on_history)
             card.delete_requested.connect(self._on_delete_single)
             card._checkbox.stateChanged.connect(self._update_selection_state)
@@ -472,22 +735,19 @@ class CharacterPage(QWidget):
             )
             self._render_cards()
 
-    def _on_edit(self, character_uuid: str) -> None:
-        """编辑角色。"""
-        character = self._character_service.get_character(character_uuid)
-        if not character:
-            return
+    def _on_detail(self, character_uuid: str) -> None:
+        """进入角色详情页。"""
+        self.detail_page.load_character(character_uuid)
+        self._page_stacked.setCurrentIndex(1)
 
-        dialog = _CharacterEditDialog(self, character)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            data = dialog.get_data()
-            self._character_service.update_character(
-                character_uuid,
-                name=data["name"],
-                ref_code=data["ref_code"],
-                description=data["description"],
-            )
-            self._render_cards()
+    def _on_detail_back(self) -> None:
+        """从详情页返回列表。"""
+        self._page_stacked.setCurrentIndex(0)
+        self._render_cards()
+
+    def _on_detail_saved(self) -> None:
+        """详情页保存后刷新列表。"""
+        self._render_cards()
 
     def _on_history(self, character_uuid: str) -> None:
         """查看编辑历史。"""
