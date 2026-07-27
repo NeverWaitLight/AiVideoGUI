@@ -205,8 +205,100 @@ class DashScopeVideoProvider(VideoProvider):
     def r2v(
         self, prompt: str, reference_path: str, params: dict[str, Any] | None = None
     ) -> tuple[str, dict[str, Any]]:
-        """参考生视频：提交参考素材+文本生成视频任务，返回 (task_id, 完整请求参数)。"""
-        raise NotImplementedError("DashScope r2v 尚未实现")
+        """参考生视频：提交参考素材+文本生成视频任务，返回 (task_id, 完整请求参数)。
+
+        支持多模态输入（图片、视频、音频），生成保持角色形象和音色一致性的视频。
+
+        参数：
+        - reference_path: 主参考素材路径（图片或视频，URL、本地路径或 oss://，本地路径会自动上传）
+        - params["reference_media"]: 额外参考素材列表（可选），每个元素为字典：
+          {
+              "path": str,           # 素材路径（图片或视频）
+              "type": str,           # 素材类型："reference_image" 或 "reference_video"
+              "reference_voice": str # 音色参考路径（可选，音频文件）
+          }
+        - params["first_frame_path"]: 首帧图片路径（可选，URL、本地路径或 oss://）
+        - params["reference_voice"]: 主参考素材的音色参考路径（可选，音频文件）
+
+        媒体素材限制：
+        - 首帧图像最多 1 张
+        - 参考图像 + 参考视频至少 1 个，总数 ≤ 5
+        - 参考素材为主体角色时，仅包含单一角色
+        """
+        # 复制 params 并提取 media 相关参数
+        api_params = params.copy() if params else {}
+        reference_media = api_params.pop("reference_media", [])
+        first_frame_path = api_params.pop("first_frame_path", None)
+        main_reference_voice = api_params.pop("reference_voice", None)
+
+        # 上传主参考素材（如果需要）
+        reference_path = self._upload_file_if_needed(reference_path)
+
+        # 上传首帧图片（如果提供）
+        if first_frame_path:
+            first_frame_path = self._upload_file_if_needed(first_frame_path)
+
+        # 上传主参考素材的音色文件（如果提供）
+        if main_reference_voice:
+            main_reference_voice = self._upload_file_if_needed(main_reference_voice)
+
+        # 构建基础 payload（此时 api_params 已移除 media 相关参数）
+        payload = self.build_payload(prompt, api_params)
+
+        # 构建 media 数组
+        media = []
+
+        # 添加首帧图片（如果提供，必须在第一位）
+        if first_frame_path:
+            media.append({"type": "first_frame", "url": first_frame_path})
+
+        # 判断主参考素材类型（根据文件扩展名）
+        main_type = self._detect_media_type(reference_path)
+        main_media = {"type": main_type, "url": reference_path}
+        if main_reference_voice:
+            main_media["reference_voice"] = main_reference_voice
+        media.append(main_media)
+
+        # 添加额外参考素材（如果提供）
+        for ref in reference_media:
+            ref_path = ref.get("path")
+            if not ref_path:
+                continue
+
+            # 上传文件（如果需要）
+            ref_path = self._upload_file_if_needed(ref_path)
+
+            # 获取类型（优先使用显式指定的类型，否则自动检测）
+            ref_type = ref.get("type") or self._detect_media_type(ref_path)
+
+            ref_media = {"type": ref_type, "url": ref_path}
+
+            # 添加音色参考（如果提供）
+            ref_voice = ref.get("reference_voice")
+            if ref_voice:
+                ref_voice = self._upload_file_if_needed(ref_voice)
+                ref_media["reference_voice"] = ref_voice
+
+            media.append(ref_media)
+
+        # 注入 media 到 payload
+        payload["input"]["media"] = media
+
+        # 提交任务
+        return self._submit_task(payload)
+
+    @staticmethod
+    def _detect_media_type(path: str) -> str:
+        """根据文件扩展名检测媒体类型（reference_image 或 reference_video）"""
+        path_lower = path.lower()
+        if path_lower.endswith((".mp4", ".mov", ".avi", ".mkv")):
+            return "reference_video"
+        elif path_lower.endswith((".jpg", ".jpeg", ".png", ".bmp", ".webp")):
+            return "reference_image"
+        else:
+            # 默认当作图片处理
+            logger.warning(f"无法识别媒体类型，默认当作图片: {path}")
+            return "reference_image"
 
     def extend(
         self, prompt: str, video_path: str, params: dict[str, Any] | None = None
