@@ -1,0 +1,241 @@
+"""测试 VideoPromptBuilder"""
+
+import unittest
+from models.data_models import Scene, Storyboard, ShotSize, SceneLocation, SceneTime
+from utils.prompt_builder import VideoPromptBuilder
+
+
+class TestVideoPromptBuilder(unittest.TestCase):
+    """测试视频 Prompt 构建器"""
+
+    def test_build_shot_prompt_minimal(self):
+        """测试最小化分镜（仅画面描述）"""
+        storyboard = Storyboard(
+            id=1,
+            scene_number=1,
+            shot_number=1,
+            scene_id=1,
+            shot_size=ShotSize.MEDIUM_SHOT,
+            visual_content="一个男人站在街道上",
+            camera_movement="",
+            dialogue="",
+            sound_effect="",
+            duration=5.0,
+            notes="",
+        )
+
+        prompt = VideoPromptBuilder.build_shot_prompt(storyboard)
+
+        self.assertIn("【镜头画面】", prompt)
+        self.assertIn("一个男人站在街道上", prompt)
+        self.assertIn("【镜头参数】", prompt)
+        self.assertIn("景别：中景", prompt)
+        self.assertIn("时长：5.0秒", prompt)
+        # 不应包含空字段的段落
+        self.assertNotIn("【台词】", prompt)
+        self.assertNotIn("【音效】", prompt)
+        self.assertNotIn("【场景上下文】", prompt)
+
+    def test_build_shot_prompt_with_scene_context(self):
+        """测试包含场景上下文的分镜"""
+        scene = Scene(
+            id=1,
+            project_id=1,
+            scene_number=1,
+            location_type=SceneLocation.EXTERIOR,
+            location="老城区街道",
+            time_type=SceneTime.DAY,
+            time_detail="",
+            content="张三走在繁华的老城区街道上，街道两旁是各种小店铺，人来人往。",
+        )
+
+        storyboard = Storyboard(
+            id=1,
+            scene_number=1,
+            shot_number=1,
+            scene_id=1,
+            shot_size=ShotSize.FULL_SHOT,
+            visual_content="张三从远处走来，背景是繁华的街道",
+            camera_movement="跟拍",
+            dialogue="",
+            sound_effect="",
+            duration=8.0,
+            notes="",
+        )
+
+        prompt = VideoPromptBuilder.build_shot_prompt(storyboard, scene=scene)
+
+        self.assertIn("【场景上下文】", prompt)
+        self.assertIn("第 1 场", prompt)
+        self.assertIn("外景", prompt)
+        self.assertIn("老城区街道", prompt)
+        self.assertIn("日", prompt)
+        self.assertIn("张三走在繁华的老城区街道上", prompt)
+        self.assertIn("【镜头画面】", prompt)
+        self.assertIn("张三从远处走来", prompt)
+        self.assertIn("运镜：跟拍", prompt)
+
+    def test_build_shot_prompt_with_all_fields(self):
+        """测试包含所有字段的分镜"""
+        scene = Scene(
+            id=1,
+            project_id=1,
+            scene_number=2,
+            location_type=SceneLocation.INTERIOR,
+            location="审讯室",
+            time_type=SceneTime.NIGHT,
+            time_detail="深夜",
+            content="审讯室内灯光昏暗，张三坐在桌子前，警察站在对面。",
+        )
+
+        storyboard = Storyboard(
+            id=2,
+            scene_number=2,
+            shot_number=3,
+            scene_id=1,
+            shot_size=ShotSize.CLOSE_UP,
+            visual_content="张三紧张的表情，汗水从额头滴落",
+            camera_movement="慢推",
+            dialogue="张三：我什么都不知道！",
+            sound_effect="紧张的背景音乐",
+            duration=4.5,
+            notes="注意光影对比",
+        )
+
+        prompt = VideoPromptBuilder.build_shot_prompt(storyboard, scene=scene)
+
+        # 验证所有段落都存在
+        self.assertIn("【场景上下文】", prompt)
+        self.assertIn("第 2 场", prompt)
+        self.assertIn("内景", prompt)
+        self.assertIn("审讯室", prompt)
+        self.assertIn("夜", prompt)
+        self.assertIn("【镜头画面】", prompt)
+        self.assertIn("张三紧张的表情", prompt)
+        self.assertIn("【镜头参数】", prompt)
+        self.assertIn("景别：近景", prompt)
+        self.assertIn("运镜：慢推", prompt)
+        self.assertIn("时长：4.5秒", prompt)
+        self.assertIn("【台词】", prompt)
+        self.assertIn("张三：我什么都不知道！", prompt)
+        self.assertIn("【音效】", prompt)
+        self.assertIn("紧张的背景音乐", prompt)
+        self.assertIn("【备注】", prompt)
+        self.assertIn("注意光影对比", prompt)
+
+    def test_build_shot_prompt_with_continuity(self):
+        """测试包含相邻镜头上下文的分镜"""
+        prev_shot = Storyboard(
+            id=1,
+            scene_number=1,
+            shot_number=1,
+            scene_id=1,
+            shot_size=ShotSize.MEDIUM_SHOT,
+            visual_content="张三从远处走来，背景是繁华的街道，人来人往",
+            camera_movement="",
+            dialogue="",
+            sound_effect="",
+            duration=5.0,
+            notes="",
+        )
+
+        current_shot = Storyboard(
+            id=2,
+            scene_number=1,
+            shot_number=2,
+            scene_id=1,
+            shot_size=ShotSize.CLOSE_UP,
+            visual_content="张三的脸部特写，表情严肃",
+            camera_movement="",
+            dialogue="",
+            sound_effect="",
+            duration=3.0,
+            notes="",
+        )
+
+        next_shot = Storyboard(
+            id=3,
+            scene_number=1,
+            shot_number=3,
+            scene_id=1,
+            shot_size=ShotSize.FULL_SHOT,
+            visual_content="张三走进一家咖啡店，推开玻璃门",
+            camera_movement="",
+            dialogue="",
+            sound_effect="",
+            duration=4.0,
+            notes="",
+        )
+
+        prompt = VideoPromptBuilder.build_shot_prompt(
+            current_shot, prev_shot=prev_shot, next_shot=next_shot
+        )
+
+        self.assertIn("【连贯性提示】", prompt)
+        self.assertIn("前一镜：", prompt)
+        self.assertIn("张三从远处走来", prompt)
+        self.assertIn("后一镜：", prompt)
+        self.assertIn("张三走进一家咖啡店", prompt)
+
+    def test_build_shot_prompt_long_content_truncation(self):
+        """测试长文本截断（场景内容和相邻镜头）"""
+        long_scene_content = "这是一段非常长的场景描述。" * 30  # 超过 200 字符
+
+        scene = Scene(
+            id=1,
+            project_id=1,
+            scene_number=1,
+            location_type=SceneLocation.EXTERIOR,
+            location="街道",
+            time_type=SceneTime.DAY,
+            time_detail="",
+            content=long_scene_content,
+        )
+
+        long_visual_content = "这是一段非常长的画面描述。" * 10  # 超过 80 字符
+
+        prev_shot = Storyboard(
+            id=1,
+            scene_number=1,
+            shot_number=1,
+            scene_id=1,
+            shot_size=ShotSize.MEDIUM_SHOT,
+            visual_content=long_visual_content,
+            camera_movement="",
+            dialogue="",
+            sound_effect="",
+            duration=5.0,
+            notes="",
+        )
+
+        current_shot = Storyboard(
+            id=2,
+            scene_number=1,
+            shot_number=2,
+            scene_id=1,
+            shot_size=ShotSize.CLOSE_UP,
+            visual_content="当前镜头画面",
+            camera_movement="",
+            dialogue="",
+            sound_effect="",
+            duration=3.0,
+            notes="",
+        )
+
+        prompt = VideoPromptBuilder.build_shot_prompt(
+            current_shot, scene=scene, prev_shot=prev_shot
+        )
+
+        # 验证长文本被截断（包含省略号）
+        self.assertIn("...", prompt)
+        # 场景内容应截断到 200 字符
+        scene_section = prompt.split("【场景上下文】")[1].split("【")[0]
+        self.assertLess(len(scene_section), 250)  # 留一些缓冲
+        # 相邻镜头应截断到 80 字符
+        if "【连贯性提示】" in prompt:
+            continuity_section = prompt.split("【连贯性提示】")[1].split("【")[0] if "【连贯性提示】" in prompt.split("【镜头画面】")[-1] else prompt.split("【连贯性提示】")[1]
+            self.assertLess(len(continuity_section), 150)
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -34,6 +34,7 @@ from service.text_model_service import TextModelService
 from service.video_service import VideoService, _PROVIDER_REGISTRY
 from storage.database import DatabaseManager
 from utils import paths
+from utils.prompt_builder import VideoPromptBuilder
 from ui.character_page import CharacterPage
 from ui.chat_area import ChatArea
 from ui.media_library import MediaLibrary
@@ -917,10 +918,34 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "错误", "分镜不存在")
             return
 
-        prompt = storyboard.visual_content
-        if not prompt.strip():
+        if not storyboard.visual_content.strip():
             QMessageBox.warning(self, "提示", "分镜画面内容为空")
             return
+
+        # 获取场次数据（提供场景上下文）
+        scene = None
+        if storyboard.scene_id:
+            scene = self._screenplay_service.get_scene(storyboard.scene_id)
+
+        # 获取相邻分镜（提供视觉连贯性）
+        all_shots = self._storyboard_service.list_storyboards(project_id=project_id)
+        prev_shot = None
+        next_shot = None
+        for i, shot in enumerate(all_shots):
+            if shot.id == storyboard_id:
+                if i > 0:
+                    prev_shot = all_shots[i - 1]
+                if i < len(all_shots) - 1:
+                    next_shot = all_shots[i + 1]
+                break
+
+        # 使用 VideoPromptBuilder 构建结构化 Prompt
+        prompt = VideoPromptBuilder.build_shot_prompt(
+            storyboard=storyboard,
+            scene=scene,
+            prev_shot=prev_shot,
+            next_shot=next_shot,
+        )
 
         # 用角色形象描述增强提示词（与视频生成流程一致）
         prompt = self._character_service.enrich_prompt_with_characters(prompt, project_id)
@@ -988,6 +1013,37 @@ class MainWindow(QMainWindow):
     def _on_shot_video_generation(self, shot_id: int, scene_number: int, shot_number: int, prompt: str, project_id: int, design_image: str = "") -> None:
         """处理分镜视频生成请求。"""
         logger.info(f"分镜视频生成请求：shot_id={shot_id}, scene={scene_number}, shot={shot_number}, project={project_id}, design_image={design_image}")
+
+        # 获取分镜数据
+        storyboard = self._storyboard_service.get_storyboard(shot_id)
+        if not storyboard:
+            QMessageBox.warning(self, "错误", "分镜不存在")
+            return
+
+        # 获取场次数据（提供场景上下文）
+        scene = None
+        if storyboard.scene_id:
+            scene = self._screenplay_service.get_scene(storyboard.scene_id)
+
+        # 获取相邻分镜（提供视觉连贯性）
+        all_shots = self._storyboard_service.list_storyboards(project_id=project_id)
+        prev_shot = None
+        next_shot = None
+        for i, shot in enumerate(all_shots):
+            if shot.id == shot_id:
+                if i > 0:
+                    prev_shot = all_shots[i - 1]
+                if i < len(all_shots) - 1:
+                    next_shot = all_shots[i + 1]
+                break
+
+        # 使用 VideoPromptBuilder 构建结构化 Prompt
+        prompt = VideoPromptBuilder.build_shot_prompt(
+            storyboard=storyboard,
+            scene=scene,
+            prev_shot=prev_shot,
+            next_shot=next_shot,
+        )
 
         # 用角色形象描述增强提示词
         prompt = self._character_service.enrich_prompt_with_characters(prompt, project_id)
@@ -1077,6 +1133,14 @@ class MainWindow(QMainWindow):
 
         project_id = shot_list[0]["project_id"]
 
+        # 获取所有分镜数据（用于构建上下文）
+        all_storyboards = self._storyboard_service.list_storyboards(project_id=project_id)
+        storyboard_map = {sb.id: sb for sb in all_storyboards}
+
+        # 获取所有场次数据（用于场景上下文）
+        all_scenes = self._screenplay_service.list_scenes(project_id)
+        scene_map = {scene.id: scene for scene in all_scenes}
+
         # 查询项目角色设计图（作为备选参考图）
         characters = self._character_service.list_characters(project_id)
         fallback_character_image = ""
@@ -1086,11 +1150,40 @@ class MainWindow(QMainWindow):
                 logger.info(f"找到备选角色设计图：{char.name} - {char.design_image}")
                 break
 
-        # 用角色形象描述增强所有提示词，并确定每个分镜的参考图
-        for shot_item in shot_list:
-            shot_item["prompt"] = self._character_service.enrich_prompt_with_characters(
-                shot_item["prompt"], project_id
+        # 构建结构化 Prompt，并确定每个分镜的参考图
+        for i, shot_item in enumerate(shot_list):
+            shot_id = shot_item["shot_id"]
+            storyboard = storyboard_map.get(shot_id)
+            if not storyboard:
+                continue
+
+            # 获取场次
+            scene = scene_map.get(storyboard.scene_id) if storyboard.scene_id else None
+
+            # 获取相邻分镜
+            prev_shot = None
+            next_shot = None
+            for j, sb in enumerate(all_storyboards):
+                if sb.id == shot_id:
+                    if j > 0:
+                        prev_shot = all_storyboards[j - 1]
+                    if j < len(all_storyboards) - 1:
+                        next_shot = all_storyboards[j + 1]
+                    break
+
+            # 使用 VideoPromptBuilder 构建结构化 Prompt
+            prompt = VideoPromptBuilder.build_shot_prompt(
+                storyboard=storyboard,
+                scene=scene,
+                prev_shot=prev_shot,
+                next_shot=next_shot,
             )
+
+            # 用角色形象描述增强提示词
+            shot_item["prompt"] = self._character_service.enrich_prompt_with_characters(
+                prompt, project_id
+            )
+
             # 确定参考图：优先使用分镜设计图，否则使用角色设计图
             design_image = shot_item.get("design_image", "")
             if design_image and os.path.exists(design_image):
