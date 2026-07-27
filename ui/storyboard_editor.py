@@ -78,6 +78,7 @@ class StoryboardCard(CardWidget):
     """分镜卡片（横向大块，120px 高度）"""
 
     storyboard_clicked = pyqtSignal(int)  # 发送 storyboard_id
+    preview_prompt_clicked = pyqtSignal(int)  # 发送 storyboard_id
     generate_video_clicked = pyqtSignal(int)  # 发送 storyboard_id
 
     def __init__(self, storyboard: Storyboard, parent=None):
@@ -160,7 +161,12 @@ class StoryboardCard(CardWidget):
 
         main_layout.addWidget(info_widget, 1)
 
-        # 右侧：生成视频按钮
+        # 右侧：查看提示词按钮 + 生成视频按钮
+        preview_btn = PushButton("查看提示词", self, FluentIcon.DOCUMENT)
+        preview_btn.setFixedSize(100, 36)
+        preview_btn.clicked.connect(lambda: self.preview_prompt_clicked.emit(self.storyboard.id))
+        main_layout.addWidget(preview_btn, alignment=Qt.AlignmentFlag.AlignVCenter)
+
         generate_btn = PrimaryPushButton("生成视频", self, FluentIcon.VIDEO)
         generate_btn.setFixedSize(100, 36)
         generate_btn.clicked.connect(lambda: self.generate_video_clicked.emit(self.storyboard.id))
@@ -180,6 +186,7 @@ class StoryboardDetailEditor(QWidget):
 
     back_clicked = pyqtSignal()
     storyboard_saved = pyqtSignal()
+    generate_design_image_clicked = pyqtSignal(int)  # storyboard_id
 
     def __init__(self, storyboard_service: StoryboardService, media_service=None, parent=None):
         super().__init__(parent)
@@ -260,6 +267,10 @@ class StoryboardDetailEditor(QWidget):
         self.design_image_label = QLabel("未上传")
         self.design_image_label.setStyleSheet("color: #909090;")
         design_layout.addWidget(self.design_image_label, 1)
+        self._generate_design_btn = PushButton("AI 生成", scroll_widget, FluentIcon.IMAGE_EXPORT)
+        self._generate_design_btn.setFixedSize(90, 32)
+        self._generate_design_btn.clicked.connect(self._on_generate_design_image)
+        design_layout.addWidget(self._generate_design_btn)
         upload_btn = QPushButton("上传图片")
         upload_btn.clicked.connect(self._on_upload_design_image)
         design_layout.addWidget(upload_btn)
@@ -543,13 +554,49 @@ class StoryboardDetailEditor(QWidget):
                 logger.exception("上传设计图失败")
                 QMessageBox.critical(self, "错误", f"上传失败：{e}")
 
+    def _on_generate_design_image(self):
+        """AI 生成分镜设计图（发射信号由主窗口处理）。"""
+        if not self._current_storyboard_id:
+            return
+
+        storyboard = self._storyboard_service.get_storyboard(self._current_storyboard_id)
+        if not storyboard:
+            QMessageBox.warning(self, "错误", "分镜不存在")
+            return
+
+        if not storyboard.visual_content.strip():
+            QMessageBox.warning(self, "提示", "分镜画面内容为空，无法生成设计图")
+            return
+
+        self._generate_design_btn.setEnabled(False)
+        self.generate_design_image_clicked.emit(self._current_storyboard_id)
+
+    def set_generating_design(self, generating: bool) -> None:
+        """设置设计图生成中的 UI 状态。"""
+        self._generate_design_btn.setEnabled(not generating)
+        if generating:
+            self.design_image_label.setText("生成中...")
+
+    def set_design_image_result(self, image_path: str) -> None:
+        """设计图生成完成后更新显示。"""
+        self._generate_design_btn.setEnabled(True)
+        if image_path:
+            self.design_image_label.setText(os.path.basename(image_path))
+        else:
+            storyboard = self._storyboard_service.get_storyboard(self._current_storyboard_id) if self._current_storyboard_id else None
+            self.design_image_label.setText(
+                os.path.basename(storyboard.design_image) if storyboard and storyboard.design_image else "未上传"
+            )
+
 
 class StoryboardEditor(QWidget):
     """分镜编辑器主界面"""
 
     back_clicked = pyqtSignal()
+    preview_prompt_requested = pyqtSignal(int, int)  # storyboard_id, project_id
     video_generation_requested = pyqtSignal(int, int, int, str, int)  # shot_id, scene_number, shot_number, prompt, project_id
     batch_video_generation_requested = pyqtSignal(list)  # list of dict: {shot_id, scene_number, shot_number, prompt, project_id}
+    design_image_generation_requested = pyqtSignal(int, int)  # storyboard_id, project_id
 
     def __init__(self, storyboard_service: StoryboardService, screenplay_service: ScreenplayService, media_service=None, parent=None):
         super().__init__(parent)
@@ -656,6 +703,7 @@ class StoryboardEditor(QWidget):
         )
         self.detail_editor.back_clicked.connect(self._on_back_to_list)
         self.detail_editor.storyboard_saved.connect(self._load_storyboards)
+        self.detail_editor.generate_design_image_clicked.connect(self._on_generate_design_image)
         self.detail_editor.hide()
         layout.addWidget(self.detail_editor)
 
@@ -762,6 +810,7 @@ class StoryboardEditor(QWidget):
         for shot in shots:
             card = StoryboardCard(shot, self)
             card.storyboard_clicked.connect(self._on_storyboard_clicked)
+            card.preview_prompt_clicked.connect(self._on_preview_prompt)
             card.generate_video_clicked.connect(self._on_generate_video)
             card._checkbox.toggled.connect(self._on_card_check_changed)
             self._storyboard_cards.append(card)
@@ -775,6 +824,19 @@ class StoryboardEditor(QWidget):
         self.list_view.hide()
         self.detail_editor.show()
         self.detail_editor.load_storyboard(storyboard_id)
+
+    def _on_preview_prompt(self, storyboard_id: int):
+        """预览提示词（从分镜卡片触发）"""
+        storyboard = self._storyboard_service.get_storyboard(storyboard_id)
+        if not storyboard:
+            QMessageBox.warning(self, "错误", "分镜不存在")
+            return
+
+        if not storyboard.visual_content.strip():
+            QMessageBox.warning(self, "提示", "分镜画面内容为空，无法生成提示词")
+            return
+
+        self.preview_prompt_requested.emit(storyboard_id, self._current_project_id)
 
     def _on_generate_video(self, storyboard_id: int):
         """生成视频（从分镜卡片触发）"""
@@ -804,6 +866,11 @@ class StoryboardEditor(QWidget):
         """返回列表视图"""
         self.detail_editor.hide()
         self.list_view.show()
+
+    def _on_generate_design_image(self, storyboard_id: int):
+        """AI 生成分镜设计图（从详情编辑器触发，转发到主窗口）。"""
+        logger.info(f"AI 生成设计图：storyboard_id={storyboard_id}")
+        self.design_image_generation_requested.emit(storyboard_id, self._current_project_id)
 
     def _on_card_check_changed(self, _checked: bool) -> None:
         """单个卡片勾选变化时，更新全选状态和删除按钮。"""

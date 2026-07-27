@@ -414,3 +414,132 @@ class TextModelService:
         except (KeyError, ValueError) as e:
             logger.exception("解析 API 响应失败")
             raise RuntimeError(f"解析响应失败：{e}")
+
+    def generate_design_image_prompt(
+        self,
+        visual_content: str,
+        shot_size: str = "",
+        camera_movement: str = "",
+        dialogue: str = "",
+        notes: str = "",
+        character_info: str = "",
+        model: str | None = None,
+    ) -> str:
+        """根据分镜信息生成设计图的英文提示词。
+
+        Args:
+            visual_content: 画面内容描述
+            shot_size: 景别（中文）
+            camera_movement: 运镜方式
+            dialogue: 台词/对白
+            notes: 备注（色调/光影）
+            character_info: 角色形象描述（已替换代号后的文本）
+            model: 使用的模型名称，默认使用 qwen-max
+
+        Returns:
+            英文图片生成提示词
+
+        Raises:
+            RuntimeError: API 调用失败
+        """
+        provider_config = self._config.get_provider("dashscope")
+        if not provider_config or not provider_config.api_key:
+            raise RuntimeError("未配置 DashScope API Key，请在设置中配置")
+
+        model = model or self.DEFAULT_MODEL
+
+        system_prompt = """你是一位专业的分镜设计图绘制助手。你的任务是根据分镜头的画面描述，生成一段用于文生图模型的英文提示词（prompt）。
+
+**生成要求：**
+
+1. **构图规范**
+   - 根据景别决定构图：特写聚焦面部/细节，近景展示胸部以上，中景展示半身动作，全景呈现完整人物与环境关系，远景/大远景强调场景氛围
+   - 采用电影感宽银幕比例（16:9）构图
+   - 注意前景、中景、背景的层次感
+
+2. **人物表现**
+   - 严格按照角色形象描述绘制人物外貌、发型、服装
+   - 通过表情和肢体语言传达情绪，避免文字标注
+   - 多人镜头中明确各角色的空间关系
+
+3. **环境与光影**
+   - 环境细节丰富但不喧宾夺主，服务于叙事情绪
+   - 光影效果符合场景时间和氛围
+   - 色调统一，与描述的色调/光影保持一致
+
+4. **艺术风格**
+   - 采用电影概念设计风格（cinematic concept art），兼具写实感和绘画质感
+   - 画面精致，细节到位，适合作为视频拍摄的视觉参考
+
+**输出要求：**
+- 直接输出一段英文提示词，不超过 200 个单词
+- 不要包含任何解释、前缀或标注，只输出纯提示词文本"""
+
+        user_prompt = f"""请根据以下分镜信息生成设计图提示词：
+
+【景别】{shot_size or "中景"}
+【运镜方式】{camera_movement or "固定"}
+【画面内容描述】
+{visual_content}
+
+【台词/对白】
+{dialogue or "无"}
+
+【色调/光影备注】
+{notes or "无特殊要求"}
+
+【角色形象】
+{character_info or "无额外角色信息"}"""
+
+        payload = {
+            "model": model,
+            "input": {
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ]
+            },
+            "parameters": {
+                "result_format": "message",
+            },
+        }
+
+        headers = {
+            "Authorization": f"Bearer {provider_config.api_key}",
+            "Content-Type": "application/json",
+        }
+
+        logger.info(f"调用文本模型生成设计图提示词，模型：{model}")
+        logger.debug(f"请求体：{payload}")
+
+        try:
+            resp = requests.post(
+                self.DASHSCOPE_TEXT_URL,
+                json=payload,
+                headers=headers,
+                timeout=60,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            logger.debug(f"响应：{data}")
+
+            output = data.get("output", {})
+            choices = output.get("choices", [])
+            if not choices:
+                raise RuntimeError("API 未返回有效内容")
+
+            message = choices[0].get("message", {})
+            prompt_text = message.get("content", "").strip()
+
+            if not prompt_text:
+                raise RuntimeError("API 返回的内容为空")
+
+            logger.info("设计图提示词生成成功")
+            return prompt_text
+
+        except requests.exceptions.RequestException as e:
+            logger.exception("调用文本模型 API 失败")
+            raise RuntimeError(f"网络请求失败：{e}")
+        except (KeyError, ValueError) as e:
+            logger.exception("解析 API 响应失败")
+            raise RuntimeError(f"解析响应失败：{e}")

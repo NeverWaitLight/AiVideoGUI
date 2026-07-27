@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import subprocess
@@ -22,6 +23,7 @@ from PyQt6.QtWidgets import (
 from config.manager import ConfigManager
 from service.character_service import CharacterService
 from service.chat_service import ChatService
+from service.image_service import ImageService
 from service.media_service import MediaService
 from service.story_outline_service import StoryOutlineService
 from service.project_service import ProjectService
@@ -274,6 +276,9 @@ class MainWindow(QMainWindow):
         # 文本模型服务
         self._text_model_service = TextModelService(self._config)
 
+        # 图片生成服务
+        self._image_service = ImageService(self._config)
+
         # 素材库服务
         self._media_service = MediaService(self._db, self._root)
 
@@ -456,8 +461,10 @@ class MainWindow(QMainWindow):
 
         # 分镜编辑器信号
         self.storyboard_editor.back_clicked.connect(self._on_shot_editor_back)
+        self.storyboard_editor.preview_prompt_requested.connect(self._on_preview_prompt_request)
         self.storyboard_editor.video_generation_requested.connect(self._on_shot_video_generation)
         self.storyboard_editor.batch_video_generation_requested.connect(self._on_batch_video_generation)
+        self.storyboard_editor.design_image_generation_requested.connect(self._on_generate_design_image)
 
         # 角色管理页信号
         self.character_page.back_clicked.connect(self._on_character_page_back)
@@ -898,6 +905,77 @@ class MainWindow(QMainWindow):
             self._character_service.batch_create_characters(new_chars)
             logger.info(f"自动保存 {len(new_chars)} 个角色到项目 {project_id}")
 
+    def _on_preview_prompt_request(self, storyboard_id: int, project_id: int) -> None:
+        """预览将发送给万象的请求参数。"""
+        storyboard = self._storyboard_service.get_storyboard(storyboard_id)
+        if not storyboard:
+            QMessageBox.warning(self, "错误", "分镜不存在")
+            return
+
+        prompt = storyboard.visual_content
+        if not prompt.strip():
+            QMessageBox.warning(self, "提示", "分镜画面内容为空")
+            return
+
+        # 用角色形象描述增强提示词（与视频生成流程一致）
+        prompt = self._character_service.enrich_prompt_with_characters(prompt, project_id)
+
+        project = self._project_service.get_project(project_id)
+        if not project:
+            QMessageBox.warning(self, "错误", "项目不存在")
+            return
+
+        provider_name = self._config.settings.default_provider or "dashscope"
+        provider_cfg = self._config.get_provider(provider_name)
+        if not provider_cfg:
+            QMessageBox.warning(self, "配置错误", f"未配置 {provider_name}")
+            return
+
+        try:
+            provider = self._service.get_provider(provider_name)
+        except KeyError as e:
+            QMessageBox.warning(self, "配置错误", str(e))
+            return
+
+        params = (provider_cfg.default_params if provider_cfg else {}).copy()
+        params["resolution"] = project.resolution
+        params["ratio"] = project.aspect_ratio
+
+        payload = provider.build_payload(prompt, params)
+
+        # 弹出展示对话框
+        from qfluentwidgets import TextEdit as FluentTextEdit
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle(
+            f"提示词预览 — 场{storyboard.scene_number}镜{storyboard.shot_number}"
+        )
+        dialog.setModal(True)
+        dialog.resize(560, 480)
+
+        layout = QVBoxLayout(dialog)
+        layout.setSpacing(12)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        prompt_label = QLabel("增强后的提示词：")
+        layout.addWidget(prompt_label)
+
+        prompt_edit = FluentTextEdit()
+        prompt_edit.setReadOnly(True)
+        prompt_edit.setPlainText(prompt)
+        prompt_edit.setFixedHeight(140)
+        layout.addWidget(prompt_edit)
+
+        payload_label = QLabel("发送给万象的请求体（JSON）：")
+        layout.addWidget(payload_label)
+
+        payload_edit = FluentTextEdit()
+        payload_edit.setReadOnly(True)
+        payload_edit.setPlainText(json.dumps(payload, ensure_ascii=False, indent=2))
+        layout.addWidget(payload_edit, 1)
+
+        dialog.exec()
+
     def _on_shot_video_generation(self, shot_id: int, scene_number: int, shot_number: int, prompt: str, project_id: int) -> None:
         """处理分镜视频生成请求。"""
         logger.info(f"分镜视频生成请求：shot_id={shot_id}, scene={scene_number}, shot={shot_number}, project={project_id}")
@@ -1057,6 +1135,160 @@ class MainWindow(QMainWindow):
 
         # 保持引用避免被回收
         self._batch_controller = batch
+
+    def _on_generate_design_image(self, storyboard_id: int, project_id: int) -> None:
+        """AI 生成分镜设计图：先用文本模型生成英文提示词，再调用图片生成 API。"""
+        logger.info(f"AI 生成设计图：storyboard_id={storyboard_id}, project_id={project_id}")
+
+        storyboard = self._storyboard_service.get_storyboard(storyboard_id)
+        if not storyboard:
+            QMessageBox.warning(self, "错误", "分镜不存在")
+            self.storyboard_editor.detail_editor.set_design_image_result("")
+            return
+
+        # 景别映射
+        shot_size_map = {
+            "extreme_close_up": "特写",
+            "close_up": "近景",
+            "medium_shot": "中景",
+            "full_shot": "全景",
+            "long_shot": "远景",
+            "extreme_long_shot": "大远景",
+        }
+        shot_size_text = shot_size_map.get(storyboard.shot_size.value, "中景")
+
+        # 获取角色信息增强提示词
+        character_info = ""
+        characters = self._character_service.list_characters(project_id)
+        matched_chars = []
+        for char in characters:
+            if char.name in storyboard.visual_content or char.ref_code in storyboard.visual_content:
+                matched_chars.append(char)
+        if matched_chars:
+            char_parts = []
+            for c in matched_chars:
+                traits = self._character_service.extract_fixed_traits(c.description)
+                if traits:
+                    char_parts.append(f"{c.name}（{c.ref_code}）：{traits}")
+            character_info = "\n".join(char_parts)
+
+        # 更新 UI 状态为生成中
+        self.storyboard_editor.detail_editor.set_generating_design(True)
+
+        # 显示进度对话框
+        from qfluentwidgets import IndeterminateProgressBar
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("生成设计图")
+        dialog.setModal(True)
+        dialog.setFixedSize(320, 120)
+
+        layout = QVBoxLayout(dialog)
+        layout.setSpacing(16)
+
+        progress = IndeterminateProgressBar()
+        progress.start()
+        layout.addWidget(progress)
+
+        status_label = QLabel("正在生成设计图提示词...")
+        status_label.setStyleSheet("font-size: 13px; color: #666;")
+        status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(status_label)
+
+        dialog.show()
+
+        # 使用 QThread 异步生成
+        from PyQt6.QtCore import QThread
+
+        class DesignImageWorker(QThread):
+            finished = pyqtSignal(str)  # image_path
+            failed = pyqtSignal(str)  # error_message
+            progress_update = pyqtSignal(str)  # status text
+
+            def __init__(self, text_service, image_service, storyboard_service,
+                         storyboard, shot_size_text, character_info, project_id):
+                super().__init__()
+                self._text_service = text_service
+                self._image_service = image_service
+                self._storyboard_service = storyboard_service
+                self._storyboard = storyboard
+                self._shot_size_text = shot_size_text
+                self._character_info = character_info
+                self._project_id = project_id
+
+            def run(self):
+                try:
+                    # Step 1: 用文本模型生成英文图片提示词
+                    self.progress_update.emit("正在生成设计图提示词...")
+                    image_prompt = self._text_service.generate_design_image_prompt(
+                        visual_content=self._storyboard.visual_content,
+                        shot_size=self._shot_size_text,
+                        camera_movement=self._storyboard.camera_movement,
+                        dialogue=self._storyboard.dialogue,
+                        notes=self._storyboard.notes,
+                        character_info=self._character_info,
+                    )
+                    logger.info(f"设计图提示词：{image_prompt}")
+
+                    # Step 2: 调用图片生成 API
+                    self.progress_update.emit("正在调用图片生成模型...")
+                    save_path = os.path.join(
+                        paths.projects_dir(""),
+                        str(self._project_id),
+                        f"design-{self._storyboard.scene_number}-{self._storyboard.shot_number}.png",
+                    )
+                    result_path = self._image_service.generate(
+                        prompt=image_prompt,
+                        save_path=save_path,
+                    )
+
+                    # Step 3: 保存路径到数据库
+                    self._storyboard_service.update_storyboard(
+                        storyboard_id=self._storyboard.id,
+                        design_image=result_path,
+                    )
+                    logger.info(f"设计图生成完成：{result_path}")
+                    self.finished.emit(result_path)
+
+                except Exception as e:
+                    logger.exception("生成设计图失败")
+                    self.failed.emit(str(e))
+
+        def on_success(image_path: str):
+            try:
+                dialog.close()
+            except Exception:
+                pass
+            self.storyboard_editor.detail_editor.set_design_image_result(image_path)
+            QMessageBox.information(self, "成功", "分镜设计图生成完成！")
+
+        def on_failed(error_msg: str):
+            try:
+                dialog.close()
+            except Exception:
+                pass
+            self.storyboard_editor.detail_editor.set_design_image_result("")
+            QMessageBox.critical(self, "生成失败", f"AI 生成设计图失败：{error_msg}")
+
+        def on_progress_update(text: str):
+            status_label.setText(text)
+
+        worker = DesignImageWorker(
+            self._text_model_service,
+            self._image_service,
+            self._storyboard_service,
+            storyboard,
+            shot_size_text,
+            character_info,
+            project_id,
+        )
+        worker.finished.connect(on_success)
+        worker.failed.connect(on_failed)
+        worker.progress_update.connect(on_progress_update)
+        worker.start()
+
+        # 保持引用避免被回收
+        self._design_image_worker = worker
 
     # ───────── 侧边栏事件 ─────────
 
