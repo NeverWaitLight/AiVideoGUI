@@ -9,7 +9,7 @@ import time
 import uuid
 from typing import Any
 
-from PyQt6.QtCore import QObject, QThread, pyqtSignal
+from PySide6.QtCore import QObject, QThread, Signal
 
 from config.manager import ConfigManager
 from models.enums import MessageStatus, TaskStatus
@@ -23,10 +23,10 @@ from utils import paths
 class TaskPollingService(QObject):
     """全局任务轮询服务：应用启动时运行，根据 active_tasks 表自动启停。"""
 
-    status_changed = pyqtSignal(str, str)
-    download_progress = pyqtSignal(str, int, int)
-    task_finished = pyqtSignal(str, str, int)
-    task_failed = pyqtSignal(str, str)
+    status_changed = Signal(str, str)
+    download_progress = Signal(str, int, int)
+    task_finished = Signal(str, str, int)
+    task_failed = Signal(str, str)
 
     def __init__(
         self,
@@ -163,10 +163,10 @@ class TaskPollingService(QObject):
 class _PollingWorker(QThread):
     """后台轮询线程：周期性扫描 active_tasks 表，按任务创建时间执行轮询策略。"""
 
-    status_changed = pyqtSignal(str, str)
-    download_progress = pyqtSignal(str, int, int)
-    task_finished = pyqtSignal(str, str, int)
-    task_failed = pyqtSignal(str, str)
+    status_changed = Signal(str, str)
+    download_progress = Signal(str, int, int)
+    task_finished = Signal(str, str, int)
+    task_failed = Signal(str, str)
 
     def __init__(
         self,

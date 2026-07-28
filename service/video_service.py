@@ -8,7 +8,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from PyQt6.QtCore import QObject
+from PySide6.QtCore import QObject
 
 from config.manager import ConfigManager
 from models.conversation import Conversation

@@ -2,7 +2,7 @@
 
 from loguru import logger
 
-from PyQt6.QtCore import QObject, QThread, pyqtSignal
+from PySide6.QtCore import QObject, QThread, Signal
 
 from config.manager import ConfigManager
 from providers.dashscope_chat import DashScopeChatProvider
@@ -20,8 +20,8 @@ _TITLE_SYSTEM_PROMPT = (
 class _TitleWorker(QThread):
     """后台线程调用 LLM 生成标题。"""
 
-    title_ready = pyqtSignal(str, str)
-    title_failed = pyqtSignal(str, str)
+    title_ready = Signal(str, str)
+    title_failed = Signal(str, str)
 
     def __init__(
         self,
@@ -50,8 +50,8 @@ class _TitleWorker(QThread):
 class ChatService(QObject):
     """对话模型服务：提供标题生成等 LLM 辅助功能。"""
 
-    title_ready = pyqtSignal(str, str)
-    title_failed = pyqtSignal(str, str)
+    title_ready = Signal(str, str)
+    title_failed = Signal(str, str)
 
     def __init__(self, config: ConfigManager, parent: QObject | None = None) -> None:
         super().__init__(parent)

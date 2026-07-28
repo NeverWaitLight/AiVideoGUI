@@ -4,17 +4,21 @@ import os
 import sys
 
 from loguru import logger
-from PyQt6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication
+from PySide6.QtQml import QQmlApplicationEngine
+from PySide6.QtCore import QUrl
 
-from ui.main_window import MainWindow
+from di import ApplicationContainer
+from bridge.app_bridge import AppBridge
+from bridge.theme import Theme
+from storage.orm.base import init_engine, create_all_tables, ensure_columns
+from utils import paths
 
 
 def setup_logging():
     """配置 loguru 日志系统。"""
-    # 移除默认的控制台 handler
     logger.remove()
 
-    # 1. 控制台输出（开发时使用，彩色）
     logger.add(
         sys.stderr,
         level="DEBUG",
@@ -22,7 +26,6 @@ def setup_logging():
         colorize=True,
     )
 
-    # 2. 文件日志（生产环境，实现 CLAUDE.md 要求的 5MB × 5 文件）
     try:
         log_dir = os.path.join(os.path.expandvars("%LOCALAPPDATA%"), "ai-video-gui", "logs")
         os.makedirs(log_dir, exist_ok=True)
@@ -31,13 +34,12 @@ def setup_logging():
             os.path.join(log_dir, "app.log"),
             level="DEBUG",
             format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}",
-            rotation="5 MB",  # 单文件 5MB 后轮换
-            retention=5,  # 保留最新 5 个备份
-            enqueue=True,  # 多线程安全（关键！适配 QThread）
+            rotation="5 MB",
+            retention=5,
+            enqueue=True,
             encoding="utf-8",
         )
 
-        # 3. 错误级别单独记录（方便快速排查）
         logger.add(
             os.path.join(log_dir, "error.log"),
             level="ERROR",
@@ -48,7 +50,6 @@ def setup_logging():
             encoding="utf-8",
         )
     except Exception as e:
-        # 如果文件日志配置失败，至少保证控制台日志可用
         logger.warning(f"日志文件配置失败: {e}")
 
 
@@ -67,9 +68,51 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationName("AI 视频生成")
 
-    window = MainWindow()
-    window.show()
+    # 使用 Basic 样式，支持自定义 background
+    os.environ["QT_QUICK_CONTROLS_STYLE"] = "Basic"
 
+    # 初始化目录
+    root = paths.workspace_root()
+    data_dir = paths.data_dir(root)
+    cache_dir = paths.cache_dir(root)
+    ws_dir = paths.workspace_dir(root)
+    chat_dir = paths.chat_dir(root)
+    for d in (data_dir, cache_dir, ws_dir, chat_dir):
+        os.makedirs(d, exist_ok=True)
+
+    # 初始化数据库
+    db_path = os.path.join(data_dir, "ai-video-gui.db")
+    database_url = f"sqlite:///{db_path}"
+    init_engine(database_url, echo=False)
+    create_all_tables()
+    ensure_columns()
+
+    # 初始化 DI 容器
+    container = ApplicationContainer()
+    container.config.workspace_root.from_value(root)
+    container.config.config_path.from_value(os.path.join(data_dir, "config.json"))
+
+    # 创建 Bridge（手动传入容器实例）
+    bridge = AppBridge(container)
+    theme = Theme()
+
+    # 加载 QML
+    engine = QQmlApplicationEngine()
+    engine.rootContext().setContextProperty("bridge", bridge)
+    engine.rootContext().setContextProperty("Theme", theme)
+
+    # 注册 Theme 单例
+    qml_dir = os.path.join(os.path.dirname(__file__), "qml")
+    engine.addImportPath(qml_dir)
+
+    main_qml = os.path.join(qml_dir, "main.qml")
+    engine.load(QUrl.fromLocalFile(main_qml))
+
+    if not engine.rootObjects():
+        logger.error("QML 加载失败")
+        sys.exit(-1)
+
+    logger.info("QML 引擎就绪")
     sys.exit(app.exec())
 
 

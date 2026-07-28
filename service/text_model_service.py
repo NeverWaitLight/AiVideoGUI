@@ -15,6 +15,37 @@ class TextModelService:
     def __init__(self, config_manager: ConfigManager) -> None:
         self._config = config_manager
 
+    def chat(self, messages: list[dict], model: str | None = None) -> str:
+        """通用对话接口：发送 messages 列表，返回助手回复文本。"""
+        provider_config = self._config.get_provider("dashscope")
+        if not provider_config or not provider_config.api_key:
+            raise RuntimeError("未配置 DashScope API Key，请在设置中配置")
+
+        model = model or self.DEFAULT_MODEL
+        payload = {
+            "model": model,
+            "input": {"messages": messages},
+            "parameters": {"result_format": "message"},
+        }
+        headers = {
+            "Authorization": f"Bearer {provider_config.api_key}",
+            "Content-Type": "application/json",
+        }
+
+        logger.info(f"调用文本模型 chat，模型：{model}")
+        resp = requests.post(self.DASHSCOPE_TEXT_URL, json=payload, headers=headers, timeout=120)
+        resp.raise_for_status()
+        data = resp.json()
+
+        output = data.get("output", {})
+        choices = output.get("choices", [])
+        if not choices:
+            raise RuntimeError("API 未返回有效内容")
+        content = choices[0].get("message", {}).get("content", "").strip()
+        if not content:
+            raise RuntimeError("API 返回的内容为空")
+        return content
+
     def optimize_story_outline(
         self,
         original_content: str,

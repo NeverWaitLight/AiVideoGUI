@@ -33,7 +33,7 @@ def init_engine(database_url: str, echo: bool = False, **kwargs) -> Engine:
     engine = create_engine(
         database_url,
         # SQLite 特定配置
-        connect_args={"check_same_thread": False},  # 支持多线程（PyQt6 需要）
+        connect_args={"check_same_thread": False},  # 支持多线程（PySide6 需要）
         pool_pre_ping=True,  # 自动检测断连
         echo=echo,  # 是否打印 SQL 日志
         **kwargs,

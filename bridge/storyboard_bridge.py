@@ -1,0 +1,320 @@
+"""分镜桥接：分镜 CRUD、批量生成、设计图生成。"""
+
+from __future__ import annotations
+
+import json
+from loguru import logger
+
+from PySide6.QtCore import QObject, Property, Signal, Slot
+
+from bridge.models.storyboard_model import StoryboardListModel
+from bridge.workers import (
+    DesignImageWorker, BatchDesignImageWorker, BatchGenerationController,
+)
+
+
+class StoryboardBridge(QObject):
+    """分镜编辑桥接。"""
+
+    data_changed = Signal()
+    design_image_ready = Signal(str, str)  # shot_id, image_path
+    design_image_progress = Signal(str)
+    design_image_failed = Signal(str)
+    batch_progress = Signal(int, int, str)
+    batch_done = Signal(int, int)
+    shot_detail_changed = Signal()
+    shot_saved = Signal()
+    shot_deleted = Signal()
+    error = Signal(str)
+
+    _SHOT_SIZE_INDEX_MAP = {
+        0: "extreme_close_up", 1: "close_up", 2: "medium_shot",
+        3: "full_shot", 4: "long_shot", 5: "extreme_long_shot",
+    }
+    _SHOT_SIZE_REVERSE = {
+        "extreme_close_up": 0, "close_up": 1, "medium_shot": 2,
+        "full_shot": 3, "long_shot": 4, "extreme_long_shot": 5,
+    }
+
+    def __init__(
+        self, storyboard_service, screenplay_service,
+        text_model_service, image_service, character_service,
+        media_service, container, parent=None,
+    ):
+        super().__init__(parent)
+        self._storyboard_service = storyboard_service
+        self._screenplay_service = screenplay_service
+        self._text_model_service = text_model_service
+        self._image_service = image_service
+        self._character_service = character_service
+        self._media_service = media_service
+        self._container = container
+        self._model = StoryboardListModel(self)
+        self._workers: list = []  # 保持 worker 引用
+        self._project_id: int = -1
+
+        # 当前编辑的分镜属性
+        self._cur_shot_id: int = -1
+        self._cur_scene_number: int = 0
+        self._cur_shot_number: int = 0
+        self._cur_shot_size_index: int = 2
+        self._cur_camera_movement: str = ""
+        self._cur_visual_content: str = ""
+        self._cur_dialogue: str = ""
+        self._cur_sound_effect: str = ""
+        self._cur_duration: float = 5.0
+        self._cur_notes: str = ""
+        self._cur_design_image: str = ""
+
+    @Property(QObject, constant=True)
+    def model(self):
+        return self._model
+
+    # ── 当前分镜属性 ──
+
+    @Property(int, notify=shot_detail_changed)
+    def curShotId(self): return self._cur_shot_id
+
+    @Property(int, notify=shot_detail_changed)
+    def curSceneNumber(self): return self._cur_scene_number
+
+    @Property(int, notify=shot_detail_changed)
+    def curShotNumber(self): return self._cur_shot_number
+
+    @Property(int, notify=shot_detail_changed)
+    def curShotSizeIndex(self): return self._cur_shot_size_index
+
+    @Property(str, notify=shot_detail_changed)
+    def curCameraMovement(self): return self._cur_camera_movement
+
+    @Property(str, notify=shot_detail_changed)
+    def curVisualContent(self): return self._cur_visual_content
+
+    @Property(str, notify=shot_detail_changed)
+    def curDialogue(self): return self._cur_dialogue
+
+    @Property(str, notify=shot_detail_changed)
+    def curSoundEffect(self): return self._cur_sound_effect
+
+    @Property(float, notify=shot_detail_changed)
+    def curDuration(self): return self._cur_duration
+
+    @Property(str, notify=shot_detail_changed)
+    def curNotes(self): return self._cur_notes
+
+    @Property(str, notify=shot_detail_changed)
+    def curDesignImage(self): return self._cur_design_image
+
+    @Slot(int)
+    def load_for_project(self, project_id: int) -> None:
+        self._project_id = project_id
+        shots = self._storyboard_service.list_storyboards(project_id=project_id)
+        self._model.reset(shots)
+
+    @Slot(int)
+    def load_shot(self, shot_id: int) -> None:
+        """加载单个分镜到编辑属性。"""
+        try:
+            shot = self._storyboard_service.get_storyboard(shot_id)
+            if not shot:
+                self.error.emit("分镜不存在")
+                return
+            self._cur_shot_id = shot.id
+            self._cur_scene_number = shot.scene_number
+            self._cur_shot_number = shot.shot_number
+            self._cur_shot_size_index = self._SHOT_SIZE_REVERSE.get(shot.shot_size.value, 2)
+            self._cur_camera_movement = shot.camera_movement
+            self._cur_visual_content = shot.visual_content
+            self._cur_dialogue = shot.dialogue
+            self._cur_sound_effect = shot.sound_effect
+            self._cur_duration = shot.duration
+            self._cur_notes = shot.notes
+            self._cur_design_image = shot.design_image
+            self.shot_detail_changed.emit()
+        except Exception as e:
+            logger.exception("加载分镜失败")
+            self.error.emit(str(e))
+
+    @Slot(int, int, str, str, str, float, str, str, str)
+    def save_shot(
+        self, shot_id: int, shot_size_index: int, camera_movement: str,
+        visual_content: str, duration: float, dialogue: str,
+        sound_effect: str, notes: str, design_image: str,
+    ) -> None:
+        """保存分镜编辑。"""
+        from models.enums import ShotSize
+        shot_size_str = self._SHOT_SIZE_INDEX_MAP.get(shot_size_index, "medium_shot")
+        try:
+            ss = ShotSize(shot_size_str)
+        except ValueError:
+            ss = ShotSize.MEDIUM_SHOT
+        try:
+            self._storyboard_service.update_storyboard(
+                storyboard_id=shot_id, shot_size=ss,
+                camera_movement=camera_movement, visual_content=visual_content,
+                duration=duration, dialogue=dialogue,
+                sound_effect=sound_effect, notes=notes,
+                design_image=design_image,
+            )
+            self.shot_saved.emit()
+            if self._project_id >= 0:
+                self.load_for_project(self._project_id)
+        except Exception as e:
+            logger.exception("保存分镜失败")
+            self.error.emit(str(e))
+
+    @Slot(int)
+    def delete_shot(self, shot_id: int) -> None:
+        """删除分镜。"""
+        try:
+            self._storyboard_service.delete_storyboard(shot_id)
+            self.shot_deleted.emit()
+            if self._project_id >= 0:
+                self.load_for_project(self._project_id)
+        except Exception as e:
+            logger.exception("删除分镜失败")
+            self.error.emit(str(e))
+
+    @Slot(int, str, str, str, float, str, str, str)
+    def update_shot(self, shot_id: int, shot_size: str, camera_movement: str,
+                    visual_content: str, duration: float, dialogue: str,
+                    sound_effect: str, notes: str) -> None:
+        from models.enums import ShotSize
+        try:
+            ss = ShotSize(shot_size)
+        except ValueError:
+            ss = ShotSize.MEDIUM_SHOT
+        self._storyboard_service.update_storyboard(
+            storyboard_id=shot_id,
+            shot_size=ss, camera_movement=camera_movement,
+            visual_content=visual_content, duration=duration,
+            dialogue=dialogue, sound_effect=sound_effect, notes=notes,
+        )
+        self.data_changed.emit()
+
+    @Slot(int, int, int, str, int, str, str, str)
+    def generate_video(self, shot_id: int, scene_number: int, shot_number: int,
+                       prompt: str, project_id: int, design_image: str,
+                       provider_name: str, model_name: str) -> None:
+        """提交单个分镜视频生成任务（通过 Bridge 转发给 QML 处理对话框逻辑）。"""
+        self.data_changed.emit()
+
+    @Slot(int, int)
+    def generate_design_image(self, storyboard_id: int, project_id: int) -> None:
+        shots = self._storyboard_service.list_storyboards(project_id)
+        storyboard = None
+        for s in shots:
+            if s.id == storyboard_id:
+                storyboard = s
+                break
+        if not storyboard:
+            return
+
+        characters = self._character_service.list_characters(project_id)
+        matched = [c for c in characters if c.name in storyboard.visual_content or c.ref_code in storyboard.visual_content]
+        char_info = ""
+        if matched:
+            parts = []
+            for c in matched:
+                traits = self._character_service.extract_fixed_traits(c.description)
+                if traits:
+                    parts.append(f"{c.name}（{c.ref_code}）：{traits}")
+            char_info = "\n".join(parts)
+
+        shot_size_map = {
+            "extreme_close_up": "特写", "close_up": "近景", "medium_shot": "中景",
+            "full_shot": "全景", "long_shot": "远景", "extreme_long_shot": "大远景",
+        }
+        shot_size_text = shot_size_map.get(storyboard.shot_size.value, "中景")
+
+        worker = DesignImageWorker(
+            self._text_model_service, self._image_service,
+            self._storyboard_service, storyboard, shot_size_text,
+            char_info, project_id,
+        )
+        worker.finished.connect(lambda path: self._on_design_done(storyboard_id, path))
+        worker.failed.connect(self.design_image_failed.emit)
+        worker.progress_update.connect(self.design_image_progress.emit)
+        worker.start()
+        self._workers.append(worker)
+
+    @Slot(int, str)
+    def upload_design_image(self, shot_id: int, image_path: str) -> None:
+        """上传/替换设计图。"""
+        try:
+            self._storyboard_service.update_storyboard(
+                storyboard_id=shot_id, design_image=image_path,
+            )
+            self._model.update_design_image(shot_id, image_path)
+            if self._cur_shot_id == shot_id:
+                self._cur_design_image = image_path
+                self.shot_detail_changed.emit()
+            self.design_image_ready.emit(str(shot_id), image_path)
+        except Exception as e:
+            logger.exception("上传设计图失败")
+            self.error.emit(str(e))
+
+    @Slot(int, result=str)
+    def get_related_videos(self, shot_id: int) -> str:
+        """获取分镜关联的视频列表（JSON）。"""
+        try:
+            videos = self._media_service.list_by_storyboard(shot_id)
+            result = []
+            for v in videos:
+                result.append({
+                    "fileId": v.id,
+                    "fileName": v.filename,
+                    "filePath": v.local_path,
+                    "thumbnailPath": v.thumbnail_path or "",
+                    "duration": v.duration,
+                    "width": v.width,
+                    "height": v.height,
+                    "featured": getattr(v, "featured", False),
+                })
+            return json.dumps(result)
+        except Exception as e:
+            logger.exception("获取关联视频失败")
+            return "[]"
+
+    @Slot(int, int, result=str)
+    def preview_prompt(self, shot_id: int, project_id: int) -> str:
+        """构建并返回视频生成 Prompt 预览文本。"""
+        from utils.prompt_builder import VideoPromptBuilder
+        try:
+            storyboard = self._storyboard_service.get_storyboard(shot_id)
+            if not storyboard:
+                return ""
+            if not storyboard.visual_content.strip():
+                return ""
+
+            # 获取场次上下文
+            scene = None
+            if storyboard.scene_id:
+                scene = self._screenplay_service.get_scene(storyboard.scene_id)
+
+            # 获取相邻分镜
+            all_shots = self._storyboard_service.list_storyboards(project_id=project_id)
+            prev_shot = None
+            next_shot = None
+            for i, shot in enumerate(all_shots):
+                if shot.id == shot_id:
+                    if i > 0:
+                        prev_shot = all_shots[i - 1]
+                    if i < len(all_shots) - 1:
+                        next_shot = all_shots[i + 1]
+                    break
+
+            prompt = VideoPromptBuilder.build_shot_prompt(
+                storyboard=storyboard, scene=scene,
+                prev_shot=prev_shot, next_shot=next_shot,
+            )
+            # 用角色形象描述增强
+            prompt = self._character_service.enrich_prompt_with_characters(prompt, project_id)
+            return prompt
+        except Exception as e:
+            logger.exception("预览提示词失败")
+            return f"错误: {e}"
+
+    def _on_design_done(self, shot_id: int, path: str) -> None:
+        self._model.update_design_image(shot_id, path)
+        self.design_image_ready.emit(str(shot_id), path)

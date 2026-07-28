@@ -19,8 +19,6 @@ from service.text_model_service import TextModelService
 from service.video_service import VideoService, _PROVIDER_REGISTRY
 from storage.session_manager import SessionManager
 from utils.prompt_builder import VideoPromptBuilder
-
-
 class ApplicationContainer(containers.DeclarativeContainer):
     """应用程序依赖注入容器。
 
