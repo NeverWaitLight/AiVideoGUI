@@ -2,9 +2,8 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 
-Rectangle {
+Pane {
     id: chatArea
-    color: Theme.bgChat
 
     ColumnLayout {
         anchors.fill: parent
@@ -44,18 +43,13 @@ Rectangle {
         }
 
         // 输入区域
-        Rectangle {
+        Pane {
             Layout.fillWidth: true
             Layout.preferredHeight: inputArea.implicitHeight + 20
-            color: Theme.bgSidebar
-            border.color: Theme.border
-            border.width: 1
-            radius: Theme.borderRadius
-            anchors.margins: 8
+            padding: 8
 
             RowLayout {
                 anchors.fill: parent
-                anchors.margins: 8
                 spacing: 8
 
                 TextArea {
@@ -64,8 +58,6 @@ Rectangle {
                     placeholderText: "描述你想生成的视频..."
                     wrapMode: TextArea.Wrap
                     font.pixelSize: Theme.fontSizeMedium
-                    color: Theme.textAI
-                    background: Item {}
                     Keys.onReturnPressed: {
                         if (!event.modifiers & Qt.ShiftModifier) {
                             sendMessage()
@@ -79,26 +71,6 @@ Rectangle {
                     text: "发送"
                     enabled: inputArea.text.trim().length > 0
                     onClicked: sendMessage()
-
-                    background: Rectangle {
-                        implicitWidth: 64
-                        implicitHeight: 32
-                        radius: Theme.radiusSmall
-                        color: sendBtn.enabled
-                               ? (sendBtn.hovered ? Theme.primaryHover : Theme.primary)
-                               : Theme.disabled
-                        border.width: 0
-
-                        Behavior on color { ColorAnimation { duration: 120 } }
-                    }
-
-                    contentItem: Text {
-                        text: sendBtn.text
-                        font.pixelSize: Theme.fontSizeNormal
-                        color: Theme.textUser
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
                 }
             }
         }

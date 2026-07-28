@@ -81,8 +81,6 @@ Item {
         property string moduleName: ""
 
         radius: Theme.cardRadius
-        color: cardMouse.containsMouse ? Theme.bgHover : Theme.bgChat
-        border.color: Theme.border
         border.width: 1
 
         Column {
@@ -105,7 +103,6 @@ Item {
             Label {
                 text: description
                 font.pixelSize: Theme.fontSizeSmall
-                color: Theme.textSecondary
                 anchors.horizontalCenter: parent.horizontalCenter
             }
         }

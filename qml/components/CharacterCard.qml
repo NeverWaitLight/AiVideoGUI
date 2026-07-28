@@ -15,12 +15,6 @@ Pane {
 
     signal clicked()
 
-    background: Rectangle {
-        radius: Theme.borderRadius
-        color: card.isHovered ? Theme.bgHover : Theme.bgChat
-        border.color: Theme.border
-        border.width: 1
-    }
 
     RowLayout {
         anchors.fill: parent
@@ -28,7 +22,6 @@ Pane {
 
         Rectangle {
             width: 72; height: 72; radius: 36
-            color: Theme.bgPlaceholder
             clip: true
             Image {
                 anchors.fill: parent
@@ -52,18 +45,16 @@ Pane {
                 Label { text: characterName; font.pixelSize: Theme.fontSizeMedium; font.bold: true }
                 Rectangle {
                     width: refLabel.implicitWidth + 12; height: 20; radius: 10
-                    color: Theme.primary
                     Label {
                         id: refLabel
                         anchors.centerIn: parent
-                        text: refCode; color: Theme.textUser; font.pixelSize: Theme.fontSizeTiny
+                        text: refCode; font.pixelSize: Theme.fontSizeTiny
                     }
                 }
             }
             Label {
                 text: description
                 font.pixelSize: Theme.fontSizeSmall
-                color: Theme.textSecondary
                 elide: Text.ElideRight
                 maximumLineCount: 2
                 wrapMode: Text.Wrap

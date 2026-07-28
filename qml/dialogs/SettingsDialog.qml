@@ -10,91 +10,6 @@ Dialog {
     width: 640
     height: 560
     anchors.centerIn: parent
-    padding: 0
-
-    background: Rectangle {
-        color: Theme.bgChat
-        radius: Theme.cardRadius
-        border.color: Theme.border
-        border.width: 1
-    }
-
-    header: Rectangle {
-        height: Theme.headerHeight
-        color: Theme.bgSidebar
-        border.color: Theme.border
-        border.width: 1
-
-        RowLayout {
-            anchors.fill: parent
-            anchors.margins: 16
-            spacing: 12
-
-            Label {
-                text: "设置"
-                font.pixelSize: Theme.fontSizeTitle
-                font.bold: true
-                color: Theme.textAI
-                Layout.fillWidth: true
-            }
-        }
-    }
-
-    footer: Rectangle {
-        height: 64
-        color: Theme.bgSidebar
-        border.color: Theme.border
-        border.width: 1
-
-        RowLayout {
-            anchors.fill: parent
-            anchors.margins: 16
-            spacing: 12
-
-            Item { Layout.fillWidth: true }
-
-            Button {
-                text: "取消"
-                implicitHeight: 32
-                implicitWidth: 80
-                background: Rectangle {
-                    radius: Theme.borderRadius
-                    color: parent.hovered ? Theme.bubbleAI : Theme.bgChat
-                    border.color: Theme.border
-                    border.width: 1
-                }
-                contentItem: Text {
-                    text: parent.text
-                    font.pixelSize: Theme.fontSizeNormal
-                    color: Theme.textAI
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
-                onClicked: settingsDialog.reject()
-            }
-
-            Button {
-                text: "保存"
-                implicitHeight: 32
-                implicitWidth: 80
-                background: Rectangle {
-                    radius: Theme.borderRadius
-                    color: parent.hovered ? Theme.primaryHover : Theme.primary
-                }
-                contentItem: Text {
-                    text: parent.text
-                    font.pixelSize: Theme.fontSizeNormal
-                    color: Theme.textUser
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
-                onClicked: {
-                    saveAll()
-                    settingsDialog.accept()
-                }
-            }
-        }
-    }
 
     property string videoProvider: "dashscope"
     property string videoApiKey: ""
@@ -112,7 +27,6 @@ Dialog {
     property string imageModel: ""
 
     property string workspacePath: ""
-    property string themeMode: "system"
 
     ColumnLayout {
         anchors.fill: parent
@@ -123,95 +37,29 @@ Dialog {
             Layout.fillWidth: true
             Layout.preferredHeight: 44
 
-            background: Rectangle {
-                color: Theme.bgChat
-                border.color: Theme.border
-                border.width: 1
-            }
-
             TabButton {
                 text: "视频模型"
                 width: implicitWidth
-                background: Rectangle {
-                    color: parent.checked ? Theme.bgChat : Theme.bgSidebar
-                    border.color: Theme.border
-                    border.width: 1
-                }
-                contentItem: Text {
-                    text: parent.text
-                    font.pixelSize: Theme.fontSizeMedium
-                    color: parent.checked ? Theme.primary : Theme.textAI
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
             }
 
             TabButton {
                 text: "对话模型"
                 width: implicitWidth
-                background: Rectangle {
-                    color: parent.checked ? Theme.bgChat : Theme.bgSidebar
-                    border.color: Theme.border
-                    border.width: 1
-                }
-                contentItem: Text {
-                    text: parent.text
-                    font.pixelSize: Theme.fontSizeMedium
-                    color: parent.checked ? Theme.primary : Theme.textAI
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
             }
 
             TabButton {
                 text: "图片模型"
                 width: implicitWidth
-                background: Rectangle {
-                    color: parent.checked ? Theme.bgChat : Theme.bgSidebar
-                    border.color: Theme.border
-                    border.width: 1
-                }
-                contentItem: Text {
-                    text: parent.text
-                    font.pixelSize: Theme.fontSizeMedium
-                    color: parent.checked ? Theme.primary : Theme.textAI
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
             }
 
             TabButton {
                 text: "工作目录"
                 width: implicitWidth
-                background: Rectangle {
-                    color: parent.checked ? Theme.bgChat : Theme.bgSidebar
-                    border.color: Theme.border
-                    border.width: 1
-                }
-                contentItem: Text {
-                    text: parent.text
-                    font.pixelSize: Theme.fontSizeMedium
-                    color: parent.checked ? Theme.primary : Theme.textAI
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
             }
 
             TabButton {
                 text: "外观"
                 width: implicitWidth
-                background: Rectangle {
-                    color: parent.checked ? Theme.bgChat : Theme.bgSidebar
-                    border.color: Theme.border
-                    border.width: 1
-                }
-                contentItem: Text {
-                    text: parent.text
-                    font.pixelSize: Theme.fontSizeMedium
-                    color: parent.checked ? Theme.primary : Theme.textAI
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
             }
         }
 
@@ -235,7 +83,6 @@ Dialog {
                         text: "视频生成模型配置"
                         font.pixelSize: Theme.fontSizeLarge
                         font.bold: true
-                        color: Theme.textAI
                         Layout.leftMargin: 24
                     }
 
@@ -250,7 +97,6 @@ Dialog {
                         Label {
                             text: "Provider:"
                             font.pixelSize: Theme.fontSizeNormal
-                            color: Theme.textSecondary
                             Layout.preferredWidth: 80
                         }
                         ComboBox {
@@ -262,7 +108,6 @@ Dialog {
                         Label {
                             text: "API Key:"
                             font.pixelSize: Theme.fontSizeNormal
-                            color: Theme.textSecondary
                         }
                         Comp.AppTextField {
                             id: videoApiKeyField
@@ -274,7 +119,6 @@ Dialog {
                         Label {
                             text: "Base URL:"
                             font.pixelSize: Theme.fontSizeNormal
-                            color: Theme.textSecondary
                         }
                         Comp.AppTextField {
                             id: videoBaseUrlField
@@ -285,7 +129,6 @@ Dialog {
                         Label {
                             text: "默认模型:"
                             font.pixelSize: Theme.fontSizeNormal
-                            color: Theme.textSecondary
                         }
                         ComboBox {
                             id: videoModelCombo
@@ -313,7 +156,6 @@ Dialog {
                         text: "对话模型配置"
                         font.pixelSize: Theme.fontSizeLarge
                         font.bold: true
-                        color: Theme.textAI
                         Layout.leftMargin: 24
                     }
 
@@ -328,7 +170,6 @@ Dialog {
                         Label {
                             text: "Provider:"
                             font.pixelSize: Theme.fontSizeNormal
-                            color: Theme.textSecondary
                             Layout.preferredWidth: 80
                         }
                         ComboBox {
@@ -340,7 +181,6 @@ Dialog {
                         Label {
                             text: "API Key:"
                             font.pixelSize: Theme.fontSizeNormal
-                            color: Theme.textSecondary
                         }
                         Comp.AppTextField {
                             id: chatApiKeyField
@@ -352,7 +192,6 @@ Dialog {
                         Label {
                             text: "Base URL:"
                             font.pixelSize: Theme.fontSizeNormal
-                            color: Theme.textSecondary
                         }
                         Comp.AppTextField {
                             id: chatBaseUrlField
@@ -363,7 +202,6 @@ Dialog {
                         Label {
                             text: "默认模型:"
                             font.pixelSize: Theme.fontSizeNormal
-                            color: Theme.textSecondary
                         }
                         Comp.AppTextField {
                             id: chatModelField
@@ -391,7 +229,6 @@ Dialog {
                         text: "图片生成模型配置"
                         font.pixelSize: Theme.fontSizeLarge
                         font.bold: true
-                        color: Theme.textAI
                         Layout.leftMargin: 24
                     }
 
@@ -406,7 +243,6 @@ Dialog {
                         Label {
                             text: "Provider:"
                             font.pixelSize: Theme.fontSizeNormal
-                            color: Theme.textSecondary
                             Layout.preferredWidth: 80
                         }
                         ComboBox {
@@ -418,7 +254,6 @@ Dialog {
                         Label {
                             text: "API Key:"
                             font.pixelSize: Theme.fontSizeNormal
-                            color: Theme.textSecondary
                         }
                         Comp.AppTextField {
                             id: imageApiKeyField
@@ -430,7 +265,6 @@ Dialog {
                         Label {
                             text: "Base URL:"
                             font.pixelSize: Theme.fontSizeNormal
-                            color: Theme.textSecondary
                         }
                         Comp.AppTextField {
                             id: imageBaseUrlField
@@ -441,7 +275,6 @@ Dialog {
                         Label {
                             text: "默认模型:"
                             font.pixelSize: Theme.fontSizeNormal
-                            color: Theme.textSecondary
                         }
                         Comp.AppTextField {
                             id: imageModelField
@@ -469,7 +302,6 @@ Dialog {
                         text: "工作目录配置"
                         font.pixelSize: Theme.fontSizeLarge
                         font.bold: true
-                        color: Theme.textAI
                         Layout.leftMargin: 24
                     }
 
@@ -482,7 +314,6 @@ Dialog {
                         Label {
                             text: "媒体文件工作区目录（视频、图片等文件的存储位置）"
                             font.pixelSize: Theme.fontSizeSmall
-                            color: Theme.textSecondary
                             wrapMode: Text.Wrap
                             Layout.fillWidth: true
                         }
@@ -503,19 +334,6 @@ Dialog {
                                 text: "浏览..."
                                 implicitHeight: 32
                                 implicitWidth: 80
-                                background: Rectangle {
-                                    radius: Theme.borderRadius
-                                    color: parent.hovered ? Theme.bubbleAI : Theme.bgChat
-                                    border.color: Theme.border
-                                    border.width: 1
-                                }
-                                contentItem: Text {
-                                    text: parent.text
-                                    font.pixelSize: Theme.fontSizeNormal
-                                    color: Theme.textAI
-                                    horizontalAlignment: Text.AlignHCenter
-                                    verticalAlignment: Text.AlignVCenter
-                                }
                                 onClicked: {
                                     var path = bridge.settings.browse_workspace_dir()
                                     workspaceDirField.text = path
@@ -541,85 +359,71 @@ Dialog {
                     Item { Layout.preferredHeight: 16 }
 
                     Label {
-                        text: "外观设置"
+                        text: "界面样式"
                         font.pixelSize: Theme.fontSizeLarge
                         font.bold: true
-                        color: Theme.textAI
-                        Layout.leftMargin: 24
+                    }
+
+                    Label {
+                        text: "选择 Qt Quick Controls 2 样式（需要重启应用生效）"
+                        font.pixelSize: Theme.fontSizeSmall
+                        Layout.fillWidth: true
+                        wrapMode: Text.Wrap
+                    }
+
+                    ComboBox {
+                        id: styleCombo
+                        model: ["Default", "Fusion", "Material", "Universal"]
+                        Layout.fillWidth: true
+                        Layout.maximumWidth: 300
+                    }
+
+                    Label {
+                        text: "• Default: 轻量级默认样式\n• Fusion: 桌面风格\n• Material: Google Material Design\n• Universal: Microsoft Universal Design"
+                        font.pixelSize: Theme.fontSizeSmall
+                        Layout.fillWidth: true
+                        wrapMode: Text.Wrap
+                    }
+
+                    Item { Layout.preferredHeight: 16 }
+
+                    Label {
+                        text: "颜色方案"
+                        font.pixelSize: Theme.fontSizeLarge
+                        font.bold: true
+                    }
+
+                    Label {
+                        text: "选择界面颜色方案（需要重启应用生效）"
+                        font.pixelSize: Theme.fontSizeSmall
+                        Layout.fillWidth: true
+                        wrapMode: Text.Wrap
+                    }
+
+                    ButtonGroup {
+                        id: colorSchemeGroup
                     }
 
                     ColumnLayout {
-                        spacing: 12
-                        Layout.fillWidth: true
-                        Layout.leftMargin: 24
-                        Layout.rightMargin: 24
+                        spacing: 8
 
-                        Label {
-                            text: "主题模式"
-                            font.pixelSize: Theme.fontSizeMedium
-                            color: Theme.textAI
+                        RadioButton {
+                            id: colorSchemeLight
+                            text: "亮色模式"
+                            ButtonGroup.group: colorSchemeGroup
                         }
 
-                        ColumnLayout {
-                            spacing: 8
-                            Layout.fillWidth: true
-
-                            RadioButton {
-                                id: themeLightRadio
-                                text: "亮色"
-                                checked: themeMode === "light"
-                                onCheckedChanged: {
-                                    if (checked) themeMode = "light"
-                                }
-                                contentItem: Text {
-                                    text: parent.text
-                                    font.pixelSize: Theme.fontSizeNormal
-                                    color: Theme.textAI
-                                    leftPadding: parent.indicator.width + parent.spacing
-                                    verticalAlignment: Text.AlignVCenter
-                                }
-                            }
-
-                            RadioButton {
-                                id: themeDarkRadio
-                                text: "暗色"
-                                checked: themeMode === "dark"
-                                onCheckedChanged: {
-                                    if (checked) themeMode = "dark"
-                                }
-                                contentItem: Text {
-                                    text: parent.text
-                                    font.pixelSize: Theme.fontSizeNormal
-                                    color: Theme.textAI
-                                    leftPadding: parent.indicator.width + parent.spacing
-                                    verticalAlignment: Text.AlignVCenter
-                                }
-                            }
-
-                            RadioButton {
-                                id: themeSystemRadio
-                                text: "跟随系统"
-                                checked: themeMode === "system"
-                                onCheckedChanged: {
-                                    if (checked) themeMode = "system"
-                                }
-                                contentItem: Text {
-                                    text: parent.text
-                                    font.pixelSize: Theme.fontSizeNormal
-                                    color: Theme.textAI
-                                    leftPadding: parent.indicator.width + parent.spacing
-                                    verticalAlignment: Text.AlignVCenter
-                                }
-                            }
+                        RadioButton {
+                            id: colorSchemeDark
+                            text: "暗色模式"
+                            ButtonGroup.group: colorSchemeGroup
                         }
 
-                        Label {
-                            text: "选择 \"跟随系统\" 时，应用会自动适应系统的亮色/暗色主题设置"
-                            font.pixelSize: Theme.fontSizeSmall
-                            color: Theme.textSecondary
-                            wrapMode: Text.Wrap
-                            Layout.fillWidth: true
-                            Layout.topMargin: 4
+                        RadioButton {
+                            id: colorSchemeSystem
+                            text: "跟随系统"
+                            ButtonGroup.group: colorSchemeGroup
+                            checked: true
                         }
                     }
 
@@ -627,6 +431,22 @@ Dialog {
                 }
             }
         }
+    }
+
+    footer: DialogButtonBox {
+        Button {
+            text: "取消"
+            DialogButtonBox.buttonRole: DialogButtonBox.RejectRole
+        }
+        Button {
+            text: "保存"
+            DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole
+        }
+        onAccepted: {
+            saveAll()
+            settingsDialog.accept()
+        }
+        onRejected: settingsDialog.reject()
     }
 
     onAboutToShow: {
@@ -648,7 +468,22 @@ Dialog {
         workspacePath = bridge.settings.get_workspace_dir()
         workspaceDirField.text = workspacePath
 
-        themeMode = bridge.settings.get_theme()
+        // 加载样式设置
+        var currentStyle = bridge.settings.get_style()
+        var styleIndex = styleCombo.model.indexOf(currentStyle)
+        if (styleIndex >= 0) {
+            styleCombo.currentIndex = styleIndex
+        }
+
+        // 加载颜色方案设置
+        var currentColorScheme = bridge.settings.get_color_scheme()
+        if (currentColorScheme === "Light") {
+            colorSchemeLight.checked = true
+        } else if (currentColorScheme === "Dark") {
+            colorSchemeDark.checked = true
+        } else {
+            colorSchemeSystem.checked = true
+        }
     }
 
     function saveAll() {
@@ -665,9 +500,29 @@ Dialog {
             bridge.settings.set_workspace_dir(workspacePath)
         }
 
-        if (themeMode !== bridge.settings.get_theme()) {
-            bridge.settings.set_theme(themeMode)
-            Theme.mode = themeMode
+        // 保存样式设置
+        var oldStyle = bridge.settings.get_style()
+        var newStyle = styleCombo.currentText
+        var oldColorScheme = bridge.settings.get_color_scheme()
+        var newColorScheme = colorSchemeLight.checked ? "Light" : (colorSchemeDark.checked ? "Dark" : "System")
+
+        var needRestart = false
+
+        if (oldStyle !== newStyle) {
+            bridge.settings.set_style(newStyle)
+            needRestart = true
+        }
+
+        if (oldColorScheme !== newColorScheme) {
+            bridge.settings.set_color_scheme(newColorScheme)
+            needRestart = true
+        }
+
+        if (needRestart) {
+            // 显示提示信息
+            Qt.callLater(function() {
+                alertDialog.info("设置已保存", "样式或颜色方案的更改需要重启应用才能生效。")
+            })
         }
     }
 }

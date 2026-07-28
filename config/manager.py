@@ -47,8 +47,9 @@ class ConfigManager:
             default_provider=_renamed.get(s.get("default_provider", ""), s.get("default_provider", "")),
             default_chat_provider=_renamed.get(s.get("default_chat_provider", ""), s.get("default_chat_provider", "")),
             default_image_provider=_renamed.get(s.get("default_image_provider", ""), s.get("default_image_provider", "")),
-            theme=s.get("theme", "light"),
             workspace_dir=s.get("workspace_dir", ""),
+            style=s.get("style", "Default"),
+            color_scheme=s.get("color_scheme", "System"),
         )
         logger.info(f"配置已加载，providers={list(self._providers.keys())}")
 
@@ -68,8 +69,9 @@ class ConfigManager:
                 "default_provider": self._settings.default_provider,
                 "default_chat_provider": self._settings.default_chat_provider,
                 "default_image_provider": self._settings.default_image_provider,
-                "theme": self._settings.theme,
                 "workspace_dir": self._settings.workspace_dir,
+                "style": self._settings.style,
+                "color_scheme": self._settings.color_scheme,
             },
         }
         os.makedirs(os.path.dirname(self._path), exist_ok=True)

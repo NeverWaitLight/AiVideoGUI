@@ -21,7 +21,6 @@ Item {
 
         handle: Rectangle {
             implicitWidth: 1
-            color: Theme.border
         }
 
         // 项目对话列表
@@ -30,7 +29,6 @@ Item {
             SplitView.minimumWidth: 200
             padding: 0
 
-            background: Rectangle { color: Theme.bgSidebar }
 
             ColumnLayout {
                 anchors.fill: parent
@@ -40,7 +38,6 @@ Item {
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 48
-                    color: "transparent"
 
                     RowLayout {
                         anchors.fill: parent
@@ -65,7 +62,6 @@ Item {
                         anchors.bottom: parent.bottom
                         width: parent.width
                         height: 1
-                        color: Theme.border
                     }
                 }
 
@@ -78,49 +74,6 @@ Item {
                     clip: true
                     spacing: 2
 
-                    delegate: Rectangle {
-                        width: convList.width
-                        height: 52
-                        color: convMouse.containsMouse ? Qt.darker(Theme.bgSidebar, 1.05) : "transparent"
-
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.margins: 8
-                            spacing: 6
-
-                            ColumnLayout {
-                                Layout.fillWidth: true
-                                spacing: 2
-                                Label {
-                                    text: model.title || "新对话"
-                                    font.pixelSize: Theme.fontSizeNormal
-                                    elide: Text.ElideRight
-                                    Layout.fillWidth: true
-                                }
-                                Label {
-                                    text: model.timeText || ""
-                                    font.pixelSize: Theme.fontSizeSmall
-                                    color: Theme.textSecondary
-                                }
-                            }
-
-                            Button {
-                                flat: true; text: "🗑"
-                                implicitWidth: 28; implicitHeight: 28
-                                opacity: convMouse.containsMouse ? 1 : 0
-                                onClicked: confirmDialog.confirmDelete("对话", function() {
-                                    bridge.conversations.delete(model.convId)
-                                })
-                            }
-                        }
-
-                        MouseArea {
-                            id: convMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            onClicked: bridge.conversations.select(model.convId)
-                        }
-                    }
 
                     Comp.EmptyState {
                         visible: convList.count === 0

@@ -165,11 +165,6 @@ Item {
         padding: 8
         height: 210
 
-        background: Rectangle {
-            radius: Theme.borderRadius
-            color: cardHover.hovered ? Theme.bgHover : Theme.bgChat
-            border.color: Theme.border
-        }
 
         ColumnLayout {
             anchors.fill: parent
@@ -179,7 +174,7 @@ Item {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 120
-                radius: Theme.radiusSmall; color: Theme.bgPlaceholder; clip: true
+                radius: Theme.radiusSmall; clip: true
 
                 Image {
                     anchors.fill: parent
@@ -192,11 +187,9 @@ Item {
                 Rectangle {
                     anchors.top: parent.top; anchors.right: parent.right
                     width: typeLabel.implicitWidth + 8; height: 18; radius: Theme.radiusSmall
-                    color: fileType === "video" ? Theme.primary : (fileType === "image" ? Theme.success : Theme.warning)
                     Label {
                         id: typeLabel; anchors.centerIn: parent
                         text: fileType === "video" ? "视频" : (fileType === "image" ? "图片" : "音频")
-                        color: Theme.textUser; font.pixelSize: Theme.fontSizeTiny
                     }
                 }
 
@@ -212,12 +205,10 @@ Item {
                 Rectangle {
                     anchors.bottom: parent.bottom; anchors.right: parent.right
                     width: durationLabel.implicitWidth + 8; height: 18; radius: Theme.radiusSmall
-                    color: "#80000000"
                     visible: duration > 0
                     Label {
                         id: durationLabel; anchors.centerIn: parent
                         text: _formatDuration(duration)
-                        color: Theme.textUser; font.pixelSize: Theme.fontSizeTiny
                     }
                 }
             }
@@ -237,7 +228,6 @@ Item {
                 Label {
                     text: _formatSize(fileSize)
                     font.pixelSize: Theme.fontSizeTiny
-                    color: Theme.textSecondary
                     Layout.fillWidth: true
                 }
                 Button {

@@ -7,6 +7,7 @@ from loguru import logger
 from PySide6.QtWidgets import QApplication
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtCore import QUrl
+from PySide6.QtQuickControls2 import QQuickStyle
 
 from di import ApplicationContainer
 from bridge.app_bridge import AppBridge
@@ -68,9 +69,6 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationName("AI 视频生成")
 
-    # 使用 Basic 样式，支持自定义 background
-    os.environ["QT_QUICK_CONTROLS_STYLE"] = "Basic"
-
     # 初始化目录
     root = paths.workspace_root()
     data_dir = paths.data_dir(root)
@@ -80,6 +78,30 @@ def main():
     for d in (data_dir, cache_dir, ws_dir, chat_dir):
         os.makedirs(d, exist_ok=True)
 
+    # 初始化 DI 容器（需要先加载配置以获取样式设置）
+    container = ApplicationContainer()
+    container.config.workspace_root.from_value(root)
+    container.config.config_path.from_value(os.path.join(data_dir, "config.json"))
+
+    # 从配置中读取并应用样式
+    config_manager = container.config_manager()
+    style = config_manager.settings.style or "Default"
+    color_scheme = config_manager.settings.color_scheme or "System"
+
+    QQuickStyle.setStyle(style)
+    logger.info(f"应用样式: {style}")
+
+    # 设置颜色方案
+    if color_scheme == "Light":
+        os.environ["QT_QUICK_CONTROLS_COLOR_SCHEME"] = "light"
+    elif color_scheme == "Dark":
+        os.environ["QT_QUICK_CONTROLS_COLOR_SCHEME"] = "dark"
+    else:  # System
+        # 不设置，让 Qt 自动跟随系统
+        os.environ.pop("QT_QUICK_CONTROLS_COLOR_SCHEME", None)
+
+    logger.info(f"应用颜色方案: {color_scheme}")
+
     # 初始化数据库
     db_path = os.path.join(data_dir, "ai-video-gui.db")
     database_url = f"sqlite:///{db_path}"
@@ -87,22 +109,23 @@ def main():
     create_all_tables()
     ensure_columns()
 
-    # 初始化 DI 容器
-    container = ApplicationContainer()
-    container.config.workspace_root.from_value(root)
-    container.config.config_path.from_value(os.path.join(data_dir, "config.json"))
-
     # 创建 Bridge（手动传入容器实例）
     bridge = AppBridge(container)
     theme = Theme()
 
-    # 从配置加载主题设置
-    config_manager = container.config_manager()
-    saved_theme = config_manager.settings.theme or "system"
-    theme.mode = saved_theme
-
     # 加载 QML
     engine = QQmlApplicationEngine()
+
+    # 连接警告信号来捕获 QML 错误
+    warnings_list = []
+    def on_warnings(qml_warnings):
+        for w in qml_warnings:
+            msg = f"{w.url().toString()}:{w.line()} - {w.description()}"
+            warnings_list.append(msg)
+            logger.error(f"QML: {msg}")
+
+    engine.warnings.connect(on_warnings)
+
     engine.rootContext().setContextProperty("bridge", bridge)
     engine.rootContext().setContextProperty("Theme", theme)
 
@@ -112,6 +135,8 @@ def main():
 
     if not engine.rootObjects():
         logger.error("QML 加载失败")
+        if not warnings_list:
+            logger.error("未捕获到具体错误信息")
         sys.exit(-1)
 
     logger.info("QML 引擎就绪")

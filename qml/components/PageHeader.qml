@@ -2,10 +2,9 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 
-Rectangle {
+Item {
     id: header
     height: Theme.headerHeight
-    color: "transparent"
 
     property string title: ""
     property string subtitle: ""
@@ -37,13 +36,11 @@ Rectangle {
                 text: header.title
                 font.pixelSize: Theme.fontSizeTitle
                 font.bold: true
-                color: Theme.textAI
             }
             Label {
                 visible: header.subtitle !== ""
                 text: header.subtitle
                 font.pixelSize: Theme.fontSizeSmall
-                color: Theme.textSecondary
             }
         }
 
@@ -60,6 +57,5 @@ Rectangle {
         anchors.bottom: parent.bottom
         width: parent.width
         height: 1
-        color: Theme.border
     }
 }

@@ -107,8 +107,6 @@ Item {
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 32
-            color: Theme.bgSidebar
-            border.color: Theme.border
             border.width: 1
 
             Label {
@@ -116,7 +114,6 @@ Item {
                 anchors.leftMargin: 20
                 anchors.left: parent.left
                 text: "共 " + bridge.characters.model.count + " 个角色"
-                color: Theme.textSecondary
                 font.pixelSize: 12
             }
         }
@@ -183,20 +180,12 @@ Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 clip: true
-                background: Rectangle {
-                    radius: Theme.borderRadius
-                    color: Theme.bgChat
-                    border.color: descInput.activeFocus ? Theme.primary : Theme.border
-                }
                 TextArea {
                     id: descInput
                     placeholderText: "结构化形象描述，每行一个分区：\n[物种] 人类-黄种人\n[外貌] 25岁女性，瓜子脸\n[发型] 齐肩黑色直发\n[发色] 自然黑\n[瞳色] 深棕色\n[体型] 165cm，纤细匀称\n[上装] 白色棉质衬衫\n[裤子] 深蓝色高腰牛仔裤\n[鞋袜] 白色帆布鞋\n[帽子] 无"
                     wrapMode: TextArea.Wrap
                     font.pixelSize: Theme.fontSizeSmall
                     padding: 12
-                    color: Theme.textAI
-                    background: Item {}
-                }
             }
 
             RowLayout {
@@ -265,18 +254,12 @@ Item {
                 delegate: Pane {
                     width: historyList.width - 4
                     padding: 8
-                    background: Rectangle {
-                        radius: Theme.borderRadius
-                        color: Theme.bgChat
-                        border.color: Theme.border
-                    }
                     ColumnLayout {
                         anchors.fill: parent
                         spacing: 4
                         Label {
                             text: modelData.displayTime
                             font.pixelSize: Theme.fontSizeSmall
-                            color: Theme.textSecondary
                         }
                         Label {
                             text: modelData.name + " (" + modelData.refCode + ")"
@@ -286,7 +269,6 @@ Item {
                         Label {
                             text: modelData.description
                             font.pixelSize: Theme.fontSizeSmall
-                            color: Theme.textSecondary
                             elide: Text.ElideRight
                             maximumLineCount: 2
                             wrapMode: Text.Wrap
@@ -299,7 +281,6 @@ Item {
                     visible: historyList.count === 0
                     anchors.centerIn: parent
                     text: "暂无编辑历史"
-                    color: Theme.textSecondary
                 }
             }
         }
@@ -340,12 +321,6 @@ Item {
         padding: 10
         height: 100
 
-        background: Rectangle {
-            radius: Theme.borderRadius
-            color: isSelected ? Theme.bgSelected : (cardHover.hovered ? Theme.bgHover : Theme.bgChat)
-            border.color: isSelected ? Theme.primary : Theme.border
-            border.width: isSelected ? 2 : 1
-        }
 
         RowLayout {
             anchors.fill: parent
@@ -360,7 +335,6 @@ Item {
             // 设计图
             Rectangle {
                 width: 72; height: 72; radius: 36
-                color: Theme.bgPlaceholder
                 clip: true
                 Image {
                     anchors.fill: parent
@@ -372,7 +346,6 @@ Item {
                     anchors.centerIn: parent
                     text: characterName ? characterName[0] : "👤"
                     font.pixelSize: 24
-                    color: designImage ? "transparent" : Theme.primary
                     visible: !designImage
                 }
             }
@@ -386,18 +359,16 @@ Item {
                     Label { text: characterName; font.pixelSize: Theme.fontSizeMedium; font.bold: true }
                     Rectangle {
                         width: refLabel.implicitWidth + 12; height: 20; radius: 10
-                        color: "#8764B8"
                         Label {
                             id: refLabel
                             anchors.centerIn: parent
-                            text: refCode; color: Theme.textUser; font.pixelSize: Theme.fontSizeTiny
+                            text: refCode; font.pixelSize: Theme.fontSizeTiny
                         }
                     }
                 }
                 Label {
                     text: description || "暂无形象描述"
                     font.pixelSize: Theme.fontSizeSmall
-                    color: Theme.textAI
                     elide: Text.ElideRight
                     maximumLineCount: 2
                     wrapMode: Text.Wrap
@@ -467,4 +438,5 @@ Item {
         historyDialog.historyData = JSON.parse(json)
         historyDialog.open()
     }
+}
 }

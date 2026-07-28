@@ -19,12 +19,6 @@ Pane {
     signal editClicked(int projectId)
     signal deleteClicked(int projectId)
 
-    background: Rectangle {
-        radius: Theme.cardRadius
-        color: card.isHovered ? Theme.bgHover : Theme.bgChat
-        border.color: Theme.border
-        border.width: 1
-    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -36,7 +30,6 @@ Pane {
             Layout.fillWidth: true
             Layout.preferredHeight: 160
             radius: Theme.radiusMedium
-            color: Theme.bgPlaceholder
             clip: true
 
             Image {
@@ -71,14 +64,12 @@ Pane {
             Label {
                 text: resolution + " · " + aspectRatio
                 font.pixelSize: Theme.fontSizeSmall
-                color: Theme.textSecondary
                 Layout.fillWidth: true
             }
 
             Label {
                 text: createdAt
                 font.pixelSize: Theme.fontSizeSmall
-                color: Theme.textSecondary
                 horizontalAlignment: Text.AlignRight
             }
         }

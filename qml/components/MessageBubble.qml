@@ -27,7 +27,6 @@ Item {
             Layout.minimumWidth: 80
             implicitHeight: contentCol.implicitHeight + 16
             radius: Theme.cardRadius
-            color: isUser ? Theme.bubbleUser : Theme.bubbleAI
 
             ColumnLayout {
                 id: contentCol
@@ -43,7 +42,6 @@ Item {
                     text: messageText
                     wrapMode: Text.Wrap
                     font.pixelSize: Theme.fontSizeNormal
-                    color: isUser ? Theme.textUser : Theme.textAI
                     Layout.fillWidth: true
                 }
 
@@ -60,7 +58,6 @@ Item {
                 Label {
                     text: timeText
                     font.pixelSize: Theme.fontSizeTiny
-                    color: isUser ? Qt.lighter(Theme.textUser, 1.3) : Theme.textSecondary
                     Layout.alignment: isUser ? Qt.AlignRight : Qt.AlignLeft
                 }
             }

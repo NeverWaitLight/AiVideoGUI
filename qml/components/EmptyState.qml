@@ -14,7 +14,6 @@ ColumnLayout {
     Label {
         text: emptyState.text
         font.pixelSize: Theme.fontSizeMedium
-        color: Theme.textSecondary
         horizontalAlignment: Text.AlignHCenter
         Layout.alignment: Qt.AlignHCenter
     }

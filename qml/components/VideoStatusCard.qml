@@ -2,13 +2,9 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 
-Rectangle {
+Pane {
     id: card
     height: statusStack.implicitHeight + 16
-    radius: Theme.borderRadius
-    color: Theme.bgHover
-    border.color: Theme.border
-    border.width: 1
 
     property string status: ""  // generating, downloading, completed, failed
     property string videoPath: ""
@@ -26,7 +22,7 @@ Rectangle {
             Layout.fillWidth: true
             spacing: 8
             ProgressBar { indeterminate: true; Layout.fillWidth: true }
-            Label { text: "视频生成中..."; font.pixelSize: Theme.fontSizeSmall; color: Theme.textSecondary }
+            Label { text: "视频生成中..."; font.pixelSize: Theme.fontSizeSmall }
         }
 
         // Downloading
@@ -35,7 +31,7 @@ Rectangle {
             Layout.fillWidth: true
             spacing: 8
             ProgressBar { indeterminate: true; Layout.fillWidth: true }
-            Label { text: "正在下载视频..."; font.pixelSize: Theme.fontSizeSmall; color: Theme.textSecondary }
+            Label { text: "正在下载视频..."; font.pixelSize: Theme.fontSizeSmall }
         }
 
         // Completed
@@ -48,12 +44,10 @@ Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 120
                 radius: Theme.radiusMedium
-                color: Theme.textAI
                 Label {
                     anchors.centerIn: parent
                     text: "▶"
                     font.pixelSize: 36
-                    color: Theme.textUser
                 }
                 MouseArea {
                     anchors.fill: parent
@@ -74,12 +68,11 @@ Rectangle {
             visible: status === "failed"
             Layout.fillWidth: true
             spacing: 8
-            Label { text: "❌ 生成失败"; font.pixelSize: Theme.fontSizeNormal; color: Theme.danger }
+            Label { text: "❌ 生成失败"; font.pixelSize: Theme.fontSizeNormal }
             Label {
                 visible: errorMsg !== ""
                 text: errorMsg
                 font.pixelSize: Theme.fontSizeSmall
-                color: Theme.textSecondary
                 wrapMode: Text.Wrap
                 Layout.fillWidth: true
             }

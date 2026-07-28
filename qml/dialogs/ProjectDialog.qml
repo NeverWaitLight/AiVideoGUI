@@ -18,17 +18,9 @@ Dialog {
 
     title: isEdit ? "编辑项目" : "新建项目"
 
-    background: Rectangle {
-        color: Theme.bgChat
-        radius: Theme.cardRadius
-        border.color: Theme.border
-        border.width: 1
-    }
 
     header: Rectangle {
         height: Theme.headerHeight
-        color: Theme.bgSidebar
-        border.color: Theme.border
         border.width: 1
 
         RowLayout {
@@ -40,7 +32,6 @@ Dialog {
                 text: projectDialog.title
                 font.pixelSize: Theme.fontSizeTitle
                 font.bold: true
-                color: Theme.textAI
                 Layout.fillWidth: true
             }
         }
@@ -48,8 +39,6 @@ Dialog {
 
     footer: Rectangle {
         height: 64
-        color: Theme.bgSidebar
-        border.color: Theme.border
         border.width: 1
 
         RowLayout {
@@ -63,19 +52,6 @@ Dialog {
                 text: "取消"
                 implicitHeight: 32
                 implicitWidth: 80
-                background: Rectangle {
-                    radius: Theme.borderRadius
-                    color: parent.hovered ? Theme.bubbleAI : Theme.bgChat
-                    border.color: Theme.border
-                    border.width: 1
-                }
-                contentItem: Text {
-                    text: parent.text
-                    font.pixelSize: Theme.fontSizeNormal
-                    color: Theme.textAI
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
                 onClicked: projectDialog.reject()
             }
 
@@ -83,17 +59,6 @@ Dialog {
                 text: "确定"
                 implicitHeight: 32
                 implicitWidth: 80
-                background: Rectangle {
-                    radius: Theme.borderRadius
-                    color: parent.hovered ? Theme.primaryHover : Theme.primary
-                }
-                contentItem: Text {
-                    text: parent.text
-                    font.pixelSize: Theme.fontSizeNormal
-                    color: Theme.textUser
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
                 onClicked: {
                     if (isEdit) {
                         bridge.projects.update_project(editProjectId, nameField.text, resCombo.currentText, ratioCombo.currentText, coverImagePath)
@@ -109,42 +74,8 @@ Dialog {
     component StyledComboBox: ComboBox {
         id: control
 
-        background: Rectangle {
-            implicitHeight: 32
-            radius: Theme.borderRadius
-            color: control.hovered ? Theme.bubbleAI : Theme.bgChat
-            border.color: Theme.border
-            border.width: 1
-        }
 
-        contentItem: Text {
-            leftPadding: 10
-            rightPadding: 28
-            text: control.displayText
-            font.pixelSize: Theme.fontSizeMedium
-            color: Theme.textAI
-            verticalAlignment: Text.AlignVCenter
-            elide: Text.ElideRight
-        }
 
-        indicator: Canvas {
-            x: control.width - width - 10
-            y: (control.height - height) / 2
-            width: 8
-            height: 5
-            contextType: "2d"
-            onPaint: {
-                var ctx = getContext("2d")
-                ctx.reset()
-                ctx.strokeStyle = Theme.textSecondary
-                ctx.lineWidth = 1.5
-                ctx.beginPath()
-                ctx.moveTo(0, 0)
-                ctx.lineTo(width / 2, height)
-                ctx.lineTo(width, 0)
-                ctx.stroke()
-            }
-        }
 
         popup: Popup {
             y: control.height + 2
@@ -152,20 +83,7 @@ Dialog {
             implicitHeight: contentItem.implicitHeight + 8
             padding: 4
 
-            contentItem: ListView {
-                clip: true
-                implicitHeight: contentHeight
-                model: control.popup.visible ? control.delegateModel : null
-                currentIndex: control.highlightedIndex
-                ScrollIndicator.vertical: ScrollIndicator {}
-            }
 
-            background: Rectangle {
-                radius: Theme.radiusSmall
-                color: Theme.bgChat
-                border.color: Theme.border
-                border.width: 1
-            }
         }
 
         delegate: ItemDelegate {
@@ -173,18 +91,7 @@ Dialog {
             height: 32
             highlighted: control.highlightedIndex === index
 
-            contentItem: Text {
-                text: modelData
-                font.pixelSize: Theme.fontSizeMedium
-                color: Theme.textAI
-                verticalAlignment: Text.AlignVCenter
-                leftPadding: 10
-            }
 
-            background: Rectangle {
-                color: parent.highlighted ? Theme.bgTag : "transparent"
-                radius: Theme.radiusSmall
-            }
         }
     }
 
@@ -200,7 +107,6 @@ Dialog {
                 text: "项目名称:"
                 Layout.preferredWidth: 80
                 font.pixelSize: Theme.fontSizeMedium
-                color: Theme.textAI
             }
             Comp.AppTextField {
                 id: nameField
@@ -216,11 +122,9 @@ Dialog {
                 text: "封面图:"
                 Layout.preferredWidth: 80
                 font.pixelSize: Theme.fontSizeMedium
-                color: Theme.textAI
             }
             Label {
                 text: coverImagePath ? coverImagePath.split("/").pop() : "未选择"
-                color: coverImagePath ? Theme.textAI : Theme.textSecondary
                 font.pixelSize: Theme.fontSizeSmall
                 elide: Text.ElideMiddle
                 Layout.fillWidth: true
@@ -228,38 +132,12 @@ Dialog {
             Button {
                 text: "选择图片"
                 implicitHeight: 28
-                background: Rectangle {
-                    radius: Theme.borderRadius
-                    color: parent.hovered ? Theme.bubbleAI : Theme.bgChat
-                    border.color: Theme.border
-                    border.width: 1
-                }
-                contentItem: Text {
-                    text: parent.text
-                    font.pixelSize: Theme.fontSizeSmall
-                    color: Theme.textAI
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
                 onClicked: coverFileDialog.open()
             }
             Button {
                 text: "清除"
                 implicitHeight: 28
                 visible: coverImagePath !== ""
-                background: Rectangle {
-                    radius: Theme.borderRadius
-                    color: parent.hovered ? Theme.bubbleAI : Theme.bgChat
-                    border.color: Theme.border
-                    border.width: 1
-                }
-                contentItem: Text {
-                    text: parent.text
-                    font.pixelSize: Theme.fontSizeSmall
-                    color: Theme.textAI
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
                 onClicked: coverImagePath = ""
             }
         }
@@ -271,7 +149,6 @@ Dialog {
                 text: "画面比例:"
                 Layout.preferredWidth: 80
                 font.pixelSize: Theme.fontSizeMedium
-                color: Theme.textAI
             }
             StyledComboBox {
                 id: ratioCombo
@@ -287,7 +164,6 @@ Dialog {
                 text: "分辨率:"
                 Layout.preferredWidth: 80
                 font.pixelSize: Theme.fontSizeMedium
-                color: Theme.textAI
             }
             StyledComboBox {
                 id: resCombo

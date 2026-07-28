@@ -13,12 +13,6 @@ Pane {
 
     signal clicked()
 
-    background: Rectangle {
-        radius: Theme.borderRadius
-        color: card.isHovered ? Theme.bgSelected : Theme.bgChat
-        border.color: Theme.border
-        border.width: 1
-    }
 
     RowLayout {
         anchors.fill: parent
@@ -26,11 +20,10 @@ Pane {
 
         Rectangle {
             width: 36; height: 36; radius: 18
-            color: Theme.primary
             Label {
                 anchors.centerIn: parent
                 text: sceneNumber
-                color: Theme.textUser; font.bold: true; font.pixelSize: Theme.fontSizeMedium
+                font.bold: true; font.pixelSize: Theme.fontSizeMedium
             }
         }
 
@@ -38,13 +31,12 @@ Pane {
             Layout.fillWidth: true
             spacing: 2
             Label { text: "第" + sceneNumber + "场"; font.pixelSize: Theme.fontSizeMedium; font.bold: true }
-            Label { text: location; font.pixelSize: Theme.fontSizeSmall; color: Theme.textSecondary; elide: Text.ElideRight; Layout.fillWidth: true }
+            Label { text: location; font.pixelSize: Theme.fontSizeSmall; elide: Text.ElideRight; Layout.fillWidth: true }
         }
 
         Label {
             text: timeType
             font.pixelSize: Theme.fontSizeSmall
-            color: Theme.textSecondary
         }
     }
 

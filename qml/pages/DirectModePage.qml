@@ -12,7 +12,6 @@ Item {
 
         handle: Rectangle {
             implicitWidth: 1
-            color: Theme.border
         }
 
         // 左侧边栏

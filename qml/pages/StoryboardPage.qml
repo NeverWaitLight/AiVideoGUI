@@ -161,11 +161,6 @@ Item {
                             Layout.rightMargin: 24
                             padding: 16
 
-                            background: Rectangle {
-                                radius: Theme.cardRadius
-                                color: Theme.bgChat
-                                border.color: Theme.border
-                            }
 
                             GridLayout {
                                 anchors.fill: parent
@@ -176,7 +171,7 @@ Item {
                                 Label { text: "场次/镜头："; font.pixelSize: Theme.fontSizeMedium }
                                 Label {
                                     text: "第" + bridge.storyboard.curSceneNumber + "场 / 第" + bridge.storyboard.curShotNumber + "镜"
-                                    font.pixelSize: Theme.fontSizeMedium; font.bold: true; color: Theme.primary
+                                    font.pixelSize: Theme.fontSizeMedium; font.bold: true
                                 }
                                 Item { Layout.fillWidth: true }
                                 Item { Layout.fillWidth: true }
@@ -223,7 +218,6 @@ Item {
 
                             Rectangle {
                                 width: 200; height: 112; radius: Theme.radiusMedium
-                                color: Theme.bgPlaceholder; clip: true
                                 Image {
                                     anchors.fill: parent
                                     source: bridge.storyboard.curDesignImage ? "file:///" + bridge.storyboard.curDesignImage : ""
@@ -233,7 +227,6 @@ Item {
                                 Label {
                                     anchors.centerIn: parent
                                     text: "暂无设计图"
-                                    color: Theme.textSecondary
                                     visible: !bridge.storyboard.curDesignImage
                                 }
                             }
@@ -252,7 +245,6 @@ Item {
                                 Label {
                                     text: "根据画面描述自动生成，或手动上传"
                                     font.pixelSize: Theme.fontSizeSmall
-                                    color: Theme.textSecondary
                                 }
                             }
                             Item { Layout.fillWidth: true }
@@ -262,53 +254,36 @@ Item {
                         Label {
                             text: "画面内容描述"
                             font.pixelSize: Theme.fontSizeMedium; font.bold: true
-                            color: Theme.textAI; Layout.leftMargin: 24
                         }
                         ScrollView {
                             Layout.fillWidth: true; Layout.preferredHeight: 120
                             Layout.leftMargin: 24; Layout.rightMargin: 24; clip: true
-                            background: Rectangle {
-                                radius: Theme.borderRadius; color: Theme.bgChat
-                                border.color: visualEdit.activeFocus ? Theme.primary : Theme.border
-                            }
                             TextArea {
                                 id: visualEdit
                                 text: bridge.storyboard.curVisualContent
                                 placeholderText: "描述镜头中的人物、动作、环境细节..."
                                 wrapMode: TextArea.Wrap; font.pixelSize: Theme.fontSizeMedium
-                                padding: 12; color: Theme.textAI
-                                background: Item {}
-                            }
                         }
 
                         // 台词
                         Label {
                             text: "台词/对白"
                             font.pixelSize: Theme.fontSizeMedium; font.bold: true
-                            color: Theme.textAI; Layout.leftMargin: 24
                         }
                         ScrollView {
                             Layout.fillWidth: true; Layout.preferredHeight: 80
                             Layout.leftMargin: 24; Layout.rightMargin: 24; clip: true
-                            background: Rectangle {
-                                radius: Theme.borderRadius; color: Theme.bgChat
-                                border.color: dialogueEdit.activeFocus ? Theme.primary : Theme.border
-                            }
                             TextArea {
                                 id: dialogueEdit
                                 text: bridge.storyboard.curDialogue
                                 placeholderText: "角色对话内容..."
                                 wrapMode: TextArea.Wrap; font.pixelSize: Theme.fontSizeMedium
-                                padding: 12; color: Theme.textAI
-                                background: Item {}
-                            }
                         }
 
                         // 音效
                         Label {
                             text: "音效"
                             font.pixelSize: Theme.fontSizeMedium; font.bold: true
-                            color: Theme.textAI; Layout.leftMargin: 24
                         }
                         Comp.AppTextField {
                             id: soundEffectInput
@@ -321,30 +296,21 @@ Item {
                         Label {
                             text: "备注"
                             font.pixelSize: Theme.fontSizeMedium; font.bold: true
-                            color: Theme.textAI; Layout.leftMargin: 24
                         }
                         ScrollView {
                             Layout.fillWidth: true; Layout.preferredHeight: 60
                             Layout.leftMargin: 24; Layout.rightMargin: 24; clip: true
-                            background: Rectangle {
-                                radius: Theme.borderRadius; color: Theme.bgChat
-                                border.color: notesEdit.activeFocus ? Theme.primary : Theme.border
-                            }
                             TextArea {
                                 id: notesEdit
                                 text: bridge.storyboard.curNotes
                                 placeholderText: "其他说明..."
                                 wrapMode: TextArea.Wrap; font.pixelSize: Theme.fontSizeMedium
-                                padding: 12; color: Theme.textAI
-                                background: Item {}
-                            }
                         }
 
                         // ── 关联视频 ──
                         Label {
                             text: "关联视频"
                             font.pixelSize: Theme.fontSizeMedium; font.bold: true
-                            color: Theme.textAI; Layout.leftMargin: 24
                             Layout.topMargin: 8
                         }
 
@@ -377,7 +343,6 @@ Item {
                             Label {
                                 visible: _relatedVideos.length === 0
                                 text: "暂无关联视频"
-                                color: Theme.textSecondary
                                 font.pixelSize: Theme.fontSizeSmall
                                 Layout.alignment: Qt.AlignHCenter
                                 Layout.topMargin: 8; Layout.bottomMargin: 8
@@ -427,9 +392,7 @@ Item {
                 wrapMode: TextArea.Wrap
                 font.pixelSize: Theme.fontSizeSmall
                 font.family: "Consolas, monospace"
-                color: Theme.textAI
                 padding: 12
-                background: Rectangle { color: Theme.bgSidebar; radius: Theme.borderRadius }
             }
         }
     }
@@ -442,11 +405,6 @@ Item {
         signal deleteClicked()
 
         padding: 8
-        background: Rectangle {
-            radius: Theme.borderRadius
-            color: Theme.bgChat
-            border.color: Theme.border
-        }
 
         RowLayout {
             anchors.fill: parent
@@ -455,7 +413,6 @@ Item {
             // 封面标记
             Label {
                 text: "★"
-                color: Theme.warning
                 font.pixelSize: 16
                 visible: videoData.featured
             }
@@ -463,7 +420,6 @@ Item {
             // 缩略图
             Rectangle {
                 width: 64; height: 48; radius: 4
-                color: Theme.border
                 clip: true
                 Image {
                     anchors.fill: parent
@@ -490,7 +446,6 @@ Item {
                 Label {
                     text: _formatVideoMeta(videoData)
                     font.pixelSize: Theme.fontSizeSmall
-                    color: Theme.textSecondary
                 }
             }
 
@@ -552,4 +507,7 @@ Item {
         }
         return parts.join(" · ")
     }
+}
+}
+}
 }

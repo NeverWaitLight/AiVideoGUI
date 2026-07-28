@@ -70,11 +70,6 @@ Item {
         id: chatModel
     }
 
-    function _addChatBubble(role, text) {
-        chatModel.append({ role: role, text: text })
-        chatView.positionViewAtEnd()
-    }
-
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
@@ -130,7 +125,6 @@ Item {
 
             handle: Rectangle {
                 implicitWidth: 1
-                color: Theme.border
             }
 
             // 左侧：大纲编辑区
@@ -148,12 +142,6 @@ Item {
                         Layout.fillHeight: true
                         clip: true
 
-                        background: Rectangle {
-                            radius: Theme.borderRadius
-                            color: Theme.bgChat
-                            border.color: textArea.activeFocus ? Theme.primary : Theme.border
-                            border.width: 1
-                        }
 
                         TextArea {
                             id: textArea
@@ -161,14 +149,6 @@ Item {
                             wrapMode: TextArea.Wrap
                             font.pixelSize: Theme.fontSizeMedium
                             padding: 12
-                            color: Theme.textAI
-                            background: Item {}
-                            onTextChanged: {
-                                if (text !== bridge.storyOutline.content) {
-                                    _dirty = true
-                                }
-                            }
-                        }
                     }
                 }
             }
@@ -177,7 +157,6 @@ Item {
             Rectangle {
                 SplitView.preferredWidth: 340
                 SplitView.minimumWidth: 260
-                color: Theme.bgSidebar
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -187,7 +166,6 @@ Item {
                     Rectangle {
                         Layout.fillWidth: true
                         height: 44
-                        color: Theme.bgChat
 
                         Label {
                             anchors.verticalCenter: parent.verticalCenter
@@ -196,14 +174,12 @@ Item {
                             text: "AI 助手"
                             font.pixelSize: Theme.fontSizeMedium
                             font.bold: true
-                            color: Theme.textAI
                         }
 
                         Rectangle {
                             anchors.bottom: parent.bottom
                             width: parent.width
                             height: 1
-                            color: Theme.border
                         }
                     }
 
@@ -218,44 +194,12 @@ Item {
                         bottomMargin: 8
                         model: chatModel
 
-                        delegate: Item {
-                            width: ListView.view.width
-                            height: bubbleRow.height + 8
-
-                            Row {
-                                id: bubbleRow
-                                width: parent.width - 24
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                spacing: 0
-                                layoutDirection: model.role === "user" ? Qt.RightToLeft : Qt.LeftToRight
-
-                                Rectangle {
-                                    id: bubble
-                                    width: Math.min(bubbleText.implicitWidth + 20, chatView.width - 60)
-                                    height: bubbleText.implicitHeight + 16
-                                    radius: Theme.cardRadius
-                                    color: model.role === "user" ? Theme.bubbleUser : Theme.bubbleAI
-
-                                    Text {
-                                        id: bubbleText
-                                        anchors.fill: parent
-                                        anchors.margins: 8
-                                        text: model.text
-                                        wrapMode: Text.Wrap
-                                        font.pixelSize: Theme.fontSizeSmall
-                                        color: Theme.textAI
-                                        textFormat: Text.PlainText
-                                    }
-                                }
-                            }
-                        }
 
                         // 空状态提示
                         Label {
                             visible: chatModel.count === 0
                             anchors.centerIn: parent
                             text: "在下方输入你的修改要求，\nAI 将帮你优化大纲"
-                            color: Theme.textSecondary
                             font.pixelSize: Theme.fontSizeSmall
                             horizontalAlignment: Text.AlignHCenter
                         }
@@ -265,13 +209,11 @@ Item {
                     Rectangle {
                         Layout.fillWidth: true
                         height: 60
-                        color: Theme.bgSidebar
 
                         Rectangle {
                             anchors.top: parent.top
                             width: parent.width
                             height: 1
-                            color: Theme.border
                         }
 
                         RowLayout {
@@ -284,11 +226,6 @@ Item {
                                 Layout.fillHeight: true
                                 clip: true
 
-                                background: Rectangle {
-                                    radius: Theme.radiusMedium
-                                    color: Theme.bgChat
-                                    border.color: chatInput.activeFocus ? Theme.primary : Theme.border
-                                }
 
                                 TextArea {
                                     id: chatInput
@@ -296,14 +233,6 @@ Item {
                                     wrapMode: TextArea.Wrap
                                     font.pixelSize: Theme.fontSizeSmall
                                     padding: 6
-                                    background: Item {}
-                                    Keys.onReturnPressed: function(event) {
-                                        if (!(event.modifiers & Qt.ShiftModifier)) {
-                                            event.accepted = true
-                                            _sendChat()
-                                        }
-                                    }
-                                }
                             }
 
                             Button {
@@ -360,4 +289,12 @@ Item {
         _addChatBubble("assistant", "正在思考中…")
         bridge.storyOutline.optimize(text, textArea.text)
     }
+
+    function _addChatBubble(role, text) {
+        _chatMessages.push({role: role, text: text})
+        chatModel.append({role: role, text: text})
+    }
+}
+
+}
 }

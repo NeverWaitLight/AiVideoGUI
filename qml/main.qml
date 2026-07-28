@@ -13,7 +13,6 @@ ApplicationWindow {
     minimumHeight: 640
     visible: true
     title: "AI 视频生成"
-    color: Theme.bgChat
 
     property int currentMode: 0  // 0: 直接生成, 1: 项目管理
 

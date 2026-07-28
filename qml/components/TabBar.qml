@@ -2,9 +2,8 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 
-Rectangle {
+Item {
     id: tabBar
-    color: Theme.bgSidebar
     width: Theme.tabBarWidth
 
     signal tabChanged(int index)
@@ -81,9 +80,5 @@ Rectangle {
         property bool isActive: false
         flat: true
         font.pixelSize: 20
-        background: Rectangle {
-            radius: Theme.borderRadius
-            color: parent.isActive ? Qt.darker(Theme.bgSidebar, 1.1) : (parent.hovered ? Qt.darker(Theme.bgSidebar, 1.05) : "transparent")
-        }
     }
 }

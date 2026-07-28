@@ -14,12 +14,6 @@ Pane {
     signal clicked()
     signal doubleClicked()
 
-    background: Rectangle {
-        radius: Theme.borderRadius
-        color: card.isHovered ? Theme.bgHover : Theme.bgChat
-        border.color: Theme.border
-        border.width: 1
-    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -29,7 +23,6 @@ Pane {
             Layout.fillWidth: true
             Layout.preferredHeight: 130
             radius: Theme.radiusSmall
-            color: Theme.bgPlaceholder
             clip: true
 
             Image {
@@ -46,12 +39,11 @@ Pane {
                 width: typeLabel.implicitWidth + 8
                 height: 18
                 radius: Theme.radiusSmall
-                color: fileType === "video" ? Theme.primary : (fileType === "image" ? Theme.success : Theme.warning)
                 Label {
                     id: typeLabel
                     anchors.centerIn: parent
                     text: fileType === "video" ? "视频" : (fileType === "image" ? "图片" : "音频")
-                    color: Theme.textUser; font.pixelSize: Theme.fontSizeTiny
+                    font.pixelSize: Theme.fontSizeTiny
                 }
             }
         }

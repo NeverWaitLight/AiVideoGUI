@@ -60,7 +60,6 @@ Item {
         Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            color: "black"
 
             VideoOutput {
                 id: videoOutput
@@ -75,14 +74,12 @@ Item {
                 width: overlayLabel.implicitWidth + 24
                 height: overlayLabel.implicitHeight + 12
                 radius: 4
-                color: "#99000000"
                 visible: _currentVideo.label !== undefined
 
                 Label {
                     id: overlayLabel
                     anchors.centerIn: parent
                     text: _currentVideo.label || ""
-                    color: Theme.textUser
                     font.pixelSize: Theme.fontSizeMedium
                     font.bold: true
                 }
@@ -92,7 +89,6 @@ Item {
             Label {
                 anchors.centerIn: parent
                 text: "没有可播放的分镜视频"
-                color: Theme.textSecondary
                 font.pixelSize: Theme.fontSizeLarge
                 visible: _playlist.length === 0
             }
@@ -102,7 +98,6 @@ Item {
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 32
-            color: "#2A2A2A"
 
             Row {
                 anchors.fill: parent
@@ -111,32 +106,6 @@ Item {
 
                 Repeater {
                     model: _playlist
-                    delegate: Rectangle {
-                        property bool isCurrent: index === bridge.videoPlayer.currentIndex
-                        width: _playlist.length > 0
-                            ? Math.max(20, (parent.width - (_playlist.length - 1) * 2) / _playlist.length)
-                            : 0
-                        height: parent.height
-                        radius: 3
-                        color: isCurrent ? Theme.primary : _segmentColor(index)
-                        opacity: isCurrent ? 1.0 : 0.6
-
-                        Label {
-                            anchors.centerIn: parent
-                            text: (modelData.sceneNumber || 0) + "-" + (modelData.shotNumber || 0)
-                            color: "white"
-                            font.pixelSize: 9
-                            visible: parent.width > 30
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                bridge.videoPlayer.set_current_index(index)
-                            }
-                        }
-                    }
                 }
             }
         }
@@ -145,7 +114,6 @@ Item {
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 60
-            color: "#1A1A1A"
 
             RowLayout {
                 anchors.fill: parent
@@ -191,7 +159,6 @@ Item {
                 // 当前时间
                 Label {
                     text: _formatTime(mediaPlayer.position)
-                    color: Theme.textUser
                     font.pixelSize: Theme.fontSizeSmall
                     Layout.preferredWidth: 40
                 }
@@ -210,7 +177,6 @@ Item {
                 // 总时长
                 Label {
                     text: _formatTime(mediaPlayer.duration)
-                    color: Theme.textUser
                     font.pixelSize: Theme.fontSizeSmall
                     Layout.preferredWidth: 40
                 }

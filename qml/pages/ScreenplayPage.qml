@@ -93,7 +93,6 @@ Item {
 
                     handle: Rectangle {
                         implicitWidth: 1
-                        color: Theme.border
                     }
 
                     // 左侧：场次列表
@@ -153,7 +152,6 @@ Item {
                         visible: _showHistory
                         SplitView.preferredWidth: _showHistory ? 300 : 0
                         SplitView.minimumWidth: 200
-                        color: Theme.bgSidebar
 
                         ColumnLayout {
                             anchors.fill: parent
@@ -164,7 +162,6 @@ Item {
                                 text: "历史版本"
                                 font.pixelSize: Theme.fontSizeMedium
                                 font.bold: true
-                                color: Theme.textAI
                             }
 
                             ListView {
@@ -178,11 +175,6 @@ Item {
                                     width: ListView.view.width - 4
                                     padding: 8
 
-                                    background: Rectangle {
-                                        radius: Theme.borderRadius
-                                        color: parent.hovered ? Theme.bubbleAI : Theme.bgChat
-                                        border.color: Theme.border
-                                    }
 
                                     RowLayout {
                                         anchors.fill: parent
@@ -194,12 +186,10 @@ Item {
                                             Label {
                                                 text: model.displayTime || ""
                                                 font.pixelSize: Theme.fontSizeSmall
-                                                color: Theme.textAI
                                             }
                                             Label {
                                                 text: (model.sceneCount || 0) + " 场"
                                                 font.pixelSize: Theme.fontSizeSmall
-                                                color: Theme.textSecondary
                                             }
                                         }
 
@@ -221,7 +211,6 @@ Item {
                                     visible: !bridge.screenplay.historyModel || bridge.screenplay.historyModel.count === 0
                                     anchors.centerIn: parent
                                     text: "暂无历史版本"
-                                    color: Theme.textSecondary
                                     font.pixelSize: Theme.fontSizeSmall
                                 }
                             }
@@ -283,11 +272,6 @@ Item {
                             Layout.rightMargin: 24
                             padding: 16
 
-                            background: Rectangle {
-                                radius: Theme.cardRadius
-                                color: Theme.bgChat
-                                border.color: Theme.border
-                            }
 
                             GridLayout {
                                 anchors.fill: parent
@@ -303,7 +287,6 @@ Item {
                                     text: "第 " + bridge.screenplay.curSceneNumber + " 场"
                                     font.pixelSize: Theme.fontSizeMedium
                                     font.bold: true
-                                    color: Theme.primary
                                 }
                                 Item { Layout.fillWidth: true }
                                 Item { Layout.fillWidth: true }
@@ -365,11 +348,6 @@ Item {
                             Layout.rightMargin: 24
                             clip: true
 
-                            background: Rectangle {
-                                radius: Theme.borderRadius
-                                color: Theme.bgChat
-                                border.color: contentEdit.activeFocus ? Theme.primary : Theme.border
-                            }
 
                             TextArea {
                                 id: contentEdit
@@ -378,9 +356,6 @@ Item {
                                 wrapMode: TextArea.Wrap
                                 font.pixelSize: Theme.fontSizeMedium
                                 padding: 12
-                                color: Theme.textAI
-                                background: Item {}
-                            }
                         }
 
                         Item { width: 1; height: 16 }
@@ -429,12 +404,6 @@ Item {
         padding: 12
         height: 110
 
-        background: Rectangle {
-            radius: Theme.borderRadius
-            color: cardHover.hovered ? Theme.bgSelected : Theme.bgChat
-            border.color: Theme.border
-            border.width: 1
-        }
 
         ColumnLayout {
             anchors.fill: parent
@@ -447,13 +416,11 @@ Item {
                     text: "第 " + sceneNumber + " 场"
                     font.pixelSize: Theme.fontSizeLarge
                     font.bold: true
-                    color: Theme.primary
                 }
                 Rectangle {
                     width: locTypeLabel.implicitWidth + 12
                     height: 20
                     radius: Theme.radiusSmall
-                    color: Theme.bgTag
                     Label {
                         id: locTypeLabel
                         anchors.centerIn: parent
@@ -466,7 +433,6 @@ Item {
                             }
                         }
                         font.pixelSize: Theme.fontSizeSmall
-                        color: Theme.textSecondary
                     }
                 }
                 Item { Layout.fillWidth: true }
@@ -482,7 +448,6 @@ Item {
                         }
                     }
                     font.pixelSize: Theme.fontSizeSmall
-                    color: Theme.textSecondary
                 }
             }
 
@@ -490,7 +455,6 @@ Item {
             Label {
                 text: location
                 font.pixelSize: Theme.fontSizeSmall
-                color: Theme.textAI
                 elide: Text.ElideRight
                 Layout.fillWidth: true
             }
@@ -499,7 +463,6 @@ Item {
             Label {
                 text: content.length > 60 ? content.substring(0, 60) + "..." : content
                 font.pixelSize: Theme.fontSizeSmall
-                color: Theme.textSecondary
                 wrapMode: Text.Wrap
                 maximumLineCount: 2
                 elide: Text.ElideRight
@@ -515,4 +478,5 @@ Item {
         }
         HoverHandler { id: cardHover }
     }
+}
 }
