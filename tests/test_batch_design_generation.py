@@ -10,13 +10,13 @@ from models.storyboard import Storyboard
 class TestBatchDesignGeneration(unittest.TestCase):
     """测试批量设计图生成功能"""
 
-    def test_storyboard_editor_signal_exists(self):
-        """测试 StoryboardEditor 是否有批量设计图生成信号"""
-        from ui.storyboard_editor import StoryboardEditor
+    def test_storyboard_bridge_signals_exist(self):
+        """测试 StoryboardBridge 是否有设计图生成相关信号"""
+        from bridge.storyboard_bridge import StoryboardBridge
 
-        # 检查信号是否存在
-        self.assertTrue(hasattr(StoryboardEditor, 'batch_design_image_generation_requested'))
-        print("batch_design_image_generation_requested signal exists")
+        self.assertTrue(hasattr(StoryboardBridge, 'design_image_ready'))
+        self.assertTrue(hasattr(StoryboardBridge, 'design_image_progress'))
+        self.assertTrue(hasattr(StoryboardBridge, 'design_image_failed'))
 
     def test_collect_shot_data_for_batch_generation(self):
         """测试收集分镜数据的逻辑"""
