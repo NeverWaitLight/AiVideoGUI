@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import logging
+from loguru import logger
 import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -26,9 +26,6 @@ if TYPE_CHECKING:
     from models.data_models import MediaFile
     from storage.database import DatabaseManager
 
-logger = logging.getLogger(__name__)
-
-
 @dataclass
 class PlaylistItem:
     """播放列表项。"""
@@ -36,7 +33,6 @@ class PlaylistItem:
     shot_number: int       # 镜头号
     sequence: int          # 生成次数（序号）
     media_file: MediaFile  # 素材文件对象
-
 
 class VideoPlayerPage(QWidget):
     """视频播放器页面。"""

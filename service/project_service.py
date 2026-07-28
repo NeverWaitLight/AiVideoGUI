@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import logging
+from loguru import logger
 import os
 import shutil
 import uuid
@@ -11,9 +11,6 @@ from datetime import datetime
 from models.data_models import Conversation, Project
 from storage.database import DatabaseManager
 from utils import paths
-
-logger = logging.getLogger(__name__)
-
 
 class ProjectService:
     """项目服务类。"""

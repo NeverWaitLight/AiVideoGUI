@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import logging
+from loguru import logger
 import os
 from typing import Callable
 
@@ -41,8 +41,6 @@ from ui.styles import (
     style_button,
 )
 
-logger = logging.getLogger(__name__)
-
 _THUMB_SIZE = QSize(160, 120)
 _CARD_WIDTH = 176
 _H_SPACING = 12
@@ -60,7 +58,6 @@ _MEDIA_ICONS: dict[MediaType, str] = {
     MediaType.AUDIO: "🎵",
 }
 
-
 def _format_size(size_bytes: int) -> str:
     if size_bytes <= 0:
         return ""
@@ -71,7 +68,6 @@ def _format_size(size_bytes: int) -> str:
     if size_bytes < 1024 * 1024 * 1024:
         return f"{size_bytes / (1024 * 1024):.1f} MB"
     return f"{size_bytes / (1024 * 1024 * 1024):.2f} GB"
-
 
 class _MediaCard(QWidget):
     """单个素材卡片：缩略图 + 文件名 + 类型标签 + 元信息。"""
@@ -207,7 +203,7 @@ class _MediaCard(QWidget):
         self._thumb_label.setTextFormat(Qt.TextFormat.RichText)
 
     def _paint_video_overlays(self, pm: QPixmap) -> None:
-        """在视频缩略图上叠加时长（右下角）和分辨率（左上角）。"""
+        """在视频缩略图上叠加时长（右下角）。"""
         painter = QPainter(pm)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         font = QFont("Segoe UI", 8, QFont.Weight.Bold)
@@ -227,20 +223,6 @@ class _MediaCard(QWidget):
             painter.drawRoundedRect(x - pad_x, y - pad_y, tw + pad_x * 2, th + pad_y * 2, 3, 3)
             painter.setPen(QColor(255, 255, 255))
             painter.drawText(x, y + fm.ascent(), dur_text)
-
-        # 左上角：分辨率
-        w, h = self.media.width, self.media.height
-        if w > 0 and h > 0:
-            res_text = f"{min(w, h)}p"
-            tw = fm.horizontalAdvance(res_text)
-            th = fm.height()
-            x = pad_x
-            y = pad_y
-            painter.setPen(Qt.PenStyle.NoPen)
-            painter.setBrush(QColor(0, 0, 0, 160))
-            painter.drawRoundedRect(x, y, tw + pad_x * 2, th + pad_y * 2, 3, 3)
-            painter.setPen(QColor(255, 255, 255))
-            painter.drawText(x + pad_x, y + pad_y + fm.ascent(), res_text)
 
         painter.end()
 
@@ -292,7 +274,6 @@ class _MediaCard(QWidget):
         """处理跳转动作"""
         self.jump_to_conversation.emit(conv_id, msg_id)
 
-
 class _EmptyState(QWidget):
     """素材库为空时显示的引导页面。"""
 
@@ -323,7 +304,6 @@ class _EmptyState(QWidget):
         import_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         import_btn.clicked.connect(self.import_clicked.emit)
         layout.addWidget(import_btn, alignment=Qt.AlignmentFlag.AlignCenter)
-
 
 class MediaLibrary(QWidget):
     """素材库页面组件。"""
@@ -489,7 +469,18 @@ class MediaLibrary(QWidget):
         cols = max(1, (available + _H_SPACING) // (_CARD_WIDTH + _H_SPACING))
         return cols
 
+    def _update_spacing(self) -> None:
+        """动态计算水平间距，使卡片在可用宽度内均匀分布。"""
+        cols = self._calc_cols()
+        if cols <= 1:
+            self._grid_layout.setHorizontalSpacing(_H_SPACING)
+            return
+        available = self._scroll.viewport().width() - 2 * _GRID_MARGIN
+        spacing = (available - cols * _CARD_WIDTH) / (cols - 1)
+        self._grid_layout.setHorizontalSpacing(int(spacing))
+
     def _relayout_cards(self) -> None:
+        self._update_spacing()
         cols = self._calc_cols()
         for i, card in enumerate(self._cards):
             self._grid_layout.removeWidget(card)
@@ -515,6 +506,7 @@ class MediaLibrary(QWidget):
             return
 
         self._stack.setCurrentIndex(0)
+        self._update_spacing()
         cols = self._calc_cols()
 
         for i, media in enumerate(files):

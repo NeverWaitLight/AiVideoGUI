@@ -1,6 +1,6 @@
 """分镜头编辑器 UI：分镜列表、详情编辑、历史版本管理。"""
 
-import logging
+from loguru import logger
 import os
 import time
 
@@ -36,10 +36,7 @@ from ui.styles import style_button
 from service.screenplay_service import ScreenplayService
 from service.storyboard_service import StoryboardService
 
-logger = logging.getLogger(__name__)
-
 _CN_DIGITS = ["零", "一", "二", "三", "四", "五", "六", "七", "八", "九"]
-
 
 def _to_chinese_num(n: int) -> str:
     """将正整数转为中文数字（支持 1-999）。"""
@@ -74,7 +71,6 @@ def _to_chinese_num(n: int) -> str:
         if ones:
             result += _CN_DIGITS[ones]
     return result
-
 
 class StoryboardCard(CardWidget):
     """分镜卡片（横向大块，120px 高度）"""
@@ -187,7 +183,6 @@ class StoryboardCard(CardWidget):
     def mouseReleaseEvent(self, event):
         """卡片点击事件（仅用于非按钮区域）"""
         super().mouseReleaseEvent(event)
-
 
 class StoryboardDetailEditor(QWidget):
     """分镜详情编辑器"""
@@ -628,7 +623,6 @@ class StoryboardDetailEditor(QWidget):
         else:
             storyboard = self._storyboard_service.get_storyboard(self._current_storyboard_id) if self._current_storyboard_id else None
             self._update_design_preview(storyboard.design_image if storyboard and storyboard.design_image else "")
-
 
 class StoryboardEditor(QWidget):
     """分镜编辑器主界面"""

@@ -1,15 +1,12 @@
 """
 时间轴组件 - 类似专业剪辑软件的时间轴，支持多视频片段显示和预览
 """
-import logging
+from loguru import logger
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 from PyQt6.QtWidgets import QWidget, QLabel, QVBoxLayout
 from PyQt6.QtCore import Qt, pyqtSignal, QRect, QPoint, QTimer
 from PyQt6.QtGui import QPainter, QColor, QPen, QBrush, QFont, QPixmap, QPainterPath
-
-logger = logging.getLogger(__name__)
-
 
 @dataclass
 class VideoSegment:
@@ -21,7 +18,6 @@ class VideoSegment:
     duration: int    # 视频时长（毫秒）
     color: QColor    # 边框颜色
     thumbnail_path: Optional[str]  # 缩略图路径
-
 
 class TimelinePreview(QWidget):
     """时间轴悬停预览窗口"""
@@ -95,7 +91,6 @@ class TimelinePreview(QWidget):
         minutes = seconds // 60
         seconds = seconds % 60
         return f"{minutes:02d}:{seconds:02d}"
-
 
 class TimelineWidget(QWidget):
     """专业级时间轴组件"""
@@ -459,7 +454,6 @@ class TimelineWidget(QWidget):
         # 定位预览窗口
         global_pos = self.mapToGlobal(QPoint(self._hover_position, -self._preview.height() - 10))
         self._preview.move(global_pos)
-
 
 def generate_segment_colors(count: int) -> List[QColor]:
     """生成 count 个视觉上易区分的颜色"""

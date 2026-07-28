@@ -1,13 +1,10 @@
 """视频元数据提取工具。"""
 
-import logging
+from loguru import logger
 import os
 from pathlib import Path
 
 import ffmpeg
-
-logger = logging.getLogger(__name__)
-
 
 class VideoMetadataExtractor:
     """使用 ffmpeg 提取视频元数据和生成缩略图。"""

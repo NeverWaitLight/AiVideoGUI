@@ -1,7 +1,7 @@
 """SQLite 数据库管理（SQLAlchemy ORM 版本）。"""
 
 import json
-import logging
+from loguru import logger
 import threading
 import time
 from datetime import datetime
@@ -33,9 +33,6 @@ from storage.repositories.story_outline import StoryOutlineHistoryRepository, St
 from storage.repositories.project import ProjectRepository
 from storage.repositories.screenplay import ScreenplayHistoryRepository, ScreenplayRepository
 from storage.repositories.storyboard import StoryboardHistoryRepository, StoryboardRepository
-
-logger = logging.getLogger(__name__)
-
 
 class DatabaseManager:
     """SQLite 数据库管理（SQLAlchemy ORM 适配器）。"""

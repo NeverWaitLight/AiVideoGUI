@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import logging
+from loguru import logger
 import re
 
 from PyQt6.QtCore import Qt, pyqtSignal, QSize
@@ -24,9 +24,6 @@ from qfluentwidgets import (
 from models.data_models import Project
 from service.project_service import ProjectService
 from storage.database import DatabaseManager
-
-logger = logging.getLogger(__name__)
-
 
 class ModuleCard(CardWidget):
     """模块入口卡片。"""
@@ -84,7 +81,6 @@ class ModuleCard(CardWidget):
         if event.button() == Qt.MouseButton.LeftButton:
             self.module_clicked.emit(self._module_name)
         super().mousePressEvent(event)
-
 
 class ProjectDetailPage(QWidget):
     """项目详情页面，显示项目信息和各模块入口。"""

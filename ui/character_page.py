@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import logging
+from loguru import logger
 import os
 from datetime import datetime
 
@@ -37,9 +37,6 @@ from qfluentwidgets import (
 from models.data_models import Character, CharacterHistory
 from service.character_service import CharacterService
 from ui.styles import style_button
-
-logger = logging.getLogger(__name__)
-
 
 class _CharacterEditDialog(QDialog):
     """角色编辑对话框。"""
@@ -127,7 +124,6 @@ class _CharacterEditDialog(QDialog):
             "description": self._description_edit.toPlainText().strip(),
         }
 
-
 class _CharacterHistoryDialog(QDialog):
     """角色编辑历史对话框。"""
 
@@ -181,7 +177,6 @@ class _CharacterHistoryDialog(QDialog):
             f"形象描述：{h.description}",
         ]
         self._detail_label.setPlainText("\n".join(lines))
-
 
 class CharacterDetailPage(QWidget):
     """角色详情页：展示角色完整信息，支持 AI 生成 / 上传设计图。"""
@@ -426,7 +421,6 @@ class CharacterDetailPage(QWidget):
         self.saved.emit()
         QMessageBox.information(self, "成功", "设计图上传成功！")
 
-
 class CharacterCard(CardWidget):
     """角色横卡（约 400x120），点击卡片进入详情页。"""
 
@@ -539,7 +533,6 @@ class CharacterCard(CardWidget):
         self._history_btn.clicked.connect(lambda: self.history_requested.emit(self.character.uuid))
         main_layout.addWidget(self._history_btn, alignment=Qt.AlignmentFlag.AlignVCenter)
 
-
 class _EmptyState(QWidget):
     """空状态提示。"""
 
@@ -569,7 +562,6 @@ class _EmptyState(QWidget):
         add_btn = PrimaryPushButton("新增角色")
         add_btn.clicked.connect(self.add_clicked.emit)
         layout.addWidget(add_btn, alignment=Qt.AlignmentFlag.AlignCenter)
-
 
 class CharacterPage(QWidget):
     """角色管理页面：列表 ↔ 详情页双层导航。"""

@@ -1,13 +1,10 @@
 """故事大纲服务层：管理项目大纲的创建、更新和历史版本。"""
 
-import logging
+from loguru import logger
 import time
 
 from models.data_models import StoryOutline, StoryOutlineHistory
 from storage.database import DatabaseManager
-
-logger = logging.getLogger(__name__)
-
 
 class StoryOutlineService:
     """故事大纲服务：管理项目大纲。"""

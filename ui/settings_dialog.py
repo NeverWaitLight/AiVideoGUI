@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import logging
+from loguru import logger
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
@@ -27,11 +27,9 @@ from providers.dashscope_chat import DashScopeChatProvider
 from ui.styles import style_button
 from utils import paths
 
-logger = logging.getLogger(__name__)
-
 # (显示文本, provider_name)
 _PROVIDER_OPTIONS: list[tuple[str, str]] = [
-    ("阿里万象 (DashScope)", "dashscope"),
+    ("DashScope", "dashscope"),
     ("Seedance", "seedance"),
 ]
 
@@ -43,19 +41,18 @@ _MODEL_OPTIONS: dict[str, list[str]] = {
 
 # ── 对话模型 ──
 _CHAT_PROVIDER_OPTIONS: list[tuple[str, str]] = [
-    ("阿里灵积 (DashScope)", "dashscope"),
+    ("DashScope", "dashscope"),
 ]
 
 # ── 图片模型 ──
 _IMAGE_PROVIDER_OPTIONS: list[tuple[str, str]] = [
-    ("阿里灵积 (DashScope)", "dashscope_image"),
+    ("DashScope", "dashscope_image"),
 ]
 
 # provider_name -> 可选图片模型
 _IMAGE_MODEL_OPTIONS: dict[str, list[str]] = {
     "dashscope_image": ["wan2.6-t2i"],
 }
-
 
 class SettingsDialog(FramelessDialog):
     """应用设置对话框。"""

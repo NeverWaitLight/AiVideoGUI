@@ -1,24 +1,20 @@
 """SQLAlchemy ORM 基础设施。"""
 
-import logging
+from loguru import logger
 from typing import Optional
 
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase, Session, scoped_session, sessionmaker
 
-logger = logging.getLogger(__name__)
-
 # 全局变量
 engine: Optional[Engine] = None
 SessionLocal: Optional[scoped_session] = None
-
 
 class Base(DeclarativeBase):
     """所有 ORM 模型的基类。"""
 
     pass
-
 
 def init_engine(database_url: str, echo: bool = False, **kwargs) -> Engine:
     """
@@ -59,7 +55,6 @@ def init_engine(database_url: str, echo: bool = False, **kwargs) -> Engine:
     logger.info("数据库引擎初始化完成：%s", database_url)
     return engine
 
-
 def get_session() -> Session:
     """
     获取当前线程的 Session。
@@ -76,7 +71,6 @@ def get_session() -> Session:
         raise RuntimeError("数据库未初始化，请先调用 init_engine()")
     return SessionLocal()
 
-
 def close_session() -> None:
     """
     关闭当前线程的 Session。
@@ -85,7 +79,6 @@ def close_session() -> None:
     """
     if SessionLocal:
         SessionLocal.remove()
-
 
 def create_all_tables() -> None:
     """
@@ -100,7 +93,6 @@ def create_all_tables() -> None:
         raise RuntimeError("数据库未初始化，请先调用 init_engine()")
     Base.metadata.create_all(engine)
     logger.info("数据库表创建完成")
-
 
 def ensure_columns() -> None:
     """
@@ -132,7 +124,6 @@ def ensure_columns() -> None:
                     stmt = f'ALTER TABLE {table.name} ADD COLUMN {column.name} {col_type} DEFAULT {default} NOT NULL'
                     conn.execute(text(stmt))
                     logger.info("补齐列：%s.%s", table.name, column.name)
-
 
 def drop_all_tables() -> None:
     """

@@ -1,6 +1,6 @@
 """素材库服务：管理媒体文件的导入、查询、删除和自动入库。"""
 
-import logging
+from loguru import logger
 import os
 import shutil
 import uuid
@@ -12,13 +12,10 @@ from storage.database import DatabaseManager
 from utils import paths
 from utils.video_metadata import VideoMetadataExtractor
 
-logger = logging.getLogger(__name__)
-
 _VIDEO_EXTENSIONS = {".mp4", ".avi", ".mov", ".mkv", ".wmv", ".flv", ".webm"}
 _IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg"}
 _AUDIO_EXTENSIONS = {".mp3", ".wav", ".flac", ".aac", ".ogg", ".wma", ".m4a"}
 _ALL_MEDIA_EXTENSIONS = _VIDEO_EXTENSIONS | _IMAGE_EXTENSIONS | _AUDIO_EXTENSIONS
-
 
 def detect_media_type(filename: str) -> MediaType | None:
     """根据文件扩展名判断媒体类型。"""
@@ -31,11 +28,9 @@ def detect_media_type(filename: str) -> MediaType | None:
         return MediaType.AUDIO
     return None
 
-
 def supported_extensions() -> set[str]:
     """返回所有支持的媒体文件扩展名。"""
     return _ALL_MEDIA_EXTENSIONS
-
 
 class MediaService:
     """素材库业务服务。"""

@@ -1,14 +1,12 @@
 """对话模型服务：调用 LLM 生成对话标题等辅助功能。"""
 
-import logging
+from loguru import logger
 
 from PyQt6.QtCore import QObject, QThread, pyqtSignal
 
 from config.manager import ConfigManager
 from providers.dashscope_chat import DashScopeChatProvider
 from providers.chat_base import ChatProvider
-
-logger = logging.getLogger(__name__)
 
 _CHAT_PROVIDER_REGISTRY: dict[str, type[ChatProvider]] = {
     "dashscope": DashScopeChatProvider,
@@ -18,7 +16,6 @@ _TITLE_SYSTEM_PROMPT = (
     "你是一个标题生成助手。根据用户发送的消息内容，生成一个简短的对话标题（不超过15个字）。"
     "只返回标题文本，不要包含任何多余文字、引号或标点符号。"
 )
-
 
 class _TitleWorker(QThread):
     """后台线程调用 LLM 生成标题。"""
@@ -49,7 +46,6 @@ class _TitleWorker(QThread):
         except Exception as e:
             logger.warning("生成标题失败 conv=%s: %s", self._conv_id, e)
             self.title_failed.emit(self._conv_id, str(e))
-
 
 class ChatService(QObject):
     """对话模型服务：提供标题生成等 LLM 辅助功能。"""

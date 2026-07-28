@@ -1,17 +1,14 @@
 """图片生成服务：调用文生图 API 生成分镜设计图。"""
 
-import logging
+from loguru import logger
 
 from config.manager import ConfigManager
 from providers.dashscope_image import DashScopeImageProvider
 from providers.image_base import ImageProvider
 
-logger = logging.getLogger(__name__)
-
 _PROVIDER_REGISTRY: dict[str, type[ImageProvider]] = {
     "dashscope_image": DashScopeImageProvider,
 }
-
 
 class ImageService:
     """图片生成服务：通过文生图 API 生成分镜设计图。"""

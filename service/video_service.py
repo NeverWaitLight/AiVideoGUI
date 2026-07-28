@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-import logging
+from loguru import logger
 import uuid
 from datetime import datetime
 from typing import Any
@@ -21,13 +21,10 @@ from providers.dashscope_video import DashScopeVideoProvider
 from providers.seedance_video import SeedanceVideoProvider
 from storage.database import DatabaseManager
 
-logger = logging.getLogger(__name__)
-
 _PROVIDER_REGISTRY: dict[str, type[VideoProvider]] = {
     "dashscope": DashScopeVideoProvider,
     "seedance": SeedanceVideoProvider,
 }
-
 
 class VideoService(QObject):
     """视频生成服务：编排 UI ↔ Provider，仅负责对话管理和任务提交。

@@ -1,6 +1,6 @@
 """Seedance 视频生成 Provider。"""
 
-import logging
+from loguru import logger
 import os
 from typing import Any, Callable
 
@@ -8,9 +8,6 @@ import requests
 
 from models.data_models import ModelInfo, ProviderConfig, TaskResult, TaskStatus
 from providers.video_base import VideoProvider
-
-logger = logging.getLogger(__name__)
-
 
 class SeedanceVideoProvider(VideoProvider):
     """Seedance 视频生成实现（支持 Seedance 2.0 和 2.5）。"""

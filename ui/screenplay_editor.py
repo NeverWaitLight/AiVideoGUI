@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import logging
+from loguru import logger
 
 from PyQt6.QtCore import Qt, pyqtSignal, QSize
 from PyQt6.QtWidgets import (
@@ -30,9 +30,6 @@ from qfluentwidgets import (
 from models.data_models import Scene, SceneLocation, SceneTime
 from service.screenplay_service import ScreenplayService
 from ui.styles import style_button
-
-logger = logging.getLogger(__name__)
-
 
 class SceneCard(CardWidget):
     """场次卡片：显示场次摘要信息。"""
@@ -114,7 +111,6 @@ class SceneCard(CardWidget):
         if event.button() == Qt.MouseButton.LeftButton:
             self.scene_clicked.emit(self._scene.id)
         super().mouseReleaseEvent(event)
-
 
 class SceneDetailEditor(QWidget):
     """场次详情编辑器。"""
@@ -349,7 +345,6 @@ class SceneDetailEditor(QWidget):
             logger.exception("保存场次失败")
             QMessageBox.critical(self, "错误", f"保存失败：{e}")
 
-
 class HistoryListItem(QWidget):
     """历史版本列表项（按保存时间戳分组）。"""
 
@@ -378,7 +373,6 @@ class HistoryListItem(QWidget):
         restore_btn = PushButton("恢复")
         restore_btn.clicked.connect(lambda: self.restore_clicked.emit(self._created_at))
         layout.addWidget(restore_btn)
-
 
 class ScreenplayEditor(QWidget):
     """剧本编辑器页面：场次列表视图。"""

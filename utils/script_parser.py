@@ -1,13 +1,10 @@
 """剧本解析工具：将 AI 生成的剧本文本解析为场次结构。"""
 
-import logging
+from loguru import logger
 import re
 from typing import Any
 
 from models.data_models import SceneLocation, SceneTime
-
-logger = logging.getLogger(__name__)
-
 
 class ScriptParser:
     """剧本解析器：解析标准影视剧本格式文本。"""

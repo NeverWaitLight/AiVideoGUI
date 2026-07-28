@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import logging
+from loguru import logger
 
 from PyQt6.QtCore import Qt, pyqtSignal, QSize, QThread
 from PyQt6.QtWidgets import (
@@ -33,9 +33,6 @@ from service.text_model_service import TextModelService
 from ui.styles import style_button
 from utils.time_formatter import format_timestamp, get_current_timestamp_ms
 
-logger = logging.getLogger(__name__)
-
-
 class OptimizeWorker(QThread):
     """AI 优化后台线程。"""
 
@@ -65,7 +62,6 @@ class OptimizeWorker(QThread):
             logger.exception("AI 优化失败")
             self.failed.emit(str(e))
 
-
 class HistoryListItem(QWidget):
     """历史版本列表项。"""
 
@@ -88,7 +84,6 @@ class HistoryListItem(QWidget):
         restore_btn = PushButton("恢复")
         restore_btn.clicked.connect(lambda: self.restore_clicked.emit(self._history.id))
         layout.addWidget(restore_btn)
-
 
 class HistoryDialog(QDialog):
     """历史版本弹出对话框。"""
@@ -162,7 +157,6 @@ class HistoryDialog(QDialog):
         self.restore_requested.emit(history_id)
         self.accept()
 
-
 class _ChatBubble(QWidget):
     """轻量聊天气泡，区分用户和 AI 对齐方向。"""
 
@@ -200,7 +194,6 @@ class _ChatBubble(QWidget):
             pass
         else:
             outer.addStretch(1)
-
 
 class StoryOutlineChatPanel(QWidget):
     """右侧 AI 对话面板，用于通过对话修改大纲内容。"""
@@ -332,7 +325,6 @@ class StoryOutlineChatPanel(QWidget):
                 self._on_send()
                 return True
         return super().eventFilter(obj, event)
-
 
 class StoryOutlineEditor(QWidget):
     """故事大纲编辑器页面。"""

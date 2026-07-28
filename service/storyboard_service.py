@@ -1,13 +1,10 @@
 """分镜头服务层：管理分镜 CRUD、历史版本、AI 生成。"""
 
-import logging
+from loguru import logger
 import time
 
 from models.data_models import Storyboard, StoryboardHistory, ShotSize
 from storage.database import DatabaseManager
-
-logger = logging.getLogger(__name__)
-
 
 class StoryboardService:
     """分镜头业务逻辑服务。"""

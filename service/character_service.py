@@ -1,14 +1,11 @@
 """角色服务层：管理角色 CRUD 和编辑历史。"""
 
-import logging
+from loguru import logger
 import uuid
 from datetime import datetime
 
 from models.data_models import Character, CharacterHistory
 from storage.database import DatabaseManager
-
-logger = logging.getLogger(__name__)
-
 
 class CharacterService:
     """角色业务逻辑服务。"""

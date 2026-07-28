@@ -1,6 +1,6 @@
-"""阿里万象 DashScope 视频生成 Provider。"""
+"""DashScope 视频生成 Provider。"""
 
-import logging
+from loguru import logger
 import os
 import re
 from pathlib import Path
@@ -12,11 +12,8 @@ from models.data_models import ModelInfo, ProviderConfig, TaskResult, TaskStatus
 from providers.dashscope_oss_uploader import DashScopeOSSUploader
 from providers.video_base import VideoProvider
 
-logger = logging.getLogger(__name__)
-
-
 class DashScopeVideoProvider(VideoProvider):
-    """阿里万象 DashScope 视频生成实现。"""
+    """DashScope 视频生成实现。"""
 
     BASE_URL = "https://dashscope.aliyuncs.com/api/v1"
     SUBMIT_URL = f"{BASE_URL}/services/aigc/video-generation/video-synthesis"

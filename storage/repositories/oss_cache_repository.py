@@ -1,7 +1,7 @@
 """OSS 文件缓存 Repository。"""
 
 import hashlib
-import logging
+from loguru import logger
 import os
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -11,9 +11,6 @@ from sqlalchemy.orm import Session
 
 from models.oss_cache import OSSFileCache
 from storage.orm.models import OSSFileCacheEntity
-
-logger = logging.getLogger(__name__)
-
 
 class OSSFileCacheRepository:
     """OSS 文件缓存数据访问层"""

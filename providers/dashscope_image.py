@@ -4,7 +4,7 @@
 API 文档：https://help.aliyun.com/zh/model-studio/getting-started/models/wanx-image-generation-api
 """
 
-import logging
+from loguru import logger
 import os
 from typing import Any
 
@@ -12,9 +12,6 @@ import requests
 
 from models.data_models import ProviderConfig
 from providers.image_base import ImageProvider
-
-logger = logging.getLogger(__name__)
-
 
 class DashScopeImageProvider(ImageProvider):
     """DashScope万相文生图实现（wan2.6-t2i）。"""

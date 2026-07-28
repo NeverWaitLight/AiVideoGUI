@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-import logging
+from loguru import logger
 import os
 import subprocess
 from datetime import datetime
@@ -50,9 +50,6 @@ from ui.styles import apply_fluent_theme
 from ui.tab_bar import TabBar
 from ui.widgets import VideoStatusCard
 
-logger = logging.getLogger(__name__)
-
-
 def _format_time(dt: datetime) -> str:
     """将 datetime 格式化为显示时间（今天 HH:MM，其他 MM-DD HH:MM）。"""
     now = datetime.now()
@@ -60,10 +57,8 @@ def _format_time(dt: datetime) -> str:
         return dt.strftime("%H:%M")
     return dt.strftime("%m-%d %H:%M")
 
-
 def _workspace_root() -> str:
     return paths.workspace_root()
-
 
 class _BatchGenerationController(QObject):
     """批量并行生成控制器：一次性提交所有任务到供应商，不等待前一个完成。"""
@@ -226,7 +221,6 @@ class _BatchGenerationController(QObject):
         # 检查是否全部完成
         if completed >= total_submitted:
             self._cleanup_and_finish()
-
 
 class MainWindow(QMainWindow):
     """应用主窗口。"""

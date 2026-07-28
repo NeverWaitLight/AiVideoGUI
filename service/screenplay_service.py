@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-import logging
+from loguru import logger
 import time
 
 from models.data_models import Scene, SceneLocation, SceneTime
 from storage.database import DatabaseManager
-
-logger = logging.getLogger(__name__)
-
 
 class ScreenplayService:
     """剧本服务：支持场次管理（screenplay 表）。"""

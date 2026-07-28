@@ -1,7 +1,7 @@
 """
-阿里云 DashScope 临时存储文件上传模块
+DashScope 临时存储文件上传模块
 
-提供文件上传到阿里云 DashScope 临时存储空间的功能，生成有效期为 48 小时的 oss:// URL。
+提供文件上传到DashScope 临时存储空间的功能，生成有效期为 48 小时的 oss:// URL。
 适用于视频生成、图片生成等需要传入文件 URL 的场景。
 
 使用限制：
@@ -15,7 +15,7 @@ References:
 - https://www.alibabacloud.com/help/zh/model-studio/get-temporary-file-url
 """
 
-import logging
+from loguru import logger
 import os
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -23,9 +23,6 @@ from pathlib import Path
 from typing import Optional
 
 import requests
-
-logger = logging.getLogger(__name__)
-
 
 @dataclass
 class DashScopeUploadPolicy:
@@ -46,9 +43,8 @@ class DashScopeUploadPolicy:
         """凭证过期时间"""
         return datetime.now() + timedelta(seconds=self.expire_in_seconds)
 
-
 class DashScopeOSSUploader:
-    """阿里云 DashScope 临时存储文件上传器"""
+    """DashScope 临时存储文件上传器"""
 
     POLICY_API_URL = "https://dashscope.aliyuncs.com/api/v1/uploads"
 
@@ -57,7 +53,7 @@ class DashScopeOSSUploader:
         初始化上传器
 
         Args:
-            api_key: 阿里云 DashScope API Key
+            api_key: DashScope API Key
         """
         self.api_key = api_key
 
@@ -190,15 +186,14 @@ class DashScopeOSSUploader:
         logger.info(f"文件上传完成，有效期至 {expire_time.strftime('%Y-%m-%d %H:%M:%S')}")
         return oss_url, expire_time
 
-
 def upload_file(
     api_key: str, model_name: str, file_path: str
 ) -> tuple[str, datetime]:
     """
-    快捷函数：上传文件到阿里云 DashScope 临时存储
+    快捷函数：上传文件到DashScope 临时存储
 
     Args:
-        api_key: 阿里云 DashScope API Key
+        api_key: DashScope API Key
         model_name: 模型名称（如 qwen-vl-plus, wan2.7-t2v）
         file_path: 本地文件路径
 

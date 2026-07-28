@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import logging
+from loguru import logger
 import random
 from datetime import datetime
 
@@ -31,16 +31,12 @@ from models.data_models import Project
 from service.project_service import ProjectService
 from ui.styles import style_button
 
-logger = logging.getLogger(__name__)
-
-
 def _format_time(dt: datetime) -> str:
     """将 datetime 格式化为显示时间。"""
     now = datetime.now()
     if dt.date() == now.date():
         return dt.strftime("%H:%M")
     return dt.strftime("%m-%d %H:%M")
-
 
 class _ProjectRow(QWidget):
     """项目列表行控件。"""
@@ -101,7 +97,6 @@ class _ProjectRow(QWidget):
     def update_info(self, info: str) -> None:
         self._info_label.setText(info)
 
-
 class _ConversationRow(QWidget):
     """对话列表行控件。"""
 
@@ -146,7 +141,6 @@ class _ConversationRow(QWidget):
         else:
             self._title_label.setStyleSheet("color: #333333; font-weight: normal; font-size: 13px;")
             self._time_label.setStyleSheet("color: #999999; font-size: 11px;")
-
 
 class ProjectPage(QWidget):
     """项目管理页面。"""
@@ -254,9 +248,7 @@ class ProjectPage(QWidget):
                     self._load_project_detail(project_id)
                     self.project_selected.emit(project_id)
         except Exception as e:
-            import logging
             import traceback
-            logger = logging.getLogger(__name__)
             logger.error(f"项目切换失败: {e}")
             logger.error(traceback.format_exc())
             # 不重新抛出异常，避免应用崩溃
@@ -278,8 +270,6 @@ class ProjectPage(QWidget):
     def _load_project_detail(self, project_id: int) -> None:
         """加载项目详情和对话列表。"""
         try:
-            import logging
-            logger = logging.getLogger(__name__)
             logger.info(f"开始加载项目详情: project_id={project_id}")
 
             project = self._service.get_project(project_id)
@@ -307,9 +297,7 @@ class ProjectPage(QWidget):
 
             logger.info("项目详情加载完成")
         except Exception as e:
-            import logging
             import traceback
-            logger = logging.getLogger(__name__)
             logger.error(f"加载项目详情失败: {e}")
             logger.error(traceback.format_exc())
             raise
@@ -574,7 +562,6 @@ class ProjectPage(QWidget):
             if item.data(Qt.ItemDataRole.UserRole) == conv_id:
                 self.conversation_list.setCurrentItem(item)
                 break
-
 
 class _ProjectDialog(QDialog):
     """项目创建/编辑对话框。"""

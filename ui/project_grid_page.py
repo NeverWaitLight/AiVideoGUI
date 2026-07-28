@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import logging
+from loguru import logger
 import os
 import random
 from pathlib import Path
@@ -36,13 +36,9 @@ from service.project_service import ProjectService
 from ui.styles import style_button
 from utils.time_format import format_timestamp_short
 
-logger = logging.getLogger(__name__)
-
-
 def _format_time(timestamp: int) -> str:
     """将时间戳格式化为显示时间。"""
     return format_timestamp_short(timestamp)
-
 
 class ProjectCard(CardWidget):
     """项目卡片控件。"""
@@ -164,7 +160,6 @@ class ProjectCard(CardWidget):
         if event.button() == Qt.MouseButton.LeftButton:
             self.project_clicked.emit(self._project.id)
         super().mousePressEvent(event)
-
 
 class ProjectDialog(QDialog):
     """创建/编辑项目对话框。"""
@@ -298,7 +293,6 @@ class ProjectDialog(QDialog):
             "aspect_ratio": self._ratio_combo.currentText(),
             "cover_image": self._cover_image_path,
         }
-
 
 class ProjectGridPage(QWidget):
     """项目网格视图页面。"""

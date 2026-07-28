@@ -1,16 +1,13 @@
 """DashScope对话模型 Provider（OpenAI-compatible API）。"""
 
-import logging
+from loguru import logger
 
 import requests
 
 from models.data_models import ProviderConfig
 from providers.chat_base import ChatProvider
 
-logger = logging.getLogger(__name__)
-
 _DEFAULT_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
-
 
 class DashScopeChatProvider(ChatProvider):
     """通过 DashScope OpenAI-compatible 接口调用对话模型。"""

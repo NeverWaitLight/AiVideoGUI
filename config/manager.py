@@ -1,13 +1,10 @@
 """JSON 配置文件管理。"""
 
 import json
-import logging
+from loguru import logger
 import os
 
 from models.data_models import AppSettings, ProviderConfig
-
-logger = logging.getLogger(__name__)
-
 
 class ConfigManager:
     """读写应用配置和 Provider 凭证。"""

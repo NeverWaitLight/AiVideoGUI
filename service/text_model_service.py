@@ -1,13 +1,10 @@
 """文本模型服务：调用大模型 API 进行文本生成和优化。"""
 
-import logging
+from loguru import logger
 
 import requests
 
 from config.manager import ConfigManager
-
-logger = logging.getLogger(__name__)
-
 
 class TextModelService:
     """文本模型服务：支持调用 DashScope 的通义千问等文本模型。"""

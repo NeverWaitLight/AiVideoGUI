@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import logging
+from loguru import logger
 import os
 import shutil
 import time
@@ -16,9 +16,6 @@ from models.data_models import MessageStatus, TaskStatus
 from providers.video_base import VideoProvider
 from storage.database import DatabaseManager
 from utils import paths
-
-logger = logging.getLogger(__name__)
-
 
 class TaskPollingService(QObject):
     """全局任务轮询服务：应用启动时运行，根据 active_tasks 表自动启停。"""
@@ -136,7 +133,6 @@ class TaskPollingService(QObject):
     def _on_task_failed(self, message_id: str, error: str) -> None:
         self._db.update_message_status(message_id, MessageStatus.FAILED, error_message=error)
         self.task_failed.emit(message_id, error)
-
 
 class _PollingWorker(QThread):
     """后台轮询线程：周期性扫描 active_tasks 表，按任务创建时间执行轮询策略。"""
