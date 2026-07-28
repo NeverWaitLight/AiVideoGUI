@@ -9,8 +9,8 @@ from datetime import datetime
 from models.project import Project
 from models.story_outline import StoryOutline
 from storage.orm.base import init_engine, create_all_tables, get_session, close_session
-from storage.repositories.project import ProjectRepository
-from storage.repositories.story_outline import StoryOutlineRepository, StoryOutlineHistoryRepository
+from storage.repositories.project_repository import ProjectRepository
+from storage.repositories.story_outline_repository import StoryOutlineRepository, StoryOutlineHistoryRepository
 
 
 class TestStoryOutlineHistoryAutoSave(unittest.TestCase):

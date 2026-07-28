@@ -7,8 +7,8 @@ from sqlalchemy.orm import Session
 
 from models.enums import SceneLocation, SceneTime
 from models.scene import Scene, ScreenplayHistory
-from storage.orm.models import ScreenplayEntity, ScreenplayHistoryEntity
-from storage.repositories.base import BaseRepository
+from storage.orm.screenplay_entity import ScreenplayEntity, ScreenplayHistoryEntity
+from storage.repositories.base_repository import BaseRepository
 
 
 class ScreenplayRepository(BaseRepository[ScreenplayEntity, Scene]):

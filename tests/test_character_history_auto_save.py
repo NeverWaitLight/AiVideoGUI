@@ -9,8 +9,8 @@ from datetime import datetime
 from models.character import Character
 from models.project import Project
 from storage.orm.base import init_engine, create_all_tables, get_session, close_session
-from storage.repositories.project import ProjectRepository
-from storage.repositories.character import CharacterRepository, CharacterHistoryRepository
+from storage.repositories.project_repository import ProjectRepository
+from storage.repositories.character_repository import CharacterRepository, CharacterHistoryRepository
 
 
 class TestCharacterHistoryAutoSave(unittest.TestCase):

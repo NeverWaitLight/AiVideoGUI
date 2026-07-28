@@ -18,9 +18,9 @@ from providers.video_base import VideoProvider
 from providers.dashscope_video import DashScopeVideoProvider
 from providers.seedance_video import SeedanceVideoProvider
 from storage.session_manager import SessionManager
-from storage.repositories.conversation import ConversationRepository
-from storage.repositories.message import MessageRepository
-from storage.repositories.active_task import ActiveTaskRepository
+from storage.repositories.conversation_repository import ConversationRepository
+from storage.repositories.message_repository import MessageRepository
+from storage.repositories.active_task_repository import ActiveTaskRepository
 
 _PROVIDER_REGISTRY: dict[str, type[VideoProvider]] = {
     "dashscope": DashScopeVideoProvider,

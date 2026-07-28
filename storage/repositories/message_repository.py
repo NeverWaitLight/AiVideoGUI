@@ -7,8 +7,8 @@ from sqlalchemy.orm import Session
 
 from models.enums import MessageStatus
 from models.message import Message
-from storage.orm.models import MessageEntity
-from storage.repositories.base import BaseRepository
+from storage.orm.project_entity import MessageEntity
+from storage.repositories.base_repository import BaseRepository
 
 
 class MessageRepository(BaseRepository[MessageEntity, Message]):

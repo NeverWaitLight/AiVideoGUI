@@ -23,8 +23,8 @@ from qfluentwidgets import (
 from models.project import Project
 from service.project_service import ProjectService
 from storage.session_manager import SessionManager
-from storage.repositories.conversation import ConversationRepository
-from storage.repositories.media import MediaRepository
+from storage.repositories.conversation_repository import ConversationRepository
+from storage.repositories.media_repository import MediaRepository
 from models.enums import MediaType
 from ui.page_header import PageHeader
 

@@ -7,8 +7,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from models.character import Character, CharacterHistory
-from storage.orm.models import CharacterEntity, CharacterHistoryEntity
-from storage.repositories.base import BaseRepository
+from storage.orm.character_entity import CharacterEntity, CharacterHistoryEntity
+from storage.repositories.base_repository import BaseRepository
 
 
 class CharacterRepository(BaseRepository[CharacterEntity, Character]):

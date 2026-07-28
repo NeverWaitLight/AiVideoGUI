@@ -5,7 +5,7 @@ import time
 
 from models.story_outline import StoryOutline, StoryOutlineHistory
 from storage.session_manager import SessionManager
-from storage.repositories.story_outline import StoryOutlineRepository, StoryOutlineHistoryRepository
+from storage.repositories.story_outline_repository import StoryOutlineRepository, StoryOutlineHistoryRepository
 
 class StoryOutlineService:
     """故事大纲服务：管理项目大纲。"""

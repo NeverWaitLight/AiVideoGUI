@@ -10,8 +10,8 @@ if sys.platform == 'win32':
     sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
 
 from storage.orm.base import init_engine, create_all_tables, get_session, close_session
-from storage.repositories.project import ProjectRepository
-from storage.repositories.screenplay import ScreenplayRepository, ScreenplayHistoryRepository
+from storage.repositories.project_repository import ProjectRepository
+from storage.repositories.screenplay_repository import ScreenplayRepository, ScreenplayHistoryRepository
 from models.enums import SceneLocation, SceneTime
 from models.scene import Scene
 from models.project import Project

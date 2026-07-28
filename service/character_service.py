@@ -6,7 +6,7 @@ from datetime import datetime
 
 from models.character import Character, CharacterHistory
 from storage.session_manager import SessionManager
-from storage.repositories.character import CharacterRepository, CharacterHistoryRepository
+from storage.repositories.character_repository import CharacterRepository, CharacterHistoryRepository
 
 class CharacterService:
     """角色业务逻辑服务。"""

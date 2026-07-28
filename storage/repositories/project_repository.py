@@ -7,8 +7,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from models.project import Project
-from storage.orm.models import ProjectEntity
-from storage.repositories.base import BaseRepository
+from storage.orm.project_entity import ProjectEntity
+from storage.repositories.base_repository import BaseRepository
 
 
 class ProjectRepository(BaseRepository[ProjectEntity, Project]):

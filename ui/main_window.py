@@ -23,9 +23,9 @@ from PyQt6.QtWidgets import (
 from di import ApplicationContainer
 from service.video_service import _PROVIDER_REGISTRY
 from storage.orm.base import init_engine, create_all_tables, ensure_columns
-from storage.repositories.conversation import ConversationRepository
-from storage.repositories.message import MessageRepository
-from storage.repositories.media import MediaRepository
+from storage.repositories.conversation_repository import ConversationRepository
+from storage.repositories.message_repository import MessageRepository
+from storage.repositories.media_repository import MediaRepository
 from utils import paths
 from ui.character_page import CharacterPage
 from ui.chat_area import ChatArea

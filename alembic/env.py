@@ -12,21 +12,17 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # 导入 ORM 基类和所有模型
 from storage.orm.base import Base
-from storage.orm.models import (
+from storage.orm.project_entity import (
     ProjectEntity,
     ConversationEntity,
     MessageEntity,
     ActiveTaskEntity,
-    MediaFileEntity,
-    StoryOutlineEntity,
-    StoryOutlineHistoryEntity,
-    ScreenplayEntity,
-    ScreenplayHistoryEntity,
-    StoryboardEntity,
-    StoryboardHistoryEntity,
-    CharacterEntity,
-    CharacterHistoryEntity,
 )
+from storage.orm.media_entity import MediaFileEntity
+from storage.orm.story_outline_entity import StoryOutlineEntity, StoryOutlineHistoryEntity
+from storage.orm.screenplay_entity import ScreenplayEntity, ScreenplayHistoryEntity
+from storage.orm.storyboard_entity import StoryboardEntity, StoryboardHistoryEntity
+from storage.orm.character_entity import CharacterEntity, CharacterHistoryEntity
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

@@ -6,7 +6,7 @@ import time
 from models.enums import ShotSize
 from models.storyboard import Storyboard, StoryboardHistory
 from storage.session_manager import SessionManager
-from storage.repositories.storyboard import StoryboardRepository, StoryboardHistoryRepository
+from storage.repositories.storyboard_repository import StoryboardRepository, StoryboardHistoryRepository
 
 class StoryboardService:
     """分镜头业务逻辑服务。"""

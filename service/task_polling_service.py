@@ -15,8 +15,8 @@ from config.manager import ConfigManager
 from models.enums import MessageStatus, TaskStatus
 from providers.video_base import VideoProvider
 from storage.session_manager import SessionManager
-from storage.repositories.active_task import ActiveTaskRepository
-from storage.repositories.message import MessageRepository
+from storage.repositories.active_task_repository import ActiveTaskRepository
+from storage.repositories.message_repository import MessageRepository
 from storage.repositories.oss_cache_repository import OSSFileCacheRepository
 from utils import paths
 

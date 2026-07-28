@@ -10,8 +10,8 @@ from pathlib import Path
 from models.enums import MediaType
 from models.media_file import MediaFile
 from storage.session_manager import SessionManager
-from storage.repositories.media import MediaRepository
-from storage.repositories.conversation import ConversationRepository
+from storage.repositories.media_repository import MediaRepository
+from storage.repositories.conversation_repository import ConversationRepository
 from utils import paths
 from utils.video_metadata import VideoMetadataExtractor
 

@@ -7,8 +7,9 @@ from sqlalchemy.orm import Session
 
 from models.enums import ShotSize
 from models.storyboard import Storyboard, StoryboardHistory
-from storage.orm.models import StoryboardEntity, StoryboardHistoryEntity, ScreenplayEntity
-from storage.repositories.base import BaseRepository
+from storage.orm.storyboard_entity import StoryboardEntity, StoryboardHistoryEntity
+from storage.orm.screenplay_entity import ScreenplayEntity
+from storage.repositories.base_repository import BaseRepository
 
 
 class StoryboardRepository(BaseRepository[StoryboardEntity, Storyboard]):

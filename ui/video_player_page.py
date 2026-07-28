@@ -241,8 +241,8 @@ class VideoPlayerPage(QWidget):
 
     def _generate_playlist(self, project_id: int) -> list[PlaylistItem]:
         """生成播放列表（选择每个场次-镜头的最新版本）。"""
-        from storage.repositories.conversation import ConversationRepository
-        from storage.repositories.media import MediaRepository
+        from storage.repositories.conversation_repository import ConversationRepository
+        from storage.repositories.media_repository import MediaRepository
 
         # 获取 Repository 实例
         conv_repo = self._session_manager.get_repo(ConversationRepository)

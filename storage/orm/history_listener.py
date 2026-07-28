@@ -8,16 +8,10 @@ import time
 
 from sqlalchemy import event, select
 
-from storage.orm.models import (
-    CharacterEntity,
-    CharacterHistoryEntity,
-    ScreenplayEntity,
-    ScreenplayHistoryEntity,
-    StoryboardEntity,
-    StoryboardHistoryEntity,
-    StoryOutlineEntity,
-    StoryOutlineHistoryEntity,
-)
+from storage.orm.character_entity import CharacterEntity, CharacterHistoryEntity
+from storage.orm.screenplay_entity import ScreenplayEntity, ScreenplayHistoryEntity
+from storage.orm.storyboard_entity import StoryboardEntity, StoryboardHistoryEntity
+from storage.orm.story_outline_entity import StoryOutlineEntity, StoryOutlineHistoryEntity
 
 # 全局标志，防止重复注册
 _listeners_registered = False

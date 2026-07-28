@@ -6,8 +6,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from models.conversation import Conversation
-from storage.orm.models import ConversationEntity
-from storage.repositories.base import BaseRepository
+from storage.orm.project_entity import ConversationEntity
+from storage.repositories.base_repository import BaseRepository
 
 
 class ConversationRepository(BaseRepository[ConversationEntity, Conversation]):

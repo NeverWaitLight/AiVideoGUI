@@ -16,7 +16,7 @@ uv run python main.py
 
 **步骤 1：定义 ORM 模型**
 
-在 `storage/orm/models.py` 中添加新实体：
+在 `storage/orm/` 中创建新的 entity 文件（如 `new_entity.py`）：
 
 ```python
 class NewEntity(Base):
@@ -58,7 +58,7 @@ class NewModel:
 
 ```python
 from storage.repositories.base import BaseRepository
-from storage.orm.models import NewEntity
+from storage.orm.new_entity import NewEntity
 from models.new_model import NewModel
 
 class NewRepository(BaseRepository[NewEntity, NewModel]):
@@ -108,7 +108,7 @@ uv run alembic upgrade head
 
 **步骤 1：修改 ORM 模型**
 
-在 `storage/orm/models.py` 中修改实体定义：
+在相应的 entity 文件（如 `storage/orm/existing_entity.py`）中修改实体定义：
 
 ```python
 class ExistingEntity(Base):

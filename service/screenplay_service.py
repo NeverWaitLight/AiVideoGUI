@@ -8,7 +8,7 @@ import time
 from models.enums import SceneLocation, SceneTime
 from models.scene import Scene, ScreenplayHistory
 from storage.session_manager import SessionManager
-from storage.repositories.screenplay import ScreenplayRepository, ScreenplayHistoryRepository
+from storage.repositories.screenplay_repository import ScreenplayRepository, ScreenplayHistoryRepository
 
 class ScreenplayService:
     """剧本服务：支持场次管理（screenplay 表）。"""

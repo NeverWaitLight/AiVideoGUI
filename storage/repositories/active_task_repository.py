@@ -8,8 +8,8 @@ from sqlalchemy.orm import Session
 
 from models.active_task import ActiveTask
 from models.enums import TaskStatus
-from storage.orm.models import ActiveTaskEntity
-from storage.repositories.base import BaseRepository
+from storage.orm.project_entity import ActiveTaskEntity
+from storage.repositories.base_repository import BaseRepository
 
 
 class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):

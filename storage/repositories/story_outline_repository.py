@@ -6,8 +6,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from models.story_outline import StoryOutline, StoryOutlineHistory
-from storage.orm.models import StoryOutlineEntity, StoryOutlineHistoryEntity
-from storage.repositories.base import BaseRepository
+from storage.orm.story_outline_entity import StoryOutlineEntity, StoryOutlineHistoryEntity
+from storage.repositories.base_repository import BaseRepository
 
 
 class StoryOutlineRepository(BaseRepository[StoryOutlineEntity, StoryOutline]):

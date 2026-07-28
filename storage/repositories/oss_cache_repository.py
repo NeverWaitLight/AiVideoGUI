@@ -10,7 +10,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from models.oss_cache import OSSFileCache
-from storage.orm.models import OSSFileCacheEntity
+from storage.orm.oss_cache_entity import OSSFileCacheEntity
 
 class OSSFileCacheRepository:
     """OSS 文件缓存数据访问层"""

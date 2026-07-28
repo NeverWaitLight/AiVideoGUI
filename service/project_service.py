@@ -10,10 +10,10 @@ from datetime import datetime
 from models.conversation import Conversation
 from models.project import Project
 from storage.session_manager import SessionManager
-from storage.repositories.project import ProjectRepository
-from storage.repositories.conversation import ConversationRepository
-from storage.repositories.message import MessageRepository
-from storage.repositories.media import MediaRepository
+from storage.repositories.project_repository import ProjectRepository
+from storage.repositories.conversation_repository import ConversationRepository
+from storage.repositories.message_repository import MessageRepository
+from storage.repositories.media_repository import MediaRepository
 from utils import paths
 
 class ProjectService:

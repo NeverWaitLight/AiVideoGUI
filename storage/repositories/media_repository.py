@@ -7,8 +7,8 @@ from sqlalchemy.orm import Session
 
 from models.enums import MediaType
 from models.media_file import MediaFile
-from storage.orm.models import MediaFileEntity
-from storage.repositories.base import BaseRepository
+from storage.orm.media_entity import MediaFileEntity
+from storage.repositories.base_repository import BaseRepository
 
 
 class MediaRepository(BaseRepository[MediaFileEntity, MediaFile]):
