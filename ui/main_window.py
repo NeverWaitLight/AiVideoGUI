@@ -347,7 +347,7 @@ class MainWindow(QMainWindow):
         layout.setSpacing(0)
 
         # 第一层：项目网格页面（初始视图）
-        self.project_grid_page = ProjectGridPage(self._project_service)
+        self.project_grid_page = ProjectGridPage(self._project_service, self._media_service)
         layout.addWidget(self.project_grid_page)
 
         # 第二层：项目详情页面（模块入口）
@@ -401,7 +401,7 @@ class MainWindow(QMainWindow):
         splitter = QSplitter(Qt.Orientation.Horizontal)
 
         # 项目页面（左侧项目列表 + 中间对话列表）
-        self.project_page = ProjectPage(self._project_service)
+        self.project_page = ProjectPage(self._project_service, self._media_service)
 
         # 右侧聊天区域（复用 ChatArea）
         self.project_chat_area = ChatArea()

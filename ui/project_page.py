@@ -29,6 +29,7 @@ from qfluentwidgets import (
 
 from models.project import Project
 from service.project_service import ProjectService
+from service.media_service import MediaService
 from ui.styles import style_button
 
 def _format_time(dt: datetime) -> str:
@@ -150,9 +151,10 @@ class ProjectPage(QWidget):
     new_conversation_clicked = pyqtSignal(int)  # project_id
     conversation_deleted = pyqtSignal(str)  # conversation_id
 
-    def __init__(self, project_service: ProjectService, parent: QWidget | None = None):
+    def __init__(self, project_service: ProjectService, media_service: MediaService, parent: QWidget | None = None):
         super().__init__(parent)
         self._service = project_service
+        self._media_service = media_service
         self._current_project_id: int | None = None
         self._setup_ui()
 
@@ -374,8 +376,7 @@ class ProjectPage(QWidget):
             return
 
         # 统计项目关联的素材数量
-        db = self._service._db
-        media_count = len(db.list_media_files(project_id=project_id))
+        media_count = len(self._media_service.list_files(project_id=project_id))
 
         # 生成6位随机数字
         verification_code = str(random.randint(100000, 999999))
