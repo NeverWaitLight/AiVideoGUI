@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from loguru import logger
 
-from PyQt6.QtCore import Qt, pyqtSignal, QSize
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -22,13 +22,13 @@ from PyQt6.QtWidgets import (
 from qfluentwidgets import (
     PrimaryPushButton,
     PushButton,
-    ToolButton,
     FluentIcon,
     CardWidget,
 )
 
 from models.data_models import Scene, SceneLocation, SceneTime
 from service.screenplay_service import ScreenplayService
+from ui.page_header import PageHeader, create_icon_button
 from ui.styles import style_button
 
 class SceneCard(CardWidget):
@@ -129,35 +129,17 @@ class SceneDetailEditor(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        # 顶部工具栏
-        toolbar = QWidget()
-        toolbar.setStyleSheet("background: white; border-bottom: 1px solid #E0E0E0;")
-        toolbar.setFixedHeight(60)
-        toolbar_layout = QHBoxLayout(toolbar)
-        toolbar_layout.setContentsMargins(20, 12, 20, 12)
-        toolbar_layout.setSpacing(12)
+        # 顶部标题栏
+        self._header = PageHeader("场次编辑")
+        self._header.set_back_tooltip("返回场次列表")
+        self._header.back_clicked.connect(self.back_clicked.emit)
 
-        # 返回按钮
-        back_btn = ToolButton(FluentIcon.LEFT_ARROW)
-        back_btn.setFixedSize(36, 36)
-        back_btn.setIconSize(QSize(18, 18))
-        back_btn.setToolTip("返回场次列表")
-        back_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        back_btn.clicked.connect(self.back_clicked.emit)
-        toolbar_layout.addWidget(back_btn)
-
-        # 标题
-        self.title_label = QLabel("场次编辑")
-        self.title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #333;")
-        toolbar_layout.addWidget(self.title_label, stretch=1)
-
-        # 保存按钮
         self.save_btn = PushButton("保存")
         style_button(self.save_btn, "save")
         self.save_btn.clicked.connect(self._on_save)
-        toolbar_layout.addWidget(self.save_btn)
+        self._header.add_action(self.save_btn)
 
-        layout.addWidget(toolbar)
+        layout.addWidget(self._header)
 
         # 编辑区域
         scroll = QScrollArea()
@@ -257,7 +239,7 @@ class SceneDetailEditor(QWidget):
             return
 
         # 更新标题
-        self.title_label.setText(f"第 {self._current_scene.scene_number} 场")
+        self._header.set_title(f"第 {self._current_scene.scene_number} 场")
 
         # 填充数据
         self.scene_number_label.setText(str(self._current_scene.scene_number))
@@ -414,52 +396,28 @@ class ScreenplayEditor(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        # 顶部工具栏
-        toolbar = QWidget()
-        toolbar.setStyleSheet("background: white; border-bottom: 1px solid #E0E0E0;")
-        toolbar.setFixedHeight(60)
-        toolbar_layout = QHBoxLayout(toolbar)
-        toolbar_layout.setContentsMargins(20, 12, 20, 12)
-        toolbar_layout.setSpacing(12)
+        # 顶部标题栏
+        self._list_header = PageHeader("剧本编辑")
+        self._list_header.set_back_tooltip("返回项目详情")
+        self._list_header.back_clicked.connect(self.back_clicked.emit)
 
-        # 返回按钮
-        back_btn = ToolButton(FluentIcon.LEFT_ARROW)
-        back_btn.setFixedSize(36, 36)
-        back_btn.setIconSize(QSize(18, 18))
-        back_btn.setToolTip("返回项目详情")
-        back_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        back_btn.clicked.connect(self.back_clicked.emit)
-        toolbar_layout.addWidget(back_btn)
-
-        # 标题
-        self.title_label = QLabel("剧本编辑")
-        self.title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #333;")
-        toolbar_layout.addWidget(self.title_label, stretch=1)
-
-        # 生成分镜按钮
         self.generate_storyboard_btn = PushButton("生成分镜")
         self.generate_storyboard_btn.setIcon(FluentIcon.MOVIE)
         style_button(self.generate_storyboard_btn, "generate")
         self.generate_storyboard_btn.clicked.connect(self._on_generate_storyboard)
-        toolbar_layout.addWidget(self.generate_storyboard_btn)
+        self._list_header.add_action(self.generate_storyboard_btn)
 
-        # 保存历史按钮
         self.save_history_btn = PushButton("保存历史版本")
         self.save_history_btn.setIcon(FluentIcon.SAVE)
         style_button(self.save_history_btn, "save")
         self.save_history_btn.clicked.connect(self._on_save_history)
-        toolbar_layout.addWidget(self.save_history_btn)
+        self._list_header.add_action(self.save_history_btn)
 
-        # 历史版本按钮
-        self.history_btn = ToolButton(FluentIcon.HISTORY)
-        self.history_btn.setFixedSize(36, 36)
-        self.history_btn.setIconSize(QSize(18, 18))
-        self.history_btn.setToolTip("历史版本")
-        self.history_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.history_btn = create_icon_button(FluentIcon.HISTORY, "历史版本")
         self.history_btn.clicked.connect(self._on_toggle_history)
-        toolbar_layout.addWidget(self.history_btn)
+        self._list_header.add_action(self.history_btn)
 
-        layout.addWidget(toolbar)
+        layout.addWidget(self._list_header)
 
         # 主内容区：场次列表 + 历史版本
         splitter = QSplitter(Qt.Orientation.Horizontal)

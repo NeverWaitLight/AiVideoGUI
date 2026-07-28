@@ -5,7 +5,7 @@ from __future__ import annotations
 from loguru import logger
 import re
 
-from PyQt6.QtCore import Qt, pyqtSignal, QSize
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -16,7 +16,6 @@ from PyQt6.QtWidgets import (
     QScrollArea,
 )
 from qfluentwidgets import (
-    ToolButton,
     FluentIcon,
     CardWidget,
 )
@@ -24,6 +23,7 @@ from qfluentwidgets import (
 from models.data_models import Project
 from service.project_service import ProjectService
 from storage.database import DatabaseManager
+from ui.page_header import PageHeader
 
 class ModuleCard(CardWidget):
     """模块入口卡片。"""
@@ -100,40 +100,11 @@ class ProjectDetailPage(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        # 顶部区域：返回按钮 + 项目信息
-        header = QWidget()
-        header.setStyleSheet("background: white; border-bottom: 1px solid #E0E0E0;")
-        header.setFixedHeight(80)
-        header_layout = QHBoxLayout(header)
-        header_layout.setContentsMargins(20, 12, 20, 12)
-        header_layout.setSpacing(16)
-
-        # 返回按钮
-        back_btn = ToolButton(FluentIcon.LEFT_ARROW)
-        back_btn.setFixedSize(36, 36)
-        back_btn.setIconSize(QSize(18, 18))
-        back_btn.setToolTip("返回项目列表")
-        back_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        back_btn.clicked.connect(self.back_clicked.emit)
-        header_layout.addWidget(back_btn)
-
-        # 项目信息
-        info_widget = QWidget()
-        info_layout = QVBoxLayout(info_widget)
-        info_layout.setContentsMargins(0, 0, 0, 0)
-        info_layout.setSpacing(4)
-
-        self.project_name_label = QLabel("项目名称")
-        self.project_name_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #333;")
-        info_layout.addWidget(self.project_name_label)
-
-        self.project_info_label = QLabel("项目信息")
-        self.project_info_label.setStyleSheet("font-size: 13px; color: #666;")
-        info_layout.addWidget(self.project_info_label)
-
-        header_layout.addWidget(info_widget, stretch=1)
-
-        layout.addWidget(header)
+        # 顶部标题栏
+        self._header = PageHeader("项目名称")
+        self._header.set_back_tooltip("返回项目列表")
+        self._header.back_clicked.connect(self.back_clicked.emit)
+        layout.addWidget(self._header)
 
         # 滚动区域
         scroll = QScrollArea()
@@ -174,7 +145,7 @@ class ProjectDetailPage(QWidget):
             return
 
         self._current_project = project
-        self.project_name_label.setText(project.name)
+        self._header.set_title(project.name)
 
         # 清空现有卡片
         for i in reversed(range(self._grid_layout.count())):
@@ -213,7 +184,7 @@ class ProjectDetailPage(QWidget):
         # 更新项目信息
         video_count = self._service.get_project_video_count(project_id)
         info_text = f"{project.aspect_ratio} · {project.resolution} · {video_count} 个视频"
-        self.project_info_label.setText(info_text)
+        self._header.set_subtitle(info_text)
 
     def _has_storyboard_videos(self, project_id: int) -> bool:
         """判断项目是否有分镜视频（文件名匹配 场次-镜头-序号.mp4 格式）。"""

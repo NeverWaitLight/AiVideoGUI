@@ -31,11 +31,11 @@ from qfluentwidgets import (
     PushButton,
     TextEdit,
     TitleLabel,
-    ToolButton,
 )
 
 from models.data_models import Character, CharacterHistory
 from service.character_service import CharacterService
+from ui.page_header import PageHeader
 from ui.styles import style_button
 
 class _CharacterEditDialog(QDialog):
@@ -196,24 +196,10 @@ class CharacterDetailPage(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        # ── 顶部工具栏（固定） ──
-        toolbar = QWidget()
-        toolbar.setFixedHeight(56)
-        toolbar.setStyleSheet("background-color: #FAFAFA; border-bottom: 1px solid #E8E8E8;")
-        toolbar_layout = QHBoxLayout(toolbar)
-        toolbar_layout.setContentsMargins(20, 0, 20, 0)
-        toolbar_layout.setSpacing(12)
-
-        self._back_btn = ToolButton(FluentIcon.LEFT_ARROW)
-        self._back_btn.setFixedSize(36, 36)
-        self._back_btn.clicked.connect(self.back_clicked.emit)
-        toolbar_layout.addWidget(self._back_btn)
-
-        self._title_label = QLabel("角色详情")
-        self._title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #333;")
-        toolbar_layout.addWidget(self._title_label, stretch=1)
-
-        layout.addWidget(toolbar)
+        # ── 顶部标题栏 ──
+        self._header = PageHeader("角色详情")
+        self._header.back_clicked.connect(self.back_clicked.emit)
+        layout.addWidget(self._header)
 
         # ── 中间可滚动区域 ──
         scroll_area = QScrollArea()
@@ -590,38 +576,25 @@ class CharacterPage(QWidget):
         list_layout.setContentsMargins(0, 0, 0, 0)
         list_layout.setSpacing(0)
 
-        # 列表顶部工具栏
-        toolbar = QWidget()
-        toolbar.setFixedHeight(56)
-        toolbar.setStyleSheet("background-color: #FAFAFA; border-bottom: 1px solid #E8E8E8;")
-        toolbar_layout = QHBoxLayout(toolbar)
-        toolbar_layout.setContentsMargins(20, 0, 20, 0)
-        toolbar_layout.setSpacing(12)
-
-        self._back_btn = ToolButton(FluentIcon.LEFT_ARROW)
-        self._back_btn.setFixedSize(36, 36)
-        self._back_btn.clicked.connect(self.back_clicked.emit)
-        toolbar_layout.addWidget(self._back_btn)
-
-        title = QLabel("角色管理")
-        title.setStyleSheet("font-size: 16px; font-weight: bold; color: #333;")
-        toolbar_layout.addWidget(title, stretch=1)
+        # 列表顶部标题栏
+        self._list_header = PageHeader("角色管理")
+        self._list_header.back_clicked.connect(self.back_clicked.emit)
 
         self._select_all_cb = CheckBox("全选")
         self._select_all_cb.stateChanged.connect(self._on_select_all_toggled)
-        toolbar_layout.addWidget(self._select_all_cb)
+        self._list_header.add_action(self._select_all_cb)
 
         self._add_btn = PrimaryPushButton("新增角色", self, FluentIcon.ADD)
         self._add_btn.clicked.connect(self._on_add)
-        toolbar_layout.addWidget(self._add_btn)
+        self._list_header.add_action(self._add_btn)
 
         self._delete_selected_btn = PushButton("删除选中", self, FluentIcon.DELETE)
         style_button(self._delete_selected_btn, "danger")
         self._delete_selected_btn.setEnabled(False)
         self._delete_selected_btn.clicked.connect(self._on_delete_selected)
-        toolbar_layout.addWidget(self._delete_selected_btn)
+        self._list_header.add_action(self._delete_selected_btn)
 
-        list_layout.addWidget(toolbar)
+        list_layout.addWidget(self._list_header)
 
         # 卡片网格 vs 空状态
         self._stacked = QStackedWidget()

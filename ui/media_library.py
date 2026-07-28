@@ -24,7 +24,6 @@ from qfluentwidgets import (
     LineEdit,
     PrimaryPushButton,
     PushButton,
-    ToolButton,
     MessageBox,
     RoundMenu,
     Action,
@@ -33,6 +32,7 @@ from qfluentwidgets import (
 
 from models.data_models import MediaFile, MediaType
 from service.media_service import MediaService, supported_extensions
+from ui.page_header import PageHeader
 from ui.styles import (
     COLOR_MEDIA_AUDIO,
     COLOR_MEDIA_IMAGE,
@@ -338,51 +338,34 @@ class MediaLibrary(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        # ── 顶部工具栏 ──
-        toolbar = QWidget()
-        toolbar.setObjectName("mediaToolbar")
-        toolbar.setFixedHeight(52)
-        tb_layout = QHBoxLayout(toolbar)
-        tb_layout.setContentsMargins(16, 0, 16, 0)
-        tb_layout.setSpacing(12)
-
-        # 返回按钮（项目模式时显示）
-        self._back_btn = ToolButton(FluentIcon.LEFT_ARROW)
-        self._back_btn.setFixedSize(36, 36)
-        self._back_btn.setIconSize(QSize(18, 18))
-        self._back_btn.setToolTip("返回项目详情")
-        self._back_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._back_btn.clicked.connect(self.back_clicked.emit)
-        self._back_btn.hide()  # 默认隐藏
-        tb_layout.addWidget(self._back_btn)
-
-        title = QLabel("素材库")
-        title.setStyleSheet("font-size: 16px; font-weight: bold; color: #333;")
-        tb_layout.addWidget(title, stretch=1)
+        # ── 顶部标题栏 ──
+        self._header = PageHeader("素材库", show_back=False)
+        self._header.set_back_tooltip("返回项目详情")
+        self._header.back_clicked.connect(self.back_clicked.emit)
 
         self._type_filter = ComboBox()
         self._type_filter.addItems(["全部", "视频", "图片", "音频"])
         self._type_filter.currentIndexChanged.connect(self._on_type_changed)
-        tb_layout.addWidget(self._type_filter)
+        self._header.add_action(self._type_filter)
 
         self._search_box = LineEdit()
         self._search_box.setPlaceholderText("🔍 搜索文件名…")
         self._search_box.textChanged.connect(self._on_search_text_changed)
-        tb_layout.addWidget(self._search_box)
+        self._header.add_action(self._search_box)
 
         self._import_btn = PrimaryPushButton(FluentIcon.DOWNLOAD, "导入文件")
         self._import_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._import_btn.clicked.connect(self._on_import)
-        tb_layout.addWidget(self._import_btn)
+        self._header.add_action(self._import_btn)
 
         self._delete_btn = PushButton(FluentIcon.DELETE, "删除选中")
         self._delete_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         style_button(self._delete_btn, "danger")
         self._delete_btn.setEnabled(False)
         self._delete_btn.clicked.connect(self._on_delete_selected)
-        tb_layout.addWidget(self._delete_btn)
+        self._header.add_action(self._delete_btn)
 
-        layout.addWidget(toolbar)
+        layout.addWidget(self._header)
 
         # ── 内容区域（网格 + 空状态） ──
         self._stack = QStackedWidget()
@@ -432,10 +415,7 @@ class MediaLibrary(QWidget):
     def load_files(self, project_id: int | None = None) -> None:
         """加载素材文件，可选按项目过滤。"""
         self._current_project_id = project_id
-        if project_id:
-            self._back_btn.show()
-        else:
-            self._back_btn.hide()
+        self._header.set_back_visible(bool(project_id))
         self.refresh()
 
     def refresh(self) -> None:

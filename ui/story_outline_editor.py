@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from loguru import logger
 
-from PyQt6.QtCore import Qt, pyqtSignal, QSize, QThread
+from PyQt6.QtCore import Qt, pyqtSignal, QThread
 from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -22,7 +22,6 @@ from PyQt6.QtWidgets import (
 from qfluentwidgets import (
     PrimaryPushButton,
     PushButton,
-    ToolButton,
     FluentIcon,
     TextEdit,
 )
@@ -30,6 +29,7 @@ from qfluentwidgets import (
 from models.data_models import StoryOutline, StoryOutlineHistory
 from service.story_outline_service import StoryOutlineService
 from service.text_model_service import TextModelService
+from ui.page_header import PageHeader, create_icon_button
 from ui.styles import style_button
 from utils.time_formatter import format_timestamp, get_current_timestamp_ms
 
@@ -350,45 +350,26 @@ class StoryOutlineEditor(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        toolbar = QWidget()
-        toolbar.setStyleSheet("background: white; border-bottom: 1px solid #E0E0E0;")
-        toolbar.setFixedHeight(60)
-        toolbar_layout = QHBoxLayout(toolbar)
-        toolbar_layout.setContentsMargins(20, 12, 20, 12)
-        toolbar_layout.setSpacing(12)
+        self._header = PageHeader("大纲编辑")
+        self._header.set_back_tooltip("返回项目详情")
+        self._header.back_clicked.connect(self.back_clicked.emit)
 
-        back_btn = ToolButton(FluentIcon.LEFT_ARROW)
-        back_btn.setFixedSize(36, 36)
-        back_btn.setIconSize(QSize(18, 18))
-        back_btn.setToolTip("返回项目详情")
-        back_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        back_btn.clicked.connect(self.back_clicked.emit)
-        toolbar_layout.addWidget(back_btn)
-
-        title_label = QLabel("大纲编辑")
-        title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #333;")
-        toolbar_layout.addWidget(title_label, stretch=1)
-
-        self.history_btn = ToolButton(FluentIcon.HISTORY)
-        self.history_btn.setFixedSize(36, 36)
-        self.history_btn.setIconSize(QSize(18, 18))
-        self.history_btn.setToolTip("历史版本")
-        self.history_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.history_btn = create_icon_button(FluentIcon.HISTORY, "历史版本")
         self.history_btn.clicked.connect(self._on_show_history)
-        toolbar_layout.addWidget(self.history_btn)
+        self._header.add_action(self.history_btn)
 
         self.save_btn = PushButton("保存")
         style_button(self.save_btn, "save")
         self.save_btn.clicked.connect(self._on_save)
-        toolbar_layout.addWidget(self.save_btn)
+        self._header.add_action(self.save_btn)
 
         self.next_btn = PushButton("生成剧本")
         self.next_btn.setIcon(FluentIcon.RIGHT_ARROW)
         style_button(self.next_btn, "generate")
         self.next_btn.clicked.connect(self._on_next_step)
-        toolbar_layout.addWidget(self.next_btn)
+        self._header.add_action(self.next_btn)
 
-        layout.addWidget(toolbar)
+        layout.addWidget(self._header)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
 

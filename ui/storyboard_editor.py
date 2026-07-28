@@ -4,7 +4,7 @@ from loguru import logger
 import os
 import time
 
-from PyQt6.QtCore import QSize, Qt, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import (
     QFileDialog,
@@ -28,10 +28,10 @@ from qfluentwidgets import (
     PushButton,
     TextEdit,
     TitleLabel,
-    ToolButton,
 )
 
 from models.data_models import Scene, Storyboard, ShotSize
+from ui.page_header import PageHeader, create_icon_button
 from ui.styles import style_button
 from service.screenplay_service import ScreenplayService
 from service.storyboard_service import StoryboardService
@@ -202,27 +202,26 @@ class StoryboardDetailEditor(QWidget):
     def _setup_ui(self):
         """初始化 UI"""
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(16)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
-        # 顶部：返回按钮 + 标题 + 查看提示词按钮（固定）
-        top_layout = QHBoxLayout()
-        back_btn = ToolButton(FluentIcon.LEFT_ARROW)
-        back_btn.setFixedSize(36, 36)
-        back_btn.setIconSize(QSize(18, 18))
-        back_btn.setToolTip("返回列表")
-        back_btn.clicked.connect(self.back_clicked.emit)
-        top_layout.addWidget(back_btn)
-
-        title_label = QLabel("分镜详情编辑")
-        title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #333;")
-        top_layout.addWidget(title_label, stretch=1)
+        # 顶部标题栏
+        self._header = PageHeader("分镜详情编辑")
+        self._header.set_back_tooltip("返回列表")
+        self._header.back_clicked.connect(self.back_clicked.emit)
 
         self._preview_prompt_btn = PushButton("查看提示词", self, FluentIcon.DOCUMENT)
         self._preview_prompt_btn.clicked.connect(self._on_preview_prompt)
-        top_layout.addWidget(self._preview_prompt_btn)
+        self._header.add_action(self._preview_prompt_btn)
 
-        layout.addLayout(top_layout)
+        layout.addWidget(self._header)
+
+        # 内容区域
+        content = QWidget()
+        content_layout = QVBoxLayout(content)
+        content_layout.setContentsMargins(20, 16, 20, 20)
+        content_layout.setSpacing(16)
+        layout.addWidget(content, 1)
 
         # 中间滚动区域
         scroll_area = QScrollArea()
@@ -342,13 +341,13 @@ class StoryboardDetailEditor(QWidget):
 
         scroll_layout.addStretch()
         scroll_area.setWidget(scroll_widget)
-        layout.addWidget(scroll_area, 1)
+        content_layout.addWidget(scroll_area, 1)
 
         # 保存按钮（固定在底部）
         save_btn = PushButton("保存", self, FluentIcon.SAVE)
         style_button(save_btn, "save")
         save_btn.clicked.connect(self._on_save_storyboard)
-        layout.addWidget(save_btn, alignment=Qt.AlignmentFlag.AlignRight)
+        content_layout.addWidget(save_btn, alignment=Qt.AlignmentFlag.AlignRight)
 
     def _update_design_preview(self, image_path: str = "") -> None:
         """更新设计图预览。"""
@@ -651,49 +650,42 @@ class StoryboardEditor(QWidget):
 
         # 分镜列表视图
         self.list_view = QWidget()
-        list_layout = QHBoxLayout(self.list_view)
-        list_layout.setContentsMargins(0, 0, 0, 0)
-        list_layout.setSpacing(0)
+        list_outer = QVBoxLayout(self.list_view)
+        list_outer.setContentsMargins(0, 0, 0, 0)
+        list_outer.setSpacing(0)
 
-        # 左侧：分镜卡片滚动区
-        left_widget = QWidget()
-        left_layout = QVBoxLayout(left_widget)
-        left_layout.setContentsMargins(20, 20, 10, 20)
-        left_layout.setSpacing(16)
-
-        # 顶部：返回按钮 + 标题 + 生成所有按钮
-        top_layout = QHBoxLayout()
-        back_btn = ToolButton(FluentIcon.LEFT_ARROW)
-        back_btn.setFixedSize(36, 36)
-        back_btn.setIconSize(QSize(18, 18))
-        back_btn.setToolTip("返回")
-        back_btn.clicked.connect(self.back_clicked.emit)
-        top_layout.addWidget(back_btn)
-
-        title_label = QLabel("分镜头脚本")
-        title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #333;")
-        top_layout.addWidget(title_label, stretch=1)
+        # 顶部标题栏
+        self._list_header = PageHeader("分镜头脚本")
+        self._list_header.set_back_tooltip("返回")
+        self._list_header.back_clicked.connect(self.back_clicked.emit)
 
         self._generate_all_designs_btn = PushButton("生成所有设计图", self, FluentIcon.IMAGE_EXPORT)
         style_button(self._generate_all_designs_btn, "generate")
         self._generate_all_designs_btn.clicked.connect(self._on_generate_all_designs)
-        top_layout.addWidget(self._generate_all_designs_btn)
+        self._list_header.add_action(self._generate_all_designs_btn)
 
         self._generate_all_btn = PushButton("生成所有镜头", self, FluentIcon.PLAY)
         style_button(self._generate_all_btn, "generate")
         self._generate_all_btn.clicked.connect(self._on_generate_all)
-        top_layout.addWidget(self._generate_all_btn)
+        self._list_header.add_action(self._generate_all_btn)
 
-        # 历史版本按钮
-        self._history_btn = ToolButton(FluentIcon.HISTORY)
-        self._history_btn.setFixedSize(36, 36)
-        self._history_btn.setIconSize(QSize(18, 18))
-        self._history_btn.setToolTip("历史版本")
-        self._history_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._history_btn = create_icon_button(FluentIcon.HISTORY, "历史版本")
         self._history_btn.clicked.connect(self._on_toggle_history)
-        top_layout.addWidget(self._history_btn)
+        self._list_header.add_action(self._history_btn)
 
-        left_layout.addLayout(top_layout)
+        list_outer.addWidget(self._list_header)
+
+        # 下方水平分割
+        list_layout = QHBoxLayout()
+        list_layout.setContentsMargins(0, 0, 0, 0)
+        list_layout.setSpacing(0)
+        list_outer.addLayout(list_layout, 1)
+
+        # 左侧：分镜卡片滚动区
+        left_widget = QWidget()
+        left_layout = QVBoxLayout(left_widget)
+        left_layout.setContentsMargins(20, 16, 10, 20)
+        left_layout.setSpacing(16)
 
         # 场次过滤 + 批量操作
         filter_layout = QHBoxLayout()

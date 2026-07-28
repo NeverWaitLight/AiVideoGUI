@@ -18,8 +18,9 @@ from PyQt6.QtWidgets import (
     QSlider,
     QStackedLayout,
 )
-from qfluentwidgets import ToolButton, FluentIcon, TitleLabel, PushButton
+from qfluentwidgets import FluentIcon, TitleLabel, PushButton, ToolButton
 
+from ui.page_header import PageHeader
 from ui.timeline_widget import TimelineWidget, VideoSegment, generate_segment_colors
 
 if TYPE_CHECKING:
@@ -88,30 +89,12 @@ class VideoPlayerPage(QWidget):
 
     def _create_header(self) -> QWidget:
         """创建顶部栏。"""
-        header = QWidget()
-        header.setStyleSheet("background: white; border-bottom: 1px solid #E0E0E0;")
-        header.setFixedHeight(70)
+        header = PageHeader("项目视频播放")
+        header.back_clicked.connect(self.back_clicked.emit)
 
-        layout = QHBoxLayout(header)
-        layout.setContentsMargins(20, 15, 20, 15)
-        layout.setSpacing(16)
-
-        # 返回按钮
-        self.back_btn = ToolButton(FluentIcon.LEFT_ARROW)
-        self.back_btn.setFixedSize(36, 36)
-        self.back_btn.setIconSize(QSize(18, 18))
-        self.back_btn.clicked.connect(self.back_clicked.emit)
-        layout.addWidget(self.back_btn)
-
-        # 标题
-        title_label = QLabel("项目视频播放")
-        title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #333;")
-        layout.addWidget(title_label, stretch=1)
-
-        # 播放列表信息标签
         self.playlist_info_label = QLabel("0 / 0")
         self.playlist_info_label.setStyleSheet("font-size: 14px; color: #666;")
-        layout.addWidget(self.playlist_info_label)
+        header.add_action(self.playlist_info_label)
 
         return header
 
