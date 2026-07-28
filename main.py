@@ -96,6 +96,11 @@ def main():
     bridge = AppBridge(container)
     theme = Theme()
 
+    # 从配置加载主题设置
+    config_manager = container.config_manager()
+    saved_theme = config_manager.settings.theme or "system"
+    theme.mode = saved_theme
+
     # 加载 QML
     engine = QQmlApplicationEngine()
     engine.rootContext().setContextProperty("bridge", bridge)

@@ -112,6 +112,7 @@ Dialog {
     property string imageModel: ""
 
     property string workspacePath: ""
+    property string themeMode: "system"
 
     ColumnLayout {
         anchors.fill: parent
@@ -181,6 +182,23 @@ Dialog {
 
             TabButton {
                 text: "工作目录"
+                width: implicitWidth
+                background: Rectangle {
+                    color: parent.checked ? Theme.bgChat : Theme.bgSidebar
+                    border.color: Theme.border
+                    border.width: 1
+                }
+                contentItem: Text {
+                    text: parent.text
+                    font.pixelSize: Theme.fontSizeMedium
+                    color: parent.checked ? Theme.primary : Theme.textAI
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+            }
+
+            TabButton {
+                text: "外观"
                 width: implicitWidth
                 background: Rectangle {
                     color: parent.checked ? Theme.bgChat : Theme.bgSidebar
@@ -510,6 +528,104 @@ Dialog {
                     Item { Layout.fillHeight: true }
                 }
             }
+
+            // 外观配置
+            ScrollView {
+                ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                clip: true
+
+                ColumnLayout {
+                    width: parent.width
+                    spacing: 16
+
+                    Item { Layout.preferredHeight: 16 }
+
+                    Label {
+                        text: "外观设置"
+                        font.pixelSize: Theme.fontSizeLarge
+                        font.bold: true
+                        color: Theme.textAI
+                        Layout.leftMargin: 24
+                    }
+
+                    ColumnLayout {
+                        spacing: 12
+                        Layout.fillWidth: true
+                        Layout.leftMargin: 24
+                        Layout.rightMargin: 24
+
+                        Label {
+                            text: "主题模式"
+                            font.pixelSize: Theme.fontSizeMedium
+                            color: Theme.textAI
+                        }
+
+                        ColumnLayout {
+                            spacing: 8
+                            Layout.fillWidth: true
+
+                            RadioButton {
+                                id: themeLightRadio
+                                text: "亮色"
+                                checked: themeMode === "light"
+                                onCheckedChanged: {
+                                    if (checked) themeMode = "light"
+                                }
+                                contentItem: Text {
+                                    text: parent.text
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    color: Theme.textAI
+                                    leftPadding: parent.indicator.width + parent.spacing
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                            }
+
+                            RadioButton {
+                                id: themeDarkRadio
+                                text: "暗色"
+                                checked: themeMode === "dark"
+                                onCheckedChanged: {
+                                    if (checked) themeMode = "dark"
+                                }
+                                contentItem: Text {
+                                    text: parent.text
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    color: Theme.textAI
+                                    leftPadding: parent.indicator.width + parent.spacing
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                            }
+
+                            RadioButton {
+                                id: themeSystemRadio
+                                text: "跟随系统"
+                                checked: themeMode === "system"
+                                onCheckedChanged: {
+                                    if (checked) themeMode = "system"
+                                }
+                                contentItem: Text {
+                                    text: parent.text
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    color: Theme.textAI
+                                    leftPadding: parent.indicator.width + parent.spacing
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                            }
+                        }
+
+                        Label {
+                            text: "选择 \"跟随系统\" 时，应用会自动适应系统的亮色/暗色主题设置"
+                            font.pixelSize: Theme.fontSizeSmall
+                            color: Theme.textSecondary
+                            wrapMode: Text.Wrap
+                            Layout.fillWidth: true
+                            Layout.topMargin: 4
+                        }
+                    }
+
+                    Item { Layout.fillHeight: true }
+                }
+            }
         }
     }
 
@@ -531,20 +647,27 @@ Dialog {
 
         workspacePath = bridge.settings.get_workspace_dir()
         workspaceDirField.text = workspacePath
+
+        themeMode = bridge.settings.get_theme()
     }
 
     function saveAll() {
         bridge.settings.save_provider("video", videoProviderCombo.currentText,
             videoApiKeyField.text, videoBaseUrlField.text, videoModelCombo.currentText)
-        
+
         bridge.settings.save_provider("chat", chatProviderCombo.currentText,
             chatApiKeyField.text, chatBaseUrlField.text, chatModelField.text)
-        
+
         bridge.settings.save_provider("image", imageProviderCombo.currentText,
             imageApiKeyField.text, imageBaseUrlField.text, imageModelField.text)
-        
+
         if (workspacePath !== bridge.settings.get_workspace_dir()) {
             bridge.settings.set_workspace_dir(workspacePath)
+        }
+
+        if (themeMode !== bridge.settings.get_theme()) {
+            bridge.settings.set_theme(themeMode)
+            Theme.mode = themeMode
         }
     }
 }

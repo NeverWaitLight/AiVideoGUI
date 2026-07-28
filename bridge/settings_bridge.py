@@ -91,3 +91,15 @@ class SettingsBridge(QObject):
         current = self.get_workspace_dir()
         path = QFileDialog.getExistingDirectory(None, "选择工作目录", current)
         return path if path else current
+
+    @Slot(result=str)
+    def get_theme(self) -> str:
+        """获取当前主题模式：light, dark, system。"""
+        return self._config.settings.theme or "system"
+
+    @Slot(str)
+    def set_theme(self, theme: str) -> None:
+        """设置主题模式：light, dark, system。"""
+        if theme in ("light", "dark", "system"):
+            self._config.update_settings(theme=theme)
+            self.settings_saved.emit()
