@@ -47,10 +47,10 @@ Rectangle {
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: inputArea.implicitHeight + 20
-            color: "#FAFAFA"
+            color: Theme.bgSidebar
             border.color: Theme.border
             border.width: 1
-            radius: 8
+            radius: Theme.borderRadius
             anchors.margins: 8
 
             RowLayout {
@@ -83,10 +83,10 @@ Rectangle {
                     background: Rectangle {
                         implicitWidth: 64
                         implicitHeight: 32
-                        radius: 4
+                        radius: Theme.radiusSmall
                         color: sendBtn.enabled
                                ? (sendBtn.hovered ? Theme.primaryHover : Theme.primary)
-                               : "#CCCCCC"
+                               : Theme.disabled
                         border.width: 0
 
                         Behavior on color { ColorAnimation { duration: 120 } }
@@ -95,7 +95,7 @@ Rectangle {
                     contentItem: Text {
                         text: sendBtn.text
                         font.pixelSize: Theme.fontSizeNormal
-                        color: "#FFFFFF"
+                        color: Theme.textUser
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                     }

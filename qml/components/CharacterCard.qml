@@ -17,7 +17,7 @@ Pane {
 
     background: Rectangle {
         radius: Theme.borderRadius
-        color: card.isHovered ? "#FAFAFA" : "#FFFFFF"
+        color: card.isHovered ? Theme.bgHover : Theme.bgChat
         border.color: Theme.border
         border.width: 1
     }
@@ -28,7 +28,7 @@ Pane {
 
         Rectangle {
             width: 72; height: 72; radius: 36
-            color: "#E8E8E8"
+            color: Theme.bgPlaceholder
             clip: true
             Image {
                 anchors.fill: parent
@@ -56,7 +56,7 @@ Pane {
                     Label {
                         id: refLabel
                         anchors.centerIn: parent
-                        text: refCode; color: "white"; font.pixelSize: 10
+                        text: refCode; color: Theme.textUser; font.pixelSize: Theme.fontSizeTiny
                     }
                 }
             }

@@ -15,7 +15,7 @@ Pane {
 
     background: Rectangle {
         radius: Theme.borderRadius
-        color: card.isHovered ? "#F0F5FF" : "#FFFFFF"
+        color: card.isHovered ? Theme.bgSelected : Theme.bgChat
         border.color: Theme.border
         border.width: 1
     }
@@ -30,7 +30,7 @@ Pane {
             Label {
                 anchors.centerIn: parent
                 text: sceneNumber
-                color: "white"; font.bold: true; font.pixelSize: 14
+                color: Theme.textUser; font.bold: true; font.pixelSize: Theme.fontSizeMedium
             }
         }
 

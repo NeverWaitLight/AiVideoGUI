@@ -153,7 +153,7 @@ Item {
                         visible: _showHistory
                         SplitView.preferredWidth: _showHistory ? 300 : 0
                         SplitView.minimumWidth: 200
-                        color: "#FAFAFA"
+                        color: Theme.bgSidebar
 
                         ColumnLayout {
                             anchors.fill: parent
@@ -180,7 +180,7 @@ Item {
 
                                     background: Rectangle {
                                         radius: Theme.borderRadius
-                                        color: parent.hovered ? "#F0F0F0" : "#FFFFFF"
+                                        color: parent.hovered ? Theme.bubbleAI : Theme.bgChat
                                         border.color: Theme.border
                                     }
 
@@ -285,7 +285,7 @@ Item {
 
                             background: Rectangle {
                                 radius: Theme.cardRadius
-                                color: "#FFFFFF"
+                                color: Theme.bgChat
                                 border.color: Theme.border
                             }
 
@@ -367,7 +367,7 @@ Item {
 
                             background: Rectangle {
                                 radius: Theme.borderRadius
-                                color: "#FFFFFF"
+                                color: Theme.bgChat
                                 border.color: contentEdit.activeFocus ? Theme.primary : Theme.border
                             }
 
@@ -431,7 +431,7 @@ Item {
 
         background: Rectangle {
             radius: Theme.borderRadius
-            color: cardHover.hovered ? "#F0F5FF" : "#FFFFFF"
+            color: cardHover.hovered ? Theme.bgSelected : Theme.bgChat
             border.color: Theme.border
             border.width: 1
         }
@@ -452,8 +452,8 @@ Item {
                 Rectangle {
                     width: locTypeLabel.implicitWidth + 12
                     height: 20
-                    radius: 4
-                    color: "#E3F2FD"
+                    radius: Theme.radiusSmall
+                    color: Theme.bgTag
                     Label {
                         id: locTypeLabel
                         anchors.centerIn: parent
@@ -466,7 +466,7 @@ Item {
                             }
                         }
                         font.pixelSize: Theme.fontSizeSmall
-                        color: "#666"
+                        color: Theme.textSecondary
                     }
                 }
                 Item { Layout.fillWidth: true }

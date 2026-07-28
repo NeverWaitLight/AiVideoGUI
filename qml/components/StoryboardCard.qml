@@ -21,7 +21,7 @@ Pane {
 
     background: Rectangle {
         radius: Theme.borderRadius
-        color: selected ? "#F0F5FF" : (card.isHovered ? "#FAFAFA" : "#FFFFFF")
+        color: selected ? Theme.bgSelected : (card.isHovered ? Theme.bgHover : Theme.bgChat)
         border.color: selected ? Theme.primary : Theme.border
         border.width: selected ? 2 : 1
     }
@@ -32,8 +32,8 @@ Pane {
 
         // 设计图缩略图
         Rectangle {
-            width: 100; height: 72; radius: 6
-            color: "#E8E8E8"
+            width: 100; height: 72; radius: Theme.radiusMedium
+            color: Theme.bgPlaceholder
             clip: true
             Image {
                 anchors.fill: parent
@@ -60,19 +60,19 @@ Pane {
                 }
                 Rectangle {
                     width: sizeLabel.implicitWidth + 12; height: 18; radius: 9
-                    color: "#E3F2FD"
+                    color: Theme.bgTag
                     Label {
                         id: sizeLabel
                         anchors.centerIn: parent
                         text: cameraMovement || "固定"
-                        font.pixelSize: 10; color: Theme.primary
+                        font.pixelSize: Theme.fontSizeTiny; color: Theme.primary
                     }
                 }
             }
             Label {
                 text: "运镜：" + (cameraMovement || "固定") + "  |  时长：" + duration + "秒"
                 font.pixelSize: Theme.fontSizeSmall
-                color: "#606060"
+                color: Theme.textSecondary
             }
             Label {
                 text: visualContent

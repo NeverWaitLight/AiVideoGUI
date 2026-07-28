@@ -36,7 +36,7 @@ Rectangle {
             delegate: Rectangle {
                 width: convList.width
                 height: 52
-                radius: 6
+                radius: Theme.radiusMedium
                 color: selected ? Qt.darker(Theme.bgSidebar, 1.1) : (mouseArea.containsMouse ? Qt.darker(Theme.bgSidebar, 1.05) : "transparent")
                 property bool selected: false
 
@@ -57,7 +57,7 @@ Rectangle {
                         }
                         Label {
                             text: model.timeText
-                            font.pixelSize: 11
+                            font.pixelSize: Theme.fontSizeSmall
                             color: Theme.textSecondary
                         }
                     }
@@ -65,7 +65,7 @@ Rectangle {
                     Button {
                         flat: true
                         text: "🗑"
-                        font.pixelSize: 14
+                        font.pixelSize: Theme.fontSizeMedium
                         implicitWidth: 28
                         implicitHeight: 28
                         opacity: mouseArea.containsMouse ? 1 : 0

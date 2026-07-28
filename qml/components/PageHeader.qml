@@ -25,7 +25,7 @@ Rectangle {
             visible: header.showBack
             flat: true
             text: "←"
-            font.pixelSize: 18
+            font.pixelSize: Theme.fontSizeTitle
             onClicked: header.backClicked()
             ToolTip.text: "返回"
             ToolTip.visible: hovered

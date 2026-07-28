@@ -150,7 +150,7 @@ Item {
 
                         background: Rectangle {
                             radius: Theme.borderRadius
-                            color: "#FFFFFF"
+                            color: Theme.bgChat
                             border.color: textArea.activeFocus ? Theme.primary : Theme.border
                             border.width: 1
                         }
@@ -177,7 +177,7 @@ Item {
             Rectangle {
                 SplitView.preferredWidth: 340
                 SplitView.minimumWidth: 260
-                color: "#F7F7F7"
+                color: Theme.bgSidebar
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -187,7 +187,7 @@ Item {
                     Rectangle {
                         Layout.fillWidth: true
                         height: 44
-                        color: "#FFFFFF"
+                        color: Theme.bgChat
 
                         Label {
                             anchors.verticalCenter: parent.verticalCenter
@@ -233,8 +233,8 @@ Item {
                                     id: bubble
                                     width: Math.min(bubbleText.implicitWidth + 20, chatView.width - 60)
                                     height: bubbleText.implicitHeight + 16
-                                    radius: 10
-                                    color: model.role === "user" ? "#DCF8C6" : "#FFFFFF"
+                                    radius: Theme.cardRadius
+                                    color: model.role === "user" ? Theme.bubbleUser : Theme.bubbleAI
 
                                     Text {
                                         id: bubbleText
@@ -243,7 +243,7 @@ Item {
                                         text: model.text
                                         wrapMode: Text.Wrap
                                         font.pixelSize: Theme.fontSizeSmall
-                                        color: "#333333"
+                                        color: Theme.textAI
                                         textFormat: Text.PlainText
                                     }
                                 }
@@ -265,7 +265,7 @@ Item {
                     Rectangle {
                         Layout.fillWidth: true
                         height: 60
-                        color: "#FAFAFA"
+                        color: Theme.bgSidebar
 
                         Rectangle {
                             anchors.top: parent.top
@@ -285,8 +285,8 @@ Item {
                                 clip: true
 
                                 background: Rectangle {
-                                    radius: 6
-                                    color: "#FFFFFF"
+                                    radius: Theme.radiusMedium
+                                    color: Theme.bgChat
                                     border.color: chatInput.activeFocus ? Theme.primary : Theme.border
                                 }
 

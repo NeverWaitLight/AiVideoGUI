@@ -26,7 +26,7 @@ Item {
             Layout.maximumWidth: parent.width * 0.7
             Layout.minimumWidth: 80
             implicitHeight: contentCol.implicitHeight + 16
-            radius: 10
+            radius: Theme.cardRadius
             color: isUser ? Theme.bubbleUser : Theme.bubbleAI
 
             ColumnLayout {
@@ -59,7 +59,7 @@ Item {
                 // 时间标签
                 Label {
                     text: timeText
-                    font.pixelSize: 10
+                    font.pixelSize: Theme.fontSizeTiny
                     color: isUser ? Qt.lighter(Theme.textUser, 1.3) : Theme.textSecondary
                     Layout.alignment: isUser ? Qt.AlignRight : Qt.AlignLeft
                 }

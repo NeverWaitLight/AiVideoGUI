@@ -81,7 +81,7 @@ Item {
         property string moduleName: ""
 
         radius: Theme.cardRadius
-        color: cardMouse.containsMouse ? "#F8F8F8" : "#FFFFFF"
+        color: cardMouse.containsMouse ? Theme.bgHover : Theme.bgChat
         border.color: Theme.border
         border.width: 1
 

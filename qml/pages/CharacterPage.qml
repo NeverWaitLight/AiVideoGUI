@@ -107,7 +107,7 @@ Item {
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 32
-            color: "#FAFAFA"
+            color: Theme.bgSidebar
             border.color: Theme.border
             border.width: 1
 
@@ -116,7 +116,7 @@ Item {
                 anchors.leftMargin: 20
                 anchors.left: parent.left
                 text: "共 " + bridge.characters.model.count + " 个角色"
-                color: "#888"
+                color: Theme.textSecondary
                 font.pixelSize: 12
             }
         }
@@ -185,7 +185,7 @@ Item {
                 clip: true
                 background: Rectangle {
                     radius: Theme.borderRadius
-                    color: "#FFFFFF"
+                    color: Theme.bgChat
                     border.color: descInput.activeFocus ? Theme.primary : Theme.border
                 }
                 TextArea {
@@ -267,7 +267,7 @@ Item {
                     padding: 8
                     background: Rectangle {
                         radius: Theme.borderRadius
-                        color: "#FFFFFF"
+                        color: Theme.bgChat
                         border.color: Theme.border
                     }
                     ColumnLayout {
@@ -275,7 +275,7 @@ Item {
                         spacing: 4
                         Label {
                             text: modelData.displayTime
-                            font.pixelSize: 11
+                            font.pixelSize: Theme.fontSizeSmall
                             color: Theme.textSecondary
                         }
                         Label {
@@ -285,8 +285,8 @@ Item {
                         }
                         Label {
                             text: modelData.description
-                            font.pixelSize: 11
-                            color: "#606060"
+                            font.pixelSize: Theme.fontSizeSmall
+                            color: Theme.textSecondary
                             elide: Text.ElideRight
                             maximumLineCount: 2
                             wrapMode: Text.Wrap
@@ -299,7 +299,7 @@ Item {
                     visible: historyList.count === 0
                     anchors.centerIn: parent
                     text: "暂无编辑历史"
-                    color: "#888"
+                    color: Theme.textSecondary
                 }
             }
         }
@@ -342,7 +342,7 @@ Item {
 
         background: Rectangle {
             radius: Theme.borderRadius
-            color: isSelected ? "#F0F5FF" : (cardHover.hovered ? "#FAFAFA" : "#FFFFFF")
+            color: isSelected ? Theme.bgSelected : (cardHover.hovered ? Theme.bgHover : Theme.bgChat)
             border.color: isSelected ? Theme.primary : Theme.border
             border.width: isSelected ? 2 : 1
         }
@@ -360,7 +360,7 @@ Item {
             // 设计图
             Rectangle {
                 width: 72; height: 72; radius: 36
-                color: "#E8E8E8"
+                color: Theme.bgPlaceholder
                 clip: true
                 Image {
                     anchors.fill: parent
@@ -372,7 +372,7 @@ Item {
                     anchors.centerIn: parent
                     text: characterName ? characterName[0] : "👤"
                     font.pixelSize: 24
-                    color: designImage ? "transparent" : "#0078D4"
+                    color: designImage ? "transparent" : Theme.primary
                     visible: !designImage
                 }
             }
@@ -390,14 +390,14 @@ Item {
                         Label {
                             id: refLabel
                             anchors.centerIn: parent
-                            text: refCode; color: "white"; font.pixelSize: 10
+                            text: refCode; color: Theme.textUser; font.pixelSize: Theme.fontSizeTiny
                         }
                     }
                 }
                 Label {
                     text: description || "暂无形象描述"
                     font.pixelSize: Theme.fontSizeSmall
-                    color: "#404040"
+                    color: Theme.textAI
                     elide: Text.ElideRight
                     maximumLineCount: 2
                     wrapMode: Text.Wrap

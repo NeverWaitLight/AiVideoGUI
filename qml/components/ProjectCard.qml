@@ -21,7 +21,7 @@ Pane {
 
     background: Rectangle {
         radius: Theme.cardRadius
-        color: card.isHovered ? "#F8F8F8" : "#FFFFFF"
+        color: card.isHovered ? Theme.bgHover : Theme.bgChat
         border.color: Theme.border
         border.width: 1
     }
@@ -35,8 +35,8 @@ Pane {
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 160
-            radius: 6
-            color: "#E8E8E8"
+            radius: Theme.radiusMedium
+            color: Theme.bgPlaceholder
             clip: true
 
             Image {
@@ -77,8 +77,8 @@ Pane {
 
             Label {
                 text: createdAt
-                font.pixelSize: 11
-                color: "#999"
+                font.pixelSize: Theme.fontSizeSmall
+                color: Theme.textSecondary
                 horizontalAlignment: Text.AlignRight
             }
         }
@@ -90,12 +90,12 @@ Pane {
 
             Button {
                 Layout.fillWidth: true
-                flat: true; text: "✏️"; font.pixelSize: 14
+                flat: true; text: "✏️"; font.pixelSize: Theme.fontSizeMedium
                 onClicked: card.editClicked(card.projectId)
             }
             Button {
                 Layout.fillWidth: true
-                flat: true; text: "🗑"; font.pixelSize: 14
+                flat: true; text: "🗑"; font.pixelSize: Theme.fontSizeMedium
                 onClicked: card.deleteClicked(card.projectId)
             }
         }

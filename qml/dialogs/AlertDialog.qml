@@ -22,7 +22,7 @@ Popup {
 
     background: Rectangle {
         radius: Theme.cardRadius
-        color: "#FFFFFF"
+        color: Theme.bgChat
         border.color: Theme.border
         border.width: 1
     }
@@ -92,7 +92,7 @@ Popup {
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                         font.pixelSize: Theme.fontSizeMedium
-                        color: "#FFFFFF"
+                        color: Theme.textUser
                     }
                 }
             }

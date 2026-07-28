@@ -5,8 +5,8 @@ import QtQuick.Layouts 1.15
 Rectangle {
     id: card
     height: statusStack.implicitHeight + 16
-    radius: 8
-    color: "#F8F8F8"
+    radius: Theme.borderRadius
+    color: Theme.bgHover
     border.color: Theme.border
     border.width: 1
 
@@ -47,13 +47,13 @@ Rectangle {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 120
-                radius: 6
-                color: "#333"
+                radius: Theme.radiusMedium
+                color: Theme.textAI
                 Label {
                     anchors.centerIn: parent
                     text: "▶"
                     font.pixelSize: 36
-                    color: "white"
+                    color: Theme.textUser
                 }
                 MouseArea {
                     anchors.fill: parent

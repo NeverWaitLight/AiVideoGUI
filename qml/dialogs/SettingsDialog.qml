@@ -20,7 +20,7 @@ Dialog {
     }
 
     header: Rectangle {
-        height: 56
+        height: Theme.headerHeight
         color: Theme.bgSidebar
         border.color: Theme.border
         border.width: 1
@@ -59,7 +59,7 @@ Dialog {
                 implicitWidth: 80
                 background: Rectangle {
                     radius: Theme.borderRadius
-                    color: parent.hovered ? "#F0F0F0" : "#FAFAFA"
+                    color: parent.hovered ? Theme.bubbleAI : Theme.bgChat
                     border.color: Theme.border
                     border.width: 1
                 }
@@ -487,7 +487,7 @@ Dialog {
                                 implicitWidth: 80
                                 background: Rectangle {
                                     radius: Theme.borderRadius
-                                    color: parent.hovered ? "#F0F0F0" : "#FAFAFA"
+                                    color: parent.hovered ? Theme.bubbleAI : Theme.bgChat
                                     border.color: Theme.border
                                     border.width: 1
                                 }

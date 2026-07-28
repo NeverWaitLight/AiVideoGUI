@@ -25,7 +25,7 @@ Popup {
 
     background: Rectangle {
         radius: Theme.cardRadius
-        color: "#FFFFFF"
+        color: Theme.bgChat
         border.color: Theme.border
         border.width: 1
     }
@@ -83,7 +83,7 @@ Popup {
 
                     background: Rectangle {
                         radius: Theme.borderRadius
-                        color: parent.hovered ? "#F0F0F0" : "#FFFFFF"
+                        color: parent.hovered ? Theme.bubbleAI : Theme.bgChat
                         border.color: Theme.border
                         border.width: 1
                     }
@@ -111,7 +111,7 @@ Popup {
                         color: {
                             var base = confirmDialog.dangerMode ? Theme.danger : Theme.primary
                             return parent.hovered
-                                ? (confirmDialog.dangerMode ? "#C0392B" : Theme.primaryHover)
+                                ? (confirmDialog.dangerMode ? Theme.dangerHover : Theme.primaryHover)
                                 : base
                         }
                     }
@@ -121,7 +121,7 @@ Popup {
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                         font.pixelSize: Theme.fontSizeMedium
-                        color: "#FFFFFF"
+                        color: Theme.textUser
                     }
                 }
             }

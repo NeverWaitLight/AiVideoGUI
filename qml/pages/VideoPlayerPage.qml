@@ -82,8 +82,8 @@ Item {
                     id: overlayLabel
                     anchors.centerIn: parent
                     text: _currentVideo.label || ""
-                    color: "white"
-                    font.pixelSize: 14
+                    color: Theme.textUser
+                    font.pixelSize: Theme.fontSizeMedium
                     font.bold: true
                 }
             }
@@ -92,8 +92,8 @@ Item {
             Label {
                 anchors.centerIn: parent
                 text: "没有可播放的分镜视频"
-                color: "#999"
-                font.pixelSize: 16
+                color: Theme.textSecondary
+                font.pixelSize: Theme.fontSizeLarge
                 visible: _playlist.length === 0
             }
         }
@@ -156,7 +156,7 @@ Item {
                 Button {
                     flat: true
                     text: "⏮"
-                    font.pixelSize: 16
+                    font.pixelSize: Theme.fontSizeLarge
                     enabled: bridge.videoPlayer.currentIndex > 0
                     onClicked: bridge.videoPlayer.play_previous()
                     ToolTip.text: "上一个"
@@ -167,7 +167,7 @@ Item {
                 Button {
                     flat: true
                     text: mediaPlayer.playbackState === MediaPlayer.PlayingState ? "⏸" : "▶"
-                    font.pixelSize: 18
+                    font.pixelSize: Theme.fontSizeTitle
                     enabled: _playlist.length > 0
                     onClicked: {
                         if (mediaPlayer.playbackState === MediaPlayer.PlayingState)
@@ -181,7 +181,7 @@ Item {
                 Button {
                     flat: true
                     text: "⏭"
-                    font.pixelSize: 16
+                    font.pixelSize: Theme.fontSizeLarge
                     enabled: bridge.videoPlayer.currentIndex < _playlist.length - 1
                     onClicked: bridge.videoPlayer.play_next()
                     ToolTip.text: "下一个"
@@ -191,8 +191,8 @@ Item {
                 // 当前时间
                 Label {
                     text: _formatTime(mediaPlayer.position)
-                    color: "white"
-                    font.pixelSize: 12
+                    color: Theme.textUser
+                    font.pixelSize: Theme.fontSizeSmall
                     Layout.preferredWidth: 40
                 }
 
@@ -210,8 +210,8 @@ Item {
                 // 总时长
                 Label {
                     text: _formatTime(mediaPlayer.duration)
-                    color: "white"
-                    font.pixelSize: 12
+                    color: Theme.textUser
+                    font.pixelSize: Theme.fontSizeSmall
                     Layout.preferredWidth: 40
                 }
 
@@ -219,7 +219,7 @@ Item {
                 Button {
                     flat: true
                     text: audioOutput.muted ? "🔇" : "🔊"
-                    font.pixelSize: 14
+                    font.pixelSize: Theme.fontSizeMedium
                     onClicked: audioOutput.muted = !audioOutput.muted
                 }
 

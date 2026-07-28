@@ -167,7 +167,7 @@ Item {
 
         background: Rectangle {
             radius: Theme.borderRadius
-            color: cardHover.hovered ? "#F8F8F8" : "#FFFFFF"
+            color: cardHover.hovered ? Theme.bgHover : Theme.bgChat
             border.color: Theme.border
         }
 
@@ -179,7 +179,7 @@ Item {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 120
-                radius: 4; color: "#E8E8E8"; clip: true
+                radius: Theme.radiusSmall; color: Theme.bgPlaceholder; clip: true
 
                 Image {
                     anchors.fill: parent
@@ -191,12 +191,12 @@ Item {
                 // 类型标签
                 Rectangle {
                     anchors.top: parent.top; anchors.right: parent.right
-                    width: typeLabel.implicitWidth + 8; height: 18; radius: 4
+                    width: typeLabel.implicitWidth + 8; height: 18; radius: Theme.radiusSmall
                     color: fileType === "video" ? Theme.primary : (fileType === "image" ? Theme.success : Theme.warning)
                     Label {
                         id: typeLabel; anchors.centerIn: parent
                         text: fileType === "video" ? "视频" : (fileType === "image" ? "图片" : "音频")
-                        color: "white"; font.pixelSize: 10
+                        color: Theme.textUser; font.pixelSize: Theme.fontSizeTiny
                     }
                 }
 
@@ -211,13 +211,13 @@ Item {
                 // 时长标签
                 Rectangle {
                     anchors.bottom: parent.bottom; anchors.right: parent.right
-                    width: durationLabel.implicitWidth + 8; height: 18; radius: 4
+                    width: durationLabel.implicitWidth + 8; height: 18; radius: Theme.radiusSmall
                     color: "#80000000"
                     visible: duration > 0
                     Label {
                         id: durationLabel; anchors.centerIn: parent
                         text: _formatDuration(duration)
-                        color: "white"; font.pixelSize: 10
+                        color: Theme.textUser; font.pixelSize: Theme.fontSizeTiny
                     }
                 }
             }
@@ -236,7 +236,7 @@ Item {
                 spacing: 4
                 Label {
                     text: _formatSize(fileSize)
-                    font.pixelSize: 10
+                    font.pixelSize: Theme.fontSizeTiny
                     color: Theme.textSecondary
                     Layout.fillWidth: true
                 }

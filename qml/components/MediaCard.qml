@@ -16,7 +16,7 @@ Pane {
 
     background: Rectangle {
         radius: Theme.borderRadius
-        color: card.isHovered ? "#F8F8F8" : "#FFFFFF"
+        color: card.isHovered ? Theme.bgHover : Theme.bgChat
         border.color: Theme.border
         border.width: 1
     }
@@ -28,8 +28,8 @@ Pane {
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 130
-            radius: 4
-            color: "#E8E8E8"
+            radius: Theme.radiusSmall
+            color: Theme.bgPlaceholder
             clip: true
 
             Image {
@@ -45,13 +45,13 @@ Pane {
                 anchors.right: parent.right
                 width: typeLabel.implicitWidth + 8
                 height: 18
-                radius: 4
+                radius: Theme.radiusSmall
                 color: fileType === "video" ? Theme.primary : (fileType === "image" ? Theme.success : Theme.warning)
                 Label {
                     id: typeLabel
                     anchors.centerIn: parent
                     text: fileType === "video" ? "视频" : (fileType === "image" ? "图片" : "音频")
-                    color: "white"; font.pixelSize: 10
+                    color: Theme.textUser; font.pixelSize: Theme.fontSizeTiny
                 }
             }
         }

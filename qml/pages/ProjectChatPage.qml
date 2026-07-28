@@ -99,7 +99,7 @@ Item {
                                 }
                                 Label {
                                     text: model.timeText || ""
-                                    font.pixelSize: 11
+                                    font.pixelSize: Theme.fontSizeSmall
                                     color: Theme.textSecondary
                                 }
                             }

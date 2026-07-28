@@ -163,7 +163,7 @@ Item {
 
                             background: Rectangle {
                                 radius: Theme.cardRadius
-                                color: "#FFFFFF"
+                                color: Theme.bgChat
                                 border.color: Theme.border
                             }
 
@@ -222,8 +222,8 @@ Item {
                             spacing: 16
 
                             Rectangle {
-                                width: 200; height: 112; radius: 6
-                                color: "#E8E8E8"; clip: true
+                                width: 200; height: 112; radius: Theme.radiusMedium
+                                color: Theme.bgPlaceholder; clip: true
                                 Image {
                                     anchors.fill: parent
                                     source: bridge.storyboard.curDesignImage ? "file:///" + bridge.storyboard.curDesignImage : ""
@@ -233,7 +233,7 @@ Item {
                                 Label {
                                     anchors.centerIn: parent
                                     text: "暂无设计图"
-                                    color: "#999"
+                                    color: Theme.textSecondary
                                     visible: !bridge.storyboard.curDesignImage
                                 }
                             }
@@ -268,7 +268,7 @@ Item {
                             Layout.fillWidth: true; Layout.preferredHeight: 120
                             Layout.leftMargin: 24; Layout.rightMargin: 24; clip: true
                             background: Rectangle {
-                                radius: Theme.borderRadius; color: "#FFFFFF"
+                                radius: Theme.borderRadius; color: Theme.bgChat
                                 border.color: visualEdit.activeFocus ? Theme.primary : Theme.border
                             }
                             TextArea {
@@ -291,7 +291,7 @@ Item {
                             Layout.fillWidth: true; Layout.preferredHeight: 80
                             Layout.leftMargin: 24; Layout.rightMargin: 24; clip: true
                             background: Rectangle {
-                                radius: Theme.borderRadius; color: "#FFFFFF"
+                                radius: Theme.borderRadius; color: Theme.bgChat
                                 border.color: dialogueEdit.activeFocus ? Theme.primary : Theme.border
                             }
                             TextArea {
@@ -327,7 +327,7 @@ Item {
                             Layout.fillWidth: true; Layout.preferredHeight: 60
                             Layout.leftMargin: 24; Layout.rightMargin: 24; clip: true
                             background: Rectangle {
-                                radius: Theme.borderRadius; color: "#FFFFFF"
+                                radius: Theme.borderRadius; color: Theme.bgChat
                                 border.color: notesEdit.activeFocus ? Theme.primary : Theme.border
                             }
                             TextArea {
@@ -377,7 +377,7 @@ Item {
                             Label {
                                 visible: _relatedVideos.length === 0
                                 text: "暂无关联视频"
-                                color: "#909090"
+                                color: Theme.textSecondary
                                 font.pixelSize: Theme.fontSizeSmall
                                 Layout.alignment: Qt.AlignHCenter
                                 Layout.topMargin: 8; Layout.bottomMargin: 8
@@ -429,7 +429,7 @@ Item {
                 font.family: "Consolas, monospace"
                 color: Theme.textAI
                 padding: 12
-                background: Rectangle { color: "#F5F5F5"; radius: Theme.borderRadius }
+                background: Rectangle { color: Theme.bgSidebar; radius: Theme.borderRadius }
             }
         }
     }
@@ -444,7 +444,7 @@ Item {
         padding: 8
         background: Rectangle {
             radius: Theme.borderRadius
-            color: "#FFFFFF"
+            color: Theme.bgChat
             border.color: Theme.border
         }
 
@@ -455,7 +455,7 @@ Item {
             // 封面标记
             Label {
                 text: "★"
-                color: "#f5a623"
+                color: Theme.warning
                 font.pixelSize: 16
                 visible: videoData.featured
             }
@@ -463,7 +463,7 @@ Item {
             // 缩略图
             Rectangle {
                 width: 64; height: 48; radius: 4
-                color: "#E0E0E0"
+                color: Theme.border
                 clip: true
                 Image {
                     anchors.fill: parent
@@ -484,13 +484,13 @@ Item {
                 spacing: 2
                 Label {
                     text: videoData.fileName || ""
-                    font.pixelSize: Theme.fontSizeSmall
+                    font.pixelSize: Theme.fontSizeLarge
                     font.bold: true
                 }
                 Label {
                     text: _formatVideoMeta(videoData)
-                    font.pixelSize: 11
-                    color: "#909090"
+                    font.pixelSize: Theme.fontSizeSmall
+                    color: Theme.textSecondary
                 }
             }
 

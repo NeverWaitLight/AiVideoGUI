@@ -47,7 +47,31 @@ class Theme(QObject):
     @Property(QColor, constant=True)
     def warning(self): return QColor("#E67E22")
 
+    @Property(QColor, constant=True)
+    def dangerHover(self): return QColor("#C0392B")
+
+    @Property(QColor, constant=True)
+    def bgHover(self): return QColor("#F8F8F8")
+
+    @Property(QColor, constant=True)
+    def bgPlaceholder(self): return QColor("#E8E8E8")
+
+    @Property(QColor, constant=True)
+    def bgSelected(self): return QColor("#F0F5FF")
+
+    @Property(QColor, constant=True)
+    def bgTag(self): return QColor("#E3F2FD")
+
+    @Property(QColor, constant=True)
+    def switchOff(self): return QColor("#D0D0D0")
+
+    @Property(QColor, constant=True)
+    def disabled(self): return QColor("#CCCCCC")
+
     # 字体大小
+    @Property(int, constant=True)
+    def fontSizeTiny(self): return 10
+
     @Property(int, constant=True)
     def fontSizeSmall(self): return 12
 
@@ -72,6 +96,12 @@ class Theme(QObject):
 
     @Property(int, constant=True)
     def headerHeight(self): return 56
+
+    @Property(int, constant=True)
+    def radiusSmall(self): return 4
+
+    @Property(int, constant=True)
+    def radiusMedium(self): return 6
 
     @Property(int, constant=True)
     def borderRadius(self): return 8

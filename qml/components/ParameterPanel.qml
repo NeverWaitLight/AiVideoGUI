@@ -31,8 +31,8 @@ Rectangle {
         background: Rectangle {
             implicitWidth: 80
             implicitHeight: 28
-            radius: 4
-            color: control.hovered ? "#F0F0F0" : "#FAFAFA"
+            radius: Theme.radiusSmall
+            color: control.hovered ? Theme.bubbleAI : Theme.bgChat
             border.color: Theme.border
             border.width: 1
         }
@@ -81,8 +81,8 @@ Rectangle {
             }
 
             background: Rectangle {
-                radius: 4
-                color: "#FFFFFF"
+                radius: Theme.radiusSmall
+                color: Theme.bgChat
                 border.color: Theme.border
                 border.width: 1
             }
@@ -102,8 +102,8 @@ Rectangle {
             }
 
             background: Rectangle {
-                color: parent.highlighted ? "#EBF3FC" : "transparent"
-                radius: 3
+                color: parent.highlighted ? Theme.bgTag : "transparent"
+                radius: Theme.radiusSmall
             }
         }
     }
@@ -117,7 +117,7 @@ Rectangle {
             x: sw.leftPadding
             y: (sw.height - height) / 2
             radius: 10
-            color: sw.checked ? Theme.primary : "#D0D0D0"
+            color: sw.checked ? Theme.primary : Theme.switchOff
             border.color: sw.checked ? Theme.primary : Theme.border
             border.width: 1
 
@@ -127,8 +127,8 @@ Rectangle {
                 width: 16
                 height: 16
                 radius: 8
-                color: "#FFFFFF"
-                border.color: "#E8E8E8"
+                color: Theme.bgChat
+                border.color: Theme.bgPlaceholder
                 border.width: 1
                 anchors.verticalCenter: parent.verticalCenter
                 x: sw.checked ? parent.width - width - 2 : 2
