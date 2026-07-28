@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
     "alembic>=1.13.0",
+    "dependency-injector>=4.49.1",
     "ffmpeg-python>=0.2.0",
     "loguru>=0.7.3",
     "pyqt6>=6.11.0",

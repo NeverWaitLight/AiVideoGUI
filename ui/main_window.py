@@ -20,25 +20,13 @@ from PyQt6.QtWidgets import (
     QLabel,
 )
 
-from config.manager import ConfigManager
-from service.character_service import CharacterService
-from service.chat_service import ChatService
-from service.image_service import ImageService
-from service.media_service import MediaService
-from service.story_outline_service import StoryOutlineService
-from service.project_service import ProjectService
-from service.screenplay_service import ScreenplayService
-from service.storyboard_service import StoryboardService
-from service.task_polling_service import TaskPollingService
-from service.text_model_service import TextModelService
-from service.video_service import VideoService, _PROVIDER_REGISTRY
-from storage.session_manager import SessionManager
+from di import ApplicationContainer
+from service.video_service import _PROVIDER_REGISTRY
 from storage.orm.base import init_engine, create_all_tables, ensure_columns
 from storage.repositories.conversation import ConversationRepository
 from storage.repositories.message import MessageRepository
 from storage.repositories.media import MediaRepository
 from utils import paths
-from utils.prompt_builder import VideoPromptBuilder
 from ui.character_page import CharacterPage
 from ui.chat_area import ChatArea
 from ui.media_library import MediaLibrary
@@ -74,8 +62,7 @@ class _BatchGenerationController(QObject):
     def __init__(
         self,
         shot_list: list[dict],
-        service: VideoService,
-        polling_service: TaskPollingService,
+        container: ApplicationContainer,
         provider_name: str,
         model_name: str,
         project,
@@ -84,8 +71,9 @@ class _BatchGenerationController(QObject):
     ):
         super().__init__(parent)
         self._shot_list = shot_list
-        self._service = service
-        self._polling = polling_service
+        self._container = container
+        self._service = container.video_service()
+        self._polling = container.task_polling_service()
         self._provider_name = provider_name
         self._model_name = model_name
         self._project = project
@@ -210,7 +198,7 @@ class _BatchGenerationController(QObject):
 
     def _on_task_failed(self, message_id: str, error: str) -> None:
         """任务失败回调，检查是否属于本批次。"""
-        session_manager = self._service._sm
+        session_manager = self._container.session_manager()
         msg_repo = session_manager.get_repo(MessageRepository)
         msg = msg_repo.get_by_id(message_id)
         if not msg or msg.task_id not in self._submitted_task_ids:
@@ -265,47 +253,25 @@ class MainWindow(QMainWindow):
         create_all_tables()
         ensure_columns()
 
-        # 创建 SessionManager
-        self._session_manager = SessionManager()
+        # ── 初始化依赖注入容器 ──
+        self._container = ApplicationContainer()
+        self._container.config.workspace_root.from_value(root)
+        self._container.config.config_path.from_value(os.path.join(data_dir, "config.json"))
 
-        self._config = ConfigManager(os.path.join(data_dir, "config.json"))
-
-        # VideoService 仅负责对话和任务提交
-        self._service = VideoService(self._session_manager, self._config)
-        self._chat_service = ChatService(self._config)
-
-        # 项目服务
-        self._project_service = ProjectService(self._session_manager, self._root)
-
-        # 故事大纲服务
-        self._story_outline_service = StoryOutlineService(self._session_manager)
-
-        # 剧本服务
-        self._screenplay_service = ScreenplayService(self._session_manager)
-
-        # 分镜服务
-        self._storyboard_service = StoryboardService(self._session_manager)
-
-        # 角色服务
-        self._character_service = CharacterService(self._session_manager)
-
-        # 文本模型服务
-        self._text_model_service = TextModelService(self._config)
-
-        # 图片生成服务
-        self._image_service = ImageService(self._config)
-
-        # 素材库服务
-        self._media_service = MediaService(self._session_manager, self._root)
-
-        # 全局任务轮询服务
-        self._polling_service = TaskPollingService(
-            session_manager=self._session_manager,
-            config=self._config,
-            workspace_root=self._root,
-            provider_registry=_PROVIDER_REGISTRY,
-        )
-        self._polling_service.set_media_service(self._media_service)
+        # ── 从容器获取 Service 实例 ──
+        self._session_manager = self._container.session_manager()
+        self._config = self._container.config_manager()
+        self._service = self._container.video_service()
+        self._chat_service = self._container.chat_service()
+        self._project_service = self._container.project_service()
+        self._story_outline_service = self._container.story_outline_service()
+        self._screenplay_service = self._container.screenplay_service()
+        self._storyboard_service = self._container.storyboard_service()
+        self._character_service = self._container.character_service()
+        self._text_model_service = self._container.text_model_service()
+        self._image_service = self._container.image_service()
+        self._media_service = self._container.media_service()
+        self._polling_service = self._container.task_polling_service()
 
         self._setup_ui()
         self._connect_signals()
@@ -1269,8 +1235,7 @@ class MainWindow(QMainWindow):
         # 批量生成控制器
         batch = _BatchGenerationController(
             shot_list=shot_list,
-            service=self._service,
-            polling_service=self._polling_service,
+            container=self._container,
             provider_name=provider_name,
             model_name=model_name,
             project=project,
