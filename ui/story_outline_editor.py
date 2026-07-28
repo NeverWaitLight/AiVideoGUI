@@ -31,6 +31,7 @@ from service.story_outline_service import StoryOutlineService
 from service.text_model_service import TextModelService
 from ui.page_header import PageHeader, create_icon_button
 from ui.styles import style_button
+from ui.widgets import AlertDialog
 from utils.time_formatter import format_timestamp, get_current_timestamp_ms
 
 class OptimizeWorker(QThread):
@@ -445,7 +446,7 @@ class StoryOutlineEditor(QWidget):
         content = self.text_edit.toPlainText().strip()
 
         if content == self._current_outline.content:
-            QMessageBox.information(self, "提示", "内容未发生变化")
+            AlertDialog.info(self, "提示", "内容未发生变化")
             return
 
         try:
@@ -454,12 +455,12 @@ class StoryOutlineEditor(QWidget):
             self._current_outline.updated_at = get_current_timestamp_ms()
             self._chat_panel.set_current_content(content)
 
-            QMessageBox.information(self, "成功", "大纲已保存")
+            AlertDialog.info(self, "成功", "大纲已保存")
             logger.info(f"保存大纲：{self._current_outline.id}")
 
         except Exception as e:
             logger.exception("保存大纲失败")
-            QMessageBox.critical(self, "错误", f"保存失败：{e}")
+            AlertDialog.error(self, "错误", f"保存失败：{e}")
 
     def _on_restore(self, history_id: int) -> None:
         """恢复历史版本。"""
@@ -482,12 +483,12 @@ class StoryOutlineEditor(QWidget):
             if self._current_project_id:
                 self.load_story_outline(self._current_project_id)
 
-            QMessageBox.information(self, "成功", "已恢复到历史版本")
+            AlertDialog.info(self, "成功", "已恢复到历史版本")
             logger.info(f"恢复大纲历史版本：{history_id}")
 
         except Exception as e:
             logger.exception("恢复历史版本失败")
-            QMessageBox.critical(self, "错误", f"恢复失败：{e}")
+            AlertDialog.error(self, "错误", f"恢复失败：{e}")
 
     def _on_next_step(self) -> None:
         """生成剧本。"""
@@ -515,7 +516,7 @@ class StoryOutlineEditor(QWidget):
                     logger.info(f"保存大纲：{self._current_outline.id}")
                 except Exception as e:
                     logger.exception("保存大纲失败")
-                    QMessageBox.critical(self, "错误", f"保存失败：{e}")
+                    AlertDialog.error(self, "错误", f"保存失败：{e}")
                     return
 
         self.next_step_clicked.emit(current_content)

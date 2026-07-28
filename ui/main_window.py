@@ -11,7 +11,6 @@ from datetime import datetime
 from PyQt6.QtCore import Qt, QTimer, QObject, pyqtSignal
 from PyQt6.QtWidgets import (
     QHBoxLayout,
-    QMessageBox,
     QSplitter,
     QWidget,
     QMainWindow,
@@ -40,7 +39,7 @@ from ui.storyboard_editor import StoryboardEditor
 from ui.sidebar import Sidebar
 from ui.styles import apply_fluent_theme
 from ui.tab_bar import TabBar
-from ui.widgets import VideoStatusCard
+from ui.widgets import VideoStatusCard, AlertDialog
 
 def _format_time(dt: datetime) -> str:
     """将 datetime 格式化为显示时间（今天 HH:MM，其他 MM-DD HH:MM）。"""
@@ -737,18 +736,18 @@ class MainWindow(QMainWindow):
                 self.story_outline_editor.hide()
                 self.screenplay_editor.show()
                 self.screenplay_editor.load_script(self._current_project_id, title, scenes)
-                QMessageBox.information(self, "成功", f"剧本生成完成，共 {len(scenes)} 场！")
+                AlertDialog.info(self, "成功", f"剧本生成完成，共 {len(scenes)} 场！")
             except Exception as e:
                 logger.exception("生成剧本后处理失败")
                 self._script_dialog.close()
-                QMessageBox.critical(self, "错误", f"剧本生成后处理失败：{e}")
+                AlertDialog.error(self, "错误", f"剧本生成后处理失败：{e}")
 
         def on_failed(error_msg: str):
             try:
                 self._script_dialog.close()
             except Exception:
                 pass
-            QMessageBox.critical(self, "生成失败", f"AI 生成剧本失败：{error_msg}")
+            AlertDialog.error(self, "生成失败", f"AI 生成剧本失败：{error_msg}")
 
         worker = ScriptGenerateWorker(self._text_model_service, outline_content)
         worker.finished.connect(on_success)
@@ -766,7 +765,7 @@ class MainWindow(QMainWindow):
         # 获取剧本内容（合并所有场次）
         scenes = self._screenplay_service.list_scenes(project_id)
         if not scenes:
-            QMessageBox.warning(self, "错误", "剧本中没有场次")
+            AlertDialog.warning(self, "错误", "剧本中没有场次")
             return
 
         # 将所有场次合并为完整剧本文本
@@ -847,18 +846,18 @@ class MainWindow(QMainWindow):
                 self.storyboard_editor.show()
                 self.storyboard_editor.load_project(project_id, shots)
                 char_info = f"，{len(characters)} 个角色" if characters else ""
-                QMessageBox.information(self, "成功", f"分镜生成完成，共 {len(shots)} 个镜头{char_info}！")
+                AlertDialog.info(self, "成功", f"分镜生成完成，共 {len(shots)} 个镜头{char_info}！")
             except Exception as e:
                 logger.exception("生成分镜后处理失败")
                 self._storyboard_dialog.close()
-                QMessageBox.critical(self, "错误", f"分镜生成后处理失败：{e}")
+                AlertDialog.error(self, "错误", f"分镜生成后处理失败：{e}")
 
         def on_failed(error_msg: str):
             try:
                 self._storyboard_dialog.close()
             except Exception:
                 pass
-            QMessageBox.critical(self, "生成失败", f"AI 生成分镜失败：{error_msg}")
+            AlertDialog.error(self, "生成失败", f"AI 生成分镜失败：{error_msg}")
 
         worker = StoryboardGenerateWorker(self._text_model_service, script_content)
         worker.finished.connect(on_success)
@@ -903,11 +902,11 @@ class MainWindow(QMainWindow):
         """预览将发送给万象的请求参数。"""
         storyboard = self._storyboard_service.get_storyboard(storyboard_id)
         if not storyboard:
-            QMessageBox.warning(self, "错误", "分镜不存在")
+            AlertDialog.warning(self, "错误", "分镜不存在")
             return
 
         if not storyboard.visual_content.strip():
-            QMessageBox.warning(self, "提示", "分镜画面内容为空")
+            AlertDialog.warning(self, "提示", "分镜画面内容为空")
             return
 
         # 获取场次数据（提供场景上下文）
@@ -940,19 +939,19 @@ class MainWindow(QMainWindow):
 
         project = self._project_service.get_project(project_id)
         if not project:
-            QMessageBox.warning(self, "错误", "项目不存在")
+            AlertDialog.warning(self, "错误", "项目不存在")
             return
 
         provider_name = self._config.settings.default_provider or "dashscope"
         provider_cfg = self._config.get_provider(provider_name)
         if not provider_cfg:
-            QMessageBox.warning(self, "配置错误", f"未配置 {provider_name}")
+            AlertDialog.warning(self, "配置错误", f"未配置 {provider_name}")
             return
 
         try:
             provider = self._service.get_provider(provider_name)
         except KeyError as e:
-            QMessageBox.warning(self, "配置错误", str(e))
+            AlertDialog.warning(self, "配置错误", str(e))
             return
 
         params = (provider_cfg.default_params if provider_cfg else {}).copy()
@@ -1005,7 +1004,7 @@ class MainWindow(QMainWindow):
         # 获取分镜数据
         storyboard = self._storyboard_service.get_storyboard(shot_id)
         if not storyboard:
-            QMessageBox.warning(self, "错误", "分镜不存在")
+            AlertDialog.warning(self, "错误", "分镜不存在")
             return
 
         # 获取场次数据（提供场景上下文）
@@ -1053,14 +1052,14 @@ class MainWindow(QMainWindow):
         # 获取项目属性（分辨率和比例）
         project = self._project_service.get_project(project_id)
         if not project:
-            QMessageBox.warning(self, "错误", "项目不存在")
+            AlertDialog.warning(self, "错误", "项目不存在")
             return
 
         # 获取默认视频生成配置
         provider_name = self._config.settings.default_provider or "dashscope"
         provider_cfg = self._config.get_provider(provider_name)
         if not provider_cfg or not provider_cfg.api_key:
-            QMessageBox.warning(self, "配置错误", f"未配置 {provider_name} 的 API Key")
+            AlertDialog.warning(self, "配置错误", f"未配置 {provider_name} 的 API Key")
             return
 
         model_name = provider_cfg.default_model if provider_cfg else "wan2.7-t2v"
@@ -1102,7 +1101,7 @@ class MainWindow(QMainWindow):
             mode_info = "参考生视频 (r2v)" if reference_image else "文生视频 (t2v)"
             ref_info = f"\n参考图：{reference_image}" if reference_image else ""
 
-            QMessageBox.information(
+            AlertDialog.info(
                 self,
                 "任务已提交",
                 f"分镜视频生成任务已提交 ({mode_info})\n场次：{scene_number}，镜头：{shot_number}\n保存路径：{save_path}\n分辨率：{project.resolution} ({project.aspect_ratio}){ref_info}\n任务ID：{task_id}\n\n视频生成完成后将自动下载到项目素材库"
@@ -1112,7 +1111,7 @@ class MainWindow(QMainWindow):
 
         except Exception as e:
             logger.exception("提交视频生成任务失败")
-            QMessageBox.critical(self, "错误", f"提交任务失败：{e}")
+            AlertDialog.error(self, "错误", f"提交任务失败：{e}")
 
     def _on_batch_video_generation(self, shot_list: list) -> None:
         """批量并行生成分镜视频。"""
@@ -1183,14 +1182,14 @@ class MainWindow(QMainWindow):
 
         project = self._project_service.get_project(project_id)
         if not project:
-            QMessageBox.warning(self, "错误", "项目不存在")
+            AlertDialog.warning(self, "错误", "项目不存在")
             self.storyboard_editor._generate_all_btn.setEnabled(True)
             return
 
         provider_name = self._config.settings.default_provider or "dashscope"
         provider_cfg = self._config.get_provider(provider_name)
         if not provider_cfg or not provider_cfg.api_key:
-            QMessageBox.warning(self, "配置错误", f"未配置 {provider_name} 的 API Key")
+            AlertDialog.warning(self, "配置错误", f"未配置 {provider_name} 的 API Key")
             self.storyboard_editor._generate_all_btn.setEnabled(True)
             return
 
@@ -1250,7 +1249,7 @@ class MainWindow(QMainWindow):
             dialog.close()
             self.storyboard_editor._generate_all_btn.setEnabled(True)
             title = "批量生成已停止" if stopped else "批量生成完成"
-            QMessageBox.information(
+            AlertDialog.info(
                 self, title,
                 f"共 {len(shot_list)} 个任务\n成功：{success}\n失败：{failed}"
             )
@@ -1270,7 +1269,7 @@ class MainWindow(QMainWindow):
 
         storyboard = self._storyboard_service.get_storyboard(storyboard_id)
         if not storyboard:
-            QMessageBox.warning(self, "错误", "分镜不存在")
+            AlertDialog.warning(self, "错误", "分镜不存在")
             self.storyboard_editor.detail_editor.set_design_image_result("")
             return
 
@@ -1286,7 +1285,7 @@ class MainWindow(QMainWindow):
             chars_without_design = [c for c in matched_chars if not c.design_image or not os.path.exists(c.design_image)]
             if chars_without_design:
                 char_names = "、".join([c.name for c in chars_without_design])
-                QMessageBox.warning(
+                AlertDialog.warning(
                     self,
                     "缺少角色设计图",
                     f"分镜中涉及的角色【{char_names}】还没有设计图。\n\n请先前往「角色管理」页面为这些角色生成设计图，再生成分镜设计图。"
@@ -1403,7 +1402,7 @@ class MainWindow(QMainWindow):
             except Exception:
                 pass
             self.storyboard_editor.detail_editor.set_design_image_result(image_path)
-            QMessageBox.information(self, "成功", "分镜设计图生成完成！")
+            AlertDialog.info(self, "成功", "分镜设计图生成完成！")
 
         def on_failed(error_msg: str):
             try:
@@ -1411,7 +1410,7 @@ class MainWindow(QMainWindow):
             except Exception:
                 pass
             self.storyboard_editor.detail_editor.set_design_image_result("")
-            QMessageBox.critical(self, "生成失败", f"AI 生成设计图失败：{error_msg}")
+            AlertDialog.error(self, "生成失败", f"AI 生成设计图失败：{error_msg}")
 
         def on_progress_update(text: str):
             status_label.setText(text)
@@ -1462,7 +1461,7 @@ class MainWindow(QMainWindow):
 
             if chars_without_design:
                 char_names = "、".join([c.name for c in chars_without_design])
-                QMessageBox.warning(
+                AlertDialog.warning(
                     self,
                     "缺少角色设计图",
                     f"分镜中涉及的角色【{char_names}】还没有设计图。\n\n请先前往「角色管理」页面为这些角色生成设计图，再批量生成分镜设计图。"
@@ -1609,7 +1608,7 @@ class MainWindow(QMainWindow):
                 pass
             self.storyboard_editor._generate_all_designs_btn.setEnabled(True)
             self.storyboard_editor._load_storyboards()  # 刷新列表显示新的设计图
-            QMessageBox.information(
+            AlertDialog.info(
                 self,
                 "批量生成完成",
                 f"成功生成 {success_count}/{total_count} 个分镜设计图。"
@@ -1621,7 +1620,7 @@ class MainWindow(QMainWindow):
             except Exception:
                 pass
             self.storyboard_editor._generate_all_designs_btn.setEnabled(True)
-            QMessageBox.critical(self, "批量生成失败", f"批量生成设计图失败：{error_msg}")
+            AlertDialog.error(self, "批量生成失败", f"批量生成设计图失败：{error_msg}")
 
         worker = BatchDesignImageWorker(
             self._text_model_service,
@@ -1644,12 +1643,12 @@ class MainWindow(QMainWindow):
 
         character = self._character_service.get_character(character_uuid)
         if not character:
-            QMessageBox.warning(self, "错误", "角色不存在")
+            AlertDialog.warning(self, "错误", "角色不存在")
             self.character_page.detail_page.set_design_image_result("")
             return
 
         if not character.description:
-            QMessageBox.warning(self, "提示", "请先编辑角色形象描述")
+            AlertDialog.warning(self, "提示", "请先编辑角色形象描述")
             self.character_page.detail_page.set_design_image_result("")
             return
 
@@ -1735,7 +1734,7 @@ class MainWindow(QMainWindow):
             except Exception:
                 pass
             self.character_page.detail_page.set_design_image_result(image_path)
-            QMessageBox.information(self, "成功", "角色设计图生成完成！")
+            AlertDialog.info(self, "成功", "角色设计图生成完成！")
 
         def on_failed(error_msg: str):
             try:
@@ -1743,7 +1742,7 @@ class MainWindow(QMainWindow):
             except Exception:
                 pass
             self.character_page.detail_page.set_design_image_result("")
-            QMessageBox.critical(self, "生成失败", f"AI 生成角色设计图失败：{error_msg}")
+            AlertDialog.error(self, "生成失败", f"AI 生成角色设计图失败：{error_msg}")
 
         def on_progress_update(text: str):
             status_label.setText(text)
@@ -1854,7 +1853,7 @@ class MainWindow(QMainWindow):
         provider_name = self._config.settings.default_provider or "dashscope"
         provider_cfg = self._config.get_provider(provider_name)
         if not provider_cfg or not provider_cfg.api_key:
-            QMessageBox.warning(
+            AlertDialog.warning(
                 self,
                 "未配置 API Key",
                 f"请先在设置中配置 {provider_name} 的 API Key。",
@@ -2081,7 +2080,7 @@ class MainWindow(QMainWindow):
         provider_name = self._config.settings.default_provider or "dashscope"
         provider_cfg = self._config.get_provider(provider_name)
         if not provider_cfg or not provider_cfg.api_key:
-            QMessageBox.warning(
+            AlertDialog.warning(
                 self,
                 "未配置 API Key",
                 f"请先在设置中配置 {provider_name} 的 API Key。",

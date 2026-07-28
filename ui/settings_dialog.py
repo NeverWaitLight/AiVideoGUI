@@ -13,7 +13,6 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
 )
 from qfluentwidgets import (
-    MessageBox,
     ComboBox,
     LineEdit,
     PushButton,
@@ -25,6 +24,7 @@ from config.manager import ConfigManager
 from models.provider_config import ProviderConfig
 from providers.dashscope_chat import DashScopeChatProvider
 from ui.styles import style_button
+from ui.widgets import AlertDialog
 from utils import paths
 
 # (显示文本, provider_name)
@@ -267,8 +267,7 @@ class SettingsDialog(FramelessDialog):
     def _fetch_chat_models(self) -> None:
         api_key = self.chat_api_key_input.text().strip()
         if not api_key:
-            w = MessageBox("缺少 API Key", "请先输入 API Key 再刷新模型列表。", self)
-            w.exec()
+            AlertDialog.warning(self, "缺少 API Key", "请先输入 API Key 再刷新模型列表。")
             return
 
         provider_name = self.chat_provider_combo.currentData()
@@ -283,13 +282,11 @@ class SettingsDialog(FramelessDialog):
             models = provider.list_available_models()
         except Exception as e:
             logger.warning(f"获取模型列表失败：{e}")
-            w = MessageBox("获取失败", f"无法获取模型列表：\n{e}", self)
-            w.exec()
+            AlertDialog.error(self, "获取失败", f"无法获取模型列表：\n{e}")
             return
 
         if not models:
-            w = MessageBox("无可用模型", "当前账号没有可用的模型。", self)
-            w.exec()
+            AlertDialog.warning(self, "无可用模型", "当前账号没有可用的模型。")
             return
 
         current = self.chat_model_combo.currentText()
@@ -301,8 +298,7 @@ class SettingsDialog(FramelessDialog):
             if i >= 0:
                 self.chat_model_combo.setCurrentIndex(i)
 
-        w = MessageBox("刷新成功", f"已获取 {len(models)} 个可用模型。", self)
-        w.exec()
+        AlertDialog.info(self, "刷新成功", f"已获取 {len(models)} 个可用模型。")
 
     # ───────── 图片模型 ─────────
 
@@ -334,8 +330,7 @@ class SettingsDialog(FramelessDialog):
         default_model = self.model_combo.currentText()
 
         if not api_key:
-            w = MessageBox("缺少 API Key", "请输入 API Key 后再保存。", self)
-            w.exec()
+            AlertDialog.warning(self, "缺少 API Key", "请输入 API Key 后再保存。")
             return
 
         # 保存视频 Provider 凭证

@@ -37,6 +37,7 @@ from ui.page_header import PageHeader, create_icon_button
 from ui.styles import style_button
 from service.screenplay_service import ScreenplayService
 from service.storyboard_service import StoryboardService
+from ui.widgets import AlertDialog
 
 _CN_DIGITS = ["零", "一", "二", "三", "四", "五", "六", "七", "八", "九"]
 
@@ -372,7 +373,7 @@ class StoryboardDetailEditor(QWidget):
         self._current_storyboard_id = storyboard_id
         storyboard = self._storyboard_service.get_storyboard(storyboard_id)
         if not storyboard:
-            QMessageBox.warning(self, "错误", "分镜不存在")
+            AlertDialog.warning(self, "错误", "分镜不存在")
             self.back_clicked.emit()
             return
 
@@ -505,7 +506,7 @@ class StoryboardDetailEditor(QWidget):
             self._load_video_list()
         except Exception as e:
             logger.exception("设置封面失败")
-            QMessageBox.critical(self, "错误", f"设置封面失败：{e}")
+            AlertDialog.error(self, "错误", f"设置封面失败：{e}")
 
     def _on_delete_video(self, file_id: str):
         """删除关联视频。"""
@@ -524,7 +525,7 @@ class StoryboardDetailEditor(QWidget):
             self._load_video_list()
         except Exception as e:
             logger.exception("删除视频失败")
-            QMessageBox.critical(self, "错误", f"删除失败：{e}")
+            AlertDialog.error(self, "错误", f"删除失败：{e}")
 
     def _on_preview_prompt(self):
         """查看提示词按钮被点击。"""
@@ -558,12 +559,12 @@ class StoryboardDetailEditor(QWidget):
                 sound_effect=self.sound_effect_edit.text(),
                 notes=self.notes_edit.toPlainText(),
             )
-            QMessageBox.information(self, "成功", "分镜保存成功！")
+            AlertDialog.info(self, "成功", "分镜保存成功！")
             self.storyboard_saved.emit()
             self.back_clicked.emit()
         except Exception as e:
             logger.exception("保存分镜失败")
-            QMessageBox.critical(self, "错误", f"保存失败：{e}")
+            AlertDialog.error(self, "错误", f"保存失败：{e}")
 
     def _on_upload_design_image(self):
         """上传分镜设计图"""
@@ -586,10 +587,10 @@ class StoryboardDetailEditor(QWidget):
                     storyboard_id=self._current_storyboard_id,
                     design_image=file_path,
                 )
-                QMessageBox.information(self, "成功", "设计图上传成功！")
+                AlertDialog.info(self, "成功", "设计图上传成功！")
             except Exception as e:
                 logger.exception("上传设计图失败")
-                QMessageBox.critical(self, "错误", f"上传失败：{e}")
+                AlertDialog.error(self, "错误", f"上传失败：{e}")
 
     def _on_generate_design_image(self):
         """AI 生成分镜设计图（发射信号由主窗口处理）。"""
@@ -598,11 +599,11 @@ class StoryboardDetailEditor(QWidget):
 
         storyboard = self._storyboard_service.get_storyboard(self._current_storyboard_id)
         if not storyboard:
-            QMessageBox.warning(self, "错误", "分镜不存在")
+            AlertDialog.warning(self, "错误", "分镜不存在")
             return
 
         if not storyboard.visual_content.strip():
-            QMessageBox.warning(self, "提示", "分镜画面内容为空，无法生成设计图")
+            AlertDialog.warning(self, "提示", "分镜画面内容为空，无法生成设计图")
             return
 
         self._generate_design_btn.setEnabled(False)
@@ -876,11 +877,11 @@ class StoryboardEditor(QWidget):
         """预览提示词（从分镜卡片触发）"""
         storyboard = self._storyboard_service.get_storyboard(storyboard_id)
         if not storyboard:
-            QMessageBox.warning(self, "错误", "分镜不存在")
+            AlertDialog.warning(self, "错误", "分镜不存在")
             return
 
         if not storyboard.visual_content.strip():
-            QMessageBox.warning(self, "提示", "分镜画面内容为空，无法生成提示词")
+            AlertDialog.warning(self, "提示", "分镜画面内容为空，无法生成提示词")
             return
 
         self.preview_prompt_requested.emit(storyboard_id, self._current_project_id)
@@ -891,13 +892,13 @@ class StoryboardEditor(QWidget):
 
         storyboard = self._storyboard_service.get_storyboard(storyboard_id)
         if not storyboard:
-            QMessageBox.warning(self, "错误", "分镜不存在")
+            AlertDialog.warning(self, "错误", "分镜不存在")
             return
 
         # 构造视频生成提示词（使用画面内容描述）
         prompt = storyboard.visual_content
         if not prompt.strip():
-            QMessageBox.warning(self, "提示", "分镜画面内容为空，无法生成视频")
+            AlertDialog.warning(self, "提示", "分镜画面内容为空，无法生成视频")
             return
 
         # 发送信号给主窗口处理视频生成（传递分镜设计图）
@@ -965,17 +966,17 @@ class StoryboardEditor(QWidget):
         try:
             for card in selected:
                 self._storyboard_service.delete_storyboard(card.storyboard.id)
-            QMessageBox.information(self, "成功", f"已删除 {count} 个分镜")
+            AlertDialog.info(self, "成功", f"已删除 {count} 个分镜")
             self._load_storyboards()
             logger.info(f"批量删除 {count} 个分镜")
         except Exception as e:
             logger.exception("批量删除分镜失败")
-            QMessageBox.critical(self, "错误", f"删除失败：{e}")
+            AlertDialog.error(self, "错误", f"删除失败：{e}")
 
     def _on_generate_all(self) -> None:
         """生成所有分镜的视频（并行提交）。"""
         if not hasattr(self, "_storyboard_cards") or not self._storyboard_cards:
-            QMessageBox.warning(self, "提示", "没有可生成的分镜")
+            AlertDialog.warning(self, "提示", "没有可生成的分镜")
             return
 
         if not self._current_project_id:
@@ -997,7 +998,7 @@ class StoryboardEditor(QWidget):
             })
 
         if not shot_list:
-            QMessageBox.warning(self, "提示", "所有分镜的画面内容均为空，无法生成")
+            AlertDialog.warning(self, "提示", "所有分镜的画面内容均为空，无法生成")
             return
 
         reply = QMessageBox.question(
@@ -1015,7 +1016,7 @@ class StoryboardEditor(QWidget):
     def _on_generate_all_designs(self) -> None:
         """生成所有分镜的设计图（逐个提交，异步处理）。"""
         if not hasattr(self, "_storyboard_cards") or not self._storyboard_cards:
-            QMessageBox.warning(self, "提示", "没有可生成的分镜")
+            AlertDialog.warning(self, "提示", "没有可生成的分镜")
             return
 
         if not self._current_project_id:
@@ -1040,7 +1041,7 @@ class StoryboardEditor(QWidget):
             })
 
         if not shot_list:
-            QMessageBox.warning(self, "提示", "所有分镜的画面内容均为空，无法生成设计图")
+            AlertDialog.warning(self, "提示", "所有分镜的画面内容均为空，无法生成设计图")
             return
 
         reply = QMessageBox.question(
@@ -1094,9 +1095,9 @@ class StoryboardEditor(QWidget):
             ts = self._history_timestamps[history_index]
             try:
                 self._storyboard_service.restore_from_history(self._current_project_id, ts)
-                QMessageBox.information(self, "成功", "历史版本恢复成功！")
+                AlertDialog.info(self, "成功", "历史版本恢复成功！")
                 self._load_storyboards()
                 self._load_history()
             except Exception as e:
                 logger.exception("恢复历史失败")
-                QMessageBox.critical(self, "错误", f"恢复失败：{e}")
+                AlertDialog.error(self, "错误", f"恢复失败：{e}")

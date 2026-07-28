@@ -37,6 +37,7 @@ from models.character import Character, CharacterHistory
 from service.character_service import CharacterService
 from ui.page_header import PageHeader
 from ui.styles import style_button
+from ui.widgets import AlertDialog
 
 class _CharacterEditDialog(QDialog):
     """角色编辑对话框。"""
@@ -109,10 +110,10 @@ class _CharacterEditDialog(QDialog):
         name = self._name_edit.text().strip()
         ref_code = self._ref_code_edit.text().strip()
         if not name:
-            QMessageBox.warning(self, "提示", "角色名不能为空")
+            AlertDialog.warning(self, "提示", "角色名不能为空")
             return
         if not ref_code:
-            QMessageBox.warning(self, "提示", "引用代号不能为空")
+            AlertDialog.warning(self, "提示", "引用代号不能为空")
             return
         self.accept()
 
@@ -304,10 +305,10 @@ class CharacterDetailPage(QWidget):
         name = self._name_edit.text().strip()
         ref_code = self._ref_code_edit.text().strip()
         if not name:
-            QMessageBox.warning(self, "提示", "角色名不能为空")
+            AlertDialog.warning(self, "提示", "角色名不能为空")
             return
         if not ref_code:
-            QMessageBox.warning(self, "提示", "引用代号不能为空")
+            AlertDialog.warning(self, "提示", "引用代号不能为空")
             return
         self._character_service.update_character(
             self._current_character.uuid,
@@ -320,13 +321,13 @@ class CharacterDetailPage(QWidget):
         self._current_character.description = self._description_text.toPlainText().strip()
         self._header.set_title(f"角色详情 — {name}")
         self.saved.emit()
-        QMessageBox.information(self, "成功", "角色信息已保存！")
+        AlertDialog.info(self, "成功", "角色信息已保存！")
 
     def load_character(self, character_uuid: str) -> None:
         """加载角色数据到详情页。"""
         char = self._character_service.get_character(character_uuid)
         if not char:
-            QMessageBox.warning(self, "错误", "角色不存在")
+            AlertDialog.warning(self, "错误", "角色不存在")
             self.back_clicked.emit()
             return
 
@@ -382,7 +383,7 @@ class CharacterDetailPage(QWidget):
         if not self._current_character:
             return
         if not self._current_character.description:
-            QMessageBox.warning(self, "提示", "请先编辑角色形象描述，再生成设计图")
+            AlertDialog.warning(self, "提示", "请先编辑角色形象描述，再生成设计图")
             return
         self.design_image_generation_requested.emit(
             self._current_character.uuid,
@@ -405,7 +406,7 @@ class CharacterDetailPage(QWidget):
         self._current_character.design_image = file_path
         self._update_design_preview(file_path)
         self.saved.emit()
-        QMessageBox.information(self, "成功", "设计图上传成功！")
+        AlertDialog.info(self, "成功", "设计图上传成功！")
 
 class CharacterCard(CardWidget):
     """角色横卡（约 400x120），点击卡片进入详情页。"""

@@ -31,6 +31,7 @@ from models.project import Project
 from service.project_service import ProjectService
 from service.media_service import MediaService
 from ui.styles import style_button
+from ui.widgets import AlertDialog
 
 def _format_time(dt: datetime) -> str:
     """将 datetime 格式化为显示时间。"""
@@ -323,7 +324,7 @@ class ProjectPage(QWidget):
             project = self._service.create_project(name, resolution, aspect_ratio)
             if project is None:
                 # 名称重复，提示用户
-                QMessageBox.warning(
+                AlertDialog.warning(
                     self,
                     "项目名称重复",
                     f"\"{name}\" 已存在"
@@ -349,7 +350,7 @@ class ProjectPage(QWidget):
             success = self._service.update_project(project_id, name, resolution, aspect_ratio)
             if not success:
                 # 名称重复，提示用户
-                QMessageBox.warning(
+                AlertDialog.warning(
                     self,
                     "项目名称重复",
                     f"\"{name}\" 已存在"
@@ -461,10 +462,10 @@ class ProjectPage(QWidget):
                     self.project_info_label.setText("")
                     self.new_conv_btn.setEnabled(False)
 
-                QMessageBox.information(self, "成功", f"项目 \"{project.name}\" 已删除")
+                AlertDialog.info(self, "成功", f"项目 \"{project.name}\" 已删除")
             except Exception as e:
                 logger.exception("删除项目失败")
-                QMessageBox.critical(self, "错误", f"删除项目失败：{e}")
+                AlertDialog.error(self, "错误", f"删除项目失败：{e}")
 
     def _on_new_conversation(self) -> None:
         """新建对话。"""

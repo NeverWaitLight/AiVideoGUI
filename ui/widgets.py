@@ -1,4 +1,4 @@
-"""自定义 UI 组件：消息气泡、视频卡片、状态标签。"""
+"""自定义 UI 组件：消息气泡、视频卡片、状态标签、弹出提示框。"""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from pathlib import Path
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QColor, QFont, QPainter, QPixmap
 from PyQt6.QtWidgets import (
+    QDialog,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -17,7 +18,13 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from qfluentwidgets import ProgressBar, PushButton, PrimaryPushButton, IndeterminateProgressBar
+from qfluentwidgets import (
+    IndeterminateProgressBar,
+    PrimaryPushButton,
+    ProgressBar,
+    PushButton,
+)
+from qframelesswindow import FramelessDialog
 
 from ui.styles import (
     COLOR_BUBBLE_AI,
@@ -425,3 +432,120 @@ class VideoStatusCard(QWidget):
         self._preview_container.show()
         self._preview_stack.setCurrentIndex(0)
         self._spinner.pause()
+
+
+class AlertDialog(FramelessDialog):
+    """无边框弹出提示框，底部通栏确认按钮。
+
+    静态方法：
+        AlertDialog.info(parent, title, content)
+        AlertDialog.warning(parent, title, content)
+        AlertDialog.error(parent, title, content)
+    """
+
+    _INFO = "info"
+    _WARNING = "warning"
+    _ERROR = "error"
+
+    _TYPE_CONFIG: dict[str, dict] = {
+        _INFO: {
+            "color": "#4A90D9",
+        },
+        _WARNING: {
+            "color": "#E67E22",
+        },
+        _ERROR: {
+            "color": "#E74C3C",
+        },
+    }
+
+    def __init__(
+        self,
+        title: str,
+        content: str,
+        alert_type: str = _INFO,
+        parent: QWidget | None = None,
+    ):
+        super().__init__(parent=parent)
+        self.titleBar.hide()
+        self.setWindowModality(Qt.WindowModality.ApplicationModal)
+
+        config = self._TYPE_CONFIG.get(alert_type, self._TYPE_CONFIG[self._INFO])
+        self._build_ui(title, content, config)
+
+        self.setFixedWidth(400)
+        self.adjustSize()
+
+    def _build_ui(self, title: str, content: str, config: dict) -> None:
+        root = QVBoxLayout(self)
+        root.setContentsMargins(28, 28, 28, 24)
+        root.setSpacing(20)
+
+        title_color = config["color"]
+        title_label = QLabel(title)
+        title_label.setStyleSheet(
+            f"font-size: 16px; font-weight: 600; color: {title_color}; "
+            f"background: transparent;"
+        )
+        root.addWidget(title_label)
+
+        content_label = QLabel(content)
+        content_label.setWordWrap(True)
+        content_label.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+        content_label.setStyleSheet(
+            "font-size: 14px; color: #333; line-height: 1.6; background: transparent;"
+        )
+        root.addWidget(content_label)
+
+        root.addSpacing(4)
+
+        ok_btn = PrimaryPushButton("确定")
+        ok_btn.setMinimumHeight(40)
+        ok_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        ok_btn.setStyleSheet(
+            f"""
+            PrimaryPushButton {{
+                background-color: {title_color};
+                border-radius: 6px;
+                font-size: 14px;
+                font-weight: 600;
+            }}
+            PrimaryPushButton:hover {{
+                background-color: {title_color};
+                opacity: 0.9;
+            }}
+            PrimaryPushButton:pressed {{
+                background-color: {title_color};
+                opacity: 0.8;
+            }}
+            """
+        )
+        ok_btn.clicked.connect(self.accept)
+        root.addWidget(ok_btn)
+
+        self.setStyleSheet(
+            """
+            AlertDialog {
+                background-color: #FFFFFF;
+                border: 1px solid #E8E8E8;
+                border-radius: 10px;
+            }
+            """
+        )
+
+    @classmethod
+    def info(cls, parent: QWidget | None, title: str, content: str) -> None:
+        dlg = cls(title, content, cls._INFO, parent)
+        dlg.exec()
+
+    @classmethod
+    def warning(cls, parent: QWidget | None, title: str, content: str) -> None:
+        dlg = cls(title, content, cls._WARNING, parent)
+        dlg.exec()
+
+    @classmethod
+    def error(cls, parent: QWidget | None, title: str, content: str) -> None:
+        dlg = cls(title, content, cls._ERROR, parent)
+        dlg.exec()

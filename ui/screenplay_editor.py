@@ -31,6 +31,7 @@ from models.scene import Scene
 from service.screenplay_service import ScreenplayService
 from ui.page_header import PageHeader, create_icon_button
 from ui.styles import style_button
+from ui.widgets import AlertDialog
 
 class SceneCard(CardWidget):
     """场次卡片：显示场次摘要信息。"""
@@ -303,11 +304,11 @@ class SceneDetailEditor(QWidget):
         content = self.content_edit.toPlainText().strip()
 
         if not location:
-            QMessageBox.warning(self, "提示", "请输入地点")
+            AlertDialog.warning(self, "提示", "请输入地点")
             return
 
         if not content:
-            QMessageBox.warning(self, "提示", "请输入场次内容")
+            AlertDialog.warning(self, "提示", "请输入场次内容")
             return
 
         try:
@@ -320,13 +321,13 @@ class SceneDetailEditor(QWidget):
                 content=content,
             )
 
-            QMessageBox.information(self, "成功", "场次已保存")
+            AlertDialog.info(self, "成功", "场次已保存")
             self.save_clicked.emit()
             logger.info(f"保存场次：{self._current_scene.id}")
 
         except Exception as e:
             logger.exception("保存场次失败")
-            QMessageBox.critical(self, "错误", f"保存失败：{e}")
+            AlertDialog.error(self, "错误", f"保存失败：{e}")
 
 class HistoryListItem(QWidget):
     """历史版本列表项（按保存时间戳分组）。"""
@@ -603,12 +604,12 @@ class ScreenplayEditor(QWidget):
         try:
             self._service.save_history(self._current_project_id)
             self._load_history()
-            QMessageBox.information(self, "成功", "历史版本已保存")
+            AlertDialog.info(self, "成功", "历史版本已保存")
             logger.info(f"保存剧本历史版本：项目 {self._current_project_id}")
 
         except Exception as e:
             logger.exception("保存历史版本失败")
-            QMessageBox.critical(self, "错误", f"保存失败：{e}")
+            AlertDialog.error(self, "错误", f"保存失败：{e}")
 
     def _on_restore(self, created_at: int) -> None:
         """恢复历史版本（按时间戳）。"""
@@ -631,12 +632,12 @@ class ScreenplayEditor(QWidget):
             # 重新加载剧本
             self.load_script(self._current_project_id)
 
-            QMessageBox.information(self, "成功", "已恢复到历史版本")
+            AlertDialog.info(self, "成功", "已恢复到历史版本")
             logger.info(f"恢复剧本历史版本：时间戳 {created_at}")
 
         except Exception as e:
             logger.exception("恢复历史版本失败")
-            QMessageBox.critical(self, "错误", f"恢复失败：{e}")
+            AlertDialog.error(self, "错误", f"恢复失败：{e}")
 
     def _on_generate_storyboard(self) -> None:
         """生成分镜按钮点击。"""
@@ -646,7 +647,7 @@ class ScreenplayEditor(QWidget):
         # 检查是否有场次
         scenes = self._service.list_scenes(self._current_project_id)
         if not scenes:
-            QMessageBox.warning(self, "提示", "剧本中没有场次，无法生成分镜")
+            AlertDialog.warning(self, "提示", "剧本中没有场次，无法生成分镜")
             return
 
         # 发送信号给主窗口处理

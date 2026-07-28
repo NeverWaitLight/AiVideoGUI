@@ -13,7 +13,6 @@ from PyQt6.QtWidgets import (
     QDialog,
     QHBoxLayout,
     QLabel,
-    QMessageBox,
     QVBoxLayout,
     QWidget,
     QFormLayout,
@@ -36,6 +35,7 @@ from service.project_service import ProjectService
 from service.media_service import MediaService
 from ui.page_header import PageTitleBar
 from ui.styles import style_button
+from ui.widgets import AlertDialog
 from utils.time_format import format_timestamp_short
 
 def _format_time(timestamp: int) -> str:
@@ -415,7 +415,7 @@ class ProjectGridPage(QWidget):
             )
             if project is None:
                 # 名称重复，提示用户
-                QMessageBox.warning(
+                AlertDialog.warning(
                     self,
                     "项目名称重复",
                     f"\"{data['name']}\" 已存在"
@@ -441,7 +441,7 @@ class ProjectGridPage(QWidget):
             )
             if not success:
                 # 名称重复，提示用户
-                QMessageBox.warning(
+                AlertDialog.warning(
                     self,
                     "项目名称重复",
                     f"\"{data['name']}\" 已存在"
@@ -529,8 +529,8 @@ class ProjectGridPage(QWidget):
         if dialog.exec() == QDialog.DialogCode.Accepted:
             try:
                 self._service.delete_project(project_id)
-                QMessageBox.information(self, "成功", f"项目 \"{project.name}\" 已删除")
+                AlertDialog.info(self, "成功", f"项目 \"{project.name}\" 已删除")
                 self.load_projects()
             except Exception as e:
                 logger.exception("删除项目失败")
-                QMessageBox.critical(self, "错误", f"删除项目失败：{e}")
+                AlertDialog.error(self, "错误", f"删除项目失败：{e}")
