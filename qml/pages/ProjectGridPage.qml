@@ -5,7 +5,7 @@ import "../components" as Comp
 import "../dialogs" as Dialogs
 
 Item {
-    id: projectGrid
+    id: projectGridPage
 
     signal projectSelected(int projectId)
 
@@ -25,40 +25,41 @@ Item {
             }
         }
 
-        ScrollView {
+        Comp.CardGrid {
+            id: projectGrid
             Layout.fillWidth: true
             Layout.fillHeight: true
-            clip: true
+            visible: projectRepeater.count > 0
+            cardHeight: 280
 
-            GridView {
-                id: grid
-                cellWidth: 240
-                cellHeight: 300
+            Repeater {
+                id: projectRepeater
                 model: bridge.projects.gridModel
                 delegate: Comp.ProjectCard {
-                    width: grid.cellWidth - 20
+                    width: projectGrid.cardWidth
+                    height: projectGrid.cardHeight
                     projectId: model.projectId
                     projectName: model.name
                     resolution: model.resolution
                     aspectRatio: model.aspectRatio
                     coverPath: model.coverPath
                     createdAt: model.createdAt || ""
-                    onClicked: projectGrid.projectSelected(projectId)
+                    onClicked: projectGridPage.projectSelected(projectId)
                     onEditClicked: projectDialog.openForEdit(projectId)
                     onDeleteClicked: confirmDialog.confirmDelete("项目", function() {
                         bridge.projects.delete_project(projectId)
                     })
                 }
-
-                // 空状态
-                Comp.EmptyState {
-                    visible: grid.count === 0
-                    anchors.centerIn: parent
-                    text: "还没有项目，点击右上角创建"
-                    buttonText: "新建项目"
-                    onButtonClicked: projectDialog.openForCreate()
-                }
             }
+        }
+
+        Comp.EmptyState {
+            visible: projectRepeater.count === 0
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            text: "还没有项目，点击右上角创建"
+            buttonText: "新建项目"
+            onButtonClicked: projectDialog.openForCreate()
         }
     }
 

@@ -34,64 +34,42 @@ Item {
             onBackClicked: detailPage.backClicked()
         }
 
-        ScrollView {
+        Comp.CardGrid {
+            id: moduleGrid
             Layout.fillWidth: true
             Layout.fillHeight: true
-            clip: true
-            contentWidth: availableWidth
+            cardHeight: 140
 
-            Item {
-                id: gridContainer
-                width: parent.width
-                height: moduleFlow.y + moduleFlow.height + 20
-
-                readonly property int columns: 3
-                readonly property real sideMargin: 30
-                readonly property real cardSpacing: 24
-                readonly property real cardWidth: (width - 2 * sideMargin - (columns - 1) * cardSpacing) / columns
-                readonly property real cardHeight: 140
-                readonly property real topMargin: 20
-
-                Flow {
-                    id: moduleFlow
-                    x: gridContainer.sideMargin
-                    y: gridContainer.topMargin
-                    width: gridContainer.width - 2 * gridContainer.sideMargin
-                    spacing: gridContainer.cardSpacing
-                    flow: Flow.LeftToRight
-
-                    ModuleCard {
-                        visible: _hasVideos
-                        width: gridContainer.cardWidth
-                        height: gridContainer.cardHeight
-                        title: "播放"; icon: "▶️"; description: "播放项目分镜视频"; moduleName: "player"
-                    }
-                    ModuleCard {
-                        width: gridContainer.cardWidth
-                        height: gridContainer.cardHeight
-                        title: "大纲"; icon: "📝"; description: "编辑故事大纲"; moduleName: "outline"
-                    }
-                    ModuleCard {
-                        width: gridContainer.cardWidth
-                        height: gridContainer.cardHeight
-                        title: "剧本"; icon: "📋"; description: "编辑剧本场次"; moduleName: "screenplay"
-                    }
-                    ModuleCard {
-                        width: gridContainer.cardWidth
-                        height: gridContainer.cardHeight
-                        title: "分镜"; icon: "🎬"; description: "编辑分镜头脚本"; moduleName: "storyboard"
-                    }
-                    ModuleCard {
-                        width: gridContainer.cardWidth
-                        height: gridContainer.cardHeight
-                        title: "角色"; icon: "👤"; description: "管理角色形象"; moduleName: "character"
-                    }
-                    ModuleCard {
-                        width: gridContainer.cardWidth
-                        height: gridContainer.cardHeight
-                        title: "素材"; icon: "📂"; description: "管理项目素材"; moduleName: "media"
-                    }
-                }
+            ModuleCard {
+                visible: _hasVideos
+                width: moduleGrid.cardWidth
+                height: moduleGrid.cardHeight
+                title: "播放"; icon: "▶️"; description: "播放项目分镜视频"; moduleName: "player"
+            }
+            ModuleCard {
+                width: moduleGrid.cardWidth
+                height: moduleGrid.cardHeight
+                title: "大纲"; icon: "📝"; description: "编辑故事大纲"; moduleName: "outline"
+            }
+            ModuleCard {
+                width: moduleGrid.cardWidth
+                height: moduleGrid.cardHeight
+                title: "剧本"; icon: "📋"; description: "编辑剧本场次"; moduleName: "screenplay"
+            }
+            ModuleCard {
+                width: moduleGrid.cardWidth
+                height: moduleGrid.cardHeight
+                title: "分镜"; icon: "🎬"; description: "编辑分镜头脚本"; moduleName: "storyboard"
+            }
+            ModuleCard {
+                width: moduleGrid.cardWidth
+                height: moduleGrid.cardHeight
+                title: "角色"; icon: "👤"; description: "管理角色形象"; moduleName: "character"
+            }
+            ModuleCard {
+                width: moduleGrid.cardWidth
+                height: moduleGrid.cardHeight
+                title: "素材"; icon: "📂"; description: "管理项目素材"; moduleName: "media"
             }
         }
     }

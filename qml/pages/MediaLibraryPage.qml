@@ -61,48 +61,54 @@ Item {
             }
         }
 
-        GridView {
-            id: gridView
+        Comp.CardGrid {
+            id: mediaGrid
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.margins: 16
-            cellWidth: 196
-            cellHeight: 230
-            model: bridge.media.model
-            clip: true
+            visible: mediaRepeater.count > 0
+            sideMargin: 16
+            cardSpacing: 16
+            cardHeight: 210
+            columns: 4
 
-            delegate: MediaCardDelegate {
-                width: gridView.cellWidth - 12
-                fileId: model.fileId || ""
-                fileName: model.fileName || ""
-                fileType: model.fileType || ""
-                filePath: model.filePath || ""
-                thumbnailPath: model.thumbnailPath || ""
-                fileSize: model.fileSize || 0
-                duration: model.duration || 0
-                videoWidth: model.videoWidth || 0
-                videoHeight: model.videoHeight || 0
-                onPlayRequested: {
-                    if (filePath) bridge.play_video(filePath)
-                }
-                onDeleteRequested: {
-                    confirmDialog.confirm(
-                        "确定要删除「" + fileName + "」吗？",
-                        function() { bridge.media.delete_file(fileId) }
-                    )
-                }
-                onOpenFolderRequested: {
-                    if (filePath) bridge.open_folder(filePath)
+            Repeater {
+                id: mediaRepeater
+                model: bridge.media.model
+                delegate: MediaCardDelegate {
+                    width: mediaGrid.cardWidth
+                    height: mediaGrid.cardHeight
+                    fileId: model.fileId || ""
+                    fileName: model.fileName || ""
+                    fileType: model.fileType || ""
+                    filePath: model.filePath || ""
+                    thumbnailPath: model.thumbnailPath || ""
+                    fileSize: model.fileSize || 0
+                    duration: model.duration || 0
+                    videoWidth: model.videoWidth || 0
+                    videoHeight: model.videoHeight || 0
+                    onPlayRequested: {
+                        if (filePath) bridge.play_video(filePath)
+                    }
+                    onDeleteRequested: {
+                        confirmDialog.confirm(
+                            "确定要删除「" + fileName + "」吗？",
+                            function() { bridge.media.delete_file(fileId) }
+                        )
+                    }
+                    onOpenFolderRequested: {
+                        if (filePath) bridge.open_folder(filePath)
+                    }
                 }
             }
+        }
 
-            Comp.EmptyState {
-                visible: gridView.count === 0
-                anchors.centerIn: parent
-                text: "素材库为空"
-                buttonText: "导入文件"
-                onButtonClicked: fileDialog.open()
-            }
+        Comp.EmptyState {
+            visible: mediaRepeater.count === 0
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            text: "素材库为空"
+            buttonText: "导入文件"
+            onButtonClicked: fileDialog.open()
         }
     }
 
