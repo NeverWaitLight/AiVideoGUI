@@ -106,13 +106,6 @@ Item {
                             anchors.margins: 20
                             spacing: 12
 
-                            Label {
-                                text: "场次列表"
-                                font.pixelSize: Theme.fontSizeMedium
-                                font.bold: true
-                                color: Theme.textAI
-                            }
-
                             ScrollView {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
@@ -363,15 +356,6 @@ Item {
                                     Layout.fillWidth: true
                                 }
                             }
-                        }
-
-                        // 场次内容
-                        Label {
-                            text: "场次内容"
-                            font.pixelSize: Theme.fontSizeMedium
-                            font.bold: true
-                            color: Theme.textAI
-                            Layout.leftMargin: 24
                         }
 
                         ScrollView {

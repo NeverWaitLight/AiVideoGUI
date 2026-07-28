@@ -44,13 +44,6 @@ Item {
                 spacing: 20
                 anchors.margins: 30
 
-                Label {
-                    text: "项目模块"
-                    font.pixelSize: Theme.fontSizeLarge
-                    font.bold: true
-                    color: Theme.textAI
-                }
-
                 GridLayout {
                     columns: 3
                     columnSpacing: 20

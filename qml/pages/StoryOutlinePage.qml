@@ -143,13 +143,6 @@ Item {
                     anchors.margins: 20
                     spacing: 12
 
-                    Label {
-                        text: "大纲内容"
-                        font.pixelSize: Theme.fontSizeMedium
-                        font.bold: true
-                        color: Theme.textAI
-                    }
-
                     ScrollView {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
