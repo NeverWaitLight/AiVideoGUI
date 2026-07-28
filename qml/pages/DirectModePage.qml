@@ -10,6 +10,11 @@ Item {
         anchors.fill: parent
         orientation: Qt.Horizontal
 
+        handle: Rectangle {
+            implicitWidth: 1
+            color: Theme.border
+        }
+
         // 左侧边栏
         Comp.Sidebar {
             id: sidebar

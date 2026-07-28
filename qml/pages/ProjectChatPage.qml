@@ -19,6 +19,11 @@ Item {
         anchors.fill: parent
         orientation: Qt.Horizontal
 
+        handle: Rectangle {
+            implicitWidth: 1
+            color: Theme.border
+        }
+
         // 项目对话列表
         Pane {
             SplitView.preferredWidth: 260

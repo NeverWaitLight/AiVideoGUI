@@ -27,23 +27,28 @@ class ConfigManager:
             logger.error(f"读取配置失败：{e}")
             return
 
+        _renamed = {"bailian": "dashscope", "bailian_image": "dashscope_image"}
+
         for item in data.get("providers", []):
+            name = item.get("provider_name", "")
+            name = _renamed.get(name, name)
             cfg = ProviderConfig(
-                provider_name=item.get("provider_name", ""),
+                provider_name=name,
                 api_key=item.get("api_key", ""),
                 base_url=item.get("base_url", ""),
                 default_model=item.get("default_model", ""),
                 default_params=item.get("default_params", {}),
             )
-            if cfg.provider_name:
+            if cfg.provider_name and cfg.provider_name not in self._providers:
                 self._providers[cfg.provider_name] = cfg
 
         s = data.get("app_settings", {})
         self._settings = AppSettings(
-            default_provider=s.get("default_provider", ""),
-            default_chat_provider=s.get("default_chat_provider", ""),
-            default_image_provider=s.get("default_image_provider", ""),
+            default_provider=_renamed.get(s.get("default_provider", ""), s.get("default_provider", "")),
+            default_chat_provider=_renamed.get(s.get("default_chat_provider", ""), s.get("default_chat_provider", "")),
+            default_image_provider=_renamed.get(s.get("default_image_provider", ""), s.get("default_image_provider", "")),
             theme=s.get("theme", "light"),
+            workspace_dir=s.get("workspace_dir", ""),
         )
         logger.info(f"配置已加载，providers={list(self._providers.keys())}")
 
@@ -64,6 +69,7 @@ class ConfigManager:
                 "default_chat_provider": self._settings.default_chat_provider,
                 "default_image_provider": self._settings.default_image_provider,
                 "theme": self._settings.theme,
+                "workspace_dir": self._settings.workspace_dir,
             },
         }
         os.makedirs(os.path.dirname(self._path), exist_ok=True)

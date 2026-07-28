@@ -91,6 +91,11 @@ Item {
                     Layout.fillHeight: true
                     orientation: Qt.Horizontal
 
+                    handle: Rectangle {
+                        implicitWidth: 1
+                        color: Theme.border
+                    }
+
                     // 左侧：场次列表
                     Item {
                         SplitView.fillWidth: true

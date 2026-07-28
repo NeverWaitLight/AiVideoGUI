@@ -9,3 +9,4 @@ class AppSettings:
     default_chat_provider: str = ""
     default_image_provider: str = ""
     theme: str = "light"
+    workspace_dir: str = ""

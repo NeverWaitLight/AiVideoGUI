@@ -128,6 +128,11 @@ Item {
             Layout.fillHeight: true
             orientation: Qt.Horizontal
 
+            handle: Rectangle {
+                implicitWidth: 1
+                color: Theme.border
+            }
+
             // 左侧：大纲编辑区
             Item {
                 SplitView.fillWidth: true

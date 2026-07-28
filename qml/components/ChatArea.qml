@@ -73,10 +73,30 @@ Rectangle {
                 }
 
                 Button {
+                    id: sendBtn
                     text: "发送"
-                    highlighted: true
                     enabled: inputArea.text.trim().length > 0
                     onClicked: sendMessage()
+
+                    background: Rectangle {
+                        implicitWidth: 64
+                        implicitHeight: 32
+                        radius: 4
+                        color: sendBtn.enabled
+                               ? (sendBtn.hovered ? Theme.primaryHover : Theme.primary)
+                               : "#CCCCCC"
+                        border.width: 0
+
+                        Behavior on color { ColorAnimation { duration: 120 } }
+                    }
+
+                    contentItem: Text {
+                        text: sendBtn.text
+                        font.pixelSize: Theme.fontSizeNormal
+                        color: "#FFFFFF"
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
                 }
             }
         }
