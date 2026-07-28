@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "../components" as Comp
 
 Dialog {
     id: settingsDialog
@@ -245,7 +246,7 @@ Dialog {
                             font.pixelSize: Theme.fontSizeNormal
                             color: Theme.textSecondary
                         }
-                        TextField {
+                        Comp.AppTextField {
                             id: videoApiKeyField
                             echoMode: TextInput.Password
                             Layout.fillWidth: true
@@ -257,7 +258,7 @@ Dialog {
                             font.pixelSize: Theme.fontSizeNormal
                             color: Theme.textSecondary
                         }
-                        TextField {
+                        Comp.AppTextField {
                             id: videoBaseUrlField
                             Layout.fillWidth: true
                             placeholderText: "API 基础地址（可选）"
@@ -323,7 +324,7 @@ Dialog {
                             font.pixelSize: Theme.fontSizeNormal
                             color: Theme.textSecondary
                         }
-                        TextField {
+                        Comp.AppTextField {
                             id: chatApiKeyField
                             echoMode: TextInput.Password
                             Layout.fillWidth: true
@@ -335,7 +336,7 @@ Dialog {
                             font.pixelSize: Theme.fontSizeNormal
                             color: Theme.textSecondary
                         }
-                        TextField {
+                        Comp.AppTextField {
                             id: chatBaseUrlField
                             Layout.fillWidth: true
                             placeholderText: "API 基础地址（可选）"
@@ -346,7 +347,7 @@ Dialog {
                             font.pixelSize: Theme.fontSizeNormal
                             color: Theme.textSecondary
                         }
-                        TextField {
+                        Comp.AppTextField {
                             id: chatModelField
                             Layout.fillWidth: true
                             placeholderText: "模型名称（可选）"
@@ -401,7 +402,7 @@ Dialog {
                             font.pixelSize: Theme.fontSizeNormal
                             color: Theme.textSecondary
                         }
-                        TextField {
+                        Comp.AppTextField {
                             id: imageApiKeyField
                             echoMode: TextInput.Password
                             Layout.fillWidth: true
@@ -413,7 +414,7 @@ Dialog {
                             font.pixelSize: Theme.fontSizeNormal
                             color: Theme.textSecondary
                         }
-                        TextField {
+                        Comp.AppTextField {
                             id: imageBaseUrlField
                             Layout.fillWidth: true
                             placeholderText: "API 基础地址（可选）"
@@ -424,7 +425,7 @@ Dialog {
                             font.pixelSize: Theme.fontSizeNormal
                             color: Theme.textSecondary
                         }
-                        TextField {
+                        Comp.AppTextField {
                             id: imageModelField
                             Layout.fillWidth: true
                             placeholderText: "模型名称（可选）"
@@ -472,7 +473,7 @@ Dialog {
                             spacing: 8
                             Layout.fillWidth: true
 
-                            TextField {
+                            Comp.AppTextField {
                                 id: workspaceDirField
                                 text: workspacePath
                                 Layout.fillWidth: true

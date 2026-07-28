@@ -2,6 +2,7 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import QtQuick.Dialogs as QtDialogs
+import "../components" as Comp
 
 Dialog {
     id: projectDialog
@@ -24,7 +25,7 @@ Dialog {
         // 项目名称
         RowLayout {
             Label { text: "项目名称:"; Layout.preferredWidth: 80 }
-            TextField { id: nameField; Layout.fillWidth: true; placeholderText: "输入项目名称" }
+            Comp.AppTextField { id: nameField; Layout.fillWidth: true; placeholderText: "输入项目名称" }
         }
 
         // 封面图

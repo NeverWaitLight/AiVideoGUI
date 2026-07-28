@@ -44,7 +44,7 @@ Item {
                 }
             }
 
-            TextField {
+            Comp.AppTextField {
                 id: searchInput
                 placeholderText: "搜索文件名..."
                 implicitWidth: 180

@@ -160,14 +160,14 @@ Item {
                 rowSpacing: 12
 
                 Label { text: "角色名："; font.pixelSize: Theme.fontSizeMedium }
-                TextField {
+                Comp.AppTextField {
                     id: nameInput
                     placeholderText: "角色名字"
                     Layout.fillWidth: true
                 }
 
                 Label { text: "引用代号："; font.pixelSize: Theme.fontSizeMedium }
-                TextField {
+                Comp.AppTextField {
                     id: refCodeInput
                     placeholderText: "如 CHAR_A"
                     Layout.fillWidth: true
@@ -195,6 +195,7 @@ Item {
                     font.pixelSize: Theme.fontSizeSmall
                     padding: 12
                     color: Theme.textAI
+                    background: Item {}
                 }
             }
 

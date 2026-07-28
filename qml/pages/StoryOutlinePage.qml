@@ -162,6 +162,7 @@ Item {
                             font.pixelSize: Theme.fontSizeMedium
                             padding: 12
                             color: Theme.textAI
+                            background: Item {}
                             onTextChanged: {
                                 if (text !== bridge.storyOutline.content) {
                                     _dirty = true
@@ -295,6 +296,7 @@ Item {
                                     wrapMode: TextArea.Wrap
                                     font.pixelSize: Theme.fontSizeSmall
                                     padding: 6
+                                    background: Item {}
                                     Keys.onReturnPressed: function(event) {
                                         if (!(event.modifiers & Qt.ShiftModifier)) {
                                             event.accepted = true

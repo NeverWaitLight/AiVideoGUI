@@ -192,7 +192,7 @@ Item {
                                 Item { Layout.fillWidth: true }
 
                                 Label { text: "运镜方式："; font.pixelSize: Theme.fontSizeMedium }
-                                TextField {
+                                Comp.AppTextField {
                                     id: cameraInput
                                     text: bridge.storyboard.curCameraMovement
                                     placeholderText: "如：固定、慢推、跟拍、摇镜"
@@ -277,6 +277,7 @@ Item {
                                 placeholderText: "描述镜头中的人物、动作、环境细节..."
                                 wrapMode: TextArea.Wrap; font.pixelSize: Theme.fontSizeMedium
                                 padding: 12; color: Theme.textAI
+                                background: Item {}
                             }
                         }
 
@@ -299,6 +300,7 @@ Item {
                                 placeholderText: "角色对话内容..."
                                 wrapMode: TextArea.Wrap; font.pixelSize: Theme.fontSizeMedium
                                 padding: 12; color: Theme.textAI
+                                background: Item {}
                             }
                         }
 
@@ -308,7 +310,7 @@ Item {
                             font.pixelSize: Theme.fontSizeMedium; font.bold: true
                             color: Theme.textAI; Layout.leftMargin: 24
                         }
-                        TextField {
+                        Comp.AppTextField {
                             id: soundEffectInput
                             text: bridge.storyboard.curSoundEffect
                             placeholderText: "环境音、特效音、背景音乐提示..."
@@ -334,6 +336,7 @@ Item {
                                 placeholderText: "其他说明..."
                                 wrapMode: TextArea.Wrap; font.pixelSize: Theme.fontSizeMedium
                                 padding: 12; color: Theme.textAI
+                                background: Item {}
                             }
                         }
 
@@ -426,6 +429,7 @@ Item {
                 font.family: "Consolas, monospace"
                 color: Theme.textAI
                 padding: 12
+                background: Rectangle { color: "#F5F5F5"; radius: Theme.borderRadius }
             }
         }
     }

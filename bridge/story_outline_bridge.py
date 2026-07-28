@@ -17,6 +17,7 @@ class StoryOutlineBridge(QObject):
     saved = Signal()
     optimize_finished = Signal(str)
     optimize_failed = Signal(str)
+    isOptimizingChanged = Signal()
     error = Signal(str)
 
     def __init__(self, story_outline_service, text_model_service, parent=None):
@@ -43,7 +44,7 @@ class StoryOutlineBridge(QObject):
     def isLoading(self):
         return self._loading
 
-    @Property(bool, constant=False)
+    @Property(bool, notify=isOptimizingChanged)
     def isOptimizing(self):
         return self._optimizing
 
@@ -125,16 +126,21 @@ class StoryOutlineBridge(QObject):
         ]
 
         self._optimizing = True
+        self.isOptimizingChanged.emit()
         self._worker = OptimizeWorker(self._text_service, messages)
 
         def on_finished(result: str) -> None:
             self._optimizing = False
+            self.isOptimizingChanged.emit()
             self.optimize_finished.emit(result)
 
         def on_failed(err: str) -> None:
             self._optimizing = False
+            self.isOptimizingChanged.emit()
             self.optimize_failed.emit(err)
 
         self._worker.finished.connect(on_finished)
         self._worker.failed.connect(on_failed)
+        # 线程结束后安全删除 worker
+        self._worker.finished.connect(self._worker.deleteLater)
         self._worker.start()

@@ -64,6 +64,8 @@ Rectangle {
                     placeholderText: "描述你想生成的视频..."
                     wrapMode: TextArea.Wrap
                     font.pixelSize: Theme.fontSizeMedium
+                    color: Theme.textAI
+                    background: Item {}
                     Keys.onReturnPressed: {
                         if (!event.modifiers & Qt.ShiftModifier) {
                             sendMessage()

@@ -325,7 +325,7 @@ Item {
                                     text: "地点："
                                     font.pixelSize: Theme.fontSizeMedium
                                 }
-                                TextField {
+                                Comp.AppTextField {
                                     id: locationInput
                                     text: bridge.screenplay.curLocation
                                     placeholderText: "如：审讯室、老城区街道"
@@ -348,7 +348,7 @@ Item {
                                     font.pixelSize: Theme.fontSizeMedium
                                     visible: timeTypeCombo.currentIndex === 5
                                 }
-                                TextField {
+                                Comp.AppTextField {
                                     id: timeDetailInput
                                     text: bridge.screenplay.curTimeDetail
                                     placeholderText: "如：下午3点"
@@ -379,6 +379,7 @@ Item {
                                 font.pixelSize: Theme.fontSizeMedium
                                 padding: 12
                                 color: Theme.textAI
+                                background: Item {}
                             }
                         }
 
