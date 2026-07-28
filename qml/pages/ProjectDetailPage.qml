@@ -38,73 +38,97 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
+            contentWidth: availableWidth
 
-            ColumnLayout {
+            Item {
+                id: gridContainer
                 width: parent.width
-                spacing: 20
-                anchors.margins: 30
+                height: moduleFlow.y + moduleFlow.height + 20
 
-                GridLayout {
-                    columns: 3
-                    columnSpacing: 20
-                    rowSpacing: 20
-                    Layout.fillWidth: true
+                readonly property int columns: 3
+                readonly property real sideMargin: 30
+                readonly property real cardSpacing: 24
+                readonly property real cardWidth: (width - 2 * sideMargin - (columns - 1) * cardSpacing) / columns
+                readonly property real cardHeight: 140
+                readonly property real topMargin: 20
+
+                Flow {
+                    id: moduleFlow
+                    x: gridContainer.sideMargin
+                    y: gridContainer.topMargin
+                    width: gridContainer.width - 2 * gridContainer.sideMargin
+                    spacing: gridContainer.cardSpacing
+                    flow: Flow.LeftToRight
 
                     ModuleCard {
                         visible: _hasVideos
+                        width: gridContainer.cardWidth
+                        height: gridContainer.cardHeight
                         title: "播放"; icon: "▶️"; description: "播放项目分镜视频"; moduleName: "player"
                     }
-                    ModuleCard { title: "大纲"; icon: "📝"; description: "编辑故事大纲"; moduleName: "outline" }
-                    ModuleCard { title: "剧本"; icon: "📋"; description: "编辑剧本场次"; moduleName: "screenplay" }
-                    ModuleCard { title: "分镜"; icon: "🎬"; description: "编辑分镜头脚本"; moduleName: "storyboard" }
-                    ModuleCard { title: "角色"; icon: "👤"; description: "管理角色形象"; moduleName: "character" }
-                    ModuleCard { title: "素材"; icon: "📂"; description: "管理项目素材"; moduleName: "media" }
+                    ModuleCard {
+                        width: gridContainer.cardWidth
+                        height: gridContainer.cardHeight
+                        title: "大纲"; icon: "📝"; description: "编辑故事大纲"; moduleName: "outline"
+                    }
+                    ModuleCard {
+                        width: gridContainer.cardWidth
+                        height: gridContainer.cardHeight
+                        title: "剧本"; icon: "📋"; description: "编辑剧本场次"; moduleName: "screenplay"
+                    }
+                    ModuleCard {
+                        width: gridContainer.cardWidth
+                        height: gridContainer.cardHeight
+                        title: "分镜"; icon: "🎬"; description: "编辑分镜头脚本"; moduleName: "storyboard"
+                    }
+                    ModuleCard {
+                        width: gridContainer.cardWidth
+                        height: gridContainer.cardHeight
+                        title: "角色"; icon: "👤"; description: "管理角色形象"; moduleName: "character"
+                    }
+                    ModuleCard {
+                        width: gridContainer.cardWidth
+                        height: gridContainer.cardHeight
+                        title: "素材"; icon: "📂"; description: "管理项目素材"; moduleName: "media"
+                    }
                 }
             }
         }
     }
 
-    component ModuleCard: Pane {
+    component ModuleCard: Rectangle {
         property string title: ""
         property string icon: ""
         property string description: ""
         property string moduleName: ""
 
-        Layout.preferredWidth: 200
-        Layout.preferredHeight: 160
-        padding: 16
+        radius: Theme.cardRadius
+        color: cardMouse.containsMouse ? "#F8F8F8" : "#FFFFFF"
+        border.color: Theme.border
+        border.width: 1
 
-        background: Rectangle {
-            radius: Theme.cardRadius
-            color: cardMouse.containsMouse ? "#F8F8F8" : "#FFFFFF"
-            border.color: Theme.border
-            border.width: 1
-        }
-
-        ColumnLayout {
-            anchors.fill: parent
-            spacing: 12
+        Column {
+            anchors.centerIn: parent
+            spacing: 8
 
             Label {
                 text: icon
-                font.pixelSize: 36
-                Layout.alignment: Qt.AlignHCenter
+                font.pixelSize: 32
+                anchors.horizontalCenter: parent.horizontalCenter
             }
 
             Label {
                 text: title
                 font.pixelSize: Theme.fontSizeLarge
                 font.bold: true
-                Layout.alignment: Qt.AlignHCenter
+                anchors.horizontalCenter: parent.horizontalCenter
             }
 
             Label {
                 text: description
                 font.pixelSize: Theme.fontSizeSmall
                 color: Theme.textSecondary
-                wrapMode: Text.Wrap
-                horizontalAlignment: Text.AlignHCenter
-                Layout.fillWidth: true
+                anchors.horizontalCenter: parent.horizontalCenter
             }
         }
 
