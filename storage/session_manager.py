@@ -93,7 +93,7 @@ class SessionManager:
                 session = self.get_session()
                 repo_instance = repo_class(session)
                 self._repo_cache[repo_class] = repo_instance
-                logger.debug("创建并缓存 Repository 实例：%s", repo_class.__name__)
+                logger.debug(f"创建并缓存 Repository 实例：{repo_class.__name__}")
 
             # cast 确保类型推断正确（从 object 转换为 TRepo）
             return cast(TRepo, self._repo_cache[repo_class])
@@ -119,7 +119,7 @@ class SessionManager:
                 raise
         """
         self._write_lock.acquire()
-        logger.debug("获取写锁：%s", threading.current_thread().name)
+        logger.debug(f"获取写锁：{threading.current_thread().name}")
 
     def commit_write(self) -> None:
         """
@@ -133,7 +133,7 @@ class SessionManager:
         try:
             session = self.get_session()
             session.commit()
-            logger.debug("提交写操作：%s", threading.current_thread().name)
+            logger.debug(f"提交写操作：{threading.current_thread().name}")
         finally:
             self._write_lock.release()
 
@@ -149,7 +149,7 @@ class SessionManager:
         try:
             session = self.get_session()
             session.rollback()
-            logger.warning("回滚写操作：%s", threading.current_thread().name)
+            logger.warning(f"回滚写操作：{threading.current_thread().name}")
         finally:
             self._write_lock.release()
 

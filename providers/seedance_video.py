@@ -71,8 +71,8 @@ class SeedanceVideoProvider(VideoProvider):
 
     def _submit_task(self, payload: dict[str, Any]) -> tuple[str, dict[str, Any]]:
         """提交任务到 Seedance API，返回 (task_id, payload)。"""
-        logger.info("提交 Seedance 任务，模型：%s", self._model)
-        logger.debug("请求体：%s", payload)
+        logger.info(f"提交 Seedance 任务，模型：{self._model}")
+        logger.debug(f"请求体：{payload}")
 
         resp = requests.post(
             self.SUBMIT_URL,
@@ -82,12 +82,12 @@ class SeedanceVideoProvider(VideoProvider):
         )
         resp.raise_for_status()
         data = resp.json()
-        logger.debug("提交响应：%s", data)
+        logger.debug(f"提交响应：{data}")
 
         task_id = data.get("id", "")
         if not task_id:
             raise RuntimeError(f"Seedance 未返回 task_id: {data}")
-        logger.info("任务已提交，task_id=%s", task_id)
+        logger.info(f"任务已提交，task_id={task_id}")
         return task_id, payload
 
     def t2v(self, prompt: str, params: dict[str, Any] | None = None) -> tuple[str, dict[str, Any]]:
@@ -119,7 +119,7 @@ class SeedanceVideoProvider(VideoProvider):
         resp = requests.get(url, headers=self._headers(), timeout=30)
         resp.raise_for_status()
         data = resp.json()
-        logger.debug("状态查询响应：%s", data)
+        logger.debug(f"状态查询响应：{data}")
 
         status = data.get("status", "")
 
@@ -127,12 +127,12 @@ class SeedanceVideoProvider(VideoProvider):
             video_url = data.get("video_url", "")
             if not video_url:
                 raise RuntimeError(f"任务已完成但未返回 video_url: {data}")
-            logger.info("任务成功，video_url=%s", video_url)
+            logger.info(f"任务成功，video_url={video_url}")
             return TaskResult(status=TaskStatus.SUCCEEDED, video_url=video_url)
 
         if status == "failed":
             error_message = data.get("error", {}).get("message", "未知错误")
-            logger.error("任务失败：%s", error_message)
+            logger.error(f"任务失败：{error_message}")
             return TaskResult(status=TaskStatus.FAILED, error_message=error_message)
 
         if status == "processing":
@@ -149,7 +149,7 @@ class SeedanceVideoProvider(VideoProvider):
     ) -> str:
         """流式下载视频到本地。"""
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
-        logger.info("开始下载视频：%s -> %s", video_url, save_path)
+        logger.info(f"开始下载视频：{video_url} -> {save_path}")
 
         with requests.get(video_url, stream=True, timeout=60) as resp:
             resp.raise_for_status()
@@ -162,7 +162,7 @@ class SeedanceVideoProvider(VideoProvider):
                     if progress_callback:
                         progress_callback(downloaded, total)
 
-        logger.info("下载完成：%s", save_path)
+        logger.info(f"下载完成：{save_path}")
         return save_path
 
     def get_model_info(self) -> list[ModelInfo]:

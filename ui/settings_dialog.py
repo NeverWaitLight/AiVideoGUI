@@ -282,7 +282,7 @@ class SettingsDialog(FramelessDialog):
             provider = DashScopeChatProvider(cfg)
             models = provider.list_available_models()
         except Exception as e:
-            logger.warning("获取模型列表失败：%s", e)
+            logger.warning(f"获取模型列表失败：{e}")
             w = MessageBox("获取失败", f"无法获取模型列表：\n{e}", self)
             w.exec()
             return

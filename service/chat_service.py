@@ -44,7 +44,7 @@ class _TitleWorker(QThread):
             title = self._provider.chat(messages).strip().strip("\"'")
             self.title_ready.emit(self._conv_id, title)
         except Exception as e:
-            logger.warning("生成标题失败 conv=%s: %s", self._conv_id, e)
+            logger.warning(f"生成标题失败 conv={self._conv_id}: {e}")
             self.title_failed.emit(self._conv_id, str(e))
 
 class ChatService(QObject):
@@ -77,7 +77,7 @@ class ChatService(QObject):
         try:
             provider = self._get_provider()
         except KeyError as e:
-            logger.warning("无法生成标题：%s", e)
+            logger.warning(f"无法生成标题：{e}")
             return
 
         self._worker = _TitleWorker(provider, conv_id, user_text)

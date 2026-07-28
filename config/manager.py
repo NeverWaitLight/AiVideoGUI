@@ -18,13 +18,13 @@ class ConfigManager:
 
     def _load(self) -> None:
         if not os.path.exists(self._path):
-            logger.info("配置文件不存在，使用默认值：%s", self._path)
+            logger.info(f"配置文件不存在，使用默认值：{self._path}")
             return
         try:
             with open(self._path, encoding="utf-8") as f:
                 data = json.load(f)
         except (OSError, json.JSONDecodeError) as e:
-            logger.error("读取配置失败：%s", e)
+            logger.error(f"读取配置失败：{e}")
             return
 
         for item in data.get("providers", []):
@@ -45,7 +45,7 @@ class ConfigManager:
             default_image_provider=s.get("default_image_provider", ""),
             theme=s.get("theme", "light"),
         )
-        logger.info("配置已加载，providers=%s", list(self._providers.keys()))
+        logger.info(f"配置已加载，providers={list(self._providers.keys())}")
 
     def save(self) -> None:
         data = {
@@ -69,7 +69,7 @@ class ConfigManager:
         os.makedirs(os.path.dirname(self._path), exist_ok=True)
         with open(self._path, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
-        logger.info("配置已保存：%s", self._path)
+        logger.info(f"配置已保存：{self._path}")
 
     # ---------- providers ----------
 

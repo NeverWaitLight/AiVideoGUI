@@ -133,8 +133,7 @@ class _BatchGenerationController(QObject):
                 self._submitted_task_ids.add(msg.task_id)
                 submitted += 1
                 mode_info = "(r2v)" if reference_image else "(t2v)"
-                logger.info("批量生成 [%d/%d] 场%d镜%d 已提交 %s task_id=%s save_path=%s",
-                            submitted, len(self._shot_list), scene_number, shot_number, mode_info, msg.task_id, save_path)
+                logger.info(f"批量生成 [{submitted}/{len(self._shot_list)}] 场{scene_number}镜{shot_number} 已提交 {mode_info} task_id={msg.task_id} save_path={save_path}")
 
             except Exception as e:
                 logger.exception(f"批量生成提交失败：场{scene_number}镜{shot_number}")
@@ -1109,7 +1108,7 @@ class MainWindow(QMainWindow):
                 f"分镜视频生成任务已提交 ({mode_info})\n场次：{scene_number}，镜头：{shot_number}\n保存路径：{save_path}\n分辨率：{project.resolution} ({project.aspect_ratio}){ref_info}\n任务ID：{task_id}\n\n视频生成完成后将自动下载到项目素材库"
             )
 
-            logger.info("分镜视频任务已提交：task_id=%s, shot_id=%s, save_path=%s", task_id, shot_id, save_path)
+            logger.info(f"分镜视频任务已提交：task_id={task_id}, shot_id={shot_id}, save_path={save_path}")
 
         except Exception as e:
             logger.exception("提交视频生成任务失败")
@@ -1939,7 +1938,7 @@ class MainWindow(QMainWindow):
         try:
             os.startfile(path)
         except Exception as e:
-            logger.warning("播放视频失败：%s", e)
+            logger.warning(f"播放视频失败：{e}")
 
     def _open_folder(self, path: str) -> None:
         if not path or not os.path.exists(path):
@@ -1948,7 +1947,7 @@ class MainWindow(QMainWindow):
         try:
             subprocess.Popen(f'explorer /select,"{path}"')
         except Exception as e:
-            logger.warning("打开文件夹失败：%s", e)
+            logger.warning(f"打开文件夹失败：{e}")
             try:
                 os.startfile(folder)
             except Exception:

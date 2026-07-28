@@ -146,7 +146,7 @@ class TaskPollingService(QObject):
                     message_id, local_path, msg.conversation_id, storyboard_id=storyboard_id
                 )
             except Exception as e:
-                logger.warning("素材自动入库失败：%s", e)
+                logger.warning(f"素材自动入库失败：{e}")
         self.task_finished.emit(message_id, local_path, storyboard_id)
 
     def _on_task_failed(self, message_id: str, error: str) -> None:
@@ -236,7 +236,7 @@ class _PollingWorker(QThread):
                     break
 
             except Exception as e:
-                logger.exception("轮询线程异常：%s", e)
+                logger.exception(f"轮询线程异常：{e}")
                 if self._interruptible_sleep(self._poll_interval):
                     break
 
@@ -270,7 +270,7 @@ class _PollingWorker(QThread):
         msg_repo = self._session_manager.get_repo(MessageRepository)
         msg = msg_repo.get_by_id(message_id)
         if not msg:
-            logger.warning("任务关联消息不存在，标记完成 internal_id=%s provider_task=%s", internal_task_id, provider_task_id)
+            logger.warning(f"任务关联消息不存在，标记完成 internal_id={internal_task_id} provider_task={provider_task_id}")
             task_repo = self._session_manager.get_repo(ActiveTaskRepository)
             self._session_manager.begin_write()
             try:
@@ -299,7 +299,7 @@ class _PollingWorker(QThread):
         poll_count = self._task_poll_count.get(internal_task_id, 0)
         if poll_count >= self._max_polls_per_task:
             error_msg = f"轮询超时（已查询 {poll_count} 次，任务仍未完成）"
-            logger.warning("任务超时 internal_id=%s provider_task=%s message=%s", internal_task_id, provider_task_id, message_id)
+            logger.warning(f"任务超时 internal_id={internal_task_id} provider_task={provider_task_id} message={message_id}")
             self.task_failed.emit(message_id, error_msg)
             task_repo = self._session_manager.get_repo(ActiveTaskRepository)
             self._session_manager.begin_write()
@@ -362,7 +362,7 @@ class _PollingWorker(QThread):
                 self._task_poll_count.pop(internal_task_id, None)
 
         except Exception as e:
-            logger.warning("轮询异常 internal_id=%s provider_task=%s（第 %d 次）：%s", internal_task_id, provider_task_id, poll_count + 1, e)
+            logger.warning(f"轮询异常 internal_id={internal_task_id} provider_task={provider_task_id}（第 {poll_count + 1} 次）：{e}")
             self._task_poll_count[internal_task_id] = poll_count + 1
 
     def _download_and_finish(
@@ -415,10 +415,10 @@ class _PollingWorker(QThread):
                 raise
 
             self._task_poll_count.pop(internal_task_id, None)
-            logger.info("任务完成 internal_id=%s local_path=%s", internal_task_id, save_path)
+            logger.info(f"任务完成 internal_id={internal_task_id} local_path={save_path}")
 
         except Exception as e:
-            logger.exception("下载失败 internal_id=%s", internal_task_id)
+            logger.exception(f"下载失败 internal_id={internal_task_id}")
             self.task_failed.emit(message_id, f"下载失败：{e}")
 
             task_repo = self._session_manager.get_repo(ActiveTaskRepository)

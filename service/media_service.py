@@ -55,7 +55,7 @@ class MediaService:
         media_repo = self._sm.get_repo(MediaRepository)
 
         if media_repo.get_by_message_id(message_id):
-            logger.debug("素材已入库，跳过 message_id=%s", message_id)
+            logger.debug(f"素材已入库，跳过 message_id={message_id}")
             return
 
         filename = os.path.basename(local_path)
@@ -91,7 +91,7 @@ class MediaService:
                     height,
                 )
             except Exception as e:
-                logger.warning("视频元数据提取失败，将使用默认值：%s", e)
+                logger.warning(f"视频元数据提取失败，将使用默认值：{e}")
 
         media = MediaFile(
             id=uuid.uuid4().hex,
@@ -114,7 +114,7 @@ class MediaService:
         try:
             media_repo.create(media)
             self._sm.commit_write()
-            logger.info("素材自动入库：%s", filename)
+            logger.info(f"素材自动入库：{filename}")
         except Exception as e:
             self._sm.rollback_write()
             logger.error(f"素材入库失败: {e}")
@@ -130,7 +130,7 @@ class MediaService:
             filename = os.path.basename(src_path)
             media_type = detect_media_type(filename)
             if media_type is None:
-                logger.warning("不支持的文件类型，跳过：%s", filename)
+                logger.warning(f"不支持的文件类型，跳过：{filename}")
                 continue
 
             dest_path = self._resolve_dest_path(filename, target_dir)
@@ -138,7 +138,7 @@ class MediaService:
             try:
                 shutil.copy2(src_path, dest_path)
             except OSError as e:
-                logger.error("复制文件失败 %s: %s", src_path, e)
+                logger.error(f"复制文件失败 {src_path}: {e}")
                 continue
 
             file_size = os.path.getsize(dest_path)
@@ -170,7 +170,7 @@ class MediaService:
                         height,
                     )
                 except Exception as e:
-                    logger.warning("导入视频元数据提取失败，将使用默认值：%s", e)
+                    logger.warning(f"导入视频元数据提取失败，将使用默认值：{e}")
 
             media = MediaFile(
                 id=uuid.uuid4().hex,
@@ -192,7 +192,7 @@ class MediaService:
                 media_repo.create(media)
                 self._sm.commit_write()
                 imported.append(media)
-                logger.info("导入素材：%s", media.filename)
+                logger.info(f"导入素材：{media.filename}")
             except Exception as e:
                 self._sm.rollback_write()
                 logger.error(f"导入素材入库失败: {e}")
@@ -256,7 +256,7 @@ class MediaService:
         if media.thumbnail_path:
             self._try_remove_file(media.thumbnail_path)
 
-        logger.info("删除素材：%s", media.filename)
+        logger.info(f"删除素材：{media.filename}")
         return True
 
     def delete_files(self, media_ids: list[str]) -> int:
@@ -306,4 +306,4 @@ class MediaService:
         try:
             os.remove(path)
         except OSError as e:
-            logger.warning("删除文件失败 %s: %s", path, e)
+            logger.warning(f"删除文件失败 {path}: {e}")
