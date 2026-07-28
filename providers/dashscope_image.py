@@ -10,7 +10,7 @@ from typing import Any
 
 import requests
 
-from models.data_models import ProviderConfig
+from models.provider_config import ProviderConfig
 from providers.image_base import ImageProvider
 
 class DashScopeImageProvider(ImageProvider):

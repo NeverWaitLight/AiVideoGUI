@@ -30,7 +30,9 @@ from qfluentwidgets import (
     TitleLabel,
 )
 
-from models.data_models import Scene, Storyboard, ShotSize
+from models.enums import ShotSize
+from models.scene import Scene
+from models.storyboard import Storyboard
 from ui.page_header import PageHeader, create_icon_button
 from ui.styles import style_button
 from service.screenplay_service import ScreenplayService

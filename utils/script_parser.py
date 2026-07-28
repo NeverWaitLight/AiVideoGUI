@@ -4,7 +4,7 @@ from loguru import logger
 import re
 from typing import Any
 
-from models.data_models import SceneLocation, SceneTime
+from models.enums import SceneLocation, SceneTime
 
 class ScriptParser:
     """剧本解析器：解析标准影视剧本格式文本。"""

@@ -90,3 +90,42 @@ def create_icon_button(
         btn.setToolTip(tooltip)
     btn.setCursor(Qt.CursorShape.PointingHandCursor)
     return btn
+
+
+class PageTitleBar(QWidget):
+    """页面标题栏：大标题 + 右侧操作区，用于顶层列表页面（无返回按钮）。"""
+
+    def __init__(self, title: str = "", parent: QWidget | None = None):
+        super().__init__(parent)
+        self.setStyleSheet(
+            "PageTitleBar { background: white; border: none; border-bottom: 1px solid #E0E0E0; }"
+        )
+        self.setFixedHeight(56)
+
+        self._layout = QHBoxLayout(self)
+        self._layout.setContentsMargins(20, 0, 20, 0)
+        self._layout.setSpacing(12)
+
+        # ── 标题 ──
+        self._title_label = QLabel(title)
+        self._title_label.setStyleSheet("font-size: 20px; font-weight: bold; color: #333;")
+        self._layout.addWidget(self._title_label)
+
+        self._layout.addStretch()
+
+        # ── 右侧操作区 ──
+        self._actions_widget = QWidget()
+        self._actions_widget.setStyleSheet("background: transparent;")
+        self._actions_layout = QHBoxLayout(self._actions_widget)
+        self._actions_layout.setContentsMargins(0, 0, 0, 0)
+        self._actions_layout.setSpacing(8)
+        self._layout.addWidget(self._actions_widget)
+
+    def set_title(self, text: str) -> None:
+        self._title_label.setText(text)
+
+    def title(self) -> str:
+        return self._title_label.text()
+
+    def add_action(self, widget: QWidget) -> None:
+        self._actions_layout.addWidget(widget)

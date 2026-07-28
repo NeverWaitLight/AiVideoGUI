@@ -3,7 +3,7 @@
 from loguru import logger
 import time
 
-from models.data_models import StoryOutline, StoryOutlineHistory
+from models.story_outline import StoryOutline, StoryOutlineHistory
 from storage.database import DatabaseManager
 
 class StoryOutlineService:

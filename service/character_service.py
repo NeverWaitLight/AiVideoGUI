@@ -4,7 +4,7 @@ from loguru import logger
 import uuid
 from datetime import datetime
 
-from models.data_models import Character, CharacterHistory
+from models.character import Character, CharacterHistory
 from storage.database import DatabaseManager
 
 class CharacterService:

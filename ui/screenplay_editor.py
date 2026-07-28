@@ -26,7 +26,8 @@ from qfluentwidgets import (
     CardWidget,
 )
 
-from models.data_models import Scene, SceneLocation, SceneTime
+from models.enums import SceneLocation, SceneTime
+from models.scene import Scene
 from service.screenplay_service import ScreenplayService
 from ui.page_header import PageHeader, create_icon_button
 from ui.styles import style_button

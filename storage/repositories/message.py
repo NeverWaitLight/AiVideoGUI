@@ -5,7 +5,8 @@ from typing import List, Optional
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from models.data_models import Message, MessageStatus
+from models.enums import MessageStatus
+from models.message import Message
 from storage.orm.models import MessageEntity
 from storage.repositories.base import BaseRepository
 

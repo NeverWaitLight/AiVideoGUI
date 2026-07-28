@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 
-from models.data_models import ProviderConfig
+from models.provider_config import ProviderConfig
 
 
 class ImageProvider(ABC):

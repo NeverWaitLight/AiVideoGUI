@@ -30,7 +30,8 @@ from qfluentwidgets import (
     FluentIcon,
 )
 
-from models.data_models import MediaFile, MediaType
+from models.enums import MediaType
+from models.media_file import MediaFile
 from service.media_service import MediaService, supported_extensions
 from ui.page_header import PageHeader
 from ui.styles import (

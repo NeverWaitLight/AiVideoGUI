@@ -2,7 +2,7 @@
 
 import unittest
 from providers.seedance_video import SeedanceVideoProvider
-from models.data_models import ProviderConfig
+from models.provider_config import ProviderConfig
 
 
 class TestSeedanceProvider(unittest.TestCase):

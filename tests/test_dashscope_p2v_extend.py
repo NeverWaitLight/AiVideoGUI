@@ -3,7 +3,7 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-from models.data_models import ProviderConfig
+from models.provider_config import ProviderConfig
 from providers.dashscope_video import DashScopeVideoProvider
 
 

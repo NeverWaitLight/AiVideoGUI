@@ -6,7 +6,8 @@ import time
 import unittest
 from datetime import datetime
 
-from models.data_models import StoryOutline, Project
+from models.project import Project
+from models.story_outline import StoryOutline
 from storage.database import DatabaseManager
 
 

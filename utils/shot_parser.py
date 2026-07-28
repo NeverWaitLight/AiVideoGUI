@@ -2,7 +2,7 @@
 
 import re
 
-from models.data_models import ShotSize
+from models.enums import ShotSize
 
 
 class ShotParser:

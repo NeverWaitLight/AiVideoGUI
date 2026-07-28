@@ -7,7 +7,7 @@
 确保已配置 DashScope API Key 和模型：
 
 ```python
-from models.data_models import ProviderConfig
+from models.provider_config import ProviderConfig
 from providers.dashscope_video import DashScopeVideoProvider
 
 config = ProviderConfig(
@@ -133,7 +133,7 @@ task_id, payload = provider.extend(
 
 ```python
 import time
-from models.data_models import TaskStatus
+from models.enums import TaskStatus
 
 # 提交任务
 task_id, payload = provider.p2v(...)

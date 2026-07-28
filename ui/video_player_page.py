@@ -24,7 +24,7 @@ from ui.page_header import PageHeader
 from ui.timeline_widget import TimelineWidget, VideoSegment, generate_segment_colors
 
 if TYPE_CHECKING:
-    from models.data_models import MediaFile
+    from models.media_file import MediaFile
     from storage.database import DatabaseManager
 
 @dataclass

@@ -33,7 +33,7 @@ from qfluentwidgets import (
     TitleLabel,
 )
 
-from models.data_models import Character, CharacterHistory
+from models.character import Character, CharacterHistory
 from service.character_service import CharacterService
 from ui.page_header import PageHeader
 from ui.styles import style_button
@@ -318,7 +318,7 @@ class CharacterDetailPage(QWidget):
         self._current_character.name = name
         self._current_character.ref_code = ref_code
         self._current_character.description = self._description_text.toPlainText().strip()
-        self._title_label.setText(f"角色详情 — {name}")
+        self._header.set_title(f"角色详情 — {name}")
         self.saved.emit()
         QMessageBox.information(self, "成功", "角色信息已保存！")
 
@@ -331,7 +331,7 @@ class CharacterDetailPage(QWidget):
             return
 
         self._current_character = char
-        self._title_label.setText(f"角色详情 — {char.name}")
+        self._header.set_title(f"角色详情 — {char.name}")
         self._name_edit.setText(char.name)
         self._ref_code_edit.setText(char.ref_code)
         self._description_text.setPlainText(char.description or "")

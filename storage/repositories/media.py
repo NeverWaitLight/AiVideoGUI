@@ -5,7 +5,8 @@ from typing import List, Optional
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from models.data_models import MediaFile, MediaType
+from models.enums import MediaType
+from models.media_file import MediaFile
 from storage.orm.models import MediaFileEntity
 from storage.repositories.base import BaseRepository
 

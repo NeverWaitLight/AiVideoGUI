@@ -5,7 +5,8 @@ from typing import List
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from models.data_models import Storyboard, StoryboardHistory, ShotSize
+from models.enums import ShotSize
+from models.storyboard import Storyboard, StoryboardHistory
 from storage.orm.models import StoryboardEntity, StoryboardHistoryEntity, ScreenplayEntity
 from storage.repositories.base import BaseRepository
 

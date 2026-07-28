@@ -31,8 +31,9 @@ from qfluentwidgets import (
     CardWidget,
 )
 
-from models.data_models import Project
+from models.project import Project
 from service.project_service import ProjectService
+from ui.page_header import PageTitleBar
 from ui.styles import style_button
 from utils.time_format import format_timestamp_short
 
@@ -306,27 +307,15 @@ class ProjectGridPage(QWidget):
 
     def _setup_ui(self) -> None:
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(16)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
-        # 顶部区域：标题 + 新建按钮
-        self._header = QWidget()
-        header_layout = QHBoxLayout(self._header)
-        header_layout.setContentsMargins(0, 0, 0, 0)
-        header_layout.setSpacing(12)
-
-        title = QLabel("项目管理")
-        title.setStyleSheet("font-size: 20px; font-weight: bold; color: #333;")
-        header_layout.addWidget(title)
-
-        header_layout.addStretch()
-
-        # 右上角的新建按钮
+        # ── 顶部标题栏 ──
+        self._header = PageTitleBar("项目管理")
         self._header_new_btn = PrimaryPushButton(FluentIcon.ADD, "新建项目")
         self._header_new_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._header_new_btn.clicked.connect(self._on_new_project)
-        header_layout.addWidget(self._header_new_btn)
-
+        self._header.add_action(self._header_new_btn)
         layout.addWidget(self._header)
 
         # 内容容器（用于放置 scroll 和 empty_state，共享同一空间）
@@ -344,7 +333,7 @@ class ProjectGridPage(QWidget):
         # 网格容器
         self._grid_container = QWidget()
         self._grid_layout = QGridLayout(self._grid_container)
-        self._grid_layout.setContentsMargins(0, 0, 0, 0)
+        self._grid_layout.setContentsMargins(20, 16, 20, 20)
         self._grid_layout.setSpacing(20)
         self._grid_layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
 

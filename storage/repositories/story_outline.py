@@ -5,7 +5,7 @@ from typing import List, Optional
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from models.data_models import StoryOutline, StoryOutlineHistory
+from models.story_outline import StoryOutline, StoryOutlineHistory
 from storage.orm.models import StoryOutlineEntity, StoryOutlineHistoryEntity
 from storage.repositories.base import BaseRepository
 

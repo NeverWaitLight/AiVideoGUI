@@ -3,7 +3,8 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-from models.data_models import ShotSize, Storyboard
+from models.enums import ShotSize
+from models.storyboard import Storyboard
 
 
 class TestBatchDesignGeneration(unittest.TestCase):

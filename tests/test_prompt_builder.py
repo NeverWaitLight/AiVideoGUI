@@ -1,7 +1,9 @@
 """测试 VideoPromptBuilder"""
 
 import unittest
-from models.data_models import Scene, Storyboard, ShotSize, SceneLocation, SceneTime
+from models.enums import SceneLocation, SceneTime, ShotSize
+from models.scene import Scene
+from models.storyboard import Storyboard
 from utils.prompt_builder import VideoPromptBuilder
 
 

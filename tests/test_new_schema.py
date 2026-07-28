@@ -10,7 +10,8 @@ if sys.platform == 'win32':
     sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
 
 from storage.database import DatabaseManager
-from models.data_models import Scene, SceneLocation, SceneTime
+from models.enums import SceneLocation, SceneTime
+from models.scene import Scene
 
 # 初始化数据库
 db_path = os.path.expandvars(r"$LOCALAPPDATA\ai-video-gui\data\ai-video-gui.db")

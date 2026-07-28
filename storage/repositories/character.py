@@ -6,7 +6,7 @@ from typing import List, Optional
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from models.data_models import Character, CharacterHistory
+from models.character import Character, CharacterHistory
 from storage.orm.models import CharacterEntity, CharacterHistoryEntity
 from storage.repositories.base import BaseRepository
 

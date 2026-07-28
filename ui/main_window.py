@@ -878,7 +878,7 @@ class MainWindow(QMainWindow):
         """将 AI 提取的角色保存到数据库（跳过已存在的引用代号）。"""
         import uuid
         from datetime import datetime
-        from models.data_models import Character
+        from models.character import Character
 
         new_chars = []
         for char_data in characters:

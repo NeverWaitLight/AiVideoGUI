@@ -4,7 +4,7 @@ from loguru import logger
 
 import requests
 
-from models.data_models import ProviderConfig
+from models.provider_config import ProviderConfig
 from providers.chat_base import ChatProvider
 
 _DEFAULT_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"

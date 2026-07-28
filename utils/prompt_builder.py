@@ -1,6 +1,7 @@
 """视频生成 Prompt 构建工具"""
 
-from models.data_models import Scene, Storyboard
+from models.scene import Scene
+from models.storyboard import Storyboard
 
 
 class VideoPromptBuilder:

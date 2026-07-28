@@ -6,7 +6,7 @@ from typing import List
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from models.data_models import Project
+from models.project import Project
 from storage.orm.models import ProjectEntity
 from storage.repositories.base import BaseRepository
 

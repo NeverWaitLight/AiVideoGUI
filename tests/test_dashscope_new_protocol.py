@@ -2,7 +2,7 @@
 
 import unittest
 from providers.dashscope_video import DashScopeVideoProvider
-from models.data_models import ProviderConfig
+from models.provider_config import ProviderConfig
 
 
 class TestDashScopeNewProtocol(unittest.TestCase):

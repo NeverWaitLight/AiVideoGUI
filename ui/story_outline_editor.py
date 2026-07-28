@@ -26,7 +26,7 @@ from qfluentwidgets import (
     TextEdit,
 )
 
-from models.data_models import StoryOutline, StoryOutlineHistory
+from models.story_outline import StoryOutline, StoryOutlineHistory
 from service.story_outline_service import StoryOutlineService
 from service.text_model_service import TextModelService
 from ui.page_header import PageHeader, create_icon_button

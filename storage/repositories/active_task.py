@@ -6,7 +6,8 @@ from typing import List, Optional
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from models.data_models import ActiveTask, TaskStatus
+from models.active_task import ActiveTask
+from models.enums import TaskStatus
 from storage.orm.models import ActiveTaskEntity
 from storage.repositories.base import BaseRepository
 

@@ -6,7 +6,7 @@ import unittest
 import uuid
 from datetime import datetime
 
-from models.data_models import Character
+from models.character import Character
 from storage.database import DatabaseManager
 
 

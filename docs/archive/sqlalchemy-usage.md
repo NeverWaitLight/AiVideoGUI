@@ -59,7 +59,7 @@ class NewModel:
 ```python
 from storage.repositories.base import BaseRepository
 from storage.orm.models import NewEntity
-from models.data_models import NewModel
+from models.new_model import NewModel
 
 class NewRepository(BaseRepository[NewEntity, NewModel]):
     def __init__(self, session: Session):

@@ -20,7 +20,7 @@ from qfluentwidgets import (
     CardWidget,
 )
 
-from models.data_models import Project
+from models.project import Project
 from service.project_service import ProjectService
 from storage.database import DatabaseManager
 from ui.page_header import PageHeader

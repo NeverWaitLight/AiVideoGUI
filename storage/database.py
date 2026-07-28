@@ -7,21 +7,14 @@ import time
 from datetime import datetime
 from typing import Optional
 
-from models.data_models import (
-    Character,
-    CharacterHistory,
-    Conversation,
-    MediaFile,
-    MediaType,
-    Message,
-    MessageStatus,
-    Scene,
-    ScreenplayHistory,
-    Storyboard,
-    StoryboardHistory,
-    StoryOutline,
-    StoryOutlineHistory,
-)
+from models.character import Character, CharacterHistory
+from models.conversation import Conversation
+from models.enums import MediaType, MessageStatus
+from models.media_file import MediaFile
+from models.message import Message
+from models.scene import Scene, ScreenplayHistory
+from models.story_outline import StoryOutline, StoryOutlineHistory
+from models.storyboard import Storyboard, StoryboardHistory
 from storage.orm.base import create_all_tables, ensure_columns, get_session, init_engine
 from storage.repositories.active_task import ActiveTaskRepository
 from storage.repositories.character import CharacterHistoryRepository, CharacterRepository
@@ -376,7 +369,7 @@ class DatabaseManager:
         with self._lock:
             session = self._get_session()
             repo = ProjectRepository(session)
-            from models.data_models import Project
+            from models.project import Project
 
             now_ts = int(datetime.now().timestamp() * 1000)
             project = Project(

@@ -7,7 +7,8 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
-from models.data_models import MediaFile, MediaType
+from models.enums import MediaType
+from models.media_file import MediaFile
 from storage.database import DatabaseManager
 from utils import paths
 from utils.video_metadata import VideoMetadataExtractor

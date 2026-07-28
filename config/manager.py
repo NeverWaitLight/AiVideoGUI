@@ -4,7 +4,8 @@ import json
 from loguru import logger
 import os
 
-from models.data_models import AppSettings, ProviderConfig
+from models.app_settings import AppSettings
+from models.provider_config import ProviderConfig
 
 class ConfigManager:
     """读写应用配置和 Provider 凭证。"""

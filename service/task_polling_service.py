@@ -12,7 +12,7 @@ from typing import Any
 from PyQt6.QtCore import QObject, QThread, pyqtSignal
 
 from config.manager import ConfigManager
-from models.data_models import MessageStatus, TaskStatus
+from models.enums import MessageStatus, TaskStatus
 from providers.video_base import VideoProvider
 from storage.database import DatabaseManager
 from utils import paths

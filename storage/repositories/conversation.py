@@ -5,7 +5,7 @@ from typing import List
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from models.data_models import Conversation
+from models.conversation import Conversation
 from storage.orm.models import ConversationEntity
 from storage.repositories.base import BaseRepository
 

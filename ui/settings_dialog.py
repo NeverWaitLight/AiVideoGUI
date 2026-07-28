@@ -22,7 +22,7 @@ from qfluentwidgets import (
 from qframelesswindow import FramelessDialog
 
 from config.manager import ConfigManager
-from models.data_models import ProviderConfig
+from models.provider_config import ProviderConfig
 from providers.dashscope_chat import DashScopeChatProvider
 from ui.styles import style_button
 from utils import paths

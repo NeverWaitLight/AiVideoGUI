@@ -8,7 +8,8 @@ import shutil
 import uuid
 from datetime import datetime
 
-from models.data_models import Conversation, Project
+from models.conversation import Conversation
+from models.project import Project
 from storage.database import DatabaseManager
 from utils import paths
 

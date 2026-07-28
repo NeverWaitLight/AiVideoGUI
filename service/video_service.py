@@ -11,11 +11,9 @@ from typing import Any
 from PyQt6.QtCore import QObject
 
 from config.manager import ConfigManager
-from models.data_models import (
-    Conversation,
-    Message,
-    MessageStatus,
-)
+from models.conversation import Conversation
+from models.enums import MessageStatus
+from models.message import Message
 from providers.video_base import VideoProvider
 from providers.dashscope_video import DashScopeVideoProvider
 from providers.seedance_video import SeedanceVideoProvider

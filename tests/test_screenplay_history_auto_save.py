@@ -5,7 +5,8 @@ import tempfile
 import time
 import unittest
 
-from models.data_models import Scene, SceneLocation, SceneTime
+from models.enums import SceneLocation, SceneTime
+from models.scene import Scene
 from storage.database import DatabaseManager
 
 

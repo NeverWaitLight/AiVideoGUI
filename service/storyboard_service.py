@@ -3,7 +3,8 @@
 from loguru import logger
 import time
 
-from models.data_models import Storyboard, StoryboardHistory, ShotSize
+from models.enums import ShotSize
+from models.storyboard import Storyboard, StoryboardHistory
 from storage.database import DatabaseManager
 
 class StoryboardService:

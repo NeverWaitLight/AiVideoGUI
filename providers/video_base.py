@@ -3,7 +3,9 @@
 from abc import ABC, abstractmethod
 from typing import Any, Callable
 
-from models.data_models import ModelInfo, ProviderConfig, TaskResult
+from models.model_info import ModelInfo
+from models.provider_config import ProviderConfig
+from models.task_result import TaskResult
 
 
 class VideoProvider(ABC):

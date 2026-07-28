@@ -27,7 +27,7 @@ from qfluentwidgets import (
     LineEdit,
 )
 
-from models.data_models import Project
+from models.project import Project
 from service.project_service import ProjectService
 from ui.styles import style_button
 

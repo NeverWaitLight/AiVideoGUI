@@ -8,7 +8,10 @@ from typing import Any, Callable
 
 import requests
 
-from models.data_models import ModelInfo, ProviderConfig, TaskResult, TaskStatus
+from models.enums import TaskStatus
+from models.model_info import ModelInfo
+from models.provider_config import ProviderConfig
+from models.task_result import TaskResult
 from providers.dashscope_oss_uploader import DashScopeOSSUploader
 from providers.video_base import VideoProvider
 
