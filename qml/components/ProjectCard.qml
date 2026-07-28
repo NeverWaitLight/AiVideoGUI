@@ -63,28 +63,38 @@ Pane {
             Layout.fillWidth: true
         }
 
-        // 信息
-        Label {
-            text: resolution + " · " + aspectRatio
-            font.pixelSize: Theme.fontSizeSmall
-            color: Theme.textSecondary
-        }
-
-        // 创建时间
-        Label {
-            text: createdAt
-            font.pixelSize: 11
-            color: "#999"
-        }
-
-        // 操作按钮
+        // 信息行：分辨率左对齐，时间右对齐
         RowLayout {
+            Layout.fillWidth: true
             spacing: 4
+
+            Label {
+                text: resolution + " · " + aspectRatio
+                font.pixelSize: Theme.fontSizeSmall
+                color: Theme.textSecondary
+                Layout.fillWidth: true
+            }
+
+            Label {
+                text: createdAt
+                font.pixelSize: 11
+                color: "#999"
+                horizontalAlignment: Text.AlignRight
+            }
+        }
+
+        // 操作按钮：均匀分布
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 0
+
             Button {
+                Layout.fillWidth: true
                 flat: true; text: "✏️"; font.pixelSize: 14
                 onClicked: card.editClicked(card.projectId)
             }
             Button {
+                Layout.fillWidth: true
                 flat: true; text: "🗑"; font.pixelSize: 14
                 onClicked: card.deleteClicked(card.projectId)
             }
