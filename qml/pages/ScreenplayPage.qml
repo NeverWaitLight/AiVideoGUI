@@ -426,6 +426,7 @@ Item {
     // ── 场次卡片组件 ──
 
     component SceneCardDelegate: Pane {
+        id: cardRoot
         property int sceneNumber: 0
         property string location: ""
         property string locationType: ""
@@ -520,7 +521,7 @@ Item {
         MouseArea {
             anchors.fill: parent
             cursorShape: Qt.PointingHandCursor
-            onClicked: parent.clicked()
+            onClicked: cardRoot.clicked()
         }
         HoverHandler { id: cardHover }
     }

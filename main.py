@@ -101,10 +101,7 @@ def main():
     engine.rootContext().setContextProperty("bridge", bridge)
     engine.rootContext().setContextProperty("Theme", theme)
 
-    # 注册 Theme 单例
     qml_dir = os.path.join(os.path.dirname(__file__), "qml")
-    engine.addImportPath(qml_dir)
-
     main_qml = os.path.join(qml_dir, "main.qml")
     engine.load(QUrl.fromLocalFile(main_qml))
 
