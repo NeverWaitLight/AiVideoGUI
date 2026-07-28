@@ -109,7 +109,7 @@ class MediaRepository(BaseRepository[MediaFileEntity, MediaFile]):
         target = self.session.get(MediaFileEntity, file_id)
         if target:
             target.featured = True
-        self.session.commit()
+        # 移除 commit()，由外层 SessionManager 控制事务
 
     def update_metadata(
         self,
@@ -141,4 +141,49 @@ class MediaRepository(BaseRepository[MediaFileEntity, MediaFile]):
             entity.width = width
         if height > 0:
             entity.height = height
-        self.session.commit()
+        # 移除 commit()，由外层 SessionManager 控制事务
+
+    def get_by_message_id(self, message_id: str) -> Optional[MediaFile]:
+        """
+        根据消息 ID 查询素材文件。
+
+        Args:
+            message_id: 消息 ID
+
+        Returns:
+            素材文件，如果不存在则返回 None
+        """
+        stmt = select(MediaFileEntity).where(MediaFileEntity.message_id == message_id)
+        entity = self.session.execute(stmt).scalar_one_or_none()
+        return self._to_dto(entity) if entity else None
+
+    def list_with_filters(
+        self,
+        media_type: Optional[MediaType] = None,
+        keyword: Optional[str] = None,
+        conversation_ids: Optional[set[str]] = None,
+    ) -> List[MediaFile]:
+        """
+        查询素材文件（支持多种过滤条件）。
+
+        Args:
+            media_type: 素材类型过滤
+            keyword: 关键词过滤（文件名）
+            conversation_ids: 对话 ID 集合过滤
+
+        Returns:
+            素材文件列表
+        """
+        stmt = select(MediaFileEntity).order_by(MediaFileEntity.created_at.desc())
+
+        if media_type:
+            stmt = stmt.where(MediaFileEntity.media_type == media_type.value)
+
+        if keyword:
+            stmt = stmt.where(MediaFileEntity.filename.ilike(f"%{keyword}%"))
+
+        if conversation_ids is not None:
+            stmt = stmt.where(MediaFileEntity.conversation_id.in_(conversation_ids))
+
+        entities = self.session.execute(stmt).scalars().all()
+        return [self._to_dto(e) for e in entities]

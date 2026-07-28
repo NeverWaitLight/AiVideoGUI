@@ -20,12 +20,13 @@ from PyQt6.QtWidgets import (
 )
 from qfluentwidgets import FluentIcon, TitleLabel, PushButton, ToolButton
 
+from models.enums import MediaType
 from ui.page_header import PageHeader
 from ui.timeline_widget import TimelineWidget, VideoSegment, generate_segment_colors
 
 if TYPE_CHECKING:
     from models.media_file import MediaFile
-    from storage.database import DatabaseManager
+    from storage.session_manager import SessionManager
 
 @dataclass
 class PlaylistItem:
@@ -40,9 +41,9 @@ class VideoPlayerPage(QWidget):
 
     back_clicked = pyqtSignal()
 
-    def __init__(self, db: DatabaseManager, parent: QWidget | None = None):
+    def __init__(self, session_manager: SessionManager, parent: QWidget | None = None):
         super().__init__(parent)
-        self._db = db
+        self._session_manager = session_manager
         self._playlist: list[PlaylistItem] = []
         self._current_index = 0
 
@@ -240,7 +241,22 @@ class VideoPlayerPage(QWidget):
 
     def _generate_playlist(self, project_id: int) -> list[PlaylistItem]:
         """生成播放列表（选择每个场次-镜头的最新版本）。"""
-        media_files = self._db.list_media_files(project_id=project_id, media_type="video")
+        from storage.repositories.conversation import ConversationRepository
+        from storage.repositories.media import MediaRepository
+
+        # 获取 Repository 实例
+        conv_repo = self._session_manager.get_repo(ConversationRepository)
+        media_repo = self._session_manager.get_repo(MediaRepository)
+
+        # 查询项目的所有对话
+        conversations = conv_repo.list_by_project(project_id, is_hidden=False)
+        conv_ids = {c.id for c in conversations}
+
+        # 查询视频文件
+        media_files = media_repo.list_with_filters(
+            media_type=MediaType.VIDEO,
+            conversation_ids=conv_ids
+        )
 
         # 按场次-镜头分组
         shot_videos: dict[tuple[int, int], list[tuple[int, MediaFile]]] = {}

@@ -8,7 +8,9 @@ from datetime import datetime
 
 from models.project import Project
 from models.story_outline import StoryOutline
-from storage.database import DatabaseManager
+from storage.orm.base import init_engine, create_all_tables, get_session, close_session
+from storage.repositories.project import ProjectRepository
+from storage.repositories.story_outline import StoryOutlineRepository, StoryOutlineHistoryRepository
 
 
 class TestStoryOutlineHistoryAutoSave(unittest.TestCase):
@@ -23,11 +25,13 @@ class TestStoryOutlineHistoryAutoSave(unittest.TestCase):
         orm_base.engine = None
         orm_base.SessionLocal = None
 
-        self.db = DatabaseManager(self.temp_db_path)
+        database_url = f"sqlite:///{self.temp_db_path}"
+        init_engine(database_url, echo=False)
+        create_all_tables()
 
     def tearDown(self):
         """删除临时数据库。"""
-        from storage.orm.base import close_session, engine
+        from storage.orm.base import engine
         close_session()
         if engine:
             engine.dispose()
@@ -39,28 +43,43 @@ class TestStoryOutlineHistoryAutoSave(unittest.TestCase):
 
     def _create_project_and_outline(self, content="初始大纲内容"):
         """辅助方法：创建项目和大纲。"""
-        project = self.db.create_project(
+        session = get_session()
+        project_repo = ProjectRepository(session)
+        outline_repo = StoryOutlineRepository(session)
+
+        now_ms = int(time.time() * 1000)
+        project = Project(
+            id=0,
             name="测试项目",
             resolution="720P",
             aspect_ratio="16:9",
+            created_at=now_ms,
+            updated_at=now_ms,
+            cover_image="",
         )
-        now_ms = int(time.time() * 1000)
-        story_outline = self.db.create_story_outline(
-            StoryOutline(
-                id=0,
-                project_id=project.id,
-                content=content,
-                created_at=now_ms,
-                updated_at=now_ms,
-            )
+        project = project_repo.create(project)
+        session.commit()
+
+        story_outline = StoryOutline(
+            id=0,
+            project_id=project.id,
+            content=content,
+            created_at=now_ms,
+            updated_at=now_ms,
         )
+        story_outline = outline_repo.create(story_outline)
+        session.commit()
+
         return project, story_outline
 
     def test_auto_save_history_on_insert(self):
         """测试创建大纲时自动保存初始快照。"""
         project, story_outline = self._create_project_and_outline("初始大纲内容")
 
-        history_list = self.db.list_story_outline_history(story_outline.id)
+        session = get_session()
+        history_repo = StoryOutlineHistoryRepository(session)
+        history_list = history_repo.list_by_story_outline(story_outline.id)
+
         self.assertEqual(len(history_list), 1, "创建大纲后应自动保存 1 条历史")
         self.assertEqual(history_list[0].content, "初始大纲内容")
         self.assertEqual(history_list[0].story_outline_id, story_outline.id)
@@ -70,17 +89,23 @@ class TestStoryOutlineHistoryAutoSave(unittest.TestCase):
         """测试更新 StoryOutline 时自动保存历史版本。"""
         project, story_outline = self._create_project_and_outline()
 
-        self.db.update_story_outline(story_outline.id, "第一次修改的内容")
+        session = get_session()
+        outline_repo = StoryOutlineRepository(session)
+        history_repo = StoryOutlineHistoryRepository(session)
 
-        history_list = self.db.list_story_outline_history(story_outline.id)
+        now_ms = int(time.time() * 1000)
+        outline_repo.update_content(story_outline.id, "第一次修改的内容", now_ms)
+
+        history_list = history_repo.list_by_story_outline(story_outline.id)
         self.assertEqual(len(history_list), 2, "创建+更新后应有 2 条历史记录")
         self.assertEqual(history_list[0].content, "第一次修改的内容")
         self.assertEqual(history_list[0].story_outline_id, story_outline.id)
         self.assertEqual(history_list[0].project_id, project.id)
 
-        self.db.update_story_outline(story_outline.id, "第二次修改的内容")
+        now_ms = int(time.time() * 1000)
+        outline_repo.update_content(story_outline.id, "第二次修改的内容", now_ms)
 
-        history_list = self.db.list_story_outline_history(story_outline.id)
+        history_list = history_repo.list_by_story_outline(story_outline.id)
         self.assertEqual(len(history_list), 3, "创建+2次更新应有 3 条历史记录")
         self.assertEqual(history_list[0].content, "第二次修改的内容")
         self.assertEqual(history_list[1].content, "第一次修改的内容")
@@ -89,9 +114,14 @@ class TestStoryOutlineHistoryAutoSave(unittest.TestCase):
         """测试历史记录包含 project_id 字段。"""
         project, story_outline = self._create_project_and_outline("初始内容")
 
-        self.db.update_story_outline(story_outline.id, "新内容")
+        session = get_session()
+        outline_repo = StoryOutlineRepository(session)
+        history_repo = StoryOutlineHistoryRepository(session)
 
-        history_list = self.db.list_story_outline_history(story_outline.id)
+        now_ms = int(time.time() * 1000)
+        outline_repo.update_content(story_outline.id, "新内容", now_ms)
+
+        history_list = history_repo.list_by_story_outline(story_outline.id)
         self.assertEqual(len(history_list), 2, "创建+更新后应有 2 条历史记录")
         self.assertEqual(history_list[0].project_id, project.id, "历史记录应包含 project_id")
 

@@ -92,7 +92,7 @@ class ScreenplayRepository(BaseRepository[ScreenplayEntity, Scene]):
         """
         stmt = delete(ScreenplayEntity).where(ScreenplayEntity.project_id == project_id)
         self.session.execute(stmt)
-        self.session.commit()
+        # 不要在这里 commit，由 SessionManager 管理事务
 
 
 class ScreenplayHistoryRepository(BaseRepository[ScreenplayHistoryEntity, ScreenplayHistory]):

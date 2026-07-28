@@ -7,8 +7,12 @@ import unittest
 
 from models.enums import SceneLocation, SceneTime, ShotSize
 from models.scene import Scene
+from models.project import Project
 from models.storyboard import Storyboard
-from storage.database import DatabaseManager
+from storage.orm.base import init_engine, create_all_tables, get_session, close_session
+from storage.repositories.project import ProjectRepository
+from storage.repositories.screenplay import ScreenplayRepository
+from storage.repositories.storyboard import StoryboardRepository, StoryboardHistoryRepository
 
 
 class TestStoryboardHistoryAutoSave(unittest.TestCase):
@@ -23,7 +27,9 @@ class TestStoryboardHistoryAutoSave(unittest.TestCase):
         orm_base.engine = None
         orm_base.SessionLocal = None
 
-        self.db = DatabaseManager(self.temp_db_path)
+        database_url = f"sqlite:///{self.temp_db_path}"
+        init_engine(database_url, echo=False)
+        create_all_tables()
 
     def tearDown(self):
         """删除临时数据库。"""
@@ -39,13 +45,24 @@ class TestStoryboardHistoryAutoSave(unittest.TestCase):
 
     def _create_project_and_scene(self):
         """辅助方法：创建项目和场次。"""
-        project = self.db.create_project(
+        session = get_session()
+        project_repo = ProjectRepository(session)
+        screenplay_repo = ScreenplayRepository(session)
+
+        now_ms = int(time.time() * 1000)
+        project = Project(
+            id=0,
             name="测试项目",
             resolution="720P",
             aspect_ratio="16:9",
+            created_at=now_ms,
+            updated_at=now_ms,
+            cover_image=""
         )
-        now_ms = int(time.time() * 1000)
-        scene = self.db.create_scene(Scene(
+        project = project_repo.create(project)
+        session.commit()
+
+        scene = Scene(
             id=0,
             project_id=project.id,
             scene_number=1,
@@ -56,7 +73,10 @@ class TestStoryboardHistoryAutoSave(unittest.TestCase):
             content="测试场次",
             created_at=now_ms,
             updated_at=now_ms,
-        ))
+        )
+        scene = screenplay_repo.create(scene)
+        session.commit()
+
         return project, scene
 
     def _make_storyboard(self, scene_id, scene_number=1, shot_number=1,
@@ -64,6 +84,7 @@ class TestStoryboardHistoryAutoSave(unittest.TestCase):
         """辅助方法：构建 Storyboard DTO（id 由数据库自动生成）。"""
         now_ms = int(time.time() * 1000)
         return Storyboard(
+            id=0,
             scene_id=scene_id,
             scene_number=scene_number,
             shot_number=shot_number,
@@ -82,9 +103,15 @@ class TestStoryboardHistoryAutoSave(unittest.TestCase):
     def test_auto_save_history_on_insert(self):
         """测试创建分镜时自动保存初始快照。"""
         project, scene = self._create_project_and_scene()
-        sb = self.db.create_storyboard(self._make_storyboard(scene.id))
 
-        history = self.db.list_storyboard_history(project.id)
+        session = get_session()
+        storyboard_repo = StoryboardRepository(session)
+        history_repo = StoryboardHistoryRepository(session)
+
+        sb = storyboard_repo.create(self._make_storyboard(scene.id))
+        session.commit()
+
+        history = history_repo.list_by_project(project.id)
         self.assertEqual(len(history), 1, "创建分镜后应自动保存 1 条历史")
         self.assertEqual(history[0].storyboard_id, sb.id)
         self.assertEqual(history[0].visual_content, "画面内容")
@@ -93,54 +120,85 @@ class TestStoryboardHistoryAutoSave(unittest.TestCase):
     def test_auto_save_history_on_update(self):
         """测试更新分镜时自动保存历史。"""
         project, scene = self._create_project_and_scene()
-        sb = self.db.create_storyboard(self._make_storyboard(scene.id))
 
-        self.db.update_storyboard(
-            storyboard_id=sb.id, visual_content="修改后的画面"
-        )
+        session = get_session()
+        storyboard_repo = StoryboardRepository(session)
+        history_repo = StoryboardHistoryRepository(session)
 
-        history = self.db.list_storyboard_history(project.id)
+        sb = storyboard_repo.create(self._make_storyboard(scene.id))
+        session.commit()
+
+        # Update the storyboard
+        entity = session.get(storyboard_repo.entity_class, sb.id)
+        entity.visual_content = "修改后的画面"
+        entity.updated_at = int(time.time() * 1000)
+        session.commit()
+
+        history = history_repo.list_by_project(project.id)
         self.assertEqual(len(history), 2, "创建+更新后应有 2 条历史")
         self.assertEqual(history[0].visual_content, "修改后的画面")
 
     def test_no_history_on_updated_at_only(self):
         """测试仅更新 updated_at 时不保存历史。"""
         project, scene = self._create_project_and_scene()
-        sb = self.db.create_storyboard(self._make_storyboard(scene.id))
 
-        self.db.update_storyboard(storyboard_id=sb.id)
+        session = get_session()
+        storyboard_repo = StoryboardRepository(session)
+        history_repo = StoryboardHistoryRepository(session)
 
-        history = self.db.list_storyboard_history(project.id)
+        sb = storyboard_repo.create(self._make_storyboard(scene.id))
+        session.commit()
+
+        # Update only updated_at
+        entity = session.get(storyboard_repo.entity_class, sb.id)
+        entity.updated_at = int(time.time() * 1000)
+        session.commit()
+
+        history = history_repo.list_by_project(project.id)
         self.assertEqual(len(history), 1, "仅 updated_at 变化不应新增历史")
 
     def test_batch_create_saves_history(self):
         """测试批量创建分镜时每条都保存历史。"""
         project, scene = self._create_project_and_scene()
+
+        session = get_session()
+        storyboard_repo = StoryboardRepository(session)
+        history_repo = StoryboardHistoryRepository(session)
+
         storyboards = [
             self._make_storyboard(scene.id, shot_number=1, visual_content="镜头1"),
             self._make_storyboard(scene.id, shot_number=2, visual_content="镜头2"),
             self._make_storyboard(scene.id, shot_number=3, visual_content="镜头3"),
         ]
 
-        self.db.batch_create_storyboards(storyboards)
+        for sb in storyboards:
+            storyboard_repo.create(sb)
+        session.commit()
 
-        history = self.db.list_storyboard_history(project.id)
+        history = history_repo.list_by_project(project.id)
         self.assertEqual(len(history), 3, "批量创建 3 条分镜应各保存 1 条历史")
 
     def test_history_contains_all_fields(self):
         """测试历史记录包含所有分镜字段。"""
         project, scene = self._create_project_and_scene()
+
+        session = get_session()
+        storyboard_repo = StoryboardRepository(session)
+        history_repo = StoryboardHistoryRepository(session)
+
         now_ms = int(time.time() * 1000)
         sb_dto = Storyboard(
+            id=0,
             scene_id=scene.id, scene_number=1, shot_number=1,
             design_image="img.png", shot_size=ShotSize.CLOSE_UP,
             camera_movement="dolly", visual_content="特写画面",
             dialogue="重要台词", sound_effect="风声",
             duration=8.5, notes="注意光影", created_at=now_ms, updated_at=now_ms,
         )
-        sb = self.db.create_storyboard(sb_dto)
+        sb = storyboard_repo.create(sb_dto)
+        session.commit()
 
-        history = self.db.list_storyboard_history(project.id)
+        history = history_repo.list_by_project(project.id)
         self.assertEqual(len(history), 1)
         h = history[0]
         self.assertEqual(h.storyboard_id, sb.id)
@@ -160,12 +218,25 @@ class TestStoryboardHistoryAutoSave(unittest.TestCase):
     def test_multiple_updates_accumulate(self):
         """测试多次更新累积历史记录。"""
         project, scene = self._create_project_and_scene()
-        sb = self.db.create_storyboard(self._make_storyboard(scene.id))
 
-        self.db.update_storyboard(storyboard_id=sb.id, visual_content="版本2")
-        self.db.update_storyboard(storyboard_id=sb.id, visual_content="版本3")
+        session = get_session()
+        storyboard_repo = StoryboardRepository(session)
+        history_repo = StoryboardHistoryRepository(session)
 
-        history = self.db.list_storyboard_history(project.id)
+        sb = storyboard_repo.create(self._make_storyboard(scene.id))
+        session.commit()
+
+        entity = session.get(storyboard_repo.entity_class, sb.id)
+        entity.visual_content = "版本2"
+        entity.updated_at = int(time.time() * 1000)
+        session.commit()
+
+        entity = session.get(storyboard_repo.entity_class, sb.id)
+        entity.visual_content = "版本3"
+        entity.updated_at = int(time.time() * 1000)
+        session.commit()
+
+        history = history_repo.list_by_project(project.id)
         self.assertEqual(len(history), 3, "创建+2次更新应有 3 条历史")
 
 

@@ -67,6 +67,38 @@ class BaseRepository(Generic[EntityType, DTOType]):
         entity = self.session.get(self.entity_class, id)
         return self._to_dto(entity) if entity else None
 
+    def save(self, dto: DTOType) -> DTOType:
+        """
+        保存记录（新增或更新）。
+
+        如果 DTO 的 ID 为 0 或 None，则创建新记录；否则更新现有记录。
+
+        Args:
+            dto: DTO 对象
+
+        Returns:
+            保存后的 DTO 对象（包含数据库生成的字段）
+        """
+        entity = self._to_entity(dto)
+        # 使用 merge() 处理新增和更新：
+        # - 如果 entity.id 在 session 中不存在，执行 INSERT
+        # - 如果 entity.id 已存在，执行 UPDATE
+        merged_entity = self.session.merge(entity)
+        self.session.flush()  # flush 后数据库生成的 ID 会自动填充到 entity
+        return self._to_dto(merged_entity)
+
+    def update(self, dto: DTOType) -> DTOType:
+        """
+        更新记录（save() 的别名）。
+
+        Args:
+            dto: DTO 对象
+
+        Returns:
+            更新后的 DTO 对象
+        """
+        return self.save(dto)
+
     def create(self, dto: DTOType) -> DTOType:
         """
         创建新记录。

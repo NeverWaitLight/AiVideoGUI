@@ -9,7 +9,9 @@ from pathlib import Path
 
 from models.enums import MediaType
 from models.media_file import MediaFile
-from storage.database import DatabaseManager
+from storage.session_manager import SessionManager
+from storage.repositories.media import MediaRepository
+from storage.repositories.conversation import ConversationRepository
 from utils import paths
 from utils.video_metadata import VideoMetadataExtractor
 
@@ -36,8 +38,8 @@ def supported_extensions() -> set[str]:
 class MediaService:
     """素材库业务服务。"""
 
-    def __init__(self, db: DatabaseManager, workspace_root: str) -> None:
-        self._db = db
+    def __init__(self, session_manager: SessionManager, workspace_root: str) -> None:
+        self._sm = session_manager
         self._root = workspace_root
         self._chat_dir = paths.chat_dir(workspace_root)
         os.makedirs(self._chat_dir, exist_ok=True)
@@ -50,7 +52,9 @@ class MediaService:
         storyboard_id: int = 0,
     ) -> None:
         """视频任务完成后自动入库（防重复）。"""
-        if self._db.get_media_file_by_message(message_id):
+        media_repo = self._sm.get_repo(MediaRepository)
+
+        if media_repo.get_by_message_id(message_id):
             logger.debug("素材已入库，跳过 message_id=%s", message_id)
             return
 
@@ -105,8 +109,16 @@ class MediaService:
             height=height,
             storyboard_id=storyboard_id,
         )
-        self._db.add_media_file(media)
-        logger.info("素材自动入库：%s", filename)
+
+        self._sm.begin_write()
+        try:
+            media_repo.create(media)
+            self._sm.commit_write()
+            logger.info("素材自动入库：%s", filename)
+        except Exception as e:
+            self._sm.rollback_write()
+            logger.error(f"素材入库失败: {e}")
+            raise
 
     def import_files(self, file_paths: list[str], project_id: int = "") -> list[MediaFile]:
         """将外部文件复制到目标目录并入库。project_id 非空时存入项目目录，否则存入 chat 目录。"""
@@ -173,9 +185,22 @@ class MediaService:
                 width=width,
                 height=height,
             )
-            self._db.add_media_file(media)
-            imported.append(media)
-            logger.info("导入素材：%s", media.filename)
+
+            self._sm.begin_write()
+            try:
+                media_repo = self._sm.get_repo(MediaRepository)
+                media_repo.create(media)
+                self._sm.commit_write()
+                imported.append(media)
+                logger.info("导入素材：%s", media.filename)
+            except Exception as e:
+                self._sm.rollback_write()
+                logger.error(f"导入素材入库失败: {e}")
+                # 文件已复制但数据库失败，尝试删除已复制的文件
+                self._try_remove_file(dest_path)
+                if thumbnail_path:
+                    self._try_remove_file(thumbnail_path)
+                raise
 
         return imported
 
@@ -186,21 +211,51 @@ class MediaService:
         project_id: int | None = None,
     ) -> list[MediaFile]:
         """查询素材列表，可选按项目过滤。"""
-        return self._db.list_media_files(
-            media_type=media_type,
+        media_repo = self._sm.get_repo(MediaRepository)
+
+        # 转换字符串为 MediaType 枚举（处理 UI 层传入的字符串）
+        media_type_enum = None
+        if media_type:
+            media_type_enum = MediaType(media_type)
+
+        # 如果需要按项目过滤，获取项目关联的对话 ID
+        conversation_ids = None
+        if project_id:
+            conv_repo = self._sm.get_repo(ConversationRepository)
+            project_convs = conv_repo.list_by_project(project_id)
+            conversation_ids = {c.id for c in project_convs}
+
+        return media_repo.list_with_filters(
+            media_type=media_type_enum,
             keyword=keyword,
-            project_id=project_id
+            conversation_ids=conversation_ids,
         )
 
     def delete_file(self, media_id: str) -> bool:
         """删除单个素材（文件 + 缩略图 + 数据库记录）。"""
-        media = self._db.delete_media_file(media_id)
+        media_repo = self._sm.get_repo(MediaRepository)
+
+        # 先查询记录
+        media = media_repo.get_by_id(media_id)
         if not media:
             return False
+
+        # 删除数据库记录
+        self._sm.begin_write()
+        try:
+            media_repo.delete(media_id)
+            self._sm.commit_write()
+        except Exception as e:
+            self._sm.rollback_write()
+            logger.error(f"删除素材记录失败: {e}")
+            raise
+
+        # 数据库删除成功后，再删除文件系统中的文件
         self._try_remove_file(media.local_path)
         # 同时删除缩略图
         if media.thumbnail_path:
             self._try_remove_file(media.thumbnail_path)
+
         logger.info("删除素材：%s", media.filename)
         return True
 
@@ -214,11 +269,21 @@ class MediaService:
 
     def list_by_storyboard(self, storyboard_id: int) -> list[MediaFile]:
         """查询指定分镜关联的所有素材文件。"""
-        return self._db.list_media_by_storyboard(storyboard_id)
+        media_repo = self._sm.get_repo(MediaRepository)
+        return media_repo.list_by_storyboard(storyboard_id)
 
     def set_featured(self, file_id: str, storyboard_id: int) -> None:
         """将指定文件设为分镜封面。"""
-        self._db.set_featured_media(file_id, storyboard_id)
+        media_repo = self._sm.get_repo(MediaRepository)
+
+        self._sm.begin_write()
+        try:
+            media_repo.set_featured(file_id, storyboard_id)
+            self._sm.commit_write()
+        except Exception as e:
+            self._sm.rollback_write()
+            logger.error(f"设置封面失败: {e}")
+            raise
 
     def _resolve_dest_path(self, filename: str, target_dir: str) -> str:
         """避免目标文件重名：同名时追加序号。"""

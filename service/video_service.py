@@ -17,7 +17,10 @@ from models.message import Message
 from providers.video_base import VideoProvider
 from providers.dashscope_video import DashScopeVideoProvider
 from providers.seedance_video import SeedanceVideoProvider
-from storage.database import DatabaseManager
+from storage.session_manager import SessionManager
+from storage.repositories.conversation import ConversationRepository
+from storage.repositories.message import MessageRepository
+from storage.repositories.active_task import ActiveTaskRepository
 
 _PROVIDER_REGISTRY: dict[str, type[VideoProvider]] = {
     "dashscope": DashScopeVideoProvider,
@@ -32,12 +35,12 @@ class VideoService(QObject):
 
     def __init__(
         self,
-        db: DatabaseManager,
+        session_manager: SessionManager,
         config: ConfigManager,
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
-        self._db = db
+        self._sm = session_manager
         self._config = config
         self._providers: dict[str, VideoProvider] = {}
 
@@ -54,9 +57,9 @@ class VideoService(QObject):
             raise KeyError(f"未注册的 Provider：{name}")
         provider = cls(cfg)
 
-        # 注入 DatabaseManager（用于 OSS 缓存）
-        if hasattr(provider, "set_database_manager"):
-            provider.set_database_manager(self._db)
+        # 注入 SessionManager（用于 OSS 缓存）
+        if hasattr(provider, "set_session_manager"):
+            provider.set_session_manager(self._sm)
 
         self._providers[name] = provider
         return provider
@@ -75,8 +78,17 @@ class VideoService(QObject):
             project_id=project_id,
             is_hidden=is_hidden,
         )
-        self._db.create_conversation(conv)
-        return conv
+
+        conv_repo = self._sm.get_repo(ConversationRepository)
+        self._sm.begin_write()
+        try:
+            conv_repo.save(conv)
+            self._sm.commit_write()
+            return conv
+        except Exception as e:
+            self._sm.rollback_write()
+            logger.error(f"创建对话失败: {e}")
+            raise
 
     def add_user_message(self, conversation_id: str, content: str) -> Message:
         msg = Message(
@@ -87,8 +99,17 @@ class VideoService(QObject):
             created_at=datetime.now(),
             status=MessageStatus.COMPLETED,
         )
-        self._db.add_message(msg)
-        return msg
+
+        msg_repo = self._sm.get_repo(MessageRepository)
+        self._sm.begin_write()
+        try:
+            msg_repo.save(msg)
+            self._sm.commit_write()
+            return msg
+        except Exception as e:
+            self._sm.rollback_write()
+            logger.error(f"添加用户消息失败: {e}")
+            raise
 
     # ---------- 提交任务 ----------
 
@@ -127,24 +148,38 @@ class VideoService(QObject):
             task_id=provider_task_id,
             status=MessageStatus.GENERATING,
         )
-        self._db.add_message(assistant_msg)
 
-        active_task_id = self._db.add_active_task(
-            provider_task_id=provider_task_id,
-            message_id=assistant_msg.id,
-            provider_name=provider_name,
-            model_name=provider._config.default_model,
-            save_path=save_path,
-            request_params=json.dumps(request_params, ensure_ascii=False),
-            storyboard_id=storyboard_id,
-        )
+        msg_repo = self._sm.get_repo(MessageRepository)
+        task_repo = self._sm.get_repo(ActiveTaskRepository)
 
-        logger.info(
-            "任务已提交 message=%s provider_task=%s active_task=%s provider=%s save_path=%s",
-            assistant_msg.id,
-            provider_task_id,
-            active_task_id,
-            provider_name,
-            save_path,
-        )
-        return assistant_msg
+        self._sm.begin_write()
+        try:
+            # 保存助手消息
+            msg_repo.save(assistant_msg)
+
+            # 添加活跃任务
+            active_task_id = task_repo.add(
+                provider_task_id=provider_task_id,
+                message_id=assistant_msg.id,
+                provider_name=provider_name,
+                model_name=provider._config.default_model,
+                save_path=save_path,
+                request_params=json.dumps(request_params, ensure_ascii=False),
+                storyboard_id=storyboard_id,
+            )
+
+            self._sm.commit_write()
+
+            logger.info(
+                "任务已提交 message=%s provider_task=%s active_task=%s provider=%s save_path=%s",
+                assistant_msg.id,
+                provider_task_id,
+                active_task_id,
+                provider_name,
+                save_path,
+            )
+            return assistant_msg
+        except Exception as e:
+            self._sm.rollback_write()
+            logger.error(f"提交任务失败: {e}")
+            raise

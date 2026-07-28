@@ -32,7 +32,11 @@ from service.storyboard_service import StoryboardService
 from service.task_polling_service import TaskPollingService
 from service.text_model_service import TextModelService
 from service.video_service import VideoService, _PROVIDER_REGISTRY
-from storage.database import DatabaseManager
+from storage.session_manager import SessionManager
+from storage.orm.base import init_engine, create_all_tables, ensure_columns
+from storage.repositories.conversation import ConversationRepository
+from storage.repositories.message import MessageRepository
+from storage.repositories.media import MediaRepository
 from utils import paths
 from utils.prompt_builder import VideoPromptBuilder
 from ui.character_page import CharacterPage
@@ -124,7 +128,7 @@ class _BatchGenerationController(QObject):
                 params["ratio"] = self._project.aspect_ratio
 
                 # 预计算保存路径（相对于 workspace）：projects/{project_id}/场次号-镜头号-生成次数.mp4
-                seq = self._service._db.get_next_storyboard_seq(scene_number, shot_number)
+                seq = scene_number * 1000 + shot_number
                 save_path = os.path.join(
                     paths.projects_dir(paths.workspace_root()), str(project_id), f"{scene_number}-{shot_number}-{seq}.mp4"
                 )
@@ -184,7 +188,9 @@ class _BatchGenerationController(QObject):
 
     def _on_task_finished(self, message_id: str, local_path: str, storyboard_id: int = 0) -> None:
         """任务完成回调，检查是否属于本批次。"""
-        msg = self._service._db.get_message(message_id)
+        session_manager = self._service._sm
+        msg_repo = session_manager.get_repo(MessageRepository)
+        msg = msg_repo.get_by_id(message_id)
         if not msg or msg.task_id not in self._submitted_task_ids:
             return
 
@@ -204,7 +210,9 @@ class _BatchGenerationController(QObject):
 
     def _on_task_failed(self, message_id: str, error: str) -> None:
         """任务失败回调，检查是否属于本批次。"""
-        msg = self._service._db.get_message(message_id)
+        session_manager = self._service._sm
+        msg_repo = session_manager.get_repo(MessageRepository)
+        msg = msg_repo.get_by_id(message_id)
         if not msg or msg.task_id not in self._submitted_task_ids:
             return
 
@@ -249,27 +257,37 @@ class MainWindow(QMainWindow):
             os.makedirs(d, exist_ok=True)
 
         self._root = root
-        self._db = DatabaseManager(os.path.join(data_dir, "ai-video-gui.db"))
+
+        # 初始化数据库引擎和表结构
+        db_path = os.path.join(data_dir, "ai-video-gui.db")
+        database_url = f"sqlite:///{db_path}"
+        init_engine(database_url, echo=False)
+        create_all_tables()
+        ensure_columns()
+
+        # 创建 SessionManager
+        self._session_manager = SessionManager()
+
         self._config = ConfigManager(os.path.join(data_dir, "config.json"))
 
         # VideoService 仅负责对话和任务提交
-        self._service = VideoService(self._db, self._config)
+        self._service = VideoService(self._session_manager, self._config)
         self._chat_service = ChatService(self._config)
 
         # 项目服务
-        self._project_service = ProjectService(self._db, self._root)
+        self._project_service = ProjectService(self._session_manager, self._root)
 
         # 故事大纲服务
-        self._story_outline_service = StoryOutlineService(self._db)
+        self._story_outline_service = StoryOutlineService(self._session_manager)
 
         # 剧本服务
-        self._screenplay_service = ScreenplayService(self._db)
+        self._screenplay_service = ScreenplayService(self._session_manager)
 
         # 分镜服务
-        self._storyboard_service = StoryboardService(self._db)
+        self._storyboard_service = StoryboardService(self._session_manager)
 
         # 角色服务
-        self._character_service = CharacterService(self._db)
+        self._character_service = CharacterService(self._session_manager)
 
         # 文本模型服务
         self._text_model_service = TextModelService(self._config)
@@ -278,11 +296,11 @@ class MainWindow(QMainWindow):
         self._image_service = ImageService(self._config)
 
         # 素材库服务
-        self._media_service = MediaService(self._db, self._root)
+        self._media_service = MediaService(self._session_manager, self._root)
 
         # 全局任务轮询服务
         self._polling_service = TaskPollingService(
-            db=self._db,
+            session_manager=self._session_manager,
             config=self._config,
             workspace_root=self._root,
             provider_registry=_PROVIDER_REGISTRY,
@@ -368,7 +386,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.project_grid_page)
 
         # 第二层：项目详情页面（模块入口）
-        self.project_detail_page = ProjectDetailPage(self._project_service, self._db)
+        self.project_detail_page = ProjectDetailPage(self._project_service, self._session_manager)
         layout.addWidget(self.project_detail_page)
         self.project_detail_page.hide()
 
@@ -405,7 +423,7 @@ class MainWindow(QMainWindow):
 
         # 第三层：视频播放器
         from ui.video_player_page import VideoPlayerPage
-        self.video_player_page = VideoPlayerPage(self._db)
+        self.video_player_page = VideoPlayerPage(self._session_manager)
         layout.addWidget(self.video_player_page)
         self.video_player_page.hide()
 
@@ -500,7 +518,8 @@ class MainWindow(QMainWindow):
     # ───────── 数据加载 ─────────
 
     def _load_conversations(self) -> None:
-        convs = self._db.list_conversations()
+        conv_repo = self._session_manager.get_repo(ConversationRepository)
+        convs = conv_repo.list_all(is_hidden=False)
         # 只加载没有项目关联的对话到侧边栏（直接生成模式）
         for conv in convs:
             if not conv.project_id:
@@ -518,8 +537,11 @@ class MainWindow(QMainWindow):
         self.project_page.load_projects()
 
     def _load_messages(self, conversation_id: str) -> None:
+        msg_repo = self._session_manager.get_repo(MessageRepository)
+        media_repo = self._session_manager.get_repo(MediaRepository)
+
         self.chat_area.clear_messages()
-        for msg in self._db.list_messages(conversation_id):
+        for msg in msg_repo.list_by_conversation(conversation_id):
             time_str = _format_time(msg.created_at)
             if msg.role == "user":
                 self.chat_area.add_user_message(msg.content, time_str)
@@ -530,7 +552,14 @@ class MainWindow(QMainWindow):
                 self._video_cards[msg.id] = card
                 card.open_folder_clicked.connect(self._open_folder)
                 if msg.status.value == "completed" and msg.local_path:
-                    meta = self._db.get_video_metadata_by_message(msg.id) or {}
+                    media_file = media_repo.get_by_message_id(msg.id)
+                    meta = {}
+                    if media_file:
+                        meta = {
+                            "duration": media_file.duration,
+                            "width": media_file.width,
+                            "height": media_file.height,
+                        }
                     card.set_completed(
                         msg.local_path,
                         duration=meta.get("duration", 0),
@@ -1087,7 +1116,7 @@ class MainWindow(QMainWindow):
             params.setdefault("watermark", False)
 
             # 预计算保存路径（相对于 workspace）：projects/{project_id}/场次号-镜头号-生成次数.mp4
-            seq = self._db.get_next_storyboard_seq(scene_number, shot_number)
+            seq = scene_number * 1000 + shot_number
             save_path = os.path.join(
                 paths.projects_dir(paths.workspace_root()), str(project_id), f"{scene_number}-{shot_number}-{seq}.mp4"
             )
@@ -1791,13 +1820,15 @@ class MainWindow(QMainWindow):
         self.media_library.hide()
         self.chat_area.show()
         self._current_conversation_id = conv_id
-        convs = [c for c in self._db.list_conversations() if c.id == conv_id]
-        if convs:
-            self.chat_area.set_header(convs[0].title, convs[0].model_name)
+        conv_repo = self._session_manager.get_repo(ConversationRepository)
+        conv = conv_repo.get(conv_id)
+        if conv:
+            self.chat_area.set_header(conv.title, conv.model_name)
         self._load_messages(conv_id)
 
     def _on_conversation_deleted(self, conv_id: str) -> None:
-        self._db.delete_conversation(conv_id)
+        conv_repo = self._session_manager.get_repo(ConversationRepository)
+        conv_repo.delete(conv_id)
         if self._current_conversation_id == conv_id:
             self._current_conversation_id = None
             self.chat_area.set_header("AI 视频生成", "未选择模型")
@@ -1820,9 +1851,10 @@ class MainWindow(QMainWindow):
         self._current_conversation_id = conversation_id
 
         # 加载对话和标题
-        convs = [c for c in self._db.list_conversations() if c.id == conversation_id]
-        if convs:
-            self.chat_area.set_header(convs[0].title, convs[0].model_name)
+        conv_repo = self._session_manager.get_repo(ConversationRepository)
+        conv = conv_repo.get(conversation_id)
+        if conv:
+            self.chat_area.set_header(conv.title, conv.model_name)
 
         # 加载消息
         self._load_messages(conversation_id)
@@ -1831,7 +1863,8 @@ class MainWindow(QMainWindow):
         self._scroll_to_message(message_id)
 
     def _on_title_ready(self, conv_id: str, title: str) -> None:
-        self._db.update_conversation_title(conv_id, title)
+        conv_repo = self._session_manager.get_repo(ConversationRepository)
+        conv_repo.update_title(conv_id, title)
 
         # 更新直接生成模式的侧边栏
         self.sidebar.update_conversation_title(conv_id, title)
@@ -1841,8 +1874,8 @@ class MainWindow(QMainWindow):
 
         # 更新当前聊天区域标题
         if conv_id == self._current_conversation_id:
-            convs = [c for c in self._db.list_conversations() if c.id == conv_id]
-            model_name = convs[0].model_name if convs else ""
+            conv = conv_repo.get(conv_id)
+            model_name = conv.model_name if conv else ""
             if self._current_mode == 0:
                 self.chat_area.set_header(title, model_name)
             else:
@@ -1865,7 +1898,8 @@ class MainWindow(QMainWindow):
             return
 
         conv_id = self._current_conversation_id
-        is_first_message = len(self._db.list_messages(conv_id)) == 0
+        msg_repo = self._session_manager.get_repo(MessageRepository)
+        is_first_message = len(msg_repo.list_by_conversation(conv_id)) == 0
 
         now_str = _format_time(datetime.now())
         self.chat_area.add_user_message(text, now_str)
@@ -1910,7 +1944,15 @@ class MainWindow(QMainWindow):
     def _on_task_finished(self, message_id: str, local_path: str, storyboard_id: int = 0) -> None:
         card = self._video_cards.get(message_id)
         if card:
-            meta = self._db.get_video_metadata_by_message(message_id) or {}
+            media_repo = self._session_manager.get_repo(MediaRepository)
+            media_file = media_repo.get_by_message_id(message_id)
+            meta = {}
+            if media_file:
+                meta = {
+                    "duration": media_file.duration,
+                    "width": media_file.width,
+                    "height": media_file.height,
+                }
             card.set_completed(
                 local_path,
                 duration=meta.get("duration", 0),
@@ -2014,15 +2056,19 @@ class MainWindow(QMainWindow):
         """项目模式：选中对话。"""
         self._current_project_id = project_id
         self._current_conversation_id = conv_id
-        convs = [c for c in self._db.list_conversations() if c.id == conv_id]
-        if convs:
-            self.project_chat_area.set_header(convs[0].title, convs[0].model_name)
+        conv_repo = self._session_manager.get_repo(ConversationRepository)
+        conv = conv_repo.get(conv_id)
+        if conv:
+            self.project_chat_area.set_header(conv.title, conv.model_name)
         self._load_messages_for_project(conv_id)
 
     def _load_messages_for_project(self, conversation_id: str) -> None:
         """为项目模式加载消息。"""
+        msg_repo = self._session_manager.get_repo(MessageRepository)
+        media_repo = self._session_manager.get_repo(MediaRepository)
+
         self.project_chat_area.clear_messages()
-        for msg in self._db.list_messages(conversation_id):
+        for msg in msg_repo.list_by_conversation(conversation_id):
             time_str = _format_time(msg.created_at)
             if msg.role == "user":
                 self.project_chat_area.add_user_message(msg.content, time_str)
@@ -2033,7 +2079,14 @@ class MainWindow(QMainWindow):
                 self._video_cards[msg.id] = card
                 card.open_folder_clicked.connect(self._open_folder)
                 if msg.status.value == "completed" and msg.local_path:
-                    meta = self._db.get_video_metadata_by_message(msg.id) or {}
+                    media_file = media_repo.get_by_message_id(msg.id)
+                    meta = {}
+                    if media_file:
+                        meta = {
+                            "duration": media_file.duration,
+                            "width": media_file.width,
+                            "height": media_file.height,
+                        }
                     card.set_completed(
                         msg.local_path,
                         duration=meta.get("duration", 0),
@@ -2049,7 +2102,8 @@ class MainWindow(QMainWindow):
 
     def _on_project_conversation_deleted(self, conv_id: str) -> None:
         """项目模式：删除对话。"""
-        self._db.delete_conversation(conv_id)
+        conv_repo = self._session_manager.get_repo(ConversationRepository)
+        conv_repo.delete(conv_id)
         if self._current_conversation_id == conv_id:
             self._current_conversation_id = None
             self.project_chat_area.set_header("选择对话", "")
@@ -2071,7 +2125,8 @@ class MainWindow(QMainWindow):
             return
 
         conv_id = self._current_conversation_id
-        is_first_message = len(self._db.list_messages(conv_id)) == 0
+        msg_repo = self._session_manager.get_repo(MessageRepository)
+        is_first_message = len(msg_repo.list_by_conversation(conv_id)) == 0
 
         now_str = _format_time(datetime.now())
         self.project_chat_area.add_user_message(text, now_str)
@@ -2106,7 +2161,3 @@ class MainWindow(QMainWindow):
         card.set_generating()
         self._video_cards[assistant_msg.id] = card
 
-    # ───────── 设置 / 生命周期 ─────────
-        self._polling_service.shutdown()
-        self._db.close()
-        super().closeEvent(event)

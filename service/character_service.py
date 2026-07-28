@@ -5,21 +5,24 @@ import uuid
 from datetime import datetime
 
 from models.character import Character, CharacterHistory
-from storage.database import DatabaseManager
+from storage.session_manager import SessionManager
+from storage.repositories.character import CharacterRepository, CharacterHistoryRepository
 
 class CharacterService:
     """角色业务逻辑服务。"""
 
-    def __init__(self, db: DatabaseManager) -> None:
-        self._db = db
+    def __init__(self, session_manager: SessionManager) -> None:
+        self._sm = session_manager
 
     def list_characters(self, project_id: int) -> list[Character]:
         """获取项目的所有角色。"""
-        return self._db.list_characters(project_id)
+        character_repo = self._sm.get_repo(CharacterRepository)
+        return character_repo.list_by_project(project_id)
 
     def get_character(self, character_uuid: str) -> Character | None:
         """获取单个角色。"""
-        return self._db.get_character(character_uuid)
+        character_repo = self._sm.get_repo(CharacterRepository)
+        return character_repo.get_by_id(character_uuid)
 
     def create_character(
         self,
@@ -41,9 +44,18 @@ class CharacterService:
             created_at=datetime.now(),
             updated_at=datetime.now(),
         )
-        result = self._db.create_character(character)
-        logger.info(f"创建角色：name={name}, ref_code={ref_code}")
-        return result
+
+        character_repo = self._sm.get_repo(CharacterRepository)
+        self._sm.begin_write()
+        try:
+            created = character_repo.save(character)
+            self._sm.commit_write()
+            logger.info(f"创建角色：name={name}, ref_code={ref_code}")
+            return created
+        except Exception as e:
+            self._sm.rollback_write()
+            logger.error(f"创建角色失败：{e}")
+            raise
 
     def update_character(
         self,
@@ -54,49 +66,107 @@ class CharacterService:
         design_image: str | None = None,
     ) -> None:
         """更新角色信息（ORM 监听器自动保存历史快照）。"""
-        character = self._db.get_character(character_uuid)
+        character_repo = self._sm.get_repo(CharacterRepository)
+
+        # 先读取现有角色
+        character = character_repo.get_by_id(character_uuid)
         if not character:
             logger.warning(f"角色不存在：{character_uuid}")
             return
 
         # 更新字段
-        if name is not None:
-            character.name = name
-        if ref_code is not None:
-            character.ref_code = ref_code
-        if description is not None:
-            character.description = description
-        if design_image is not None:
-            character.design_image = design_image
-        character.updated_at = datetime.now()
+        updated_character = Character(
+            id=character.id,
+            uuid=character.uuid,
+            project_id=character.project_id,
+            name=name if name is not None else character.name,
+            ref_code=ref_code if ref_code is not None else character.ref_code,
+            description=description if description is not None else character.description,
+            design_image=design_image if design_image is not None else character.design_image,
+            created_at=character.created_at,
+            updated_at=datetime.now(),
+        )
 
-        self._db.update_character(character)
-        logger.info(f"更新角色：uuid={character_uuid}")
+        self._sm.begin_write()
+        try:
+            character_repo.update(updated_character)
+            self._sm.commit_write()
+            logger.info(f"更新角色：uuid={character_uuid}")
+        except Exception as e:
+            self._sm.rollback_write()
+            logger.error(f"更新角色失败：{e}")
+            raise
 
     def delete_character(self, character_uuid: str) -> None:
         """删除角色。"""
-        self._db.delete_character(character_uuid)
-        logger.info(f"删除角色：uuid={character_uuid}")
+        character_repo = self._sm.get_repo(CharacterRepository)
+
+        self._sm.begin_write()
+        try:
+            character_repo.delete(character_uuid)
+            self._sm.commit_write()
+            logger.info(f"删除角色：uuid={character_uuid}")
+        except Exception as e:
+            self._sm.rollback_write()
+            logger.error(f"删除角色失败：{e}")
+            raise
 
     def batch_create_characters(self, characters: list[Character]) -> None:
         """批量创建角色（AI 提取后用）。"""
-        self._db.batch_create_characters(characters)
-        logger.info(f"批量创建 {len(characters)} 个角色")
+        character_repo = self._sm.get_repo(CharacterRepository)
+
+        self._sm.begin_write()
+        try:
+            character_repo.batch_create(characters)
+            self._sm.commit_write()
+            logger.info(f"批量创建 {len(characters)} 个角色")
+        except Exception as e:
+            self._sm.rollback_write()
+            logger.error(f"批量创建角色失败：{e}")
+            raise
 
     def get_by_ref_code(self, project_id: int, ref_code: str) -> Character | None:
         """根据引用代号查找角色。"""
-        return self._db.get_character_by_ref_code(project_id, ref_code)
+        character_repo = self._sm.get_repo(CharacterRepository)
+        return character_repo.get_by_ref_code(project_id, ref_code)
 
     def save_history(self, character_uuid: str) -> None:
         """手动保存角色当前状态到历史。"""
-        character = self._db.get_character(character_uuid)
-        if character:
-            self._db.create_character_history(character)
+        character_repo = self._sm.get_repo(CharacterRepository)
+        history_repo = self._sm.get_repo(CharacterHistoryRepository)
+
+        # 先读取角色
+        character = character_repo.get_by_id(character_uuid)
+        if not character:
+            logger.warning(f"角色不存在：{character_uuid}")
+            return
+
+        # 创建历史记录
+        history = CharacterHistory(
+            id=0,  # 自增ID
+            character_id=character.uuid,
+            project_id=character.project_id,
+            name=character.name,
+            ref_code=character.ref_code,
+            design_image=character.design_image,
+            description=character.description,
+            created_at=datetime.now(),
+        )
+
+        self._sm.begin_write()
+        try:
+            history_repo.save(history)
+            self._sm.commit_write()
             logger.info(f"保存角色历史：uuid={character_uuid}")
+        except Exception as e:
+            self._sm.rollback_write()
+            logger.error(f"保存角色历史失败：{e}")
+            raise
 
     def list_history(self, character_uuid: str) -> list[CharacterHistory]:
         """获取角色的编辑历史。"""
-        return self._db.list_character_history(character_uuid)
+        history_repo = self._sm.get_repo(CharacterHistoryRepository)
+        return history_repo.list_by_character(character_uuid)
 
     # 固定特征标签——跨视频保持一致，不随场景变化
     _FIXED_TAGS = ("物种", "外貌", "发型", "发色", "瞳色", "体型")
@@ -150,7 +220,8 @@ class CharacterService:
         自动清理描述中的 HTML 标签和 Markdown 格式控制符，
         确保最终提示词为纯文本。
         """
-        characters = self._db.list_characters(project_id)
+        character_repo = self._sm.get_repo(CharacterRepository)
+        characters = character_repo.list_by_project(project_id)
         if not characters:
             return visual_content
 

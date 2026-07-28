@@ -85,7 +85,7 @@ class CharacterRepository(BaseRepository[CharacterEntity, Character]):
             entity.design_image = dto.design_image
             entity.description = dto.description
             entity.updated_at = datetime.now()
-            self.session.commit()
+            # Transaction control handled by SessionManager
 
     def delete(self, id: str) -> bool:
         """根据 UUID 删除角色。"""
@@ -93,7 +93,7 @@ class CharacterRepository(BaseRepository[CharacterEntity, Character]):
         entity = self.session.execute(stmt).scalar_one_or_none()
         if entity:
             self.session.delete(entity)
-            self.session.commit()
+            # Transaction control handled by SessionManager
             return True
         return False
 
@@ -102,7 +102,7 @@ class CharacterRepository(BaseRepository[CharacterEntity, Character]):
         for char in characters:
             entity = self._to_entity(char)
             self.session.add(entity)
-        self.session.commit()
+        # Transaction control handled by SessionManager
 
 
 class CharacterHistoryRepository(BaseRepository[CharacterHistoryEntity, CharacterHistory]):

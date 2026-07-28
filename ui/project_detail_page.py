@@ -22,7 +22,10 @@ from qfluentwidgets import (
 
 from models.project import Project
 from service.project_service import ProjectService
-from storage.database import DatabaseManager
+from storage.session_manager import SessionManager
+from storage.repositories.conversation import ConversationRepository
+from storage.repositories.media import MediaRepository
+from models.enums import MediaType
 from ui.page_header import PageHeader
 
 class ModuleCard(CardWidget):
@@ -88,10 +91,10 @@ class ProjectDetailPage(QWidget):
     module_selected = pyqtSignal(int, str)  # project_id, module_name
     back_clicked = pyqtSignal()
 
-    def __init__(self, project_service: ProjectService, db: DatabaseManager, parent: QWidget | None = None):
+    def __init__(self, project_service: ProjectService, session_manager: SessionManager, parent: QWidget | None = None):
         super().__init__(parent)
         self._service = project_service
-        self._db = db
+        self._session_manager = session_manager
         self._current_project: Project | None = None
         self._setup_ui()
 
@@ -188,7 +191,16 @@ class ProjectDetailPage(QWidget):
 
     def _has_storyboard_videos(self, project_id: int) -> bool:
         """判断项目是否有分镜视频（文件名匹配 场次-镜头-序号.mp4 格式）。"""
-        media_files = self._db.list_media_files(project_id=project_id, media_type="video")
+        # 查询项目下所有对话 ID
+        conversation_repo = self._session_manager.get_repo(ConversationRepository)
+        conversations = conversation_repo.list_by_project(project_id)
+        conv_ids = [conv.id for conv in conversations]
+
+        # 查询所有视频素材
+        media_repo = self._session_manager.get_repo(MediaRepository)
+        media_files = media_repo.list_with_filters(media_type=MediaType.VIDEO, conversation_ids=conv_ids)
+
+        # 匹配分镜视频文件名格式
         pattern = re.compile(r"^\d+-\d+-\d+\.mp4$")
         return any(pattern.match(m.filename) for m in media_files)
 

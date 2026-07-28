@@ -14,6 +14,8 @@ from models.provider_config import ProviderConfig
 from models.task_result import TaskResult
 from providers.dashscope_oss_uploader import DashScopeOSSUploader
 from providers.video_base import VideoProvider
+from storage.repositories.oss_cache_repository import OSSFileCacheRepository
+from storage.session_manager import SessionManager
 
 class DashScopeVideoProvider(VideoProvider):
     """DashScope 视频生成实现。"""
@@ -29,11 +31,11 @@ class DashScopeVideoProvider(VideoProvider):
         self._base_url = config.base_url or self.BASE_URL
         self._model = config.default_model or self.DEFAULT_MODEL
         self._oss_uploader = DashScopeOSSUploader(self._api_key)
-        self._db_manager = None  # 延迟注入，由外部设置
+        self._session_manager = None  # 延迟注入，由外部设置
 
-    def set_database_manager(self, db_manager) -> None:
-        """注入 DatabaseManager 实例（用于 OSS 缓存）"""
-        self._db_manager = db_manager
+    def set_session_manager(self, session_manager: SessionManager) -> None:
+        """注入 SessionManager 实例（用于 OSS 缓存）"""
+        self._session_manager = session_manager
 
     @staticmethod
     def _is_local_file(path: str) -> bool:
@@ -64,21 +66,26 @@ class DashScopeVideoProvider(VideoProvider):
         logger.debug(f"检测到本地文件: {file_path}")
 
         # 1. 尝试从数据库缓存获取
-        if self._db_manager:
-            cache = self._db_manager.get_oss_cache(file_path, self._model)
+        if self._session_manager:
+            oss_cache_repo = self._session_manager.get_repo(OSSFileCacheRepository)
+            cache = oss_cache_repo.get_valid_cache(file_path, self._model)
             if cache:
-                logger.info(f"命中 OSS 缓存: {file_path} -> {cache['oss_url']}")
-                return cache["oss_url"]
+                logger.info(f"命中 OSS 缓存: {file_path} -> {cache.oss_url}")
+                return cache.oss_url
 
         # 2. 缓存未命中，上传文件
         logger.info(f"上传文件到 OSS: {file_path}")
         oss_url, expire_time = self._oss_uploader.upload(file_path, self._model)
 
         # 3. 保存到数据库缓存
-        if self._db_manager:
+        if self._session_manager:
             try:
-                self._db_manager.save_oss_cache(file_path, self._model, oss_url)
+                self._session_manager.begin_write()
+                oss_cache_repo = self._session_manager.get_repo(OSSFileCacheRepository)
+                oss_cache_repo.save_cache(file_path, self._model, oss_url)
+                self._session_manager.commit_write()
             except Exception as e:
+                self._session_manager.rollback_write()
                 logger.warning(f"保存 OSS 缓存失败（不影响任务提交）: {e}")
 
         return oss_url

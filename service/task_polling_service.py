@@ -14,7 +14,10 @@ from PyQt6.QtCore import QObject, QThread, pyqtSignal
 from config.manager import ConfigManager
 from models.enums import MessageStatus, TaskStatus
 from providers.video_base import VideoProvider
-from storage.database import DatabaseManager
+from storage.session_manager import SessionManager
+from storage.repositories.active_task import ActiveTaskRepository
+from storage.repositories.message import MessageRepository
+from storage.repositories.oss_cache_repository import OSSFileCacheRepository
 from utils import paths
 
 class TaskPollingService(QObject):
@@ -27,14 +30,14 @@ class TaskPollingService(QObject):
 
     def __init__(
         self,
-        db: DatabaseManager,
+        session_manager: SessionManager,
         config: ConfigManager,
         workspace_root: str,
         provider_registry: dict[str, type[VideoProvider]],
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
-        self._db = db
+        self._session_manager = session_manager
         self._config = config
         self._root = workspace_root
         self._cache_dir = paths.cache_dir(workspace_root)
@@ -64,9 +67,9 @@ class TaskPollingService(QObject):
             raise KeyError(f"未注册的 Provider：{name}")
         provider = cls(cfg)
 
-        # 注入 DatabaseManager（用于 OSS 缓存）
-        if hasattr(provider, "set_database_manager"):
-            provider.set_database_manager(self._db)
+        # 注入 SessionManager（用于 OSS 缓存）
+        if hasattr(provider, "set_session_manager"):
+            provider.set_session_manager(self._session_manager)
 
         self._providers[name] = provider
         return provider
@@ -77,7 +80,7 @@ class TaskPollingService(QObject):
             logger.warning("轮询服务已在运行")
             return
         self._worker = _PollingWorker(
-            db=self._db,
+            session_manager=self._session_manager,
             service=self,
             poll_interval=self.poll_interval,
             idle_check_interval=self.idle_check_interval,
@@ -112,15 +115,31 @@ class TaskPollingService(QObject):
         }
         msg_status = _TASK_TO_MSG_STATUS.get(status)
         if msg_status is not None:
-            self._db.update_message_status(message_id, msg_status)
+            msg_repo = self._session_manager.get_repo(MessageRepository)
+            self._session_manager.begin_write()
+            try:
+                msg_repo.update_status(message_id, msg_status)
+                self._session_manager.commit_write()
+            except Exception:
+                self._session_manager.rollback_write()
+                raise
         self.status_changed.emit(message_id, status)
 
     def _on_download_progress(self, message_id: str, downloaded: int, total: int) -> None:
         self.download_progress.emit(message_id, downloaded, total)
 
     def _on_task_finished(self, message_id: str, local_path: str, storyboard_id: int = 0) -> None:
-        msg = self._db.get_message(message_id)
-        self._db.update_message_status(message_id, MessageStatus.COMPLETED, local_path=local_path)
+        msg_repo = self._session_manager.get_repo(MessageRepository)
+        msg = msg_repo.get_by_id(message_id)
+
+        self._session_manager.begin_write()
+        try:
+            msg_repo.update_status(message_id, MessageStatus.COMPLETED, local_path=local_path)
+            self._session_manager.commit_write()
+        except Exception:
+            self._session_manager.rollback_write()
+            raise
+
         if msg and self._media_service:
             try:
                 self._media_service.register_task_result(
@@ -131,7 +150,14 @@ class TaskPollingService(QObject):
         self.task_finished.emit(message_id, local_path, storyboard_id)
 
     def _on_task_failed(self, message_id: str, error: str) -> None:
-        self._db.update_message_status(message_id, MessageStatus.FAILED, error_message=error)
+        msg_repo = self._session_manager.get_repo(MessageRepository)
+        self._session_manager.begin_write()
+        try:
+            msg_repo.update_status(message_id, MessageStatus.FAILED, error_message=error)
+            self._session_manager.commit_write()
+        except Exception:
+            self._session_manager.rollback_write()
+            raise
         self.task_failed.emit(message_id, error)
 
 class _PollingWorker(QThread):
@@ -144,7 +170,7 @@ class _PollingWorker(QThread):
 
     def __init__(
         self,
-        db: DatabaseManager,
+        session_manager: SessionManager,
         service: TaskPollingService,
         poll_interval: float,
         idle_check_interval: float,
@@ -154,7 +180,7 @@ class _PollingWorker(QThread):
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
-        self._db = db
+        self._session_manager = session_manager
         self._service = service
         self._poll_interval = poll_interval
         self._idle_check_interval = idle_check_interval
@@ -191,7 +217,8 @@ class _PollingWorker(QThread):
                     self._cleanup_expired_oss_caches()
                     last_cleanup_time = now
 
-                tasks = self._db.list_active_tasks()
+                task_repo = self._session_manager.get_repo(ActiveTaskRepository)
+                tasks = task_repo.list_active_tasks()
                 if not tasks:
                     # 表空，进入空闲模式
                     if self._interruptible_sleep(self._idle_check_interval):
@@ -218,9 +245,16 @@ class _PollingWorker(QThread):
     def _cleanup_expired_oss_caches(self) -> None:
         """清理过期的 OSS 缓存记录（异步执行，不阻塞主循环）"""
         try:
-            count = self._db.cleanup_expired_oss_caches()
-            if count > 0:
-                logger.info(f"已清理 {count} 条过期 OSS 缓存记录")
+            oss_cache_repo = self._session_manager.get_repo(OSSFileCacheRepository)
+            self._session_manager.begin_write()
+            try:
+                count = oss_cache_repo.delete_expired_caches()
+                self._session_manager.commit_write()
+                if count > 0:
+                    logger.info(f"已清理 {count} 条过期 OSS 缓存记录")
+            except Exception:
+                self._session_manager.rollback_write()
+                raise
         except Exception as e:
             logger.warning(f"清理过期 OSS 缓存失败: {e}")
 
@@ -233,16 +267,31 @@ class _PollingWorker(QThread):
         model_name = task_info["model_name"]
 
         # 检查消息状态
-        msg = self._db.get_message(message_id)
+        msg_repo = self._session_manager.get_repo(MessageRepository)
+        msg = msg_repo.get_by_id(message_id)
         if not msg:
             logger.warning("任务关联消息不存在，标记完成 internal_id=%s provider_task=%s", internal_task_id, provider_task_id)
-            self._db.mark_task_completed(internal_task_id)
+            task_repo = self._session_manager.get_repo(ActiveTaskRepository)
+            self._session_manager.begin_write()
+            try:
+                task_repo.mark_completed(internal_task_id)
+                self._session_manager.commit_write()
+            except Exception:
+                self._session_manager.rollback_write()
+                raise
             self._task_poll_count.pop(internal_task_id, None)
             return
 
         # 消息已是终态，标记任务完成
         if msg.status in (MessageStatus.COMPLETED, MessageStatus.FAILED):
-            self._db.mark_task_completed(internal_task_id)
+            task_repo = self._session_manager.get_repo(ActiveTaskRepository)
+            self._session_manager.begin_write()
+            try:
+                task_repo.mark_completed(internal_task_id)
+                self._session_manager.commit_write()
+            except Exception:
+                self._session_manager.rollback_write()
+                raise
             self._task_poll_count.pop(internal_task_id, None)
             return
 
@@ -252,7 +301,14 @@ class _PollingWorker(QThread):
             error_msg = f"轮询超时（已查询 {poll_count} 次，任务仍未完成）"
             logger.warning("任务超时 internal_id=%s provider_task=%s message=%s", internal_task_id, provider_task_id, message_id)
             self.task_failed.emit(message_id, error_msg)
-            self._db.mark_task_completed(internal_task_id)
+            task_repo = self._session_manager.get_repo(ActiveTaskRepository)
+            self._session_manager.begin_write()
+            try:
+                task_repo.mark_completed(internal_task_id)
+                self._session_manager.commit_write()
+            except Exception:
+                self._session_manager.rollback_write()
+                raise
             self._task_poll_count.pop(internal_task_id, None)
             return
 
@@ -263,7 +319,14 @@ class _PollingWorker(QThread):
             self._task_poll_count[internal_task_id] = poll_count + 1
 
             self.status_changed.emit(message_id, result.status.value)
-            self._db.update_active_task(internal_task_id, result.status.value, video_url=result.video_url or "")
+            task_repo = self._session_manager.get_repo(ActiveTaskRepository)
+            self._session_manager.begin_write()
+            try:
+                task_repo.update_status(internal_task_id, result.status.value, video_url=result.video_url or "")
+                self._session_manager.commit_write()
+            except Exception:
+                self._session_manager.rollback_write()
+                raise
 
             if result.status == TaskStatus.SUCCEEDED:
                 if not result.video_url:
@@ -280,9 +343,22 @@ class _PollingWorker(QThread):
                 )
             elif result.status == TaskStatus.FAILED:
                 error_msg = result.error_message or "未知原因"
-                self._db.update_active_task(internal_task_id, "failed", error_message=error_msg)
+                task_repo = self._session_manager.get_repo(ActiveTaskRepository)
+                self._session_manager.begin_write()
+                try:
+                    task_repo.update_status(internal_task_id, "failed", error_message=error_msg)
+                    self._session_manager.commit_write()
+                except Exception:
+                    self._session_manager.rollback_write()
+                    raise
                 self.task_failed.emit(message_id, f"任务失败：{error_msg}")
-                self._db.mark_task_completed(internal_task_id)
+                self._session_manager.begin_write()
+                try:
+                    task_repo.mark_completed(internal_task_id)
+                    self._session_manager.commit_write()
+                except Exception:
+                    self._session_manager.rollback_write()
+                    raise
                 self._task_poll_count.pop(internal_task_id, None)
 
         except Exception as e:
@@ -328,12 +404,30 @@ class _PollingWorker(QThread):
             shutil.move(tmp_path, save_path)
 
             self.task_finished.emit(message_id, save_path, storyboard_id)
-            self._db.mark_task_completed(internal_task_id)
+
+            task_repo = self._session_manager.get_repo(ActiveTaskRepository)
+            self._session_manager.begin_write()
+            try:
+                task_repo.mark_completed(internal_task_id)
+                self._session_manager.commit_write()
+            except Exception:
+                self._session_manager.rollback_write()
+                raise
+
             self._task_poll_count.pop(internal_task_id, None)
             logger.info("任务完成 internal_id=%s local_path=%s", internal_task_id, save_path)
 
         except Exception as e:
             logger.exception("下载失败 internal_id=%s", internal_task_id)
             self.task_failed.emit(message_id, f"下载失败：{e}")
-            self._db.mark_task_completed(internal_task_id)
+
+            task_repo = self._session_manager.get_repo(ActiveTaskRepository)
+            self._session_manager.begin_write()
+            try:
+                task_repo.mark_completed(internal_task_id)
+                self._session_manager.commit_write()
+            except Exception:
+                self._session_manager.rollback_write()
+                raise
+
             self._task_poll_count.pop(internal_task_id, None)
