@@ -35,11 +35,12 @@ ApplicationWindow {
             Layout.fillHeight: true
             spacing: 0
 
-            // 左侧 Tab 栏
+            // 左侧 Tab 栏 — currentIndex 由 root.currentPage 响应式驱动
             Comp.TabBar {
                 id: tabBar
                 Layout.fillHeight: true
                 Layout.preferredWidth: Theme.tabBarWidth
+                currentIndex: root.currentPage === "library" ? 1 : 0
                 onSettingsClicked: settingsDialog.open()
                 onLibraryClicked: {
                     root.currentPage = "library"
@@ -55,7 +56,7 @@ ApplicationWindow {
             Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.margins: 6
+                Layout.margins: 0
 
                 Rectangle {
                     anchors.fill: parent
@@ -77,7 +78,6 @@ ApplicationWindow {
                             id: globalMediaPage
                             onBackClicked: {
                                 root.currentPage = "project"
-                                tabBar.currentIndex = 0
                             }
                         }
                     }

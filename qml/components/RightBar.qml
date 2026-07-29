@@ -17,15 +17,22 @@ Item {
         // 占位按钮
         Button {
             Layout.alignment: Qt.AlignHCenter
-            Layout.preferredWidth: 40
-            Layout.preferredHeight: 40
+            Layout.preferredWidth: 38
+            Layout.preferredHeight: 38
             flat: true
             display: AbstractButton.IconOnly
             icon.source: "qrc:/resources/icons/info.svg"
-            icon.width: 20
-            icon.height: 20
+            icon.width: 22
+            icon.height: 22
             ToolTip.text: "关于"
             ToolTip.visible: hovered
+
+            background: Rectangle {
+                radius: 2
+                color: parent.hovered
+                    ? Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.08)
+                    : "transparent"
+            }
         }
 
         Item { Layout.preferredHeight: 6 }

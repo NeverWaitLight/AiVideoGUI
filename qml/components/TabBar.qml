@@ -11,6 +11,7 @@ Item {
     signal libraryClicked()
     signal settingsClicked()
 
+    // 由 main.qml 根据 root.currentPage 响应式设置，不再独立维护
     property int currentIndex: 0
 
     ColumnLayout {
@@ -21,11 +22,11 @@ Item {
         // 项目管理按钮
         TabButton {
             Layout.alignment: Qt.AlignHCenter
-            Layout.preferredWidth: 40
-            Layout.preferredHeight: 40
+            Layout.preferredWidth: 38
+            Layout.preferredHeight: 38
             icon.source: "qrc:/resources/icons/folder.svg"
-            icon.width: 20
-            icon.height: 20
+            icon.width: 22
+            icon.height: 22
             checked: tabBar.currentIndex === 0
             isActive: tabBar.currentIndex === 0
             onClicked: {
@@ -39,11 +40,11 @@ Item {
         // 素材库按钮
         TabButton {
             Layout.alignment: Qt.AlignHCenter
-            Layout.preferredWidth: 40
-            Layout.preferredHeight: 40
+            Layout.preferredWidth: 38
+            Layout.preferredHeight: 38
             icon.source: "qrc:/resources/icons/video_library.svg"
-            icon.width: 20
-            icon.height: 20
+            icon.width: 22
+            icon.height: 22
             checked: tabBar.currentIndex === 1
             isActive: tabBar.currentIndex === 1
             onClicked: {
@@ -59,11 +60,11 @@ Item {
         // 设置按钮
         TabButton {
             Layout.alignment: Qt.AlignHCenter
-            Layout.preferredWidth: 40
-            Layout.preferredHeight: 40
+            Layout.preferredWidth: 38
+            Layout.preferredHeight: 38
             icon.source: "qrc:/resources/icons/settings.svg"
-            icon.width: 20
-            icon.height: 20
+            icon.width: 22
+            icon.height: 22
             onClicked: tabBar.settingsClicked()
             ToolTip.text: "设置"
             ToolTip.visible: hovered
@@ -72,11 +73,18 @@ Item {
         Item { Layout.preferredHeight: 4 }
     }
 
-    // 右侧分割线已移除
-
     component TabButton: Button {
         property bool isActive: false
         flat: true
         display: AbstractButton.IconOnly
+
+        background: Rectangle {
+            radius: 2
+            color: parent.isActive
+                ? Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.12)
+                : parent.hovered
+                    ? Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.08)
+                    : "transparent"
+        }
     }
 }

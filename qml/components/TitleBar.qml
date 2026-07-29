@@ -5,7 +5,7 @@ import QtQuick.Controls.Material 2.15
 
 Item {
     id: titleBar
-    height: Theme.titleBarHeight
+    implicitHeight: Theme.titleBarHeight
 
     property bool isMaximized: false
     property var appWindow: null

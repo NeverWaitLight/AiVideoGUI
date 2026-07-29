@@ -4,7 +4,7 @@ import QtQuick.Layouts 1.15
 
 Item {
     id: header
-    height: Theme.headerHeight
+    implicitHeight: Theme.headerHeight
 
     property string title: ""
     property string subtitle: ""

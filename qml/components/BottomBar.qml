@@ -5,7 +5,7 @@ import QtQuick.Layouts 1.15
 
 Item {
     id: bottomBar
-    height: Theme.bottomBarHeight
+    implicitHeight: Theme.bottomBarHeight
 
     Rectangle {
         anchors.fill: parent
