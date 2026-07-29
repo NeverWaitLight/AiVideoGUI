@@ -35,8 +35,6 @@ Item {
             ToolTip.visible: hovered
         }
 
-        Item { Layout.fillHeight: true }
-
         // 素材库按钮
         TabButton {
             Layout.alignment: Qt.AlignHCenter
@@ -45,10 +43,17 @@ Item {
             icon.source: "qrc:/icons/filled/video_library.svg"
             icon.width: 24
             icon.height: 24
-            onClicked: tabBar.libraryClicked()
+            checked: tabBar.currentIndex === 1
+            isActive: tabBar.currentIndex === 1
+            onClicked: {
+                tabBar.currentIndex = 1
+                tabBar.libraryClicked()
+            }
             ToolTip.text: "素材库"
             ToolTip.visible: hovered
         }
+
+        Item { Layout.fillHeight: true }
 
         // 设置按钮
         TabButton {

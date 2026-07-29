@@ -14,6 +14,8 @@ ApplicationWindow {
     visible: true
     title: "AI 视频生成"
 
+    property string currentPage: "project"
+
     RowLayout {
         anchors.fill: parent
         spacing: 0
@@ -24,13 +26,33 @@ ApplicationWindow {
             Layout.fillHeight: true
             Layout.preferredWidth: Theme.tabBarWidth
             onSettingsClicked: settingsDialog.open()
+            onLibraryClicked: {
+                root.currentPage = "library"
+                globalMediaPage.projectId = -1
+                bridge.media.load_files()
+            }
+            onTabChanged: {
+                root.currentPage = "project"
+            }
         }
 
         // 右侧内容区域
-        Pages.ProjectModePage {
-            id: projectModePage
+        StackLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
+            currentIndex: root.currentPage === "project" ? 0 : 1
+
+            Pages.ProjectModePage {
+                id: projectModePage
+            }
+
+            Pages.MediaLibraryPage {
+                id: globalMediaPage
+                onBackClicked: {
+                    root.currentPage = "project"
+                    tabBar.currentIndex = 0
+                }
+            }
         }
     }
 
