@@ -23,5 +23,10 @@
         <file>resources/icons/video_library.svg</file>
         <file>resources/icons/volume_off.svg</file>
         <file>resources/icons/volume_up.svg</file>
+        <file>resources/icons/close.svg</file>
+        <file>resources/icons/minimize.svg</file>
+        <file>resources/icons/crop_square.svg</file>
+        <file>resources/icons/window_restore.svg</file>
+        <file>resources/icons/info.svg</file>
     </qresource>
 </RCC>

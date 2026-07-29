@@ -37,7 +37,19 @@ class Theme(QObject):
     # 布局尺寸
     @Property(int, constant=True)
     def tabBarWidth(self):
-        return 60
+        return 52
+
+    @Property(int, constant=True)
+    def titleBarHeight(self):
+        return 54
+
+    @Property(int, constant=True)
+    def rightBarWidth(self):
+        return 52
+
+    @Property(int, constant=True)
+    def bottomBarHeight(self):
+        return 39
 
     @Property(int, constant=True)
     def sidebarWidth(self):

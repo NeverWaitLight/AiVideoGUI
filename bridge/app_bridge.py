@@ -7,7 +7,8 @@ import subprocess
 from loguru import logger
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import QObject, Property, Signal, Slot
+from PySide6.QtCore import QObject, Property, Signal, Slot, Qt
+from PySide6.QtGui import QGuiApplication
 
 if TYPE_CHECKING:
     from di import ApplicationContainer
@@ -176,3 +177,30 @@ class AppBridge(QObject):
         target = select if select else path
         if os.path.exists(target):
             subprocess.run(["explorer", "/select,", target])
+
+    # ── 窗口控制 ──
+
+    def _window(self):
+        windows = QGuiApplication.topLevelWindows()
+        return windows[0] if windows else None
+
+    @Slot()
+    def minimize_window(self) -> None:
+        w = self._window()
+        if w:
+            w.showMinimized()
+
+    @Slot()
+    def toggle_maximize(self) -> None:
+        w = self._window()
+        if w:
+            if w.windowStates() & Qt.WindowMaximized:
+                w.showNormal()
+            else:
+                w.showMaximized()
+
+    @Slot()
+    def close_window(self) -> None:
+        w = self._window()
+        if w:
+            w.close()

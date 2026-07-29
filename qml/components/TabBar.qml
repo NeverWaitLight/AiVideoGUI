@@ -1,5 +1,6 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
+import QtQuick.Controls.Material 2.15
 import QtQuick.Layouts 1.15
 
 Item {
@@ -14,17 +15,17 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 8
-        spacing: 12
+        anchors.margins: 6
+        spacing: 10
 
         // 项目管理按钮
         TabButton {
             Layout.alignment: Qt.AlignHCenter
-            Layout.preferredWidth: 48
-            Layout.preferredHeight: 48
+            Layout.preferredWidth: 40
+            Layout.preferredHeight: 40
             icon.source: "qrc:/resources/icons/folder.svg"
-            icon.width: 24
-            icon.height: 24
+            icon.width: 20
+            icon.height: 20
             checked: tabBar.currentIndex === 0
             isActive: tabBar.currentIndex === 0
             onClicked: {
@@ -38,11 +39,11 @@ Item {
         // 素材库按钮
         TabButton {
             Layout.alignment: Qt.AlignHCenter
-            Layout.preferredWidth: 48
-            Layout.preferredHeight: 48
+            Layout.preferredWidth: 40
+            Layout.preferredHeight: 40
             icon.source: "qrc:/resources/icons/video_library.svg"
-            icon.width: 24
-            icon.height: 24
+            icon.width: 20
+            icon.height: 20
             checked: tabBar.currentIndex === 1
             isActive: tabBar.currentIndex === 1
             onClicked: {
@@ -58,18 +59,20 @@ Item {
         // 设置按钮
         TabButton {
             Layout.alignment: Qt.AlignHCenter
-            Layout.preferredWidth: 48
-            Layout.preferredHeight: 48
+            Layout.preferredWidth: 40
+            Layout.preferredHeight: 40
             icon.source: "qrc:/resources/icons/settings.svg"
-            icon.width: 24
-            icon.height: 24
+            icon.width: 20
+            icon.height: 20
             onClicked: tabBar.settingsClicked()
             ToolTip.text: "设置"
             ToolTip.visible: hovered
         }
 
-        Item { Layout.preferredHeight: 8 }
+        Item { Layout.preferredHeight: 4 }
     }
+
+    // 右侧分割线已移除
 
     component TabButton: Button {
         property bool isActive: false

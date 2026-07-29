@@ -1,5 +1,6 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
+import QtQuick.Controls.Material 2.15
 import QtQuick.Layouts 1.15
 import "components" as Comp
 import "pages" as Pages
@@ -13,46 +14,86 @@ ApplicationWindow {
     minimumHeight: 640
     visible: true
     title: "AI 视频生成"
+    flags: Qt.Window | Qt.FramelessWindowHint
 
     property string currentPage: "project"
 
-    RowLayout {
+    ColumnLayout {
         anchors.fill: parent
         spacing: 0
 
-        // 左侧 Tab 栏
-        Comp.TabBar {
-            id: tabBar
+        // 自定义标题栏
+        Comp.TitleBar {
+            id: titleBar
+            Layout.fillWidth: true
+            appWindow: root
+            title: root.title
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.preferredWidth: Theme.tabBarWidth
-            onSettingsClicked: settingsDialog.open()
-            onLibraryClicked: {
-                root.currentPage = "library"
-                globalMediaPage.projectId = -1
-                bridge.media.load_files()
+            spacing: 0
+
+            // 左侧 Tab 栏
+            Comp.TabBar {
+                id: tabBar
+                Layout.fillHeight: true
+                Layout.preferredWidth: Theme.tabBarWidth
+                onSettingsClicked: settingsDialog.open()
+                onLibraryClicked: {
+                    root.currentPage = "library"
+                    globalMediaPage.projectId = -1
+                    bridge.media.load_files()
+                }
+                onTabChanged: {
+                    root.currentPage = "project"
+                }
             }
-            onTabChanged: {
-                root.currentPage = "project"
+
+            // 中间主内容模块（圆角卡片）
+            Item {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Layout.margins: 6
+
+                Rectangle {
+                    anchors.fill: parent
+                    radius: Theme.borderRadius
+                    color: Material.background
+                    border.width: 1
+                    border.color: "#d0d0d0"
+                    clip: true
+
+                    StackLayout {
+                        anchors.fill: parent
+                        currentIndex: root.currentPage === "project" ? 0 : 1
+
+                        Pages.ProjectModePage {
+                            id: projectModePage
+                        }
+
+                        Pages.MediaLibraryPage {
+                            id: globalMediaPage
+                            onBackClicked: {
+                                root.currentPage = "project"
+                                tabBar.currentIndex = 0
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 右侧边栏
+            Comp.RightBar {
+                Layout.fillHeight: true
+                Layout.preferredWidth: Theme.rightBarWidth
             }
         }
 
-        // 右侧内容区域
-        StackLayout {
+        // 底栏
+        Comp.BottomBar {
             Layout.fillWidth: true
-            Layout.fillHeight: true
-            currentIndex: root.currentPage === "project" ? 0 : 1
-
-            Pages.ProjectModePage {
-                id: projectModePage
-            }
-
-            Pages.MediaLibraryPage {
-                id: globalMediaPage
-                onBackClicked: {
-                    root.currentPage = "project"
-                    tabBar.currentIndex = 0
-                }
-            }
         }
     }
 
