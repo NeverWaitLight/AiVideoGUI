@@ -14,8 +14,6 @@ ApplicationWindow {
     visible: true
     title: "AI 视频生成"
 
-    property int currentMode: 0  // 0: 直接生成, 1: 项目管理
-
     RowLayout {
         anchors.fill: parent
         spacing: 0
@@ -25,28 +23,14 @@ ApplicationWindow {
             id: tabBar
             Layout.fillHeight: true
             Layout.preferredWidth: Theme.tabBarWidth
-            onTabChanged: function(index) {
-                root.currentMode = index
-            }
             onSettingsClicked: settingsDialog.open()
         }
 
         // 右侧内容区域
-        StackLayout {
-            id: contentStack
+        Pages.ProjectModePage {
+            id: projectModePage
             Layout.fillWidth: true
             Layout.fillHeight: true
-            currentIndex: root.currentMode
-
-            // 直接生成模式
-            Pages.DirectModePage {
-                id: directModePage
-            }
-
-            // 项目管理模式
-            Pages.ProjectModePage {
-                id: projectModePage
-            }
         }
     }
 

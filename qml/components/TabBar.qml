@@ -17,24 +17,6 @@ Item {
         anchors.margins: 8
         spacing: 12
 
-        // 直接生成按钮
-        TabButton {
-            Layout.alignment: Qt.AlignHCenter
-            Layout.preferredWidth: 48
-            Layout.preferredHeight: 48
-            icon.source: "qrc:/resources/icons/filled/chat.svg"
-            icon.width: 24
-            icon.height: 24
-            checked: tabBar.currentIndex === 0
-            isActive: tabBar.currentIndex === 0
-            onClicked: {
-                tabBar.currentIndex = 0
-                tabBar.tabChanged(0)
-            }
-            ToolTip.text: "直接生成"
-            ToolTip.visible: hovered
-        }
-
         // 项目管理按钮
         TabButton {
             Layout.alignment: Qt.AlignHCenter
@@ -43,11 +25,11 @@ Item {
             icon.source: "qrc:/resources/icons/filled/folder.svg"
             icon.width: 24
             icon.height: 24
-            checked: tabBar.currentIndex === 1
-            isActive: tabBar.currentIndex === 1
+            checked: tabBar.currentIndex === 0
+            isActive: tabBar.currentIndex === 0
             onClicked: {
-                tabBar.currentIndex = 1
-                tabBar.tabChanged(1)
+                tabBar.currentIndex = 0
+                tabBar.tabChanged(0)
             }
             ToolTip.text: "项目管理"
             ToolTip.visible: hovered
