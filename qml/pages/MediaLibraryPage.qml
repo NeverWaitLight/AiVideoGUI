@@ -196,10 +196,13 @@ Item {
                 // 播放按钮（仅视频）
                 Button {
                     anchors.centerIn: parent
-                    icon.source: "qrc:/icons/filled/play_arrow.svg"
-                    icon.width: 32
-                    icon.height: 32
+                    icon.source: "qrc:/icons/round/play_arrow.svg"
+                    icon.width: 48
+                    icon.height: 48
+                    icon.color: "white"
+                    opacity: 0.5
                     visible: fileType === "video"
+                    background: Item {}
                     onClicked: playRequested()
                 }
 

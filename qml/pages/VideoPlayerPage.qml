@@ -136,8 +136,8 @@ Item {
                 Button {
                     flat: true
                     icon.source: mediaPlayer.playbackState === MediaPlayer.PlayingState
-                        ? "qrc:/icons/filled/pause.svg"
-                        : "qrc:/icons/filled/play_arrow.svg"
+                        ? "qrc:/icons/round/pause.svg"
+                        : "qrc:/icons/round/play_arrow.svg"
                     icon.width: 32
                     icon.height: 32
                     enabled: _playlist.length > 0

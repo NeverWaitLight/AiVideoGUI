@@ -16,8 +16,10 @@
         <file alias="filled/collections.svg">resources/icons/filled/collections.svg</file>
         <file alias="filled/dashboard.svg">resources/icons/filled/dashboard.svg</file>
         <file alias="filled/play_arrow.svg">resources/icons/filled/play_arrow.svg</file>
+        <file alias="round/play_arrow.svg">resources/icons/round/play_arrow.svg</file>
         <file alias="filled/play_circle.svg">resources/icons/filled/play_circle.svg</file>
         <file alias="filled/pause.svg">resources/icons/filled/pause.svg</file>
+        <file alias="round/pause.svg">resources/icons/round/pause.svg</file>
         <file alias="filled/star.svg">resources/icons/filled/star.svg</file>
         <!-- Outlined icons -->
         <file alias="outlined/arrow_back.svg">resources/icons/outlined/arrow_back.svg</file>
