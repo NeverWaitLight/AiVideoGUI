@@ -46,7 +46,7 @@ Pane {
 
             Image {
                 anchors.centerIn: parent
-                source: "qrc:/icons/outlined/movie.svg"
+                source: "qrc:/resources/icons/movie.svg"
                 sourceSize.width: 48
                 sourceSize.height: 48
                 visible: !coverPath
@@ -88,7 +88,7 @@ Pane {
             Button {
                 Layout.fillWidth: true
                 flat: true
-                icon.source: "qrc:/icons/outlined/edit.svg"
+                icon.source: "qrc:/resources/icons/edit.svg"
                 icon.width: 20
                 icon.height: 20
                 onClicked: card.editClicked(card.projectId)
@@ -98,7 +98,7 @@ Pane {
             Button {
                 Layout.fillWidth: true
                 flat: true
-                icon.source: "qrc:/icons/outlined/delete.svg"
+                icon.source: "qrc:/resources/icons/delete.svg"
                 icon.width: 20
                 icon.height: 20
                 onClicked: card.deleteClicked(card.projectId)

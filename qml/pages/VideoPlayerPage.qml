@@ -123,7 +123,7 @@ Item {
                 // 上一个
                 Button {
                     flat: true
-                    icon.source: "qrc:/icons/outlined/skip_previous.svg"
+                    icon.source: "qrc:/resources/icons/skip_previous.svg"
                     icon.width: 28
                     icon.height: 28
                     enabled: bridge.videoPlayer.currentIndex > 0
@@ -136,8 +136,8 @@ Item {
                 Button {
                     flat: true
                     icon.source: mediaPlayer.playbackState === MediaPlayer.PlayingState
-                        ? "qrc:/icons/round/pause.svg"
-                        : "qrc:/icons/round/play_arrow.svg"
+                        ? "qrc:/resources/icons/pause.svg"
+                        : "qrc:/resources/icons/play_arrow.svg"
                     icon.width: 32
                     icon.height: 32
                     enabled: _playlist.length > 0
@@ -152,7 +152,7 @@ Item {
                 // 下一个
                 Button {
                     flat: true
-                    icon.source: "qrc:/icons/outlined/skip_next.svg"
+                    icon.source: "qrc:/resources/icons/skip_next.svg"
                     icon.width: 28
                     icon.height: 28
                     enabled: bridge.videoPlayer.currentIndex < _playlist.length - 1
@@ -190,8 +190,8 @@ Item {
                 Button {
                     flat: true
                     icon.source: audioOutput.muted
-                        ? "qrc:/icons/outlined/volume_off.svg"
-                        : "qrc:/icons/outlined/volume_up.svg"
+                        ? "qrc:/resources/icons/volume_off.svg"
+                        : "qrc:/resources/icons/volume_up.svg"
                     icon.width: 24
                     icon.height: 24
                     onClicked: audioOutput.muted = !audioOutput.muted

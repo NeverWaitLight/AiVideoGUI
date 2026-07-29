@@ -46,7 +46,7 @@ Pane {
                 radius: Theme.radiusMedium
                 Image {
                     anchors.centerIn: parent
-                    source: "qrc:/icons/round/play_arrow.svg"
+                    source: "qrc:/resources/icons/play_arrow.svg"
                     sourceSize.width: 48
                     sourceSize.height: 48
                 }

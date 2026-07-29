@@ -1,41 +1,27 @@
 <RCC>
-    <qresource prefix="/icons">
-        <!-- Filled icons -->
-        <file alias="filled/chat.svg">resources/icons/filled/chat.svg</file>
-        <file alias="filled/folder.svg">resources/icons/filled/folder.svg</file>
-        <file alias="filled/video_library.svg">resources/icons/filled/video_library.svg</file>
-        <file alias="filled/settings.svg">resources/icons/filled/settings.svg</file>
-        <file alias="filled/send.svg">resources/icons/filled/send.svg</file>
-        <file alias="filled/add.svg">resources/icons/filled/add.svg</file>
-        <file alias="filled/message.svg">resources/icons/filled/message.svg</file>
-        <file alias="filled/forum.svg">resources/icons/filled/forum.svg</file>
-        <file alias="filled/work.svg">resources/icons/filled/work.svg</file>
-        <file alias="filled/movie.svg">resources/icons/filled/movie.svg</file>
-        <file alias="filled/perm_media.svg">resources/icons/filled/perm_media.svg</file>
-        <file alias="filled/photo_library.svg">resources/icons/filled/photo_library.svg</file>
-        <file alias="filled/collections.svg">resources/icons/filled/collections.svg</file>
-        <file alias="filled/dashboard.svg">resources/icons/filled/dashboard.svg</file>
-        <file alias="filled/play_arrow.svg">resources/icons/filled/play_arrow.svg</file>
-        <file alias="round/play_arrow.svg">resources/icons/round/play_arrow.svg</file>
-        <file alias="filled/play_circle.svg">resources/icons/filled/play_circle.svg</file>
-        <file alias="filled/pause.svg">resources/icons/filled/pause.svg</file>
-        <file alias="round/pause.svg">resources/icons/round/pause.svg</file>
-        <file alias="filled/star.svg">resources/icons/filled/star.svg</file>
-        <!-- Outlined icons -->
-        <file alias="outlined/arrow_back.svg">resources/icons/outlined/arrow_back.svg</file>
-        <file alias="outlined/person.svg">resources/icons/outlined/person.svg</file>
-        <file alias="outlined/image.svg">resources/icons/outlined/image.svg</file>
-        <file alias="outlined/movie.svg">resources/icons/outlined/movie.svg</file>
-        <file alias="outlined/edit.svg">resources/icons/outlined/edit.svg</file>
-        <file alias="outlined/delete.svg">resources/icons/outlined/delete.svg</file>
-        <file alias="outlined/folder_open.svg">resources/icons/outlined/folder_open.svg</file>
-        <file alias="outlined/skip_previous.svg">resources/icons/outlined/skip_previous.svg</file>
-        <file alias="outlined/skip_next.svg">resources/icons/outlined/skip_next.svg</file>
-        <file alias="outlined/volume_off.svg">resources/icons/outlined/volume_off.svg</file>
-        <file alias="outlined/volume_up.svg">resources/icons/outlined/volume_up.svg</file>
-        <file alias="outlined/article.svg">resources/icons/outlined/article.svg</file>
-        <file alias="outlined/description.svg">resources/icons/outlined/description.svg</file>
-        <file alias="outlined/video_camera_back.svg">resources/icons/outlined/video_camera_back.svg</file>
-        <file alias="outlined/video_library.svg">resources/icons/outlined/video_library.svg</file>
+    <qresource prefix="/">
+        <file>resources/icons/add.svg</file>
+        <file>resources/icons/arrow_back.svg</file>
+        <file>resources/icons/article.svg</file>
+        <file>resources/icons/delete.svg</file>
+        <file>resources/icons/description.svg</file>
+        <file>resources/icons/edit.svg</file>
+        <file>resources/icons/folder.svg</file>
+        <file>resources/icons/folder_open.svg</file>
+        <file>resources/icons/image.svg</file>
+        <file>resources/icons/movie.svg</file>
+        <file>resources/icons/pause.svg</file>
+        <file>resources/icons/person.svg</file>
+        <file>resources/icons/play_arrow.svg</file>
+        <file>resources/icons/play_circle.svg</file>
+        <file>resources/icons/send.svg</file>
+        <file>resources/icons/settings.svg</file>
+        <file>resources/icons/skip_next.svg</file>
+        <file>resources/icons/skip_previous.svg</file>
+        <file>resources/icons/star.svg</file>
+        <file>resources/icons/video_camera_back.svg</file>
+        <file>resources/icons/video_library.svg</file>
+        <file>resources/icons/volume_off.svg</file>
+        <file>resources/icons/volume_up.svg</file>
     </qresource>
 </RCC>

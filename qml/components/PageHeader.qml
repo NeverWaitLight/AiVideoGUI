@@ -23,7 +23,7 @@ Item {
         Button {
             visible: header.showBack
             flat: true
-            icon.source: "qrc:/icons/outlined/arrow_back.svg"
+            icon.source: "qrc:/resources/icons/arrow_back.svg"
             icon.width: 24
             icon.height: 24
             onClicked: header.backClicked()

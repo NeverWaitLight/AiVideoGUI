@@ -196,7 +196,7 @@ Item {
                 // 播放按钮（仅视频）
                 Button {
                     anchors.centerIn: parent
-                    icon.source: "qrc:/icons/round/play_arrow.svg"
+                    icon.source: "qrc:/resources/icons/play_arrow.svg"
                     icon.width: 48
                     icon.height: 48
                     icon.color: "white"
@@ -237,7 +237,7 @@ Item {
                 }
                 Button {
                     flat: true
-                    icon.source: "qrc:/icons/outlined/folder_open.svg"
+                    icon.source: "qrc:/resources/icons/folder_open.svg"
                     icon.width: 20
                     icon.height: 20
                     implicitWidth: 32
@@ -248,7 +248,7 @@ Item {
                 }
                 Button {
                     flat: true
-                    icon.source: "qrc:/icons/outlined/delete.svg"
+                    icon.source: "qrc:/resources/icons/delete.svg"
                     icon.width: 20
                     icon.height: 20
                     implicitWidth: 32

@@ -412,7 +412,7 @@ Item {
 
             // 封面标记
             Image {
-                source: "qrc:/icons/filled/star.svg"
+                source: "qrc:/resources/icons/star.svg"
                 sourceSize.width: 20
                 sourceSize.height: 20
                 visible: videoData.featured
@@ -430,7 +430,7 @@ Item {
                 }
                 Image {
                     anchors.centerIn: parent
-                    source: "qrc:/icons/outlined/movie.svg"
+                    source: "qrc:/resources/icons/movie.svg"
                     sourceSize.width: 24
                     sourceSize.height: 24
                     visible: !videoData.thumbnailPath

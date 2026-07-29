@@ -31,7 +31,7 @@ Pane {
             }
             Image {
                 anchors.centerIn: parent
-                source: "qrc:/icons/outlined/person.svg"
+                source: "qrc:/resources/icons/person.svg"
                 sourceSize.width: 32
                 sourceSize.height: 32
                 visible: !designImage

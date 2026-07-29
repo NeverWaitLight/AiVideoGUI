@@ -74,7 +74,7 @@ Pane {
                     enabled: inputArea.text.trim().length > 0
                     highlighted: true
                     font.pixelSize: Theme.fontSizeMedium
-                    icon.source: "qrc:/icons/filled/send.svg"
+                    icon.source: "qrc:/resources/icons/send.svg"
                     icon.width: 18
                     icon.height: 18
                     display: AbstractButton.TextBesideIcon

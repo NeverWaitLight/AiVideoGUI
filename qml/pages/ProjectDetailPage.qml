@@ -44,32 +44,32 @@ Item {
                 visible: _hasVideos
                 width: moduleGrid.cardWidth
                 height: moduleGrid.cardHeight
-                title: "播放"; iconSource: "qrc:/icons/filled/play_circle.svg"; description: "播放项目分镜视频"; moduleName: "player"
+                title: "播放"; iconSource: "qrc:/resources/icons/play_circle.svg"; description: "播放项目分镜视频"; moduleName: "player"
             }
             ModuleCard {
                 width: moduleGrid.cardWidth
                 height: moduleGrid.cardHeight
-                title: "大纲"; iconSource: "qrc:/icons/outlined/article.svg"; description: "编辑故事大纲"; moduleName: "outline"
+                title: "大纲"; iconSource: "qrc:/resources/icons/article.svg"; description: "编辑故事大纲"; moduleName: "outline"
             }
             ModuleCard {
                 width: moduleGrid.cardWidth
                 height: moduleGrid.cardHeight
-                title: "剧本"; iconSource: "qrc:/icons/outlined/description.svg"; description: "编辑剧本场次"; moduleName: "screenplay"
+                title: "剧本"; iconSource: "qrc:/resources/icons/description.svg"; description: "编辑剧本场次"; moduleName: "screenplay"
             }
             ModuleCard {
                 width: moduleGrid.cardWidth
                 height: moduleGrid.cardHeight
-                title: "分镜"; iconSource: "qrc:/icons/outlined/video_camera_back.svg"; description: "编辑分镜头脚本"; moduleName: "storyboard"
+                title: "分镜"; iconSource: "qrc:/resources/icons/video_camera_back.svg"; description: "编辑分镜头脚本"; moduleName: "storyboard"
             }
             ModuleCard {
                 width: moduleGrid.cardWidth
                 height: moduleGrid.cardHeight
-                title: "角色"; iconSource: "qrc:/icons/outlined/person.svg"; description: "管理角色形象"; moduleName: "character"
+                title: "角色"; iconSource: "qrc:/resources/icons/person.svg"; description: "管理角色形象"; moduleName: "character"
             }
             ModuleCard {
                 width: moduleGrid.cardWidth
                 height: moduleGrid.cardHeight
-                title: "素材"; iconSource: "qrc:/icons/outlined/video_library.svg"; description: "管理项目素材"; moduleName: "media"
+                title: "素材"; iconSource: "qrc:/resources/icons/video_library.svg"; description: "管理项目素材"; moduleName: "media"
             }
         }
     }

@@ -22,7 +22,7 @@ Item {
             Layout.alignment: Qt.AlignHCenter
             Layout.preferredWidth: 48
             Layout.preferredHeight: 48
-            icon.source: "qrc:/icons/filled/folder.svg"
+            icon.source: "qrc:/resources/icons/folder.svg"
             icon.width: 24
             icon.height: 24
             checked: tabBar.currentIndex === 0
@@ -40,7 +40,7 @@ Item {
             Layout.alignment: Qt.AlignHCenter
             Layout.preferredWidth: 48
             Layout.preferredHeight: 48
-            icon.source: "qrc:/icons/filled/video_library.svg"
+            icon.source: "qrc:/resources/icons/video_library.svg"
             icon.width: 24
             icon.height: 24
             checked: tabBar.currentIndex === 1
@@ -60,7 +60,7 @@ Item {
             Layout.alignment: Qt.AlignHCenter
             Layout.preferredWidth: 48
             Layout.preferredHeight: 48
-            icon.source: "qrc:/icons/filled/settings.svg"
+            icon.source: "qrc:/resources/icons/settings.svg"
             icon.width: 24
             icon.height: 24
             onClicked: tabBar.settingsClicked()
