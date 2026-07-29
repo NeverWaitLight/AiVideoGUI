@@ -23,7 +23,7 @@ ApplicationWindow {
         spacing: 0
 
         // 自定义标题栏
-        Comp.TitleBar {
+        Comp.TopBar {
             id: titleBar
             Layout.fillWidth: true
             appWindow: root
@@ -36,7 +36,7 @@ ApplicationWindow {
             spacing: 0
 
             // 左侧 Tab 栏 — currentIndex 由 root.currentPage 响应式驱动
-            Comp.TabBar {
+            Comp.LeftBar {
                 id: tabBar
                 Layout.fillHeight: true
                 Layout.preferredWidth: Theme.tabBarWidth

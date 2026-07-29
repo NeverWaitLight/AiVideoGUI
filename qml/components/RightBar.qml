@@ -9,7 +9,10 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 6
+        anchors.topMargin: 4
+        anchors.bottomMargin: 4
+        anchors.leftMargin: 6
+        anchors.rightMargin: 6
         spacing: 10
 
         Item { Layout.fillHeight: true }
@@ -34,8 +37,6 @@ Item {
                     : "transparent"
             }
         }
-
-        Item { Layout.preferredHeight: 6 }
     }
 
     // 左侧分割线已移除

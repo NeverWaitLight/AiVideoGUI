@@ -16,7 +16,10 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 6
+        anchors.topMargin: 4
+        anchors.bottomMargin: 4
+        anchors.leftMargin: 6
+        anchors.rightMargin: 6
         spacing: 10
 
         // 项目管理按钮
@@ -69,8 +72,6 @@ Item {
             ToolTip.text: "设置"
             ToolTip.visible: hovered
         }
-
-        Item { Layout.preferredHeight: 4 }
     }
 
     component TabButton: Button {
