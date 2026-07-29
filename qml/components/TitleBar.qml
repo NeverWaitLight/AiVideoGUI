@@ -60,8 +60,9 @@ Item {
 
             WindowButton {
                 id: minBtn
-                Layout.preferredWidth: 46
-                Layout.fillHeight: true
+                Layout.preferredWidth: Theme.titleBarHeight - 4
+                Layout.preferredHeight: Theme.titleBarHeight - 4
+                Layout.alignment: Qt.AlignTop
 
                 Rectangle {
                     anchors.centerIn: parent
@@ -75,8 +76,9 @@ Item {
 
             WindowButton {
                 id: maxBtn
-                Layout.preferredWidth: 46
-                Layout.fillHeight: true
+                Layout.preferredWidth: Theme.titleBarHeight - 4
+                Layout.preferredHeight: Theme.titleBarHeight - 4
+                Layout.alignment: Qt.AlignTop
 
                 Rectangle {
                     visible: !titleBar.isMaximized
@@ -118,8 +120,9 @@ Item {
 
             WindowButton {
                 id: closeBtn
-                Layout.preferredWidth: 46
-                Layout.fillHeight: true
+                Layout.preferredWidth: Theme.titleBarHeight - 4
+                Layout.preferredHeight: Theme.titleBarHeight - 4
+                Layout.alignment: Qt.AlignTop
                 isClose: true
 
                 Canvas {
@@ -159,6 +162,7 @@ Item {
         padding: 0
 
         background: Rectangle {
+            anchors.fill: parent
             color: {
                 if (!parent.hovered) return "transparent"
                 return parent.isClose ? "#e81123" : Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.12)

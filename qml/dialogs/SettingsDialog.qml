@@ -1,15 +1,27 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import QtQuick.Controls.Material 2.15
 import "../components" as Comp
 
 Dialog {
     id: settingsDialog
-    title: "设置"
+    title: ""  // 移除默认标题，使用自定义标题栏
     modal: true
-    width: 640
-    height: 560
+    width: 720
+    height: 640
     anchors.centerIn: parent
+
+    // 移除默认的 header padding
+    topPadding: 0
+    leftPadding: 0
+    rightPadding: 0
+    bottomPadding: 0
+
+    background: Rectangle {
+        color: Material.dialogColor
+        radius: 12
+    }
 
     property string videoProvider: "dashscope"
     property string videoApiKey: ""
@@ -32,34 +44,69 @@ Dialog {
         anchors.fill: parent
         spacing: 0
 
+        // 顶部标题栏
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 64
+            color: Qt.rgba(0.45, 0.55, 0.82, 0.9)
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 24
+                anchors.rightMargin: 24
+                spacing: 16
+
+                Label {
+                    text: ""  // settings icon
+                    font.family: "Material Icons"
+                    font.pixelSize: 28
+                    color: "white"
+                }
+
+                Label {
+                    text: "应用设置"
+                    font.pixelSize: 20
+                    font.bold: true
+                    color: "white"
+                    Layout.fillWidth: true
+                }
+            }
+        }
+
         TabBar {
             id: tabBar
             Layout.fillWidth: true
-            Layout.preferredHeight: 44
+            Layout.preferredHeight: 48
+            Material.elevation: 0
 
             TabButton {
                 text: "视频模型"
-                width: implicitWidth
+                implicitWidth: 144
+                font.pixelSize: Theme.fontSizeNormal
             }
 
             TabButton {
                 text: "对话模型"
-                width: implicitWidth
+                implicitWidth: 144
+                font.pixelSize: Theme.fontSizeNormal
             }
 
             TabButton {
                 text: "图片模型"
-                width: implicitWidth
+                implicitWidth: 144
+                font.pixelSize: Theme.fontSizeNormal
             }
 
             TabButton {
                 text: "工作目录"
-                width: implicitWidth
+                implicitWidth: 144
+                font.pixelSize: Theme.fontSizeNormal
             }
 
             TabButton {
                 text: "外观"
-                width: implicitWidth
+                implicitWidth: 144
+                font.pixelSize: Theme.fontSizeNormal
             }
         }
 
@@ -72,68 +119,119 @@ Dialog {
             ScrollView {
                 ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
                 clip: true
+                contentWidth: availableWidth
 
                 ColumnLayout {
-                    width: parent.width
-                    spacing: 16
+                    width: parent.parent.width
+                    spacing: 20
 
-                    Item { Layout.preferredHeight: 16 }
+                    Item { Layout.preferredHeight: 8 }
 
-                    Label {
-                        text: "视频生成模型配置"
-                        font.pixelSize: Theme.fontSizeLarge
-                        font.bold: true
-                        Layout.leftMargin: 24
-                    }
-
-                    GridLayout {
-                        columns: 2
-                        columnSpacing: 12
-                        rowSpacing: 12
+                    // 配置卡片
+                    Pane {
                         Layout.fillWidth: true
-                        Layout.leftMargin: 24
-                        Layout.rightMargin: 24
+                        Layout.leftMargin: 0
+                        Layout.rightMargin: 0
+                        Material.elevation: 2
+                        padding: 24
 
-                        Label {
-                            text: "Provider:"
-                            font.pixelSize: Theme.fontSizeNormal
-                            Layout.preferredWidth: 80
-                        }
-                        ComboBox {
-                            id: videoProviderCombo
-                            model: ["dashscope", "seedance"]
-                            Layout.fillWidth: true
+                        background: Rectangle {
+                            color: Material.dialogColor
+                            radius: 8
+                            border.width: 0
                         }
 
-                        Label {
-                            text: "API Key:"
-                            font.pixelSize: Theme.fontSizeNormal
-                        }
-                        Comp.AppTextField {
-                            id: videoApiKeyField
-                            echoMode: TextInput.Password
-                            Layout.fillWidth: true
-                            placeholderText: "输入 API Key"
-                        }
+                        ColumnLayout {
+                            anchors.fill: parent
+                            spacing: 16
 
-                        Label {
-                            text: "Base URL:"
-                            font.pixelSize: Theme.fontSizeNormal
-                        }
-                        Comp.AppTextField {
-                            id: videoBaseUrlField
-                            Layout.fillWidth: true
-                            placeholderText: "API 基础地址（可选）"
-                        }
+                            // 标题
+                            ColumnLayout {
+                                spacing: 4
+                                Layout.fillWidth: true
 
-                        Label {
-                            text: "默认模型:"
-                            font.pixelSize: Theme.fontSizeNormal
-                        }
-                        ComboBox {
-                            id: videoModelCombo
-                            model: ["wan2.7-t2v"]
-                            Layout.fillWidth: true
+                                Label {
+                                    text: "视频生成模型"
+                                    font.pixelSize: Theme.fontSizeLarge
+                                    font.bold: true
+                                }
+
+                                Label {
+                                    text: "配置用于生成 AI 视频的模型和凭证"
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    color: Material.hintTextColor
+                                }
+                            }
+
+                            Rectangle {
+                                Layout.fillWidth: true
+                                height: 1
+                                color: Material.frameColor
+                            }
+
+                            GridLayout {
+                                columns: 2
+                                columnSpacing: 16
+                                rowSpacing: 16
+                                Layout.fillWidth: true
+
+                                Label {
+                                    text: "Provider"
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    Layout.preferredWidth: 100
+                                    Layout.alignment: Qt.AlignTop
+                                    topPadding: 6
+                                }
+                                ComboBox {
+                                    id: videoProviderCombo
+                                    model: ["dashscope", "seedance"]
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 36
+                                    Material.elevation: 0
+                                }
+
+                                Label {
+                                    text: "API Key"
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    Layout.alignment: Qt.AlignTop
+                                    topPadding: 6
+                                }
+                                Comp.AppTextField {
+                                    id: videoApiKeyField
+                                    echoMode: TextInput.Password
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 36
+                                    placeholderText: "输入 API Key"
+                                }
+
+                                Label {
+                                    text: "Base URL"
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    color: Material.hintTextColor
+                                    Layout.alignment: Qt.AlignTop
+                                    topPadding: 6
+                                }
+                                Comp.AppTextField {
+                                    id: videoBaseUrlField
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 36
+                                    placeholderText: "API 基础地址（可选）"
+                                }
+
+                                Label {
+                                    text: "默认模型"
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    Layout.alignment: Qt.AlignTop
+                                    topPadding: 6
+                                }
+                                ComboBox {
+                                    id: videoModelCombo
+                                    model: ["wan2.7-t2v"]
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 36
+                                    Material.elevation: 0
+                                }
+                            }
                         }
                     }
 
@@ -145,68 +243,119 @@ Dialog {
             ScrollView {
                 ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
                 clip: true
+                contentWidth: availableWidth
 
                 ColumnLayout {
-                    width: parent.width
-                    spacing: 16
+                    width: parent.parent.width
+                    spacing: 20
 
-                    Item { Layout.preferredHeight: 16 }
+                    Item { Layout.preferredHeight: 8 }
 
-                    Label {
-                        text: "对话模型配置"
-                        font.pixelSize: Theme.fontSizeLarge
-                        font.bold: true
-                        Layout.leftMargin: 24
-                    }
-
-                    GridLayout {
-                        columns: 2
-                        columnSpacing: 12
-                        rowSpacing: 12
+                    // 配置卡片
+                    Pane {
                         Layout.fillWidth: true
-                        Layout.leftMargin: 24
-                        Layout.rightMargin: 24
+                        Layout.leftMargin: 0
+                        Layout.rightMargin: 0
+                        Material.elevation: 2
+                        padding: 24
 
-                        Label {
-                            text: "Provider:"
-                            font.pixelSize: Theme.fontSizeNormal
-                            Layout.preferredWidth: 80
-                        }
-                        ComboBox {
-                            id: chatProviderCombo
-                            model: ["dashscope"]
-                            Layout.fillWidth: true
+                        background: Rectangle {
+                            color: Material.dialogColor
+                            radius: 8
+                            border.width: 0
                         }
 
-                        Label {
-                            text: "API Key:"
-                            font.pixelSize: Theme.fontSizeNormal
-                        }
-                        Comp.AppTextField {
-                            id: chatApiKeyField
-                            echoMode: TextInput.Password
-                            Layout.fillWidth: true
-                            placeholderText: "输入 API Key"
-                        }
+                        ColumnLayout {
+                            anchors.fill: parent
+                            spacing: 16
 
-                        Label {
-                            text: "Base URL:"
-                            font.pixelSize: Theme.fontSizeNormal
-                        }
-                        Comp.AppTextField {
-                            id: chatBaseUrlField
-                            Layout.fillWidth: true
-                            placeholderText: "API 基础地址（可选）"
-                        }
+                            // 标题
+                            ColumnLayout {
+                                spacing: 4
+                                Layout.fillWidth: true
 
-                        Label {
-                            text: "默认模型:"
-                            font.pixelSize: Theme.fontSizeNormal
-                        }
-                        Comp.AppTextField {
-                            id: chatModelField
-                            Layout.fillWidth: true
-                            placeholderText: "模型名称（可选）"
+                                Label {
+                                    text: "对话模型"
+                                    font.pixelSize: Theme.fontSizeLarge
+                                    font.bold: true
+                                }
+
+                                Label {
+                                    text: "配置用于 AI 对话和内容生成的模型"
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    color: Material.hintTextColor
+                                }
+                            }
+
+                            Rectangle {
+                                Layout.fillWidth: true
+                                height: 1
+                                color: Material.frameColor
+                            }
+
+                            GridLayout {
+                                columns: 2
+                                columnSpacing: 16
+                                rowSpacing: 16
+                                Layout.fillWidth: true
+
+                                Label {
+                                    text: "Provider"
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    Layout.preferredWidth: 100
+                                    Layout.alignment: Qt.AlignTop
+                                    topPadding: 6
+                                }
+                                ComboBox {
+                                    id: chatProviderCombo
+                                    model: ["dashscope"]
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 36
+                                    Material.elevation: 0
+                                }
+
+                                Label {
+                                    text: "API Key"
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    Layout.alignment: Qt.AlignTop
+                                    topPadding: 6
+                                }
+                                Comp.AppTextField {
+                                    id: chatApiKeyField
+                                    echoMode: TextInput.Password
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 36
+                                    placeholderText: "输入 API Key"
+                                }
+
+                                Label {
+                                    text: "Base URL"
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    color: Material.hintTextColor
+                                    Layout.alignment: Qt.AlignTop
+                                    topPadding: 6
+                                }
+                                Comp.AppTextField {
+                                    id: chatBaseUrlField
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 36
+                                    placeholderText: "API 基础地址（可选）"
+                                }
+
+                                Label {
+                                    text: "默认模型"
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    color: Material.hintTextColor
+                                    Layout.alignment: Qt.AlignTop
+                                    topPadding: 6
+                                }
+                                Comp.AppTextField {
+                                    id: chatModelField
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 36
+                                    placeholderText: "模型名称（可选）"
+                                }
+                            }
                         }
                     }
 
@@ -218,68 +367,119 @@ Dialog {
             ScrollView {
                 ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
                 clip: true
+                contentWidth: availableWidth
 
                 ColumnLayout {
-                    width: parent.width
-                    spacing: 16
+                    width: parent.parent.width
+                    spacing: 20
 
-                    Item { Layout.preferredHeight: 16 }
+                    Item { Layout.preferredHeight: 8 }
 
-                    Label {
-                        text: "图片生成模型配置"
-                        font.pixelSize: Theme.fontSizeLarge
-                        font.bold: true
-                        Layout.leftMargin: 24
-                    }
-
-                    GridLayout {
-                        columns: 2
-                        columnSpacing: 12
-                        rowSpacing: 12
+                    // 配置卡片
+                    Pane {
                         Layout.fillWidth: true
-                        Layout.leftMargin: 24
-                        Layout.rightMargin: 24
+                        Layout.leftMargin: 0
+                        Layout.rightMargin: 0
+                        Material.elevation: 2
+                        padding: 24
 
-                        Label {
-                            text: "Provider:"
-                            font.pixelSize: Theme.fontSizeNormal
-                            Layout.preferredWidth: 80
-                        }
-                        ComboBox {
-                            id: imageProviderCombo
-                            model: ["dashscope_image"]
-                            Layout.fillWidth: true
+                        background: Rectangle {
+                            color: Material.dialogColor
+                            radius: 8
+                            border.width: 0
                         }
 
-                        Label {
-                            text: "API Key:"
-                            font.pixelSize: Theme.fontSizeNormal
-                        }
-                        Comp.AppTextField {
-                            id: imageApiKeyField
-                            echoMode: TextInput.Password
-                            Layout.fillWidth: true
-                            placeholderText: "输入 API Key"
-                        }
+                        ColumnLayout {
+                            anchors.fill: parent
+                            spacing: 16
 
-                        Label {
-                            text: "Base URL:"
-                            font.pixelSize: Theme.fontSizeNormal
-                        }
-                        Comp.AppTextField {
-                            id: imageBaseUrlField
-                            Layout.fillWidth: true
-                            placeholderText: "API 基础地址（可选）"
-                        }
+                            // 标题
+                            ColumnLayout {
+                                spacing: 4
+                                Layout.fillWidth: true
 
-                        Label {
-                            text: "默认模型:"
-                            font.pixelSize: Theme.fontSizeNormal
-                        }
-                        Comp.AppTextField {
-                            id: imageModelField
-                            Layout.fillWidth: true
-                            placeholderText: "模型名称（可选）"
+                                Label {
+                                    text: "图片生成模型"
+                                    font.pixelSize: Theme.fontSizeLarge
+                                    font.bold: true
+                                }
+
+                                Label {
+                                    text: "配置用于生成分镜设计图的模型"
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    color: Material.hintTextColor
+                                }
+                            }
+
+                            Rectangle {
+                                Layout.fillWidth: true
+                                height: 1
+                                color: Material.frameColor
+                            }
+
+                            GridLayout {
+                                columns: 2
+                                columnSpacing: 16
+                                rowSpacing: 16
+                                Layout.fillWidth: true
+
+                                Label {
+                                    text: "Provider"
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    Layout.preferredWidth: 100
+                                    Layout.alignment: Qt.AlignTop
+                                    topPadding: 6
+                                }
+                                ComboBox {
+                                    id: imageProviderCombo
+                                    model: ["dashscope_image"]
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 36
+                                    Material.elevation: 0
+                                }
+
+                                Label {
+                                    text: "API Key"
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    Layout.alignment: Qt.AlignTop
+                                    topPadding: 6
+                                }
+                                Comp.AppTextField {
+                                    id: imageApiKeyField
+                                    echoMode: TextInput.Password
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 36
+                                    placeholderText: "输入 API Key"
+                                }
+
+                                Label {
+                                    text: "Base URL"
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    color: Material.hintTextColor
+                                    Layout.alignment: Qt.AlignTop
+                                    topPadding: 6
+                                }
+                                Comp.AppTextField {
+                                    id: imageBaseUrlField
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 36
+                                    placeholderText: "API 基础地址（可选）"
+                                }
+
+                                Label {
+                                    text: "默认模型"
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    color: Material.hintTextColor
+                                    Layout.alignment: Qt.AlignTop
+                                    topPadding: 6
+                                }
+                                Comp.AppTextField {
+                                    id: imageModelField
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 36
+                                    placeholderText: "模型名称（可选）"
+                                }
+                            }
                         }
                     }
 
@@ -291,53 +491,98 @@ Dialog {
             ScrollView {
                 ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
                 clip: true
+                contentWidth: availableWidth
 
                 ColumnLayout {
-                    width: parent.width
-                    spacing: 16
+                    width: parent.parent.width
+                    spacing: 20
 
-                    Item { Layout.preferredHeight: 16 }
+                    Item { Layout.preferredHeight: 8 }
 
-                    Label {
-                        text: "工作目录配置"
-                        font.pixelSize: Theme.fontSizeLarge
-                        font.bold: true
-                        Layout.leftMargin: 24
-                    }
-
-                    ColumnLayout {
-                        spacing: 8
+                    // 配置卡片
+                    Pane {
                         Layout.fillWidth: true
-                        Layout.leftMargin: 24
-                        Layout.rightMargin: 24
+                        Layout.leftMargin: 0
+                        Layout.rightMargin: 0
+                        Material.elevation: 2
+                        padding: 24
 
-                        Label {
-                            text: "媒体文件工作区目录（视频、图片等文件的存储位置）"
-                            font.pixelSize: Theme.fontSizeSmall
-                            wrapMode: Text.Wrap
-                            Layout.fillWidth: true
+                        background: Rectangle {
+                            color: Material.dialogColor
+                            radius: 8
+                            border.width: 0
                         }
 
-                        RowLayout {
-                            spacing: 8
-                            Layout.fillWidth: true
+                        ColumnLayout {
+                            anchors.fill: parent
+                            spacing: 16
 
-                            Comp.AppTextField {
-                                id: workspaceDirField
-                                text: workspacePath
+                            // 标题
+                            ColumnLayout {
+                                spacing: 4
                                 Layout.fillWidth: true
-                                readOnly: true
-                                font.pixelSize: Theme.fontSizeSmall
+
+                                Label {
+                                    text: "工作目录"
+                                    font.pixelSize: Theme.fontSizeLarge
+                                    font.bold: true
+                                }
+
+                                Label {
+                                    text: "设置媒体文件的存储位置"
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    color: Material.hintTextColor
+                                }
                             }
 
-                            Button {
-                                text: "浏览..."
-                                implicitHeight: 32
-                                implicitWidth: 80
-                                onClicked: {
-                                    var path = bridge.settings.browse_workspace_dir()
-                                    workspaceDirField.text = path
-                                    workspacePath = path
+                            Rectangle {
+                                Layout.fillWidth: true
+                                height: 1
+                                color: Material.frameColor
+                            }
+
+                            ColumnLayout {
+                                spacing: 12
+                                Layout.fillWidth: true
+
+                                Label {
+                                    text: "媒体工作区"
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    font.bold: true
+                                }
+
+                                Label {
+                                    text: "所有生成的视频、图片等文件将保存到此目录"
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    color: Material.hintTextColor
+                                    wrapMode: Text.Wrap
+                                    Layout.fillWidth: true
+                                }
+
+                                RowLayout {
+                                    spacing: 12
+                                    Layout.fillWidth: true
+
+                                    Comp.AppTextField {
+                                        id: workspaceDirField
+                                        text: workspacePath
+                                        Layout.fillWidth: true
+                                        Layout.preferredHeight: 36
+                                        readOnly: true
+                                        font.pixelSize: Theme.fontSizeSmall
+                                    }
+
+                                    Button {
+                                        text: "浏览..."
+                                        implicitHeight: 36
+                                        implicitWidth: 90
+                                        Material.elevation: 1
+                                        onClicked: {
+                                            var path = bridge.settings.browse_workspace_dir()
+                                            workspaceDirField.text = path
+                                            workspacePath = path
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -351,50 +596,228 @@ Dialog {
             ScrollView {
                 ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
                 clip: true
+                contentWidth: availableWidth
 
                 ColumnLayout {
-                    width: parent.width
-                    spacing: 16
+                    width: parent.parent.width
+                    spacing: 20
 
-                    Item { Layout.preferredHeight: 16 }
+                    Item { Layout.preferredHeight: 8 }
 
-                    Label {
-                        text: "颜色方案"
-                        font.pixelSize: Theme.fontSizeLarge
-                        font.bold: true
-                    }
-
-                    Label {
-                        text: "选择界面颜色方案（需要重启应用生效）"
-                        font.pixelSize: Theme.fontSizeSmall
+                    // 配置卡片
+                    Pane {
                         Layout.fillWidth: true
-                        wrapMode: Text.Wrap
-                    }
+                        Layout.leftMargin: 0
+                        Layout.rightMargin: 0
+                        Material.elevation: 2
+                        padding: 24
 
-                    ButtonGroup {
-                        id: colorSchemeGroup
-                    }
-
-                    ColumnLayout {
-                        spacing: 8
-
-                        RadioButton {
-                            id: colorSchemeLight
-                            text: "亮色模式"
-                            ButtonGroup.group: colorSchemeGroup
+                        background: Rectangle {
+                            color: Material.dialogColor
+                            radius: 8
+                            border.width: 0
                         }
 
-                        RadioButton {
-                            id: colorSchemeDark
-                            text: "暗色模式"
-                            ButtonGroup.group: colorSchemeGroup
-                        }
+                        ColumnLayout {
+                            anchors.fill: parent
+                            spacing: 16
 
-                        RadioButton {
-                            id: colorSchemeSystem
-                            text: "跟随系统"
-                            ButtonGroup.group: colorSchemeGroup
-                            checked: true
+                            // 标题
+                            ColumnLayout {
+                                spacing: 4
+                                Layout.fillWidth: true
+
+                                Label {
+                                    text: "外观设置"
+                                    font.pixelSize: Theme.fontSizeLarge
+                                    font.bold: true
+                                }
+
+                                Label {
+                                    text: "自定义应用的外观和主题"
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    color: Material.hintTextColor
+                                }
+                            }
+
+                            Rectangle {
+                                Layout.fillWidth: true
+                                height: 1
+                                color: Material.frameColor
+                            }
+
+                            ColumnLayout {
+                                spacing: 16
+                                Layout.fillWidth: true
+
+                                Label {
+                                    text: "颜色方案"
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    font.bold: true
+                                }
+
+                                Label {
+                                    text: "选择界面的外观主题（需要重启应用生效）"
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    color: Material.hintTextColor
+                                    wrapMode: Text.Wrap
+                                    Layout.fillWidth: true
+                                }
+
+                                ButtonGroup {
+                                    id: colorSchemeGroup
+                                }
+
+                                ColumnLayout {
+                                    spacing: 12
+                                    Layout.fillWidth: true
+
+                                    // 亮色模式
+                                    Pane {
+                                        Layout.fillWidth: true
+                                        Material.elevation: 0
+                                        padding: 12
+
+                                        background: Rectangle {
+                                            color: colorSchemeLight.checked ? Material.color(Material.Blue, Material.Shade50) : "transparent"
+                                            radius: 6
+                                            border.color: colorSchemeLight.checked ? Material.accent : Material.frameColor
+                                            border.width: colorSchemeLight.checked ? 2 : 1
+                                        }
+
+                                        RowLayout {
+                                            anchors.fill: parent
+                                            spacing: 12
+
+                                            RadioButton {
+                                                id: colorSchemeLight
+                                                ButtonGroup.group: colorSchemeGroup
+                                            }
+
+                                            Label {
+                                                text: ""  // light_mode icon
+                                                font.family: "Material Icons"
+                                                font.pixelSize: 24
+                                                color: Material.accent
+                                            }
+
+                                            ColumnLayout {
+                                                spacing: 2
+                                                Layout.fillWidth: true
+
+                                                Label {
+                                                    text: "亮色模式"
+                                                    font.pixelSize: Theme.fontSizeNormal
+                                                    font.bold: true
+                                                }
+
+                                                Label {
+                                                    text: "清新明亮的界面风格"
+                                                    font.pixelSize: Theme.fontSizeSmall
+                                                    color: Material.hintTextColor
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    // 暗色模式
+                                    Pane {
+                                        Layout.fillWidth: true
+                                        Material.elevation: 0
+                                        padding: 12
+
+                                        background: Rectangle {
+                                            color: colorSchemeDark.checked ? Material.color(Material.Blue, Material.Shade50) : "transparent"
+                                            radius: 6
+                                            border.color: colorSchemeDark.checked ? Material.accent : Material.frameColor
+                                            border.width: colorSchemeDark.checked ? 2 : 1
+                                        }
+
+                                        RowLayout {
+                                            anchors.fill: parent
+                                            spacing: 12
+
+                                            RadioButton {
+                                                id: colorSchemeDark
+                                                ButtonGroup.group: colorSchemeGroup
+                                            }
+
+                                            Label {
+                                                text: ""  // dark_mode icon
+                                                font.family: "Material Icons"
+                                                font.pixelSize: 24
+                                                color: Material.accent
+                                            }
+
+                                            ColumnLayout {
+                                                spacing: 2
+                                                Layout.fillWidth: true
+
+                                                Label {
+                                                    text: "暗色模式"
+                                                    font.pixelSize: Theme.fontSizeNormal
+                                                    font.bold: true
+                                                }
+
+                                                Label {
+                                                    text: "护眼舒适的暗色主题"
+                                                    font.pixelSize: Theme.fontSizeSmall
+                                                    color: Material.hintTextColor
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    // 跟随系统
+                                    Pane {
+                                        Layout.fillWidth: true
+                                        Material.elevation: 0
+                                        padding: 12
+
+                                        background: Rectangle {
+                                            color: colorSchemeSystem.checked ? Material.color(Material.Blue, Material.Shade50) : "transparent"
+                                            radius: 6
+                                            border.color: colorSchemeSystem.checked ? Material.accent : Material.frameColor
+                                            border.width: colorSchemeSystem.checked ? 2 : 1
+                                        }
+
+                                        RowLayout {
+                                            anchors.fill: parent
+                                            spacing: 12
+
+                                            RadioButton {
+                                                id: colorSchemeSystem
+                                                ButtonGroup.group: colorSchemeGroup
+                                                checked: true
+                                            }
+
+                                            Label {
+                                                text: ""  // settings_suggest icon
+                                                font.family: "Material Icons"
+                                                font.pixelSize: 24
+                                                color: Material.accent
+                                            }
+
+                                            ColumnLayout {
+                                                spacing: 2
+                                                Layout.fillWidth: true
+
+                                                Label {
+                                                    text: "跟随系统"
+                                                    font.pixelSize: Theme.fontSizeNormal
+                                                    font.bold: true
+                                                }
+
+                                                Label {
+                                                    text: "自动适配系统主题设置"
+                                                    font.pixelSize: Theme.fontSizeSmall
+                                                    color: Material.hintTextColor
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
 
@@ -405,13 +828,31 @@ Dialog {
     }
 
     footer: DialogButtonBox {
+        padding: 16
+        Material.elevation: 0
+
+        background: Rectangle {
+            color: Material.dialogColor
+
+            Rectangle {
+                anchors.top: parent.top
+                width: parent.width
+                height: 1
+                color: Material.frameColor
+            }
+        }
+
         Button {
             text: "取消"
             DialogButtonBox.buttonRole: DialogButtonBox.RejectRole
+            flat: true
+            Material.elevation: 0
         }
         Button {
-            text: "保存"
+            text: "保存设置"
             DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole
+            Material.elevation: 1
+            highlighted: true
         }
         onAccepted: {
             saveAll()

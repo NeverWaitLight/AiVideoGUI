@@ -77,8 +77,14 @@ Item {
         property bool isActive: false
         flat: true
         display: AbstractButton.IconOnly
+        padding: 0
+        topPadding: 0
+        bottomPadding: 0
+        leftPadding: 0
+        rightPadding: 0
 
         background: Rectangle {
+            anchors.fill: parent
             radius: 2
             color: parent.isActive
                 ? Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.12)
