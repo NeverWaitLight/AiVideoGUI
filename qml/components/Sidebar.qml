@@ -20,7 +20,7 @@ Pane {
             Layout.preferredHeight: 40
             highlighted: true
             font.pixelSize: Theme.fontSizeMedium
-            icon.source: "qrc:/resources/icons/filled/add.svg"
+            icon.source: "qrc:/icons/filled/add.svg"
             icon.width: 18
             icon.height: 18
             display: AbstractButton.TextBesideIcon
