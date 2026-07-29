@@ -36,5 +36,9 @@
         <file>resources/icons/outlined/description.svg</file>
         <file>resources/icons/outlined/video_camera_back.svg</file>
         <file>resources/icons/outlined/video_library.svg</file>
+
+        <!-- 图片资源 -->
+        <file>resources/images/default_project_cover.svg</file>
+        <file>resources/images/default_video_cover.png</file>
     </qresource>
 </RCC>
