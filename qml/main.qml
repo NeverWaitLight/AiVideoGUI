@@ -22,7 +22,7 @@ ApplicationWindow {
         anchors.fill: parent
         spacing: 0
 
-        // 自定义标题栏
+        // ===== TopBar | 顶部标题栏 | 显示应用标题和窗口控制按钮 =====
         Comp.TopBar {
             id: titleBar
             Layout.fillWidth: true
@@ -35,7 +35,7 @@ ApplicationWindow {
             Layout.fillHeight: true
             spacing: 0
 
-            // 左侧 Tab 栏 — currentIndex 由 root.currentPage 响应式驱动
+            // ===== LeftBar | 左侧边栏 | 项目/素材库标签页切换和设置入口 =====
             Comp.LeftBar {
                 id: tabBar
                 Layout.fillHeight: true
@@ -52,22 +52,24 @@ ApplicationWindow {
                 }
             }
 
-            // 中间主内容模块（圆角卡片）
+            // ===== MainContent | 主内容容器 | 中间主页面区域（项目管理/素材库），带灰色圆角边框 =====
             Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 Layout.margins: 0
 
-                Rectangle {
+                Control {
                     anchors.fill: parent
-                    radius: Theme.borderRadius
-                    color: Material.background
-                    border.width: 1
-                    border.color: "#d0d0d0"
-                    clip: true
+                    padding: 4
 
-                    StackLayout {
-                        anchors.fill: parent
+                    background: Rectangle {
+                        radius: Theme.borderRadius
+                        color: Material.background
+                        border.width: 1
+                        border.color: "#d0d0d0"  // 浅灰色边框
+                    }
+
+                    contentItem: StackLayout {
                         currentIndex: root.currentPage === "project" ? 0 : 1
 
                         Pages.ProjectModePage {
@@ -84,14 +86,28 @@ ApplicationWindow {
                 }
             }
 
-            // 右侧边栏
+            // ===== AIChatPanel | AI 对话容器 | AI 助手对话面板（可展开/收起），左侧 4px 间距 =====
+            Item {
+                Layout.fillHeight: true
+                Layout.preferredWidth: rightBar.aiChatVisible ? 324 : 0
+                visible: rightBar.aiChatVisible
+
+                Comp.AIChatPanel {
+                    id: aiChatPanel
+                    anchors.fill: parent
+                    anchors.leftMargin: 4
+                }
+            }
+
+            // ===== RightBar | 右侧边栏 | 功能按钮栏（AI 助手开关等） =====
             Comp.RightBar {
+                id: rightBar
                 Layout.fillHeight: true
                 Layout.preferredWidth: Theme.rightBarWidth
             }
         }
 
-        // 底栏
+        // ===== BottomBar | 底部状态栏 | 显示应用状态和版本信息 =====
         Comp.BottomBar {
             Layout.fillWidth: true
         }

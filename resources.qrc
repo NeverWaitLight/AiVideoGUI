@@ -28,5 +28,6 @@
         <file>resources/icons/crop_square.svg</file>
         <file>resources/icons/window_restore.svg</file>
         <file>resources/icons/info.svg</file>
+        <file>resources/icons/chat.svg</file>
     </qresource>
 </RCC>

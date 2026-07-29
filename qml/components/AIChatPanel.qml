@@ -3,14 +3,63 @@ import QtQuick.Controls 2.15
 import QtQuick.Controls.Material 2.15
 import QtQuick.Layouts 1.15
 
-// 完整的聊天区域 - 用于全屏模式
-Pane {
-    id: chatArea
-    padding: 0
+// AI 对话面板 - 可在侧边栏显示的窄版聊天界面
+Control {
+    id: aiChatPanel
+    padding: 4
 
-    ColumnLayout {
-        anchors.fill: parent
+    background: Rectangle {
+        radius: Theme.borderRadius
+        color: Material.background
+        border.width: 1
+        border.color: "#d0d0d0"  // 浅灰色边框
+    }
+
+    contentItem: ColumnLayout {
         spacing: 0
+
+        // 标题栏
+        Pane {
+            Layout.fillWidth: true
+            padding: 8
+
+            RowLayout {
+                anchors.fill: parent
+                spacing: 8
+
+                Label {
+                    text: "AI 助手"
+                    font.pixelSize: Theme.fontSizeMedium
+                    font.bold: true
+                }
+
+                Item { Layout.fillWidth: true }
+
+                Button {
+                    Layout.preferredWidth: 28
+                    Layout.preferredHeight: 28
+                    flat: true
+                    display: AbstractButton.IconOnly
+                    icon.source: "qrc:/resources/icons/close.svg"
+                    icon.width: 16
+                    icon.height: 16
+                    onClicked: aiChatPanel.visible = false
+
+                    background: Rectangle {
+                        radius: 2
+                        color: parent.hovered
+                            ? Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.08)
+                            : "transparent"
+                    }
+                }
+            }
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            height: 1
+            color: Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.12)
+        }
 
         // 消息列表或空白状态（占据除输入区外的所有空间）
         Item {
@@ -20,7 +69,7 @@ Pane {
             // 空白状态（messageList.count === 0 时显示）
             EmptyChatState {
                 anchors.fill: parent
-                anchors.margins: 32
+                anchors.margins: 16
                 visible: messageList.count === 0
             }
 
@@ -28,10 +77,10 @@ Pane {
             ListView {
                 id: messageList
                 anchors.fill: parent
-                anchors.margins: 16
+                anchors.margins: 8
                 model: bridge.conversations.messages
                 clip: true
-                spacing: 8
+                spacing: 4
                 visible: count > 0
 
                 delegate: MessageBubble {
@@ -60,12 +109,11 @@ Pane {
         // 底部固定输入区（卡片样式）
         Pane {
             Layout.fillWidth: true
-            Layout.margins: 16
-            padding: 16
+            padding: 12
 
             ColumnLayout {
                 anchors.fill: parent
-                spacing: 12
+                spacing: 8
 
                 // 多行输入框
                 TextArea {
@@ -74,7 +122,7 @@ Pane {
                     Layout.maximumHeight: 120
                     placeholderText: "描述你想生成的视频..."
                     wrapMode: TextArea.Wrap
-                    font.pixelSize: Theme.fontSizeMedium
+                    font.pixelSize: Theme.fontSizeSmall
                     Keys.onReturnPressed: {
                         if (!(event.modifiers & Qt.ShiftModifier)) {
                             sendMessage()
@@ -94,15 +142,15 @@ Pane {
 
                 // 功能按钮行
                 RowLayout {
-                    spacing: 12
+                    spacing: 8
 
                     Button {
                         flat: true
                         text: "参数"
-                        font.pixelSize: Theme.fontSizeNormal
+                        font.pixelSize: Theme.fontSizeSmall
                         icon.source: "qrc:/resources/icons/settings.svg"
-                        icon.width: 16
-                        icon.height: 16
+                        icon.width: 14
+                        icon.height: 14
                         display: AbstractButton.TextBesideIcon
                         onClicked: paramPopup.open()
                     }
@@ -113,13 +161,11 @@ Pane {
                         text: "发送"
                         highlighted: true
                         enabled: inputArea.text.trim().length > 0
-                        font.pixelSize: Theme.fontSizeMedium
+                        font.pixelSize: Theme.fontSizeSmall
                         icon.source: "qrc:/resources/icons/send.svg"
-                        icon.width: 18
-                        icon.height: 18
+                        icon.width: 14
+                        icon.height: 14
                         display: AbstractButton.TextBesideIcon
-                        Layout.preferredWidth: 100
-                        Layout.preferredHeight: 40
                         onClicked: sendMessage()
                     }
                 }
@@ -130,8 +176,8 @@ Pane {
     // 参数弹出面板
     Popup {
         id: paramPopup
-        width: Math.min(parent.width * 0.8, 600)
-        height: Math.min(parent.height * 0.5, 320)
+        width: parent.width * 0.95
+        height: Math.min(parent.height * 0.6, 280)
         modal: true
         anchors.centerIn: parent
         padding: 0
@@ -143,14 +189,14 @@ Pane {
             // 标题栏
             Pane {
                 Layout.fillWidth: true
-                padding: 16
+                padding: 12
 
                 RowLayout {
                     anchors.fill: parent
 
                     Label {
                         text: "生成参数"
-                        font.pixelSize: Theme.fontSizeLarge
+                        font.pixelSize: Theme.fontSizeMedium
                         font.bold: true
                     }
 
@@ -159,7 +205,7 @@ Pane {
                     Button {
                         flat: true
                         text: "关闭"
-                        font.pixelSize: Theme.fontSizeNormal
+                        font.pixelSize: Theme.fontSizeSmall
                         onClicked: paramPopup.close()
                     }
                 }
