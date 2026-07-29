@@ -1,0 +1,19 @@
+<RCC>
+    <qresource prefix="/">
+        <!-- 常用图标 -->
+        <file>resources/icons/filled/chat.svg</file>
+        <file>resources/icons/filled/folder.svg</file>
+        <file>resources/icons/filled/video_library.svg</file>
+        <file>resources/icons/filled/settings.svg</file>
+        <file>resources/icons/filled/send.svg</file>
+        <file>resources/icons/filled/add.svg</file>
+        <file>resources/icons/filled/message.svg</file>
+        <file>resources/icons/filled/forum.svg</file>
+        <file>resources/icons/filled/work.svg</file>
+        <file>resources/icons/filled/movie.svg</file>
+        <file>resources/icons/filled/perm_media.svg</file>
+        <file>resources/icons/filled/photo_library.svg</file>
+        <file>resources/icons/filled/collections.svg</file>
+        <file>resources/icons/filled/dashboard.svg</file>
+    </qresource>
+</RCC>

@@ -15,6 +15,9 @@ from bridge.theme import Theme
 from storage.orm.base import init_engine, create_all_tables, ensure_columns
 from utils import paths
 
+# 导入编译后的 Qt 资源
+import resources_rc  # noqa: F401
+
 
 def setup_logging():
     """配置 loguru 日志系统。"""
@@ -66,10 +69,7 @@ def main():
 
     sys.excepthook = _exception_hook
 
-    app = QApplication(sys.argv)
-    app.setApplicationName("AI 视频生成")
-
-    # 初始化目录
+    # 初始化目录（在创建 QApplication 之前）
     root = paths.workspace_root()
     data_dir = paths.data_dir(root)
     cache_dir = paths.cache_dir(root)
@@ -78,29 +78,29 @@ def main():
     for d in (data_dir, cache_dir, ws_dir, chat_dir):
         os.makedirs(d, exist_ok=True)
 
-    # 初始化 DI 容器（需要先加载配置以获取样式设置）
+    # 初始化 DI 容器并读取配置（在创建 QApplication 之前）
     container = ApplicationContainer()
     container.config.workspace_root.from_value(root)
     container.config.config_path.from_value(os.path.join(data_dir, "config.json"))
-
-    # 从配置中读取并应用样式
     config_manager = container.config_manager()
-    style = config_manager.settings.style or "Default"
     color_scheme = config_manager.settings.color_scheme or "System"
 
-    QQuickStyle.setStyle(style)
-    logger.info(f"应用样式: {style}")
-
-    # 设置颜色方案
+    # 设置 Material 主题环境变量（必须在 QApplication 创建之前）
     if color_scheme == "Light":
-        os.environ["QT_QUICK_CONTROLS_COLOR_SCHEME"] = "light"
+        os.environ["QT_QUICK_CONTROLS_MATERIAL_THEME"] = "Light"
     elif color_scheme == "Dark":
-        os.environ["QT_QUICK_CONTROLS_COLOR_SCHEME"] = "dark"
+        os.environ["QT_QUICK_CONTROLS_MATERIAL_THEME"] = "Dark"
     else:  # System
-        # 不设置，让 Qt 自动跟随系统
-        os.environ.pop("QT_QUICK_CONTROLS_COLOR_SCHEME", None)
+        os.environ["QT_QUICK_CONTROLS_MATERIAL_THEME"] = "System"
 
-    logger.info(f"应用颜色方案: {color_scheme}")
+    logger.info(f"应用 Material 主题: {color_scheme}")
+
+    # 创建 QApplication 并设置 Material 样式
+    app = QApplication(sys.argv)
+    app.setApplicationName("AI 视频生成")
+
+    QQuickStyle.setStyle("Material")
+    logger.info("应用样式: Material")
 
     # 初始化数据库
     db_path = os.path.join(data_dir, "ai-video-gui.db")

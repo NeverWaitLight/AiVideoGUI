@@ -45,12 +45,12 @@ Pane {
         // 输入区域
         Pane {
             Layout.fillWidth: true
-            Layout.preferredHeight: inputArea.implicitHeight + 20
-            padding: 8
+            Layout.preferredHeight: inputArea.implicitHeight + 24
+            padding: 12
 
             RowLayout {
                 anchors.fill: parent
-                spacing: 8
+                spacing: 12
 
                 TextArea {
                     id: inputArea
@@ -69,7 +69,15 @@ Pane {
                 Button {
                     id: sendBtn
                     text: "发送"
+                    Layout.preferredWidth: 80
+                    Layout.preferredHeight: 40
                     enabled: inputArea.text.trim().length > 0
+                    highlighted: true
+                    font.pixelSize: Theme.fontSizeMedium
+                    icon.source: "qrc:/resources/icons/filled/send.svg"
+                    icon.width: 18
+                    icon.height: 18
+                    display: AbstractButton.TextBesideIcon
                     onClicked: sendMessage()
                 }
             }

@@ -48,7 +48,6 @@ class ConfigManager:
             default_chat_provider=_renamed.get(s.get("default_chat_provider", ""), s.get("default_chat_provider", "")),
             default_image_provider=_renamed.get(s.get("default_image_provider", ""), s.get("default_image_provider", "")),
             workspace_dir=s.get("workspace_dir", ""),
-            style=s.get("style", "Default"),
             color_scheme=s.get("color_scheme", "System"),
         )
         logger.info(f"配置已加载，providers={list(self._providers.keys())}")
@@ -70,7 +69,6 @@ class ConfigManager:
                 "default_chat_provider": self._settings.default_chat_provider,
                 "default_image_provider": self._settings.default_image_provider,
                 "workspace_dir": self._settings.workspace_dir,
-                "style": self._settings.style,
                 "color_scheme": self._settings.color_scheme,
             },
         }

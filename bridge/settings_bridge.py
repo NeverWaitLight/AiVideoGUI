@@ -93,18 +93,6 @@ class SettingsBridge(QObject):
         return path if path else current
 
     @Slot(result=str)
-    def get_style(self) -> str:
-        """获取当前样式：Default, Fusion, Material, Universal"""
-        return self._config.settings.style or "Default"
-
-    @Slot(str)
-    def set_style(self, style: str) -> None:
-        """设置样式并提示需要重启"""
-        if style in ("Default", "Fusion", "Material", "Universal", "Imagine"):
-            self._config.update_settings(style=style)
-            self.settings_saved.emit()
-
-    @Slot(result=str)
     def get_color_scheme(self) -> str:
         """获取当前颜色方案：Light, Dark, System"""
         return self._config.settings.color_scheme or "System"

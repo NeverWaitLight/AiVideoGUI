@@ -20,9 +20,11 @@ Item {
         // 直接生成按钮
         TabButton {
             Layout.alignment: Qt.AlignHCenter
-            Layout.preferredWidth: 44
-            Layout.preferredHeight: 44
-            text: "💬"
+            Layout.preferredWidth: 48
+            Layout.preferredHeight: 48
+            icon.source: "qrc:/resources/icons/filled/chat.svg"
+            icon.width: 24
+            icon.height: 24
             checked: tabBar.currentIndex === 0
             isActive: tabBar.currentIndex === 0
             onClicked: {
@@ -36,9 +38,11 @@ Item {
         // 项目管理按钮
         TabButton {
             Layout.alignment: Qt.AlignHCenter
-            Layout.preferredWidth: 44
-            Layout.preferredHeight: 44
-            text: "📁"
+            Layout.preferredWidth: 48
+            Layout.preferredHeight: 48
+            icon.source: "qrc:/resources/icons/filled/folder.svg"
+            icon.width: 24
+            icon.height: 24
             checked: tabBar.currentIndex === 1
             isActive: tabBar.currentIndex === 1
             onClicked: {
@@ -54,9 +58,11 @@ Item {
         // 素材库按钮
         TabButton {
             Layout.alignment: Qt.AlignHCenter
-            Layout.preferredWidth: 44
-            Layout.preferredHeight: 44
-            text: "🎬"
+            Layout.preferredWidth: 48
+            Layout.preferredHeight: 48
+            icon.source: "qrc:/resources/icons/filled/video_library.svg"
+            icon.width: 24
+            icon.height: 24
             onClicked: tabBar.libraryClicked()
             ToolTip.text: "素材库"
             ToolTip.visible: hovered
@@ -65,9 +71,11 @@ Item {
         // 设置按钮
         TabButton {
             Layout.alignment: Qt.AlignHCenter
-            Layout.preferredWidth: 44
-            Layout.preferredHeight: 44
-            text: "⚙️"
+            Layout.preferredWidth: 48
+            Layout.preferredHeight: 48
+            icon.source: "qrc:/resources/icons/filled/settings.svg"
+            icon.width: 24
+            icon.height: 24
             onClicked: tabBar.settingsClicked()
             ToolTip.text: "设置"
             ToolTip.visible: hovered
@@ -79,6 +87,6 @@ Item {
     component TabButton: Button {
         property bool isActive: false
         flat: true
-        font.pixelSize: 20
+        display: AbstractButton.IconOnly
     }
 }

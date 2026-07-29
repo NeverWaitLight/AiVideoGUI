@@ -359,35 +359,6 @@ Dialog {
                     Item { Layout.preferredHeight: 16 }
 
                     Label {
-                        text: "界面样式"
-                        font.pixelSize: Theme.fontSizeLarge
-                        font.bold: true
-                    }
-
-                    Label {
-                        text: "选择 Qt Quick Controls 2 样式（需要重启应用生效）"
-                        font.pixelSize: Theme.fontSizeSmall
-                        Layout.fillWidth: true
-                        wrapMode: Text.Wrap
-                    }
-
-                    ComboBox {
-                        id: styleCombo
-                        model: ["Default", "Fusion", "Material", "Universal"]
-                        Layout.fillWidth: true
-                        Layout.maximumWidth: 300
-                    }
-
-                    Label {
-                        text: "• Default: 轻量级默认样式\n• Fusion: 桌面风格\n• Material: Google Material Design\n• Universal: Microsoft Universal Design"
-                        font.pixelSize: Theme.fontSizeSmall
-                        Layout.fillWidth: true
-                        wrapMode: Text.Wrap
-                    }
-
-                    Item { Layout.preferredHeight: 16 }
-
-                    Label {
                         text: "颜色方案"
                         font.pixelSize: Theme.fontSizeLarge
                         font.bold: true
@@ -468,13 +439,6 @@ Dialog {
         workspacePath = bridge.settings.get_workspace_dir()
         workspaceDirField.text = workspacePath
 
-        // 加载样式设置
-        var currentStyle = bridge.settings.get_style()
-        var styleIndex = styleCombo.model.indexOf(currentStyle)
-        if (styleIndex >= 0) {
-            styleCombo.currentIndex = styleIndex
-        }
-
         // 加载颜色方案设置
         var currentColorScheme = bridge.settings.get_color_scheme()
         if (currentColorScheme === "Light") {
@@ -500,18 +464,11 @@ Dialog {
             bridge.settings.set_workspace_dir(workspacePath)
         }
 
-        // 保存样式设置
-        var oldStyle = bridge.settings.get_style()
-        var newStyle = styleCombo.currentText
+        // 保存颜色方案设置
         var oldColorScheme = bridge.settings.get_color_scheme()
         var newColorScheme = colorSchemeLight.checked ? "Light" : (colorSchemeDark.checked ? "Dark" : "System")
 
         var needRestart = false
-
-        if (oldStyle !== newStyle) {
-            bridge.settings.set_style(newStyle)
-            needRestart = true
-        }
 
         if (oldColorScheme !== newColorScheme) {
             bridge.settings.set_color_scheme(newColorScheme)
@@ -521,7 +478,7 @@ Dialog {
         if (needRestart) {
             // 显示提示信息
             Qt.callLater(function() {
-                alertDialog.info("设置已保存", "样式或颜色方案的更改需要重启应用才能生效。")
+                alertDialog.info("设置已保存", "颜色方案的更改需要重启应用才能生效。")
             })
         }
     }

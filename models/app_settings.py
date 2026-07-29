@@ -9,5 +9,4 @@ class AppSettings:
     default_chat_provider: str = ""
     default_image_provider: str = ""
     workspace_dir: str = ""
-    style: str = "Default"  # Qt Quick Controls 2 style: Default, Fusion, Material, Universal
     color_scheme: str = "System"  # Light, Dark, System

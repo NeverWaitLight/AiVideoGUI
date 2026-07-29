@@ -28,43 +28,67 @@ Pane {
         id: layout
         anchors.fill: parent
         anchors.margins: 8
-        spacing: 6
+        spacing: 8
 
         RowLayout {
-            spacing: 10
+            spacing: 16
+            Layout.fillWidth: true
 
-            Label { text: "比例:"; font.pixelSize: Theme.fontSizeSmall }
+            Label {
+                text: "比例:"
+                font.pixelSize: Theme.fontSizeSmall
+                Layout.minimumWidth: 40
+            }
             ComboBox {
                 id: ratioCombo
                 model: ["16:9", "9:16", "1:1", "4:3", "3:4"]
+                Layout.preferredWidth: 120
                 onCurrentTextChanged: panel.ratio = currentText
             }
 
-            Label { text: "分辨率:"; font.pixelSize: Theme.fontSizeSmall }
+            Label {
+                text: "分辨率:"
+                font.pixelSize: Theme.fontSizeSmall
+                Layout.minimumWidth: 60
+            }
             ComboBox {
                 id: resCombo
                 model: ["720P", "1080P"]
+                Layout.preferredWidth: 120
                 onCurrentTextChanged: panel.resolution = currentText
             }
 
-            Label { text: "时长:"; font.pixelSize: Theme.fontSizeSmall }
+            Label {
+                text: "时长:"
+                font.pixelSize: Theme.fontSizeSmall
+                Layout.minimumWidth: 40
+            }
             ComboBox {
                 id: durationCombo
                 model: ["5秒", "10秒", "15秒"]
+                Layout.preferredWidth: 120
                 onCurrentTextChanged: {
                     var map = {"5秒": 5, "10秒": 10, "15秒": 15}
                     panel.duration = map[currentText] || 5
                 }
             }
 
-            Label { text: "自动优化:"; font.pixelSize: Theme.fontSizeSmall }
+            Label {
+                text: "自动优化:"
+                font.pixelSize: Theme.fontSizeSmall
+                Layout.minimumWidth: 70
+            }
             Switch {
                 id: promptExtendSwitch
                 checked: true
                 onCheckedChanged: panel.promptExtend = checked
             }
 
-            Label { text: "水印:"; font.pixelSize: Theme.fontSizeSmall }
+            Label {
+                text: "水印:"
+                font.pixelSize: Theme.fontSizeSmall
+                Layout.minimumWidth: 40
+            }
             Switch {
                 id: watermarkSwitch
                 checked: false
