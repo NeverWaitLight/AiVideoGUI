@@ -23,8 +23,9 @@ Item {
         Button {
             visible: header.showBack
             flat: true
-            text: "←"
-            font.pixelSize: Theme.fontSizeTitle
+            icon.source: "qrc:/icons/outlined/arrow_back.svg"
+            icon.width: 24
+            icon.height: 24
             onClicked: header.backClicked()
             ToolTip.text: "返回"
             ToolTip.visible: hovered

@@ -1,6 +1,6 @@
 <RCC>
     <qresource prefix="/">
-        <!-- 常用图标 -->
+        <!-- Filled 图标 - 用于主要操作和强调 -->
         <file>resources/icons/filled/chat.svg</file>
         <file>resources/icons/filled/folder.svg</file>
         <file>resources/icons/filled/video_library.svg</file>
@@ -15,5 +15,26 @@
         <file>resources/icons/filled/photo_library.svg</file>
         <file>resources/icons/filled/collections.svg</file>
         <file>resources/icons/filled/dashboard.svg</file>
+        <file>resources/icons/filled/play_arrow.svg</file>
+        <file>resources/icons/filled/play_circle.svg</file>
+        <file>resources/icons/filled/pause.svg</file>
+        <file>resources/icons/filled/star.svg</file>
+
+        <!-- Outlined 图标 - 用于大部分 UI 场景 -->
+        <file>resources/icons/outlined/arrow_back.svg</file>
+        <file>resources/icons/outlined/person.svg</file>
+        <file>resources/icons/outlined/image.svg</file>
+        <file>resources/icons/outlined/movie.svg</file>
+        <file>resources/icons/outlined/edit.svg</file>
+        <file>resources/icons/outlined/delete.svg</file>
+        <file>resources/icons/outlined/folder_open.svg</file>
+        <file>resources/icons/outlined/skip_previous.svg</file>
+        <file>resources/icons/outlined/skip_next.svg</file>
+        <file>resources/icons/outlined/volume_off.svg</file>
+        <file>resources/icons/outlined/volume_up.svg</file>
+        <file>resources/icons/outlined/article.svg</file>
+        <file>resources/icons/outlined/description.svg</file>
+        <file>resources/icons/outlined/video_camera_back.svg</file>
+        <file>resources/icons/outlined/video_library.svg</file>
     </qresource>
 </RCC>

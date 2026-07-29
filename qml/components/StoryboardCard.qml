@@ -34,9 +34,11 @@ Pane {
                 fillMode: Image.PreserveAspectCrop
                 visible: source !== ""
             }
-            Label {
+            Image {
                 anchors.centerIn: parent
-                text: "🖼"
+                source: "qrc:/icons/outlined/image.svg"
+                sourceSize.width: 32
+                sourceSize.height: 32
                 visible: !designImage
             }
         }

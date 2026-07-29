@@ -196,7 +196,9 @@ Item {
                 // 播放按钮（仅视频）
                 Button {
                     anchors.centerIn: parent
-                    text: "▶"
+                    icon.source: "qrc:/icons/filled/play_arrow.svg"
+                    icon.width: 32
+                    icon.height: 32
                     visible: fileType === "video"
                     onClicked: playRequested()
                 }
@@ -231,13 +233,23 @@ Item {
                     Layout.fillWidth: true
                 }
                 Button {
-                    text: "📂"; flat: true; implicitWidth: 28; implicitHeight: 24
+                    flat: true
+                    icon.source: "qrc:/icons/outlined/folder_open.svg"
+                    icon.width: 20
+                    icon.height: 20
+                    implicitWidth: 32
+                    implicitHeight: 28
                     ToolTip.text: "打开所在文件夹"
                     ToolTip.visible: hovered
                     onClicked: openFolderRequested()
                 }
                 Button {
-                    text: "🗑"; flat: true; implicitWidth: 28; implicitHeight: 24
+                    flat: true
+                    icon.source: "qrc:/icons/outlined/delete.svg"
+                    icon.width: 20
+                    icon.height: 20
+                    implicitWidth: 32
+                    implicitHeight: 28
                     ToolTip.text: "删除"
                     ToolTip.visible: hovered
                     onClicked: deleteRequested()

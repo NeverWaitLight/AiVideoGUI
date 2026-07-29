@@ -186,6 +186,7 @@ Item {
                     wrapMode: TextArea.Wrap
                     font.pixelSize: Theme.fontSizeSmall
                     padding: 12
+                }
             }
 
             RowLayout {
@@ -344,9 +345,16 @@ Item {
                 }
                 Label {
                     anchors.centerIn: parent
-                    text: characterName ? characterName[0] : "👤"
+                    text: characterName ? characterName[0] : ""
                     font.pixelSize: 24
-                    visible: !designImage
+                    visible: !designImage && characterName
+                }
+                Image {
+                    anchors.centerIn: parent
+                    source: "qrc:/icons/outlined/person.svg"
+                    sourceSize.width: 32
+                    sourceSize.height: 32
+                    visible: !designImage && !characterName
                 }
             }
 
@@ -438,5 +446,4 @@ Item {
         historyDialog.historyData = JSON.parse(json)
         historyDialog.open()
     }
-}
 }

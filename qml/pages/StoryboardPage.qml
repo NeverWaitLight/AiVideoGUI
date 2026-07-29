@@ -411,9 +411,10 @@ Item {
             spacing: 10
 
             // 封面标记
-            Label {
-                text: "★"
-                font.pixelSize: 16
+            Image {
+                source: "qrc:/icons/filled/star.svg"
+                sourceSize.width: 20
+                sourceSize.height: 20
                 visible: videoData.featured
             }
 
@@ -427,9 +428,11 @@ Item {
                     fillMode: Image.PreserveAspectCrop
                     visible: source !== ""
                 }
-                Label {
+                Image {
                     anchors.centerIn: parent
-                    text: "🎬"
+                    source: "qrc:/icons/outlined/movie.svg"
+                    sourceSize.width: 24
+                    sourceSize.height: 24
                     visible: !videoData.thumbnailPath
                 }
             }

@@ -44,10 +44,11 @@ Pane {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 120
                 radius: Theme.radiusMedium
-                Label {
+                Image {
                     anchors.centerIn: parent
-                    text: "▶"
-                    font.pixelSize: 36
+                    source: "qrc:/icons/filled/play_arrow.svg"
+                    sourceSize.width: 48
+                    sourceSize.height: 48
                 }
                 MouseArea {
                     anchors.fill: parent
@@ -68,7 +69,7 @@ Pane {
             visible: status === "failed"
             Layout.fillWidth: true
             spacing: 8
-            Label { text: "❌ 生成失败"; font.pixelSize: Theme.fontSizeNormal }
+            Label { text: "生成失败"; font.pixelSize: Theme.fontSizeNormal }
             Label {
                 visible: errorMsg !== ""
                 text: errorMsg

@@ -123,8 +123,9 @@ Item {
                 // 上一个
                 Button {
                     flat: true
-                    text: "⏮"
-                    font.pixelSize: Theme.fontSizeLarge
+                    icon.source: "qrc:/icons/outlined/skip_previous.svg"
+                    icon.width: 28
+                    icon.height: 28
                     enabled: bridge.videoPlayer.currentIndex > 0
                     onClicked: bridge.videoPlayer.play_previous()
                     ToolTip.text: "上一个"
@@ -134,8 +135,11 @@ Item {
                 // 播放/暂停
                 Button {
                     flat: true
-                    text: mediaPlayer.playbackState === MediaPlayer.PlayingState ? "⏸" : "▶"
-                    font.pixelSize: Theme.fontSizeTitle
+                    icon.source: mediaPlayer.playbackState === MediaPlayer.PlayingState
+                        ? "qrc:/icons/filled/pause.svg"
+                        : "qrc:/icons/filled/play_arrow.svg"
+                    icon.width: 32
+                    icon.height: 32
                     enabled: _playlist.length > 0
                     onClicked: {
                         if (mediaPlayer.playbackState === MediaPlayer.PlayingState)
@@ -148,8 +152,9 @@ Item {
                 // 下一个
                 Button {
                     flat: true
-                    text: "⏭"
-                    font.pixelSize: Theme.fontSizeLarge
+                    icon.source: "qrc:/icons/outlined/skip_next.svg"
+                    icon.width: 28
+                    icon.height: 28
                     enabled: bridge.videoPlayer.currentIndex < _playlist.length - 1
                     onClicked: bridge.videoPlayer.play_next()
                     ToolTip.text: "下一个"
@@ -184,8 +189,11 @@ Item {
                 // 音量
                 Button {
                     flat: true
-                    text: audioOutput.muted ? "🔇" : "🔊"
-                    font.pixelSize: Theme.fontSizeMedium
+                    icon.source: audioOutput.muted
+                        ? "qrc:/icons/outlined/volume_off.svg"
+                        : "qrc:/icons/outlined/volume_up.svg"
+                    icon.width: 24
+                    icon.height: 24
                     onClicked: audioOutput.muted = !audioOutput.muted
                 }
 

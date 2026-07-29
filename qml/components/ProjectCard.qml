@@ -8,6 +8,11 @@ Pane {
     height: 280
     padding: 0
 
+    background: Rectangle {
+        radius: Theme.cardRadius
+        border.width: 1
+    }
+
     property int projectId: 0
     property string projectName: ""
     property string resolution: ""
@@ -39,10 +44,11 @@ Pane {
                 visible: source !== ""
             }
 
-            Label {
+            Image {
                 anchors.centerIn: parent
-                text: "🎬"
-                font.pixelSize: 36
+                source: "qrc:/icons/outlined/movie.svg"
+                sourceSize.width: 48
+                sourceSize.height: 48
                 visible: !coverPath
             }
         }
@@ -81,13 +87,23 @@ Pane {
 
             Button {
                 Layout.fillWidth: true
-                flat: true; text: "✏️"; font.pixelSize: Theme.fontSizeMedium
+                flat: true
+                icon.source: "qrc:/icons/outlined/edit.svg"
+                icon.width: 20
+                icon.height: 20
                 onClicked: card.editClicked(card.projectId)
+                ToolTip.text: "编辑"
+                ToolTip.visible: hovered
             }
             Button {
                 Layout.fillWidth: true
-                flat: true; text: "🗑"; font.pixelSize: Theme.fontSizeMedium
+                flat: true
+                icon.source: "qrc:/icons/outlined/delete.svg"
+                icon.width: 20
+                icon.height: 20
                 onClicked: card.deleteClicked(card.projectId)
+                ToolTip.text: "删除"
+                ToolTip.visible: hovered
             }
         }
     }
