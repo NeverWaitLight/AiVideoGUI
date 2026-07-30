@@ -2,14 +2,15 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Controls.Material 2.15
 import QtQuick.Layouts 1.15
+import QtQuick.Window 2.15
 import "components" as Comp
 import "pages" as Pages
 import "dialogs" as Dialogs
 
 ApplicationWindow {
     id: root
-    width: 1100
-    height: 700
+    width: Screen.width / 2
+    height: Screen.height / 2
     minimumWidth: 960
     minimumHeight: 640
     visible: true
@@ -44,7 +45,7 @@ ApplicationWindow {
                 onSettingsClicked: settingsDialog.open()
                 onLibraryClicked: {
                     root.currentPage = "library"
-                    globalMediaPage.projectId = -1
+                    mainPanel.mediaLibraryPage.projectId = -1
                     bridge.media.load_files()
                 }
                 onTabChanged: {
@@ -52,50 +53,44 @@ ApplicationWindow {
                 }
             }
 
-            // ===== MainContent | 主内容容器 | 中间主页面区域（项目管理/素材库），带灰色圆角边框 =====
-            Item {
+            // ===== 主内容区统一容器 | 包裹 MainPanel 和 AIChatPanel，提供统一圆角背景 =====
+            Control {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.margins: 0
+                padding: 4
 
-                Control {
-                    anchors.fill: parent
-                    padding: 4
-
-                    background: Rectangle {
-                        radius: Theme.borderRadius
-                        color: Material.background
-                        border.width: 1
-                        border.color: "#d0d0d0"  // 浅灰色边框
-                    }
-
-                    contentItem: StackLayout {
-                        currentIndex: root.currentPage === "project" ? 0 : 1
-
-                        Pages.ProjectModePage {
-                            id: projectModePage
-                        }
-
-                        Pages.MediaLibraryPage {
-                            id: globalMediaPage
-                            onBackClicked: {
-                                root.currentPage = "project"
-                            }
-                        }
-                    }
+                background: Rectangle {
+                    radius: Theme.borderRadius
+                    color: Qt.darker(Material.background, 1.05)
                 }
-            }
 
-            // ===== AIChatPanel | AI 对话容器 | AI 助手对话面板（可展开/收起），左侧 4px 间距 =====
-            Item {
-                Layout.fillHeight: true
-                Layout.preferredWidth: rightBar.aiChatVisible ? 324 : 0
-                visible: rightBar.aiChatVisible
+                contentItem: RowLayout {
+                    spacing: 0
 
-                Comp.AIChatPanel {
-                    id: aiChatPanel
-                    anchors.fill: parent
-                    anchors.leftMargin: 4
+                    // MainPanel - 主页面区域（项目管理/素材库）
+                    Comp.MainPanel {
+                        id: mainPanel
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        currentPage: root.currentPage
+                        onCurrentPageChanged: root.currentPage = currentPage
+                    }
+
+                    // 竖线分隔符
+                    Rectangle {
+                        Layout.fillHeight: true
+                        width: 1
+                        color: "white"
+                        visible: rightBar.aiChatVisible
+                    }
+
+                    // AIChatPanel - AI 助手对话面板
+                    Comp.AIChatPanel {
+                        id: aiChatPanel
+                        Layout.preferredWidth: 320
+                        Layout.fillHeight: true
+                        visible: rightBar.aiChatVisible
+                    }
                 }
             }
 
@@ -150,6 +145,10 @@ ApplicationWindow {
     }
 
     Component.onCompleted: {
+        // 居中显示窗口
+        x = (Screen.width - width) / 2
+        y = (Screen.height - height) / 2
+
         bridge.conversations.load_all()
         bridge.projects.load_projects()
     }

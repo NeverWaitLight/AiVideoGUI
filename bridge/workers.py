@@ -15,6 +15,30 @@ from storage.repositories.message_repository import MessageRepository
 from utils import paths
 
 
+class ChatWorker(QThread):
+    """纯对话模型 Worker（不生成视频）。"""
+
+    reply_ready = Signal(str, str)  # conv_id, reply
+    reply_failed = Signal(str, str)  # conv_id, error
+
+    def __init__(self, chat_service, conv_id: str, user_text: str, parent=None):
+        super().__init__(parent)
+        self._chat_service = chat_service
+        self._conv_id = conv_id
+        self._user_text = user_text
+
+    def run(self):
+        try:
+            messages = [
+                {"role": "user", "content": self._user_text},
+            ]
+            reply = self._chat_service.chat(messages)
+            self.reply_ready.emit(self._conv_id, reply)
+        except Exception as e:
+            logger.exception("对话回复失败")
+            self.reply_failed.emit(self._conv_id, str(e))
+
+
 class ScriptGenerateWorker(QThread):
     """AI 剧本生成 Worker。"""
 

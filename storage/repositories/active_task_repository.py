@@ -97,7 +97,7 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
             updated_at=datetime.now(),
         )
         self.session.add(entity)
-        self.session.commit()
+        self.session.flush()  # 刷新以获得自增 ID，但不提交事务
         return entity.id
 
     def list_active_tasks(self) -> List[dict]:

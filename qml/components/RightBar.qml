@@ -13,7 +13,7 @@ Item {
     // 内部根 Item，用于管理状态
     QtObject {
         id: root
-        property bool aiChatVisible: false
+        property bool aiChatVisible: true
     }
 
     ColumnLayout {

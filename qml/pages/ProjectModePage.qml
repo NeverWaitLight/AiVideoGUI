@@ -27,6 +27,7 @@ Item {
 
         // 0: 项目网格
         ProjectGridPage {
+            id: projectGridPage
             onProjectSelected: function(projectId) {
                 projectMode.currentProjectId = projectId
                 projectMode.currentPage = "detail"
@@ -95,5 +96,9 @@ Item {
     function openProject(projectId) {
         currentProjectId = projectId
         currentPage = "detail"
+    }
+
+    function openCreateDialog() {
+        projectGridPage.openCreateDialog()
     }
 }

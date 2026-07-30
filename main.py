@@ -3,6 +3,14 @@
 import os
 import sys
 
+# 启用 QML 可视化调试工具（开发模式）
+# 取消注释以下行来启用不同的可视化模式：
+# os.environ["QSG_VISUALIZE"] = "overdraw"  # 显示重绘区域
+# os.environ["QSG_VISUALIZE"] = "batches"   # 显示批次边界
+# os.environ["QSG_VISUALIZE"] = "clip"      # 显示裁剪区域
+# os.environ["QML_IMPORT_TRACE"] = "1"      # 跟踪 QML 导入
+# os.environ["QT_LOGGING_RULES"] = "qt.qml.binding.removal.info=true"  # 绑定调试
+
 from loguru import logger
 from PySide6.QtWidgets import QApplication
 from PySide6.QtQml import QQmlApplicationEngine
@@ -140,6 +148,18 @@ def main():
         sys.exit(-1)
 
     logger.info("QML 引擎就绪")
+
+    # 连接应用退出信号，确保清理资源
+    def on_about_to_quit():
+        logger.info("应用即将退出，清理资源...")
+        chat_service = container.chat_service()
+        chat_service.cleanup()
+        polling_service = container.task_polling_service()
+        polling_service.shutdown()
+        logger.info("资源清理完成")
+
+    app.aboutToQuit.connect(on_about_to_quit)
+
     sys.exit(app.exec())
 
 

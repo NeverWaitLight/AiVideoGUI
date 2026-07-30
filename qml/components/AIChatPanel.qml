@@ -6,13 +6,10 @@ import QtQuick.Layouts 1.15
 // AI 对话面板 - 可在侧边栏显示的窄版聊天界面
 Control {
     id: aiChatPanel
-    padding: 4
+    padding: 0
 
     background: Rectangle {
-        radius: Theme.borderRadius
-        color: Material.background
-        border.width: 1
-        border.color: "#d0d0d0"  // 浅灰色边框
+        color: "transparent"
     }
 
     contentItem: ColumnLayout {
@@ -21,14 +18,27 @@ Control {
         // 标题栏
         Pane {
             Layout.fillWidth: true
-            padding: 8
+            Layout.preferredHeight: 44
+            padding: 5
+
+            background: Rectangle {
+                color: "transparent"
+                border.width: 0
+                Rectangle {
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    height: 1
+                    color: "white"
+                }
+            }
 
             RowLayout {
                 anchors.fill: parent
                 spacing: 8
 
                 Label {
-                    text: "AI 助手"
+                    text: "AI"
                     font.pixelSize: Theme.fontSizeMedium
                     font.bold: true
                 }
@@ -53,12 +63,6 @@ Control {
                     }
                 }
             }
-        }
-
-        Rectangle {
-            Layout.fillWidth: true
-            height: 1
-            color: Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.12)
         }
 
         // 消息列表或空白状态（占据除输入区外的所有空间）
@@ -100,30 +104,43 @@ Control {
             }
         }
 
+        // 底部固定输入区（带边框的容器）
         Rectangle {
             Layout.fillWidth: true
-            height: 1
-            color: Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.12)
-        }
+            Layout.preferredHeight: 180
+            Layout.leftMargin: 4
+            Layout.rightMargin: 4
+            Layout.topMargin: 4
+            Layout.bottomMargin: 4
+            color: "transparent"
+            border.width: 0
+            radius: 0
 
-        // 底部固定输入区（卡片样式）
-        Pane {
-            Layout.fillWidth: true
-            padding: 12
+            // 顶部白色边框
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                height: 1
+                color: "white"
+            }
 
             ColumnLayout {
                 anchors.fill: parent
-                spacing: 8
+                anchors.margins: 12
+                spacing: 0
 
-                // 多行输入框
+                // 用户输入内容区域（占 2/3 高度）
                 TextArea {
                     id: inputArea
                     Layout.fillWidth: true
-                    Layout.maximumHeight: 120
-                    placeholderText: "描述你想生成的视频..."
+                    Layout.fillHeight: true
+                    Layout.preferredHeight: parent.height * 2 / 3
+                    placeholderText: ""
                     wrapMode: TextArea.Wrap
                     font.pixelSize: Theme.fontSizeSmall
-                    Keys.onReturnPressed: {
+                    topPadding: 6
+                    Keys.onReturnPressed: function(event) {
                         if (!(event.modifiers & Qt.ShiftModifier)) {
                             sendMessage()
                             event.accepted = true
@@ -131,46 +148,89 @@ Control {
                     }
 
                     background: Rectangle {
-                        radius: Theme.radiusMedium
-                        color: Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.05)
-                        border.width: 1
-                        border.color: inputArea.activeFocus
-                            ? Material.accent
-                            : Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.12)
+                        color: "transparent"
                     }
                 }
 
-                // 功能按钮行
-                RowLayout {
-                    spacing: 8
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 1
+                    color: Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.12)
+                }
 
-                    Button {
-                        flat: true
-                        text: "参数"
+                // 用户输入操作栏（占 1/3 高度）
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: parent.height / 3
+                    Layout.minimumHeight: 40
+                    color: "transparent"
+
+                    RowLayout {
+                        anchors.fill: parent
+                        spacing: 8
+
+                    // 对话模型选择下拉框
+                    ComboBox {
+                        id: modelSelector
+                        Layout.preferredWidth: 120
+                        Layout.preferredHeight: 36
                         font.pixelSize: Theme.fontSizeSmall
-                        icon.source: "qrc:/resources/icons/settings.svg"
-                        icon.width: 14
-                        icon.height: 14
-                        display: AbstractButton.TextBesideIcon
-                        onClicked: paramPopup.open()
+                        model: ["GPT-4", "Claude", "通义千问"]
+                        currentIndex: 0
                     }
 
                     Item { Layout.fillWidth: true }
 
+                    // 用户设置按钮
                     Button {
+                        Layout.preferredWidth: 36
+                        Layout.preferredHeight: 36
+                        flat: true
+                        display: AbstractButton.IconOnly
+                        icon.source: "qrc:/resources/icons/settings.svg"
+                        icon.width: 16
+                        icon.height: 16
+                        padding: 0
+                        leftPadding: 0
+                        rightPadding: 0
+                        topPadding: 0
+                        bottomPadding: 0
+                        onClicked: paramPopup.open()
+
+                        background: Rectangle {
+                            radius: Theme.radiusSmall
+                            color: parent.hovered
+                                ? Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.08)
+                                : "transparent"
+                        }
+                    }
+
+                    // 发送按钮
+                    Button {
+                        Layout.preferredWidth: 80
+                        Layout.preferredHeight: 36
                         text: "发送"
                         highlighted: true
                         enabled: inputArea.text.trim().length > 0
                         font.pixelSize: Theme.fontSizeSmall
-                        icon.source: "qrc:/resources/icons/send.svg"
-                        icon.width: 14
-                        icon.height: 14
-                        display: AbstractButton.TextBesideIcon
+                        padding: 0
+                        leftPadding: 0
+                        rightPadding: 0
+                        topPadding: 0
+                        bottomPadding: 0
                         onClicked: sendMessage()
+
+                        background: Rectangle {
+                            radius: Theme.radiusSmall
+                            color: parent.enabled
+                                ? (parent.hovered ? Qt.darker(Material.accent, 1.1) : Material.accent)
+                                : Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.12)
+                        }
                     }
                 }
             }
         }
+    }
     }
 
     // 参数弹出面板

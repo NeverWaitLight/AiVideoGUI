@@ -111,6 +111,28 @@ class VideoService(QObject):
             logger.error(f"添加用户消息失败: {e}")
             raise
 
+    def add_assistant_message(self, conversation_id: str, content: str) -> Message:
+        """添加助手消息（纯文本对话，不关联视频任务）。"""
+        msg = Message(
+            id=uuid.uuid4().hex,
+            conversation_id=conversation_id,
+            role="assistant",
+            content=content,
+            created_at=datetime.now(),
+            status=MessageStatus.COMPLETED,
+        )
+
+        msg_repo = self._sm.get_repo(MessageRepository)
+        self._sm.begin_write()
+        try:
+            msg_repo.save(msg)
+            self._sm.commit_write()
+            return msg
+        except Exception as e:
+            self._sm.rollback_write()
+            logger.error(f"添加助手消息失败: {e}")
+            raise
+
     # ---------- 提交任务 ----------
 
     def submit_task(

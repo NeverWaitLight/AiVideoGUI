@@ -111,34 +111,54 @@ class ConversationBridge(QObject):
     def send_message(self, text: str, provider: str, model: str,
                      resolution: str, ratio: str, duration: int = 5,
                      prompt_extend: bool = True, watermark: bool = False) -> None:
-        if not self._current_conv_id or not text.strip():
+        if not text.strip():
             return
 
-        # 创建对话（若为新对话）
+        # 如果没有当前对话，自动创建一个
+        if not self._current_conv_id:
+            conv = self._video_service.create_conversation(
+                provider_name=provider, model_name=model,
+                title="新对话",
+            )
+            self._model.add(conv, at_top=True)
+            self._current_conv_id = conv.id
+            self._messages.reset([])
+            self.conversation_created.emit(conv.id)
+
+        # 添加用户消息
         user_msg = self._video_service.add_user_message(self._current_conv_id, text)
         self._messages.append(user_msg)
         self.message_added.emit(user_msg.id, "user", text)
 
-        # 提交视频生成任务
-        params = {
-            "resolution": resolution,
-            "ratio": ratio,
-            "duration": duration,
-            "prompt_extend": prompt_extend,
-            "watermark": watermark,
-        }
-        assistant_msg = self._video_service.submit_task(
-            conversation_id=self._current_conv_id,
-            prompt=text,
-            provider_name=provider,
-            model_name=model,
-            params=params,
-        )
-        self._messages.append(assistant_msg)
-        self.message_added.emit(assistant_msg.id, "assistant", assistant_msg.content)
+        # 调用对话模型生成回复（纯文本对话，不生成视频）
+        from bridge.workers import ChatWorker
+        worker = ChatWorker(self._chat_service, self._current_conv_id, text, self)
+        worker.reply_ready.connect(self._on_chat_reply)
+        worker.reply_failed.connect(self._on_chat_failed)
+        worker.start()
 
         # 异步生成标题
         self._chat_service.generate_title(self._current_conv_id, text)
+
+    def _on_chat_reply(self, conv_id: str, reply: str) -> None:
+        """对话回复成功回调。"""
+        if conv_id != self._current_conv_id:
+            return
+
+        # 保存助手回复消息
+        assistant_msg = self._video_service.add_assistant_message(conv_id, reply)
+        self._messages.append(assistant_msg)
+        self.message_added.emit(assistant_msg.id, "assistant", reply)
+
+    def _on_chat_failed(self, conv_id: str, error: str) -> None:
+        """对话回复失败回调。"""
+        if conv_id != self._current_conv_id:
+            return
+        logger.error(f"对话回复失败: {error}")
+        # 可选：添加错误消息到界面
+        error_msg = self._video_service.add_assistant_message(conv_id, f"[错误] {error}")
+        self._messages.append(error_msg)
+        self.message_added.emit(error_msg.id, "assistant", f"[错误] {error}")
 
     @Slot(str, str)
     def update_title(self, conv_id: str, title: str) -> None:
