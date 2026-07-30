@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import QAbstractListModel, QModelIndex, Qt
+from PySide6.QtCore import QAbstractListModel, QModelIndex, Property, Qt, Signal
 
 from models.scene import Scene
 
@@ -28,6 +28,8 @@ class SceneListModel(QAbstractListModel):
         TimeDetailRole: b"timeDetail",
     }
 
+    count_changed = Signal()
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self._data: list[Scene] = []
@@ -36,6 +38,11 @@ class SceneListModel(QAbstractListModel):
         return self._ROLE_NAMES
 
     def rowCount(self, parent=QModelIndex()):
+        return len(self._data)
+
+    @Property(int, notify=count_changed)
+    def count(self):
+        """返回模型中的数据条数，供 QML 使用。"""
         return len(self._data)
 
     def data(self, index, role=Qt.DisplayRole):
@@ -64,6 +71,7 @@ class SceneListModel(QAbstractListModel):
         self.beginResetModel()
         self._data = list(scenes)
         self.endResetModel()
+        self.count_changed.emit()
 
     def get_by_index(self, row: int) -> Scene | None:
         if 0 <= row < len(self._data):

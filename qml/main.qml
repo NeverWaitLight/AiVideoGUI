@@ -60,7 +60,7 @@ ApplicationWindow {
             }
         }
 
-        onPressed: {
+        onPressed: function(mouse) {
             if (edges !== 0) {
                 root.startSystemResize(edges)
             } else {

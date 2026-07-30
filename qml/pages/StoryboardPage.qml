@@ -31,12 +31,24 @@ Item {
             alertDialog.info("成功", "分镜已删除")
             _showDetail = false
         }
+        function onStoryboard_generated(shotCount) {
+            alertDialog.info("成功", "分镜已生成，共 " + shotCount + " 个镜头")
+        }
+        function onStoryboard_generation_failed(error) {
+            alertDialog.error("错误", "生成分镜失败：" + error)
+        }
         function onDesign_image_ready(shotId, path) {
             alertDialog.info("成功", "设计图已生成")
             if (_showDetail) _loadRelatedVideos()
         }
         function onDesign_image_failed(error) {
             alertDialog.error("错误", "设计图生成失败：" + error)
+        }
+        function onBatch_progress(current, total, message) {
+            console.log("批量进度：", message)
+        }
+        function onBatch_done(successCount, total) {
+            alertDialog.info("完成", "批量设计图生成完成：成功 " + successCount + " / 总共 " + total)
         }
         function onError(msg) {
             alertDialog.error("错误", msg)
@@ -78,7 +90,12 @@ Item {
                         bottomPadding: 6
                         leftPadding: 12
                         rightPadding: 12
-                        onClicked: alertDialog.info("提示", "批量设计图生成功能开发中")
+                        onClicked: {
+                            confirmDialog.confirm(
+                                "确定要为所有分镜生成设计图吗？这可能需要较长时间。",
+                                function() { bridge.storyboard.batch_generate_design_images(page.projectId) }
+                            )
+                        }
                     }
                 }
 

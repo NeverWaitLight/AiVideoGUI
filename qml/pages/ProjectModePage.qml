@@ -58,6 +58,7 @@ Item {
             projectId: projectMode.currentProjectId
             onBackClicked: projectMode.currentPage = "detail"
             onGenerateStoryboardClicked: function(pid) {
+                bridge.storyboard.generate_from_screenplay(pid)
                 projectMode.currentPage = "storyboard"
             }
         }
@@ -66,6 +67,16 @@ Item {
         StoryboardPage {
             projectId: projectMode.currentProjectId
             onBackClicked: projectMode.currentPage = "detail"
+
+            Connections {
+                target: bridge.storyboard
+                function onStoryboard_generated(shotCount) {
+                    // 分镜生成成功的提示已经在页面内处理
+                }
+                function onStoryboard_generation_failed(error) {
+                    // 错误提示已经在页面内处理
+                }
+            }
         }
 
         // 5: 角色管理

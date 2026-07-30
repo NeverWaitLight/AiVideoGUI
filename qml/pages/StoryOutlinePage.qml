@@ -9,6 +9,7 @@ Item {
     property int projectId: -1
     property bool _dirty: false
     property var _chatMessages: []
+    property string _loadedContent: ""  // 跟踪加载的原始内容
 
     signal backClicked()
     signal nextStepClicked(string content)
@@ -28,11 +29,13 @@ Item {
 
         function onLoaded(content) {
             textArea.text = content
+            _loadedContent = content  // 记录加载的原始内容
             _dirty = false
         }
 
         function onSaved() {
             _dirty = false
+            _loadedContent = textArea.text  // 更新已保存的内容基准
             alertDialog.info("提示", "大纲已保存")
         }
 
@@ -163,6 +166,10 @@ Item {
                             wrapMode: TextArea.Wrap
                             font.pixelSize: Theme.fontSizeMedium
                             padding: 12
+                            onTextChanged: {
+                                // 只在内容与加载的原始内容不同时标记为脏
+                                _dirty = (textArea.text !== _loadedContent)
+                            }
                     }
                 }
             }

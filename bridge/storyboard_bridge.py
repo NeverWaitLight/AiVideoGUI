@@ -10,6 +10,7 @@ from PySide6.QtCore import QObject, Property, Signal, Slot
 from bridge.models.storyboard_model import StoryboardListModel
 from bridge.workers import (
     DesignImageWorker, BatchDesignImageWorker, BatchGenerationController,
+    StoryboardGenerateWorker,
 )
 
 
@@ -25,6 +26,8 @@ class StoryboardBridge(QObject):
     shot_detail_changed = Signal()
     shot_saved = Signal()
     shot_deleted = Signal()
+    storyboard_generated = Signal(int)  # shot_count
+    storyboard_generation_failed = Signal(str)
     error = Signal(str)
 
     _SHOT_SIZE_INDEX_MAP = {
@@ -110,6 +113,113 @@ class StoryboardBridge(QObject):
         self._project_id = project_id
         shots = self._storyboard_service.list_storyboards(project_id=project_id)
         self._model.reset(shots)
+
+    @Slot(int)
+    def generate_from_screenplay(self, project_id: int) -> None:
+        """从剧本生成分镜（后台线程）。"""
+        self._project_id = project_id
+
+        # 加载项目的所有场次
+        try:
+            scenes = self._screenplay_service.list_scenes(project_id)
+            if not scenes:
+                self.error.emit("该项目还没有剧本场次，请先生成剧本")
+                return
+
+            # 将场次拼接成完整剧本
+            script_lines = []
+            for scene in scenes:
+                location_type_map = {
+                    "interior": "内景",
+                    "exterior": "外景",
+                    "interior_exterior": "内景/外景"
+                }
+                time_type_map = {
+                    "day": "日",
+                    "night": "夜",
+                    "dawn": "晨",
+                    "dusk": "黄昏",
+                    "evening": "傍晚"
+                }
+                loc_type = location_type_map.get(scene.location_type.value, "内景")
+                time_type = time_type_map.get(scene.time_type.value, "日")
+
+                script_lines.append(f"第{scene.scene_number}场 {loc_type} {scene.location} {time_type}")
+                script_lines.append(scene.content)
+                script_lines.append("")
+
+            script_content = "\n".join(script_lines)
+
+            # 启动 Worker
+            worker = StoryboardGenerateWorker(self._text_model_service, script_content)
+
+            def on_finished(result: dict) -> None:
+                try:
+                    # result: {"shots": list[dict], "characters": list[dict]}
+                    shots_data = result.get("shots", [])
+                    if not shots_data:
+                        self.storyboard_generation_failed.emit("AI 返回的分镜数据为空")
+                        return
+
+                    # 构建场次号到 scene_id 的映射
+                    scene_map = {scene.scene_number: scene.id for scene in scenes}
+
+                    # 保存分镜到数据库
+                    from models.enums import ShotSize
+                    shot_size_map = {
+                        "特写": ShotSize.CLOSE_UP,
+                        "近景": ShotSize.CLOSE_UP,
+                        "中景": ShotSize.MEDIUM_SHOT,
+                        "全景": ShotSize.FULL_SHOT,
+                        "远景": ShotSize.LONG_SHOT,
+                        "极近特写": ShotSize.EXTREME_CLOSE_UP,
+                        "大远景": ShotSize.EXTREME_LONG_SHOT,
+                    }
+
+                    for shot_dict in shots_data:
+                        scene_number = shot_dict.get("scene_number", 1)
+                        scene_id = scene_map.get(scene_number)
+
+                        if not scene_id:
+                            logger.warning(f"未找到场次 {scene_number} 的 scene_id，跳过该分镜")
+                            continue
+
+                        shot_size_str = shot_dict.get("shot_size", "中景")
+                        shot_size = shot_size_map.get(shot_size_str, ShotSize.MEDIUM_SHOT)
+
+                        self._storyboard_service.create_storyboard(
+                            scene_id=scene_id,
+                            scene_number=scene_number,
+                            shot_number=shot_dict.get("shot_number", 1),
+                            shot_size=shot_size,
+                            camera_movement=shot_dict.get("camera_movement", ""),
+                            visual_content=shot_dict.get("visual_content", ""),
+                            dialogue=shot_dict.get("dialogue", ""),
+                            sound_effect=shot_dict.get("sound_effect", ""),
+                            duration=float(shot_dict.get("duration", 5.0)),
+                            notes=shot_dict.get("notes", ""),
+                        )
+
+                    # 重新加载分镜列表
+                    self.load_for_project(project_id)
+                    self.storyboard_generated.emit(len(shots_data))
+
+                except Exception as e:
+                    logger.exception("保存生成的分镜失败")
+                    self.storyboard_generation_failed.emit(str(e))
+
+            def on_failed(err: str) -> None:
+                self.storyboard_generation_failed.emit(err)
+
+            worker.finished.connect(on_finished)
+            worker.failed.connect(on_failed)
+            worker.finished.connect(worker.deleteLater)
+            self._workers.append(worker)
+            worker.start()
+
+        except Exception as e:
+            logger.exception("准备生成分镜失败")
+            self.error.emit(str(e))
 
     @Slot(int)
     def load_shot(self, shot_id: int) -> None:
@@ -237,6 +347,58 @@ class StoryboardBridge(QObject):
         worker.progress_update.connect(self.design_image_progress.emit)
         worker.start()
         self._workers.append(worker)
+
+    @Slot(int)
+    def batch_generate_design_images(self, project_id: int) -> None:
+        """批量生成所有分镜的设计图。"""
+        try:
+            shots = self._storyboard_service.list_storyboards(project_id)
+            if not shots:
+                self.error.emit("没有分镜可以生成设计图")
+                return
+
+            # 准备数据列表
+            shot_list = []
+            for shot in shots:
+                shot_list.append({
+                    "storyboard_id": shot.id,
+                    "project_id": project_id,
+                    "scene_number": shot.scene_number,
+                    "shot_number": shot.shot_number,
+                    "visual_content": shot.visual_content,
+                    "shot_size": shot.shot_size,
+                    "camera_movement": shot.camera_movement,
+                    "dialogue": shot.dialogue,
+                    "notes": shot.notes,
+                })
+
+            # 启动 Worker
+            worker = BatchDesignImageWorker(
+                self._text_model_service,
+                self._image_service,
+                self._storyboard_service,
+                self._character_service,
+                shot_list,
+            )
+
+            def on_progress(current: int, message: str, count_info: str) -> None:
+                self.batch_progress.emit(current, len(shot_list), f"{message} {count_info}")
+
+            def on_finished(success_count: int, total: int) -> None:
+                self.batch_done.emit(success_count, total)
+                # 重新加载分镜列表以更新设计图路径
+                self.load_for_project(project_id)
+
+            worker.progress_update.connect(on_progress)
+            worker.finished.connect(on_finished)
+            worker.failed.connect(self.design_image_failed.emit)
+            worker.finished.connect(worker.deleteLater)
+            self._workers.append(worker)
+            worker.start()
+
+        except Exception as e:
+            logger.exception("启动批量设计图生成失败")
+            self.error.emit(str(e))
 
     @Slot(int, str)
     def upload_design_image(self, shot_id: int, image_path: str) -> None:
