@@ -4,8 +4,11 @@
 """
 
 from dependency_injector import containers, providers
+from pathlib import Path
+import os
 
 from config.manager import ConfigManager
+from prompts.manager import PromptTemplateManager
 from service.background.enhanced_scheduler import BackgroundTaskScheduler
 from service.background.video_polling_task import VideoTaskPollingTask
 from service.background.project_cover_task import ProjectCoverGenerationTask
@@ -21,6 +24,11 @@ from service.text_model_service import TextModelService
 from service.video_service import VideoService, _PROVIDER_REGISTRY
 from storage.session_manager import SessionManager
 from utils.prompt_builder import VideoPromptBuilder
+
+
+def _get_project_root() -> Path:
+    """获取项目根目录（代码所在目录）。"""
+    return Path(__file__).parent.parent
 class ApplicationContainer(containers.DeclarativeContainer):
     """应用程序依赖注入容器。
 
@@ -52,6 +60,13 @@ class ApplicationContainer(containers.DeclarativeContainer):
 
     # VideoPromptBuilder（单例）
     prompt_builder = providers.Singleton(VideoPromptBuilder)
+
+    # PromptTemplateManager（单例）
+    # 注意：模板文件位于项目代码目录下，不是用户数据目录
+    prompt_template_manager = providers.Singleton(
+        PromptTemplateManager,
+        templates_dir=_get_project_root() / "prompts" / "templates",
+    )
 
     # ==================== Service 层 ====================
 
@@ -110,6 +125,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
     text_model_service = providers.Singleton(
         TextModelService,
         config_manager=config_manager,
+        prompt_manager=prompt_template_manager,
     )
 
     # ImageService（单例）

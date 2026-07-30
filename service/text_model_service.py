@@ -5,6 +5,7 @@ from loguru import logger
 import requests
 
 from config.manager import ConfigManager
+from prompts.manager import PromptTemplateManager
 
 class TextModelService:
     """文本模型服务：支持调用 DashScope 的通义千问等文本模型。"""
@@ -12,8 +13,9 @@ class TextModelService:
     DASHSCOPE_TEXT_URL = "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation"
     DEFAULT_MODEL = "qwen-max"  # 通义千问最强模型
 
-    def __init__(self, config_manager: ConfigManager) -> None:
+    def __init__(self, config_manager: ConfigManager, prompt_manager: PromptTemplateManager) -> None:
         self._config = config_manager
+        self._prompt_manager = prompt_manager
 
     def chat(self, messages: list[dict], model: str | None = None) -> str:
         """通用对话接口：发送 messages 列表，返回助手回复文本。"""
@@ -66,85 +68,15 @@ class TextModelService:
         Raises:
             RuntimeError: API 调用失败
         """
-        # 获取 DashScope 配置
-        provider_config = self._config.get_provider("dashscope")
-        if not provider_config or not provider_config.api_key:
-            raise RuntimeError("未配置 DashScope API Key，请在设置中配置")
+        # 使用模板构建消息
+        template = self._prompt_manager.get_template("outline_optimization")
+        messages = template.build_messages(
+            original_content=original_content if original_content.strip() else "（空大纲）",
+            user_requirement=user_requirement,
+        )
 
-        model = model or self.DEFAULT_MODEL
-
-        # 构造优化 prompt
-        system_prompt = """你是一个专业的视频项目策划助手。你的任务是根据用户的要求优化视频项目大纲。
-
-要求：
-1. 保持大纲的整体结构和核心内容
-2. 根据用户的具体要求进行针对性优化
-3. 输出的大纲要清晰、有条理
-4. 直接输出优化后的大纲内容，不要添加任何解释或说明
-"""
-
-        user_prompt = f"""原始大纲：
-{original_content if original_content.strip() else "（空大纲）"}
-
-用户的优化要求：
-{user_requirement}
-
-请根据用户的要求优化这份大纲，直接输出优化后的大纲内容。"""
-
-        # 调用 DashScope API
-        payload = {
-            "model": model,
-            "input": {
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ]
-            },
-            "parameters": {
-                "result_format": "message",
-            },
-        }
-
-        headers = {
-            "Authorization": f"Bearer {provider_config.api_key}",
-            "Content-Type": "application/json",
-        }
-
-        logger.info(f"调用文本模型优化大纲，模型：{model}")
-        logger.debug(f"请求体：{payload}")
-
-        try:
-            resp = requests.post(
-                self.DASHSCOPE_TEXT_URL,
-                json=payload,
-                headers=headers,
-                timeout=60,
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            logger.debug(f"响应：{data}")
-
-            # 解析响应
-            output = data.get("output", {})
-            choices = output.get("choices", [])
-            if not choices:
-                raise RuntimeError("API 未返回有效内容")
-
-            message = choices[0].get("message", {})
-            optimized_content = message.get("content", "").strip()
-
-            if not optimized_content:
-                raise RuntimeError("API 返回的内容为空")
-
-            logger.info("大纲优化成功")
-            return optimized_content
-
-        except requests.exceptions.RequestException as e:
-            logger.exception("调用文本模型 API 失败")
-            raise RuntimeError(f"网络请求失败：{e}")
-        except (KeyError, ValueError) as e:
-            logger.exception("解析 API 响应失败")
-            raise RuntimeError(f"解析响应失败：{e}")
+        logger.info(f"调用文本模型优化大纲，模型：{model or self.DEFAULT_MODEL}")
+        return self.chat(messages, model)
 
     def generate_script(
         self,
@@ -472,107 +404,19 @@ class TextModelService:
         Raises:
             RuntimeError: API 调用失败
         """
-        provider_config = self._config.get_provider("dashscope")
-        if not provider_config or not provider_config.api_key:
-            raise RuntimeError("未配置 DashScope API Key，请在设置中配置")
+        # 使用模板构建消息
+        template = self._prompt_manager.get_template("image_prompt_generation")
+        messages = template.build_messages(
+            visual_content=visual_content,
+            shot_size=shot_size or "中景",
+            camera_movement=camera_movement or "固定",
+            dialogue=dialogue or "无",
+            notes=notes or "无特殊要求",
+            character_info=character_info or "无额外角色信息",
+        )
 
-        model = model or self.DEFAULT_MODEL
-
-        system_prompt = """你是一位专业的分镜设计图绘制助手。你的任务是根据分镜头的画面描述，生成一段用于文生图模型的英文提示词（prompt）。
-
-**生成要求：**
-
-1. **构图规范**
-   - 根据景别决定构图：特写聚焦面部/细节，近景展示胸部以上，中景展示半身动作，全景呈现完整人物与环境关系，远景/大远景强调场景氛围
-   - 采用电影感宽银幕比例（16:9）构图
-   - 注意前景、中景、背景的层次感
-
-2. **人物表现**
-   - 严格按照角色形象描述绘制人物外貌、发型、服装
-   - 通过表情和肢体语言传达情绪，避免文字标注
-   - 多人镜头中明确各角色的空间关系
-
-3. **环境与光影**
-   - 环境细节丰富但不喧宾夺主，服务于叙事情绪
-   - 光影效果符合场景时间和氛围
-   - 色调统一，与描述的色调/光影保持一致
-
-4. **艺术风格**
-   - 采用电影概念设计风格（cinematic concept art），兼具写实感和绘画质感
-   - 画面精致，细节到位，适合作为视频拍摄的视觉参考
-
-**输出要求：**
-- 直接输出一段英文提示词，不超过 200 个单词
-- 不要包含任何解释、前缀或标注，只输出纯提示词文本"""
-
-        user_prompt = f"""请根据以下分镜信息生成设计图提示词：
-
-【景别】{shot_size or "中景"}
-【运镜方式】{camera_movement or "固定"}
-【画面内容描述】
-{visual_content}
-
-【台词/对白】
-{dialogue or "无"}
-
-【色调/光影备注】
-{notes or "无特殊要求"}
-
-【角色形象】
-{character_info or "无额外角色信息"}"""
-
-        payload = {
-            "model": model,
-            "input": {
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ]
-            },
-            "parameters": {
-                "result_format": "message",
-            },
-        }
-
-        headers = {
-            "Authorization": f"Bearer {provider_config.api_key}",
-            "Content-Type": "application/json",
-        }
-
-        logger.info(f"调用文本模型生成设计图提示词，模型：{model}")
-        logger.debug(f"请求体：{payload}")
-
-        try:
-            resp = requests.post(
-                self.DASHSCOPE_TEXT_URL,
-                json=payload,
-                headers=headers,
-                timeout=60,
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            logger.debug(f"响应：{data}")
-
-            output = data.get("output", {})
-            choices = output.get("choices", [])
-            if not choices:
-                raise RuntimeError("API 未返回有效内容")
-
-            message = choices[0].get("message", {})
-            prompt_text = message.get("content", "").strip()
-
-            if not prompt_text:
-                raise RuntimeError("API 返回的内容为空")
-
-            logger.info("设计图提示词生成成功")
-            return prompt_text
-
-        except requests.exceptions.RequestException as e:
-            logger.exception("调用文本模型 API 失败")
-            raise RuntimeError(f"网络请求失败：{e}")
-        except (KeyError, ValueError) as e:
-            logger.exception("解析 API 响应失败")
-            raise RuntimeError(f"解析响应失败：{e}")
+        logger.info(f"调用文本模型生成设计图提示词，模型：{model or self.DEFAULT_MODEL}")
+        return self.chat(messages, model)
 
     def generate_character_design_image_prompt(
         self,
@@ -593,96 +437,12 @@ class TextModelService:
         Raises:
             RuntimeError: API 调用失败
         """
-        provider_config = self._config.get_provider("dashscope")
-        if not provider_config or not provider_config.api_key:
-            raise RuntimeError("未配置 DashScope API Key，请在设置中配置")
+        # 使用模板构建消息
+        template = self._prompt_manager.get_template("character_image_prompt_generation")
+        messages = template.build_messages(
+            character_name=character_name,
+            description=description,
+        )
 
-        model = model or self.DEFAULT_MODEL
-
-        system_prompt = """你是一位专业的角色设计图绘制助手。你的任务是根据角色的结构化形象描述，生成一段用于文生图模型的英文提示词（prompt），产出角色三视图（正面、侧面、背面）设计图。
-
-**生成要求：**
-
-1. **构图规范**
-   - 采用角色三视图构图（character turnaround sheet, three-view orthographic projection）
-   - 必须包含三个视角：正面视图（front view）、侧面视图（side view）、背面视图（back view）
-   - 三个视图水平排列在同一画面中，角色等高，姿态统一（站立或 T-pose）
-   - 纯色或简洁渐变背景，突出角色主体
-   - 采用角色设定图风格（character concept art sheet）
-
-2. **人物表现**
-   - 严格按照形象描述中的每一个特征绘制：外貌、发型、发色、瞳色、体型
-   - 服装按照默认服装描述绘制，包含上装、裤子、鞋袜、帽子/配饰
-   - 三个视图保持完全一致的角色特征和服装细节
-   - 面部表情自然，体现角色性格
-   - 注重细节一致性，确保同一角色在不同生成中保持高度可辨识度
-
-3. **艺术风格**
-   - 采用电影概念设计风格（cinematic concept art），兼具写实感和绘画质感
-   - 画面精致，细节丰富，适合作为影视拍摄的角色视觉参考
-   - 光影柔和均匀，确保角色各部位清晰可辨
-
-**输出要求：**
-- 直接输出一段英文提示词，不超过 200 个单词
-- 必须在提示词中明确包含 "character turnaround sheet", "front view", "side view", "back view" 等关键词
-- 不要包含任何解释、前缀或标注，只输出纯提示词文本"""
-
-        user_prompt = f"""请根据以下角色信息生成设计图提示词：
-
-【角色名】{character_name}
-
-【形象描述】
-{description}"""
-
-        payload = {
-            "model": model,
-            "input": {
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ]
-            },
-            "parameters": {
-                "result_format": "message",
-            },
-        }
-
-        headers = {
-            "Authorization": f"Bearer {provider_config.api_key}",
-            "Content-Type": "application/json",
-        }
-
-        logger.info(f"调用文本模型生成角色设计图提示词，模型：{model}，角色：{character_name}")
-        logger.debug(f"请求体：{payload}")
-
-        try:
-            resp = requests.post(
-                self.DASHSCOPE_TEXT_URL,
-                json=payload,
-                headers=headers,
-                timeout=60,
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            logger.debug(f"响应：{data}")
-
-            output = data.get("output", {})
-            choices = output.get("choices", [])
-            if not choices:
-                raise RuntimeError("API 未返回有效内容")
-
-            message = choices[0].get("message", {})
-            prompt_text = message.get("content", "").strip()
-
-            if not prompt_text:
-                raise RuntimeError("API 返回的内容为空")
-
-            logger.info("角色设计图提示词生成成功")
-            return prompt_text
-
-        except requests.exceptions.RequestException as e:
-            logger.exception("调用文本模型 API 失败")
-            raise RuntimeError(f"网络请求失败：{e}")
-        except (KeyError, ValueError) as e:
-            logger.exception("解析 API 响应失败")
-            raise RuntimeError(f"解析响应失败：{e}")
+        logger.info(f"调用文本模型生成角色设计图提示词，模型：{model or self.DEFAULT_MODEL}，角色：{character_name}")
+        return self.chat(messages, model)
