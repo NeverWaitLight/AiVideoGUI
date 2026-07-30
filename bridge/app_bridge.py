@@ -55,6 +55,11 @@ class AppBridge(QObject):
     # ── 导航 ──
     navigate_requested = Signal(str, str)  # page_name, params_json
 
+    # ── 封面生成进度信号 ──
+    cover_generation_started = Signal(int)  # project_id
+    cover_generation_finished = Signal(int)  # project_id
+    cover_generation_failed = Signal(int, str)  # project_id, error_message
+
     def __init__(self, container, parent: QObject | None = None):
         super().__init__(parent)
         self._container = container
@@ -70,9 +75,9 @@ class AppBridge(QObject):
         self._text_model_service = container.text_model_service()
         self._image_service = container.image_service()
         self._media_service = container.media_service()
-        self._polling_service = container.task_polling_service()
         self._session_manager = container.session_manager()
         self._config = container.config_manager()
+        self._scheduler = container.background_scheduler()
 
         # 子 Bridge
         self._conversations = ConversationBridge(
@@ -103,11 +108,20 @@ class AppBridge(QObject):
         self._settings_bridge = SettingsBridge(self._config, self)
         self._video_player = VideoPlayerBridge(self._session_manager, self)
 
-        # 转发轮询服务信号
-        self._polling_service.status_changed.connect(self.task_status_changed.emit)
-        self._polling_service.download_progress.connect(self.task_download_progress.emit)
-        self._polling_service.task_finished.connect(self.task_finished.emit)
-        self._polling_service.task_failed.connect(self.task_failed.emit)
+        # 获取视频轮询任务的信号发射器并连接信号
+        self._video_polling_task = container.video_polling_task()
+        signal_emitter = self._video_polling_task.signal_emitter
+        signal_emitter.status_changed.connect(self.task_status_changed.emit)
+        signal_emitter.download_progress.connect(self.task_download_progress.emit)
+        signal_emitter.task_finished.connect(self.task_finished.emit)
+        signal_emitter.task_failed.connect(self.task_failed.emit)
+
+        # 获取项目封面生成任务的信号发射器并连接信号
+        self._project_cover_task = container.project_cover_task()
+        cover_signal_emitter = self._project_cover_task.signal_emitter
+        cover_signal_emitter.cover_generation_started.connect(self.cover_generation_started.emit)
+        cover_signal_emitter.cover_generation_finished.connect(self.cover_generation_finished.emit)
+        cover_signal_emitter.cover_generation_failed.connect(self.cover_generation_failed.emit)
 
         # 转发对话服务信号
         self._chat_service.title_ready.connect(self.title_ready.emit)
@@ -116,9 +130,6 @@ class AppBridge(QObject):
         self._storyboard_bridge.design_image_ready.connect(self.design_image_ready.emit)
         self._storyboard_bridge.design_image_progress.connect(self.design_image_progress.emit)
         self._storyboard_bridge.design_image_failed.connect(self.design_image_failed.emit)
-
-        # 启动轮询服务
-        self._polling_service.start()
 
     # ── 子 Bridge 属性 ──
 
@@ -204,3 +215,22 @@ class AppBridge(QObject):
         w = self._window()
         if w:
             w.close()
+
+    # ── 后台任务控制 ──
+
+    @Slot(result=bool)
+    def trigger_project_cover_generation(self) -> bool:
+        """触发项目封面自动生成任务。
+
+        Returns:
+            True 表示触发成功，False 表示失败
+        """
+        try:
+            success = self._scheduler.trigger_task("project_cover_generation")
+            if success:
+                logger.info("已触发项目封面生成任务")
+            return success
+        except Exception as e:
+            logger.error(f"触发项目封面生成任务失败：{e}")
+            return False
+

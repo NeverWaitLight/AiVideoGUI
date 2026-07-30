@@ -10,6 +10,48 @@ Item {
     signal projectSelected(int projectId)
     signal createProjectClicked()
 
+    // 正在生成封面的项目 ID 列表
+    property var generatingCoverIds: []
+
+    // 监听封面生成信号
+    Connections {
+        target: bridge
+
+        function onCover_generation_started(projectId) {
+            console.log("封面生成开始：项目 ID =", projectId)
+            // 添加到生成中列表
+            var ids = projectGridPage.generatingCoverIds.slice()
+            if (ids.indexOf(projectId) === -1) {
+                ids.push(projectId)
+                projectGridPage.generatingCoverIds = ids
+            }
+        }
+
+        function onCover_generation_finished(projectId) {
+            console.log("封面生成完成：项目 ID =", projectId)
+            // 从生成中列表移除
+            var ids = projectGridPage.generatingCoverIds.slice()
+            var index = ids.indexOf(projectId)
+            if (index !== -1) {
+                ids.splice(index, 1)
+                projectGridPage.generatingCoverIds = ids
+            }
+            // 刷新项目列表（更新封面路径）
+            bridge.projects.load_projects()
+        }
+
+        function onCover_generation_failed(projectId, errorMessage) {
+            console.log("封面生成失败：项目 ID =", projectId, "错误：", errorMessage)
+            // 从生成中列表移除
+            var ids = projectGridPage.generatingCoverIds.slice()
+            var index = ids.indexOf(projectId)
+            if (index !== -1) {
+                ids.splice(index, 1)
+                projectGridPage.generatingCoverIds = ids
+            }
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
@@ -56,12 +98,15 @@ Item {
                                 aspectRatio: model.aspectRatio
                                 coverPath: model.coverPath
                                 createdAt: model.createdAt || ""
+                                isGeneratingCover: generatingCoverIds.indexOf(projectId) !== -1
 
-                                onClicked: projectGridPage.projectSelected(projectId)
-                                onEditClicked: projectDialog.openForEdit(projectId)
-                                onDeleteClicked: confirmDialog.confirmDelete("项目", function() {
-                                    bridge.projects.delete_project(projectId)
-                                })
+                                onClicked: (function(id) { projectGridPage.projectSelected(id) })(projectId)
+                                onEditClicked: (function(id) { projectDialog.openForEdit(id) })(model.projectId)
+                                onDeleteClicked: (function(id) {
+                                    confirmDialog.confirmDelete("项目", function() {
+                                        bridge.projects.delete_project(id)
+                                    })
+                                })(model.projectId)
                             }
                         }
                     }

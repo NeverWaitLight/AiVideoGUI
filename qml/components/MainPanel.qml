@@ -55,32 +55,62 @@ Control {
 
                 // 右侧容器 - 操作按钮区
                 Item {
-                    Layout.preferredWidth: 34
+                    Layout.preferredWidth: 76  // 扩展宽度以容纳两个按钮
                     Layout.fillHeight: true
 
-                    Button {
-                        visible: mainPanel.currentPage === "project"
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: 34
-                        height: 34
-                        flat: true
-                        display: AbstractButton.IconOnly
-                        icon.source: "qrc:/resources/icons/add.svg"
-                        icon.width: 20
-                        icon.height: 20
-                        padding: 0
-                        leftPadding: 0
-                        rightPadding: 0
-                        topPadding: 0
-                        bottomPadding: 0
-                        onClicked: projectModePage.openCreateDialog()
+                    RowLayout {
+                        anchors.fill: parent
+                        spacing: 4
 
-                        background: Rectangle {
-                            anchors.fill: parent
-                            radius: Theme.radiusSmall
-                            color: parent.hovered
-                                ? Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.08)
-                                : "transparent"
+                        // 生成封面按钮
+                        Button {
+                            visible: mainPanel.currentPage === "project"
+                            Layout.preferredWidth: 34
+                            Layout.preferredHeight: 34
+                            flat: true
+                            display: AbstractButton.IconOnly
+                            icon.source: "qrc:/resources/icons/image.svg"
+                            icon.width: 20
+                            icon.height: 20
+                            padding: 0
+                            ToolTip.visible: hovered
+                            ToolTip.text: "生成项目封面"
+                            onClicked: {
+                                console.log("触发封面生成任务")
+                                bridge.trigger_project_cover_generation()
+                            }
+
+                            background: Rectangle {
+                                anchors.fill: parent
+                                radius: Theme.radiusSmall
+                                color: parent.hovered
+                                    ? Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.08)
+                                    : "transparent"
+                            }
+                        }
+
+                        // 新建项目按钮
+                        Button {
+                            visible: mainPanel.currentPage === "project"
+                            Layout.preferredWidth: 34
+                            Layout.preferredHeight: 34
+                            flat: true
+                            display: AbstractButton.IconOnly
+                            icon.source: "qrc:/resources/icons/add.svg"
+                            icon.width: 20
+                            icon.height: 20
+                            padding: 0
+                            ToolTip.visible: hovered
+                            ToolTip.text: "新建项目"
+                            onClicked: projectModePage.openCreateDialog()
+
+                            background: Rectangle {
+                                anchors.fill: parent
+                                radius: Theme.radiusSmall
+                                color: parent.hovered
+                                    ? Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.08)
+                                    : "transparent"
+                            }
                         }
                     }
                 }

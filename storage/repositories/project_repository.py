@@ -95,3 +95,19 @@ class ProjectRepository(BaseRepository[ProjectEntity, Project]):
         entity.cover_image = cover_image
         entity.updated_at = int(datetime.now().timestamp() * 1000)
         self.session.commit()
+
+    def update_cover_image(self, project_id: int, cover_image: str) -> None:
+        """
+        更新项目封面图片路径。
+
+        Args:
+            project_id: 项目 ID
+            cover_image: 封面图片路径
+        """
+        entity = self.session.get(ProjectEntity, project_id)
+        if not entity:
+            return
+
+        entity.cover_image = cover_image
+        entity.updated_at = int(datetime.now().timestamp() * 1000)
+        self.session.commit()

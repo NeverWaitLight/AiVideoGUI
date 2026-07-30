@@ -149,13 +149,33 @@ def main():
 
     logger.info("QML 引擎就绪")
 
+    # 启动后台任务调度器
+    scheduler = container.background_scheduler()
+
+    # 注册视频任务轮询任务（周期性任务）
+    video_polling_task = container.video_polling_task()
+    video_polling_task.set_config_manager(config_manager)
+    video_polling_task.set_media_service(container.media_service())
+    scheduler.register_task(video_polling_task)
+
+    # 注册项目封面生成任务（一次性任务）
+    project_cover_task = container.project_cover_task()
+    scheduler.register_task(project_cover_task)
+
+    # 启动调度器
+    scheduler.start()
+    logger.info("后台任务调度器已启动")
+
+    # 应用启动时自动触发一次封面生成任务
+    scheduler.trigger_task("project_cover_generation")
+    logger.info("已触发启动时封面生成任务")
+
     # 连接应用退出信号，确保清理资源
     def on_about_to_quit():
         logger.info("应用即将退出，清理资源...")
         chat_service = container.chat_service()
         chat_service.cleanup()
-        polling_service = container.task_polling_service()
-        polling_service.shutdown()
+        scheduler.shutdown()
         logger.info("资源清理完成")
 
     app.aboutToQuit.connect(on_about_to_quit)

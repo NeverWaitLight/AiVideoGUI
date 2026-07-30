@@ -19,6 +19,7 @@ Pane {
     property string aspectRatio: ""
     property string coverPath: ""
     property string createdAt: ""
+    property bool isGeneratingCover: false  // 是否正在生成封面
 
     signal clicked()
     signal editClicked(int projectId)
@@ -95,13 +96,13 @@ Pane {
                 Layout.fillHeight: true
                 radius: Theme.radiusMedium
                 clip: true
-                color: Qt.rgba(0, 0, 0, 0.3)
+                color: "transparent"
 
                 Image {
                     anchors.fill: parent
                     source: coverPath ? "file:///" + coverPath : ""
-                    fillMode: Image.PreserveAspectCrop
-                    visible: source !== ""
+                    fillMode: Image.PreserveAspectFit
+                    visible: source !== "" && !card.isGeneratingCover
                 }
 
                 Image {
@@ -109,7 +110,26 @@ Pane {
                     source: "qrc:/resources/icons/movie.svg"
                     sourceSize.width: 32
                     sourceSize.height: 32
-                    visible: !coverPath
+                    visible: !coverPath && !card.isGeneratingCover
+                }
+
+                // 加载动画
+                BusyIndicator {
+                    anchors.centerIn: parent
+                    width: 40
+                    height: 40
+                    running: card.isGeneratingCover
+                    visible: card.isGeneratingCover
+                }
+
+                // 加载提示文字
+                Label {
+                    anchors.centerIn: parent
+                    anchors.verticalCenterOffset: 35
+                    text: "生成中..."
+                    font.pixelSize: Theme.fontSizeSmall
+                    opacity: 0.7
+                    visible: card.isGeneratingCover
                 }
             }
 
@@ -166,13 +186,13 @@ Pane {
                 Layout.minimumHeight: 120
                 radius: Theme.radiusMedium
                 clip: true
-                color: Qt.rgba(0, 0, 0, 0.3)
+                color: "transparent"
 
                 Image {
                     anchors.fill: parent
                     source: coverPath ? "file:///" + coverPath : ""
-                    fillMode: Image.PreserveAspectCrop
-                    visible: source !== ""
+                    fillMode: Image.PreserveAspectFit
+                    visible: source !== "" && !card.isGeneratingCover
                 }
 
                 Image {
@@ -180,7 +200,26 @@ Pane {
                     source: "qrc:/resources/icons/movie.svg"
                     sourceSize.width: 48
                     sourceSize.height: 48
-                    visible: !coverPath
+                    visible: !coverPath && !card.isGeneratingCover
+                }
+
+                // 加载动画
+                BusyIndicator {
+                    anchors.centerIn: parent
+                    width: 60
+                    height: 60
+                    running: card.isGeneratingCover
+                    visible: card.isGeneratingCover
+                }
+
+                // 加载提示文字
+                Label {
+                    anchors.centerIn: parent
+                    anchors.verticalCenterOffset: 50
+                    text: "生成封面中..."
+                    font.pixelSize: Theme.fontSizeSmall
+                    opacity: 0.7
+                    visible: card.isGeneratingCover
                 }
             }
 

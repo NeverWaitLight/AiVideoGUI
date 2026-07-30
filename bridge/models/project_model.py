@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import os
 from PySide6.QtCore import QAbstractListModel, QModelIndex, Qt
 
 from models.project import Project
 from utils.time_format import format_timestamp_short
+from utils import paths
 
 
 class ProjectListModel(QAbstractListModel):
@@ -28,6 +30,9 @@ class ProjectListModel(QAbstractListModel):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._data: list[Project] = []
+        # 获取 workspace 根目录（用于转换相对路径为绝对路径）
+        workspace_root = paths.workspace_root()
+        self._workspace_dir = paths.workspace_dir(workspace_root)
 
     def roleNames(self):
         return self._ROLE_NAMES
@@ -48,7 +53,12 @@ class ProjectListModel(QAbstractListModel):
         if role == self.RatioRole:
             return item.aspect_ratio
         if role == self.CoverPathRole:
-            return item.cover_image
+            # 将相对路径转换为绝对路径
+            if item.cover_image:
+                abs_path = os.path.join(self._workspace_dir, item.cover_image)
+                # 使用正斜杠（QML 兼容）
+                return abs_path.replace('\\', '/')
+            return ""
         if role == self.CreatedAtRole:
             return format_timestamp_short(item.created_at)
         return None

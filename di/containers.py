@@ -6,6 +6,9 @@
 from dependency_injector import containers, providers
 
 from config.manager import ConfigManager
+from service.background.enhanced_scheduler import BackgroundTaskScheduler
+from service.background.video_polling_task import VideoTaskPollingTask
+from service.background.project_cover_task import ProjectCoverGenerationTask
 from service.character_service import CharacterService
 from service.chat_service import ChatService
 from service.image_service import ImageService
@@ -14,7 +17,6 @@ from service.project_service import ProjectService
 from service.screenplay_service import ScreenplayService
 from service.story_outline_service import StoryOutlineService
 from service.storyboard_service import StoryboardService
-from service.task_polling_service import TaskPollingService
 from service.text_model_service import TextModelService
 from service.video_service import VideoService, _PROVIDER_REGISTRY
 from storage.session_manager import SessionManager
@@ -116,12 +118,29 @@ class ApplicationContainer(containers.DeclarativeContainer):
         config_manager=config_manager,
     )
 
-    # TaskPollingService（单例，注入所有依赖 + provider_registry）
-    task_polling_service = providers.Singleton(
-        TaskPollingService,
+    # ==================== 后台任务调度器 ====================
+
+    # 后台任务调度器（单例）
+    background_scheduler = providers.Singleton(
+        BackgroundTaskScheduler,
+    )
+
+    # 视频任务轮询任务（单例，周期性任务）
+    video_polling_task = providers.Singleton(
+        VideoTaskPollingTask,
         session_manager=session_manager,
-        config=config_manager,
-        workspace_root=config.workspace_root,
         provider_registry=providers.Object(_PROVIDER_REGISTRY),
+        workspace_root=config.workspace_root,
+        poll_interval=10.0,
+        idle_check_interval=60.0,
+        max_polls_per_task=150,
+    )
+
+    # 项目封面生成任务（单例，一次性任务）
+    project_cover_task = providers.Singleton(
+        ProjectCoverGenerationTask,
+        session_manager=session_manager,
+        image_service=image_service,
+        workspace_root=config.workspace_root,
     )
 
