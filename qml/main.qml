@@ -18,6 +18,60 @@ ApplicationWindow {
     flags: Qt.Window | Qt.FramelessWindowHint
 
     property string currentPage: "project"
+    property int resizeBorderWidth: 5  // 边框拖动检测区域宽度
+
+    // 边框拖动调整大小
+    MouseArea {
+        id: resizeMouseArea
+        anchors.fill: parent
+        hoverEnabled: true
+        propagateComposedEvents: true
+        preventStealing: false
+        acceptedButtons: Qt.LeftButton
+
+        property int edges: 0
+
+        onPositionChanged: {
+            if (pressed) return
+
+            var leftEdge = mouseX < resizeBorderWidth
+            var rightEdge = mouseX > width - resizeBorderWidth
+            var topEdge = mouseY < resizeBorderWidth
+            var bottomEdge = mouseY > height - resizeBorderWidth
+
+            // 计算边缘标志位
+            edges = 0
+            if (leftEdge) edges |= Qt.LeftEdge
+            if (rightEdge) edges |= Qt.RightEdge
+            if (topEdge) edges |= Qt.TopEdge
+            if (bottomEdge) edges |= Qt.BottomEdge
+
+            // 设置光标形状
+            if ((topEdge && leftEdge) || (bottomEdge && rightEdge)) {
+                cursorShape = Qt.SizeFDiagCursor
+            } else if ((topEdge && rightEdge) || (bottomEdge && leftEdge)) {
+                cursorShape = Qt.SizeBDiagCursor
+            } else if (leftEdge || rightEdge) {
+                cursorShape = Qt.SizeHorCursor
+            } else if (topEdge || bottomEdge) {
+                cursorShape = Qt.SizeVerCursor
+            } else {
+                cursorShape = Qt.ArrowCursor
+            }
+        }
+
+        onPressed: {
+            if (edges !== 0) {
+                root.startSystemResize(edges)
+            } else {
+                mouse.accepted = false
+            }
+        }
+
+        onExited: {
+            cursorShape = Qt.ArrowCursor
+        }
+    }
 
     ColumnLayout {
         anchors.fill: parent
