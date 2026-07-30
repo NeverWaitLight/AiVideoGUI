@@ -37,7 +37,12 @@ Item {
 
             ComboBox {
                 id: typeFilter
+                Layout.preferredHeight: 34
                 model: ["全部", "视频", "图片", "音频"]
+                topPadding: 6
+                bottomPadding: 6
+                leftPadding: 12
+                rightPadding: 12
                 onCurrentTextChanged: {
                     _filterType = currentText === "全部" ? "" : currentText
                     _reloadFiles()
@@ -46,6 +51,7 @@ Item {
 
             Comp.AppTextField {
                 id: searchInput
+                Layout.preferredHeight: 34
                 placeholderText: "搜索文件名..."
                 implicitWidth: 180
                 onTextChanged: {
@@ -55,8 +61,13 @@ Item {
             }
 
             Button {
+                Layout.preferredHeight: 34
                 text: "导入"
                 highlighted: true
+                topPadding: 6
+                bottomPadding: 6
+                leftPadding: 12
+                rightPadding: 12
                 onClicked: fileDialog.open()
             }
         }

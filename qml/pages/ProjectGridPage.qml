@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import QtQuick.Controls.Material 2.15
 import "../components" as Comp
 import "../dialogs" as Dialogs
 
@@ -56,7 +57,64 @@ Item {
         anchors.fill: parent
         spacing: 0
 
-        // 固定 3×2 网格布局
+        // 标题栏
+        Pane {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 44
+            padding: 5
+
+            background: Rectangle {
+                color: "transparent"
+                border.width: 0
+                Rectangle {
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    height: 1
+                    color: "white"
+                }
+            }
+
+            RowLayout {
+                anchors.fill: parent
+                spacing: 12
+
+                Label {
+                    text: "项目"
+                    font.pixelSize: Theme.fontSizeMedium
+                    font.bold: true
+                }
+
+                Item { Layout.fillWidth: true }
+
+                Button {
+                    width: 34
+                    height: 34
+                    flat: true
+                    display: AbstractButton.IconOnly
+                    icon.source: "qrc:/resources/icons/add.svg"
+                    icon.width: 20
+                    icon.height: 20
+                    topPadding: 7
+                    bottomPadding: 7
+                    leftPadding: 7
+                    rightPadding: 7
+                    ToolTip.visible: hovered
+                    ToolTip.text: "新建项目"
+                    onClicked: projectDialog.openForCreate()
+
+                    background: Rectangle {
+                        anchors.fill: parent
+                        radius: Theme.radiusSmall
+                        color: parent.hovered
+                            ? Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.08)
+                            : "transparent"
+                    }
+                }
+            }
+        }
+
+        // 项目网格布局
         Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -64,50 +122,38 @@ Item {
 
             ScrollView {
                 anchors.fill: parent
-                anchors.margins: 20
                 clip: true
                 contentWidth: availableWidth
 
-                Item {
-                    width: parent.parent.width - 40
-                    height: gridContainer.height
+                Grid {
+                    width: parent.width
+                    columns: 3
+                    rowSpacing: 12
+                    columnSpacing: 12
+                    padding: 20
 
-                    // 网格容器
-                    Item {
-                        id: gridContainer
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        width: Math.min(parent.width, 900)
-                        height: 280 * 2 + 12  // 2 行 + 行间距
+                    Repeater {
+                        id: projectRepeater
+                        model: bridge.projects.gridModel
+                        delegate: Comp.ProjectCard {
+                            width: (parent.width - parent.padding * 2 - parent.columnSpacing * 2) / 3
+                            height: 280
 
-                        property real cardSpacing: 12  // 卡片间距
+                            projectId: model.projectId
+                            projectName: model.name
+                            resolution: model.resolution
+                            aspectRatio: model.aspectRatio
+                            coverPath: model.coverPath
+                            createdAt: model.createdAt || ""
+                            isGeneratingCover: generatingCoverIds.indexOf(projectId) !== -1
 
-                        // 项目卡片（最多 6 个）
-                        Repeater {
-                            id: projectRepeater
-                            model: bridge.projects.gridModel
-                            delegate: Comp.ProjectCard {
-                                x: (index % 3) * ((gridContainer.width + gridContainer.cardSpacing) / 3)
-                                y: Math.floor(index / 3) * (280 + gridContainer.cardSpacing)
-                                width: (gridContainer.width - gridContainer.cardSpacing * 2) / 3
-                                height: 280
-                                visible: index < 6
-
-                                projectId: model.projectId
-                                projectName: model.name
-                                resolution: model.resolution
-                                aspectRatio: model.aspectRatio
-                                coverPath: model.coverPath
-                                createdAt: model.createdAt || ""
-                                isGeneratingCover: generatingCoverIds.indexOf(projectId) !== -1
-
-                                onClicked: (function(id) { projectGridPage.projectSelected(id) })(projectId)
-                                onEditClicked: (function(id) { projectDialog.openForEdit(id) })(model.projectId)
-                                onDeleteClicked: (function(id) {
-                                    confirmDialog.confirmDelete("项目", function() {
-                                        bridge.projects.delete_project(id)
-                                    })
-                                })(model.projectId)
-                            }
+                            onClicked: (function(id) { projectGridPage.projectSelected(id) })(projectId)
+                            onEditClicked: (function(id) { projectDialog.openForEdit(id) })(model.projectId)
+                            onDeleteClicked: (function(id) {
+                                confirmDialog.confirmDelete("项目", function() {
+                                    bridge.projects.delete_project(id)
+                                })
+                            })(model.projectId)
                         }
                     }
                 }

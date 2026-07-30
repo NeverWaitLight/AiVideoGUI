@@ -76,14 +76,18 @@ Item {
 
         // ── 顶部导航栏 ──
         Comp.PageHeader {
-            title: "故事大纲"
+            title: "大纲"
             Layout.fillWidth: true
             onBackClicked: page.backClicked()
 
             Button {
+                Layout.preferredHeight: 34
                 text: "历史版本"
-                icon.name: "document-open-recent"
                 flat: true
+                topPadding: 6
+                bottomPadding: 6
+                leftPadding: 12
+                rightPadding: 12
                 onClicked: {
                     bridge.storyOutline.load_history()
                     historyDialog.open()
@@ -91,16 +95,26 @@ Item {
             }
 
             Button {
+                Layout.preferredHeight: 34
                 text: "保存"
                 highlighted: _dirty
                 enabled: _dirty
+                topPadding: 6
+                bottomPadding: 6
+                leftPadding: 12
+                rightPadding: 12
                 onClicked: bridge.storyOutline.save(textArea.text)
             }
 
             Button {
+                Layout.preferredHeight: 34
                 text: "生成剧本 →"
                 highlighted: true
                 enabled: textArea.text.trim().length > 0
+                topPadding: 6
+                bottomPadding: 6
+                leftPadding: 12
+                rightPadding: 12
                 onClicked: {
                     if (_dirty) {
                         confirmDialog.confirm(

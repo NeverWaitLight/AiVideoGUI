@@ -59,15 +59,25 @@ Item {
                     onBackClicked: page.backClicked()
 
                     Button {
+                        Layout.preferredHeight: 34
                         text: "批量生成视频"
                         highlighted: true
                         enabled: bridge.storyboard.model.count > 0
+                        topPadding: 6
+                        bottomPadding: 6
+                        leftPadding: 12
+                        rightPadding: 12
                         onClicked: alertDialog.info("提示", "批量视频生成功能开发中")
                     }
 
                     Button {
+                        Layout.preferredHeight: 34
                         text: "批量设计图"
                         enabled: bridge.storyboard.model.count > 0
+                        topPadding: 6
+                        bottomPadding: 6
+                        leftPadding: 12
+                        rightPadding: 12
                         onClicked: alertDialog.info("提示", "批量设计图生成功能开发中")
                     }
                 }
@@ -124,18 +134,33 @@ Item {
                     }
 
                     Button {
+                        Layout.preferredHeight: 34
                         text: "查看提示词"
+                        topPadding: 6
+                        bottomPadding: 6
+                        leftPadding: 12
+                        rightPadding: 12
                         onClicked: _showPromptPreview()
                     }
 
                     Button {
+                        Layout.preferredHeight: 34
                         text: "保存"
                         highlighted: true
+                        topPadding: 6
+                        bottomPadding: 6
+                        leftPadding: 12
+                        rightPadding: 12
                         onClicked: _saveCurrentShot()
                     }
 
                     Button {
+                        Layout.preferredHeight: 34
                         text: "删除"
+                        topPadding: 6
+                        bottomPadding: 6
+                        leftPadding: 12
+                        rightPadding: 12
                         onClicked: confirmDialog.confirm(
                             "确定要删除此分镜吗？",
                             function() { bridge.storyboard.delete_shot(_editingShotId) }
@@ -263,6 +288,7 @@ Item {
                                 text: bridge.storyboard.curVisualContent
                                 placeholderText: "描述镜头中的人物、动作、环境细节..."
                                 wrapMode: TextArea.Wrap; font.pixelSize: Theme.fontSizeMedium
+                            }
                         }
 
                         // 台词
@@ -278,6 +304,7 @@ Item {
                                 text: bridge.storyboard.curDialogue
                                 placeholderText: "角色对话内容..."
                                 wrapMode: TextArea.Wrap; font.pixelSize: Theme.fontSizeMedium
+                            }
                         }
 
                         // 音效
@@ -305,6 +332,7 @@ Item {
                                 text: bridge.storyboard.curNotes
                                 placeholderText: "其他说明..."
                                 wrapMode: TextArea.Wrap; font.pixelSize: Theme.fontSizeMedium
+                            }
                         }
 
                         // ── 关联视频 ──
@@ -510,7 +538,4 @@ Item {
         }
         return parts.join(" · ")
     }
-}
-}
-}
 }

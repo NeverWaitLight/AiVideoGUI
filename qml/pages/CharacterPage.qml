@@ -48,14 +48,24 @@ Item {
             onBackClicked: page.backClicked()
 
             Button {
+                Layout.preferredHeight: 34
                 text: "全选"
                 visible: bridge.characters.model.count > 0
+                topPadding: 6
+                bottomPadding: 6
+                leftPadding: 12
+                rightPadding: 12
                 onClicked: _toggleSelectAll()
             }
 
             Button {
+                Layout.preferredHeight: 34
                 text: "删除选中 (" + _selectedIds.length + ")"
                 visible: _selectedIds.length > 0
+                topPadding: 6
+                bottomPadding: 6
+                leftPadding: 12
+                rightPadding: 12
                 onClicked: confirmDialog.confirm(
                     "确定要删除选中的 " + _selectedIds.length + " 个角色吗？",
                     function() {
@@ -66,8 +76,13 @@ Item {
             }
 
             Button {
+                Layout.preferredHeight: 34
                 text: "添加角色"
                 highlighted: true
+                topPadding: 6
+                bottomPadding: 6
+                leftPadding: 12
+                rightPadding: 12
                 onClicked: _openAddDialog()
             }
         }

@@ -69,19 +69,34 @@ Item {
                     onBackClicked: page.backClicked()
 
                     Button {
+                        Layout.preferredHeight: 34
                         text: "生成分镜"
                         highlighted: true
                         enabled: bridge.screenplay.sceneModel.count > 0
+                        topPadding: 6
+                        bottomPadding: 6
+                        leftPadding: 12
+                        rightPadding: 12
                         onClicked: page.generateStoryboardClicked(page.projectId)
                     }
 
                     Button {
+                        Layout.preferredHeight: 34
                         text: "保存历史版本"
+                        topPadding: 6
+                        bottomPadding: 6
+                        leftPadding: 12
+                        rightPadding: 12
                         onClicked: bridge.screenplay.save_history()
                     }
 
                     Button {
+                        Layout.preferredHeight: 34
                         text: _showHistory ? "隐藏历史" : "历史版本"
+                        topPadding: 6
+                        bottomPadding: 6
+                        leftPadding: 12
+                        rightPadding: 12
                         onClicked: _showHistory = !_showHistory
                     }
                 }
@@ -235,13 +250,23 @@ Item {
                     }
 
                     Button {
+                        Layout.preferredHeight: 34
                         text: "保存"
                         highlighted: true
+                        topPadding: 6
+                        bottomPadding: 6
+                        leftPadding: 12
+                        rightPadding: 12
                         onClicked: _saveCurrentScene()
                     }
 
                     Button {
+                        Layout.preferredHeight: 34
                         text: "删除"
+                        topPadding: 6
+                        bottomPadding: 6
+                        leftPadding: 12
+                        rightPadding: 12
                         onClicked: {
                             confirmDialog.confirm(
                                 "确定要删除第" + bridge.screenplay.curSceneNumber + "场吗？",

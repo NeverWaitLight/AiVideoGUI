@@ -57,7 +57,7 @@ class Theme(QObject):
 
     @Property(int, constant=True)
     def headerHeight(self):
-        return 56
+        return 44
 
     # 圆角尺寸
     @Property(int, constant=True)

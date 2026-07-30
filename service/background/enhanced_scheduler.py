@@ -88,7 +88,7 @@ class BackgroundTaskScheduler(QObject):
             return
 
         self._stopped = False
-        self._supervisor = _SupervisorThread(self, parent=self)
+        self._supervisor = _SupervisorThread(self)
         self._supervisor.start()
         logger.info("后台任务调度器已启动（守护模式）")
 
@@ -161,8 +161,8 @@ class BackgroundTaskScheduler(QObject):
         if task_name in self._task_workers and self._task_workers[task_name].isRunning():
             return
 
-        # 创建新的任务工作线程
-        worker = _TaskWorker(task, self)
+        # 创建新的任务工作线程（不设置 parent，避免跨线程问题）
+        worker = _TaskWorker(task)
         worker.started_signal.connect(lambda: self._on_task_started(task_name))
         worker.finished_signal.connect(lambda: self._on_task_finished(task_name))
         worker.failed_signal.connect(lambda err: self._on_task_failed(task_name, err))
