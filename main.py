@@ -15,6 +15,7 @@ from loguru import logger
 from PySide6.QtWidgets import QApplication
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtCore import QUrl
+from PySide6.QtGui import QIcon
 from PySide6.QtQuickControls2 import QQuickStyle
 
 from di import ApplicationContainer
@@ -105,7 +106,8 @@ def main():
 
     # 创建 QApplication 并设置 Material 样式
     app = QApplication(sys.argv)
-    app.setApplicationName("AI 视频生成")
+    app.setApplicationName("AI Video GUI")
+    app.setWindowIcon(QIcon(":/resources/logo.ico"))
 
     QQuickStyle.setStyle("Material")
     logger.info("应用样式: Material")

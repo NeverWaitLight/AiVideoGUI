@@ -14,7 +14,7 @@ ApplicationWindow {
     minimumWidth: 960
     minimumHeight: 640
     visible: true
-    title: "AI 视频生成"
+    title: "AI Video GUI"
     flags: Qt.Window | Qt.FramelessWindowHint
 
     property string currentPage: "project"

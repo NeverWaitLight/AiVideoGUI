@@ -24,13 +24,27 @@ Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
 
-                Label {
+                Row {
                     anchors.left: parent.left
                     anchors.leftMargin: 12
                     anchors.verticalCenter: parent.verticalCenter
-                    text: titleBar.title
-                    font.pixelSize: Theme.fontSizeSmall
-                    color: Material.foreground
+                    spacing: 8
+
+                    Image {
+                        source: "qrc:/resources/logo.ico"
+                        width: 22
+                        height: 22
+                        anchors.verticalCenter: parent.verticalCenter
+                        fillMode: Image.PreserveAspectFit
+                        smooth: true
+                    }
+
+                    Label {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: titleBar.title
+                        font.pixelSize: Theme.fontSizeSmall
+                        color: Material.foreground
+                    }
                 }
 
                 MouseArea {

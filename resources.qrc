@@ -29,5 +29,6 @@
         <file>resources/icons/window_restore.svg</file>
         <file>resources/icons/info.svg</file>
         <file>resources/icons/chat.svg</file>
+        <file>resources/logo.ico</file>
     </qresource>
 </RCC>
