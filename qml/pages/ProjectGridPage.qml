@@ -139,13 +139,15 @@ Item {
                             createdAt: model.createdAt || ""
                             isGeneratingCover: generatingCoverIds.indexOf(projectId) !== -1
 
-                            onClicked: (function(id) { projectGridPage.projectSelected(id) })(projectId)
-                            onEditClicked: (function(id) { projectDialog.openForEdit(id) })(model.projectId)
-                            onDeleteClicked: (function(id) {
+                            onClicked: projectGridPage.projectSelected(projectId)
+                            onEditClicked: function(id) {
+                                projectDialog.openForEdit(id)
+                            }
+                            onDeleteClicked: function(id) {
                                 confirmDialog.confirmDelete("项目", function() {
                                     bridge.projects.delete_project(id)
                                 })
-                            })(model.projectId)
+                            }
                         }
                     }
                 }

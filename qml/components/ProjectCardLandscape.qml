@@ -122,6 +122,7 @@ Pane {
                 icon.source: "qrc:/resources/icons/edit.svg"
                 icon.width: 20
                 icon.height: 20
+                z: 1
                 onClicked: card.editClicked(card.projectId)
 
                 background: Rectangle {
@@ -140,6 +141,7 @@ Pane {
                 icon.source: "qrc:/resources/icons/delete.svg"
                 icon.width: 20
                 icon.height: 20
+                z: 1
                 onClicked: card.deleteClicked(card.projectId)
 
                 background: Rectangle {

@@ -120,6 +120,7 @@ Pane {
                 bottomPadding: 6
                 leftPadding: 8
                 rightPadding: 8
+                z: 1
                 onClicked: card.editClicked(card.projectId)
 
                 background: Rectangle {
@@ -142,6 +143,7 @@ Pane {
                 bottomPadding: 6
                 leftPadding: 8
                 rightPadding: 8
+                z: 1
                 onClicked: card.deleteClicked(card.projectId)
 
                 background: Rectangle {

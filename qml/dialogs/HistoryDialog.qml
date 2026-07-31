@@ -1,13 +1,12 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
+import QtQuick.Controls.Material 2.15
 import QtQuick.Layouts 1.15
 
 Dialog {
     id: historyDialog
     modal: true
-    title: "历史版本"
-    width: 420
-    height: 400
+    width: 520
     anchors.centerIn: parent
     padding: 0
 
@@ -15,96 +14,150 @@ Dialog {
 
     signal restoreRequested(int historyId)
 
+    title: ""
 
-    header: Rectangle {
-        height: Theme.headerHeight
-        border.width: 1
+    background: Rectangle {
+        color: Material.dialogColor
+        radius: Theme.radiusMedium
+    }
 
-        RowLayout {
+    header: Item {
+        implicitHeight: 56
+
+        Rectangle {
             anchors.fill: parent
-            anchors.margins: 16
-            spacing: 12
+            color: "transparent"
+
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                height: 1
+                color: Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.12)
+            }
 
             Label {
+                anchors.left: parent.left
+                anchors.leftMargin: 20
+                anchors.verticalCenter: parent.verticalCenter
                 text: "历史版本"
-                font.pixelSize: Theme.fontSizeTitle
+                font.pixelSize: Theme.fontSizeLarge
                 font.bold: true
-                Layout.fillWidth: true
             }
         }
     }
 
-    footer: Rectangle {
-        height: 48
-        border.width: 1
+    footer: Item {
+        implicitHeight: 64
 
-        RowLayout {
+        Rectangle {
             anchors.fill: parent
-            anchors.margins: 12
-            spacing: 12
+            color: "transparent"
 
-            Label {
-                text: "选择一个历史版本进行恢复"
-                font.pixelSize: Theme.fontSizeSmall
-                Layout.fillWidth: true
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                height: 1
+                color: Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.12)
             }
 
-            Button {
-                text: "关闭"
-                implicitHeight: 28
-                implicitWidth: 64
-                onClicked: historyDialog.reject()
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 20
+                anchors.rightMargin: 20
+                spacing: 12
+
+                Label {
+                    text: "选择一个历史版本进行恢复"
+                    font.pixelSize: Theme.fontSizeSmall
+                    opacity: 0.7
+                    Layout.fillWidth: true
+                }
+
+                Button {
+                    text: "关闭"
+                    flat: true
+                    Layout.preferredHeight: 40
+                    Layout.preferredWidth: 80
+                    onClicked: historyDialog.reject()
+                }
             }
         }
     }
 
-    ColumnLayout {
+    ScrollView {
         anchors.fill: parent
-        anchors.margins: 12
-        spacing: 4
+        anchors.leftMargin: 18
+        anchors.rightMargin: 18
+        anchors.topMargin: 8
+        anchors.bottomMargin: 8
+        contentWidth: availableWidth
+        clip: true
 
-        ListView {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            clip: true
-            spacing: 4
-            model: historyDialog.model
+        ColumnLayout {
+            width: parent.parent.width - 36
+            spacing: 8
 
-            delegate: Pane {
-                width: ListView.view.width
-                height: 56
-                padding: 8
+            ListView {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+                spacing: 8
+                model: historyDialog.model
 
-                RowLayout {
-                    anchors.fill: parent
-                    spacing: 12
+                delegate: Pane {
+                    width: ListView.view.width
+                    padding: 12
 
-                    Label {
-                        text: model.createdAt || ""
-                        font.pixelSize: Theme.fontSizeSmall
-                        Layout.preferredWidth: 130
+                    background: Rectangle {
+                        color: Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.05)
+                        radius: Theme.radiusSmall
+                        border.width: 1
+                        border.color: Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.12)
                     }
 
-                    Label {
-                        text: model.previewText || ""
-                        font.pixelSize: Theme.fontSizeSmall
-                        elide: Text.ElideRight
-                        Layout.fillWidth: true
-                    }
+                    RowLayout {
+                        anchors.fill: parent
+                        spacing: 12
 
-                    Button {
-                        text: "恢复"
-                        implicitHeight: 28
-                        onClicked: historyDialog.restoreRequested(model.historyId)
+                        ColumnLayout {
+                            spacing: 4
+                            Layout.fillWidth: true
+
+                            Label {
+                                text: model.createdAt || ""
+                                font.pixelSize: Theme.fontSizeSmall
+                                font.bold: true
+                            }
+
+                            Label {
+                                text: model.previewText || ""
+                                font.pixelSize: Theme.fontSizeSmall
+                                opacity: 0.7
+                                elide: Text.ElideRight
+                                Layout.fillWidth: true
+                            }
+                        }
+
+                        Button {
+                            text: "恢复"
+                            highlighted: true
+                            implicitHeight: 32
+                            implicitWidth: 64
+                            onClicked: historyDialog.restoreRequested(model.historyId)
+                        }
                     }
                 }
             }
 
             Label {
                 visible: !historyDialog.model || historyDialog.model.count === 0
-                anchors.centerIn: parent
+                Layout.alignment: Qt.AlignCenter
+                Layout.topMargin: 60
                 text: "暂无历史版本"
-                font.pixelSize: Theme.fontSizeSmall
+                font.pixelSize: Theme.fontSizeNormal
+                opacity: 0.5
             }
         }
     }

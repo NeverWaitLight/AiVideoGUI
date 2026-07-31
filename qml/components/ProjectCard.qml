@@ -32,8 +32,8 @@ Item {
                 createdAt: card.createdAt
                 isGeneratingCover: card.isGeneratingCover
                 onClicked: card.clicked()
-                onEditClicked: (function(id) { card.editClicked(id) })
-                onDeleteClicked: (function(id) { card.deleteClicked(id) })
+                onEditClicked: function(id) { card.editClicked(id) }
+                onDeleteClicked: function(id) { card.deleteClicked(id) }
             }
         }
 
@@ -48,8 +48,8 @@ Item {
                 createdAt: card.createdAt
                 isGeneratingCover: card.isGeneratingCover
                 onClicked: card.clicked()
-                onEditClicked: (function(id) { card.editClicked(id) })
-                onDeleteClicked: (function(id) { card.deleteClicked(id) })
+                onEditClicked: function(id) { card.editClicked(id) }
+                onDeleteClicked: function(id) { card.deleteClicked(id) }
             }
         }
     }

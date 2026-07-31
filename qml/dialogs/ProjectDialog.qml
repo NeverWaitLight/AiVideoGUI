@@ -9,7 +9,6 @@ Dialog {
     id: projectDialog
     modal: true
     width: 480
-    height: 440
     anchors.centerIn: parent
     padding: 0
 
@@ -43,7 +42,7 @@ Dialog {
                 anchors.left: parent.left
                 anchors.leftMargin: 20
                 anchors.verticalCenter: parent.verticalCenter
-                text: projectDialog.isEdit ? "编辑" : "新建"
+                text: projectDialog.isEdit ? "编辑项目" : "新建项目"
                 font.pixelSize: Theme.fontSizeLarge
                 font.bold: true
             }
@@ -51,7 +50,7 @@ Dialog {
     }
 
     footer: Item {
-        implicitHeight: 72
+        implicitHeight: 64
 
         Rectangle {
             anchors.fill: parent
@@ -74,16 +73,16 @@ Dialog {
                 Button {
                     text: "取消"
                     flat: true
-                    implicitHeight: 36
-                    implicitWidth: 80
+                    Layout.preferredHeight: 40
+                    Layout.preferredWidth: 80
                     onClicked: projectDialog.reject()
                 }
 
                 Button {
-                    text: "确定"
+                    text: projectDialog.isEdit ? "保存" : "创建"
                     highlighted: true
-                    implicitHeight: 36
-                    implicitWidth: 80
+                    Layout.preferredHeight: 40
+                    Layout.preferredWidth: 80
                     onClicked: {
                         if (isEdit) {
                             bridge.projects.update_project(editProjectId, nameField.text, resCombo.currentText, ratioCombo.currentText, coverImagePath)
@@ -97,114 +96,126 @@ Dialog {
         }
     }
 
-    ColumnLayout {
+    ScrollView {
         anchors.fill: parent
-        anchors.margins: 24
-        spacing: 20
+        anchors.leftMargin: 18
+        anchors.rightMargin: 18
+        anchors.topMargin: 8
+        anchors.bottomMargin: 8
+        contentWidth: availableWidth
+        clip: true
 
         ColumnLayout {
-            spacing: 8
-            Layout.fillWidth: true
+            width: parent.parent.width - 36
+            spacing: 20
 
-            Label {
-                text: "项目名称"
-                font.pixelSize: Theme.fontSizeSmall
-                opacity: 0.7
-            }
-            Comp.AppTextField {
-                id: nameField
-                Layout.fillWidth: true
-                placeholderText: "输入项目名称"
-            }
-        }
-
-        ColumnLayout {
-            spacing: 8
-            Layout.fillWidth: true
-
-            Label {
-                text: "封面图"
-                font.pixelSize: Theme.fontSizeSmall
-                opacity: 0.7
-            }
-
-            RowLayout {
+            ColumnLayout {
                 spacing: 8
                 Layout.fillWidth: true
 
-                Rectangle {
+                Label {
+                    text: "项目名称"
+                    font.pixelSize: Theme.fontSizeSmall
+                    opacity: 0.7
+                }
+                Comp.AppTextField {
+                    id: nameField
                     Layout.fillWidth: true
                     Layout.preferredHeight: 36
-                    radius: Theme.radiusSmall
-                    color: Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.05)
-                    border.width: 1
-                    border.color: Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.12)
+                    placeholderText: "输入项目名称"
+                }
+            }
 
-                    Label {
-                        anchors.left: parent.left
-                        anchors.leftMargin: 12
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: coverImagePath ? coverImagePath.split("/").pop() : "未选择图片"
-                        font.pixelSize: Theme.fontSizeSmall
-                        opacity: coverImagePath ? 1.0 : 0.5
-                        elide: Text.ElideMiddle
-                        width: parent.width - 24
+            ColumnLayout {
+                spacing: 8
+                Layout.fillWidth: true
+
+                Label {
+                    text: "封面图"
+                    font.pixelSize: Theme.fontSizeSmall
+                    opacity: 0.7
+                }
+
+                RowLayout {
+                    spacing: 8
+                    Layout.fillWidth: true
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 36
+                        radius: Theme.radiusSmall
+                        color: Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.05)
+                        border.width: 1
+                        border.color: Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.12)
+
+                        Label {
+                            anchors.left: parent.left
+                            anchors.leftMargin: 12
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: coverImagePath ? coverImagePath.split("/").pop() : "未选择图片"
+                            font.pixelSize: Theme.fontSizeSmall
+                            opacity: coverImagePath ? 1.0 : 0.5
+                            elide: Text.ElideMiddle
+                            width: parent.width - 24
+                        }
+                    }
+
+                    Button {
+                        text: "选择"
+                        flat: true
+                        Layout.preferredHeight: 36
+                        Layout.preferredWidth: 64
+                        onClicked: coverFileDialog.open()
+                    }
+
+                    Button {
+                        text: "清除"
+                        flat: true
+                        Layout.preferredHeight: 36
+                        Layout.preferredWidth: 64
+                        visible: coverImagePath !== ""
+                        onClicked: coverImagePath = ""
                     }
                 }
-
-                Button {
-                    text: "选择"
-                    flat: true
-                    implicitHeight: 36
-                    implicitWidth: 72
-                    onClicked: coverFileDialog.open()
-                }
-
-                Button {
-                    text: "清除"
-                    flat: true
-                    implicitHeight: 36
-                    implicitWidth: 72
-                    visible: coverImagePath !== ""
-                    onClicked: coverImagePath = ""
-                }
             }
-        }
 
-        ColumnLayout {
-            spacing: 8
-            Layout.fillWidth: true
-
-            Label {
-                text: "画面比例"
-                font.pixelSize: Theme.fontSizeSmall
-                opacity: 0.7
-            }
-            ComboBox {
-                id: ratioCombo
-                model: ["16:9", "9:16", "1:1", "4:3", "3:4"]
+            ColumnLayout {
+                spacing: 8
                 Layout.fillWidth: true
-            }
-        }
 
-        ColumnLayout {
-            spacing: 8
-            Layout.fillWidth: true
-
-            Label {
-                text: "分辨率"
-                font.pixelSize: Theme.fontSizeSmall
-                opacity: 0.7
+                Label {
+                    text: "画面比例"
+                    font.pixelSize: Theme.fontSizeSmall
+                    opacity: 0.7
+                }
+                ComboBox {
+                    id: ratioCombo
+                    model: ["16:9", "9:16", "1:1", "4:3", "3:4"]
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 36
+                }
             }
-            ComboBox {
-                id: resCombo
-                model: ["480P", "720P", "1080P", "2K", "4K"]
-                currentIndex: 1
+
+            ColumnLayout {
+                spacing: 8
                 Layout.fillWidth: true
-            }
-        }
 
-        Item { Layout.fillHeight: true }
+                Label {
+                    text: "分辨率"
+                    font.pixelSize: Theme.fontSizeSmall
+                    opacity: 0.7
+                }
+                ComboBox {
+                    id: resCombo
+                    model: ["480P", "720P", "1080P", "2K", "4K"]
+                    currentIndex: 1
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 36
+                }
+            }
+
+            Item { Layout.preferredHeight: 1 }
+        }
     }
 
     function openForCreate() {
