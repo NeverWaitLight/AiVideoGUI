@@ -34,6 +34,16 @@ Item {
             alertDialog.info("提示", "大纲已保存")
         }
 
+        function onOptimize_finished(result) {
+            textArea.text = result
+            _dirty = true
+            alertDialog.info("成功", "大纲优化完成")
+        }
+
+        function onOptimize_failed(error) {
+            alertDialog.error("错误", "优化失败：" + error)
+        }
+
         function onError(msg) {
             alertDialog.error("错误", msg)
         }
@@ -62,7 +72,20 @@ Item {
 
             Button {
                 Layout.preferredHeight: 34
-                text: "生成剧本 →"
+                text: "AI优化"
+                enabled: !bridge.storyOutline.isOptimizing
+                topPadding: 6
+                bottomPadding: 6
+                leftPadding: 12
+                rightPadding: 12
+                onClicked: {
+                    aiOptimizeDialog.show("AI 优化大纲", "请输入优化要求...", "开始优化")
+                }
+            }
+
+            Button {
+                Layout.preferredHeight: 34
+                text: "→"
                 highlighted: true
                 enabled: textArea.text.trim().length > 0
                 topPadding: 6
@@ -114,5 +137,12 @@ Item {
 
     Dialogs.ConfirmDialog {
         id: confirmDialog
+    }
+
+    Dialogs.AIOptimizeDialog {
+        id: aiOptimizeDialog
+        onOptimizeRequested: function(userInput) {
+            bridge.storyOutline.optimize(userInput, textArea.text)
+        }
     }
 }

@@ -13,6 +13,7 @@ Item {
     property var _relatedVideos: []
 
     signal backClicked()
+    signal navigateToMediaLibrary(int projectId)
 
     onProjectIdChanged: {
         if (projectId > 0) {
@@ -33,6 +34,9 @@ Item {
         }
         function onStoryboard_generated(shotCount) {
             alertDialog.info("成功", "分镜已生成，共 " + shotCount + " 个镜头")
+        }
+        function onStoryboard_optimized(shotCount) {
+            alertDialog.info("成功", "分镜优化完成，共 " + shotCount + " 个镜头")
         }
         function onStoryboard_generation_failed(error) {
             alertDialog.error("错误", "生成分镜失败：" + error)
@@ -71,6 +75,19 @@ Item {
 
                     Button {
                         Layout.preferredHeight: 34
+                        text: "AI优化"
+                        enabled: !bridge.storyboard.isOptimizing
+                        topPadding: 6
+                        bottomPadding: 6
+                        leftPadding: 12
+                        rightPadding: 12
+                        onClicked: {
+                            aiOptimizeDialog.show("AI 优化分镜", "请输入优化要求（如增减镜头、调整景别、修改画面描述等）...", "开始优化")
+                        }
+                    }
+
+                    Button {
+                        Layout.preferredHeight: 34
                         text: "批量生成视频"
                         highlighted: true
                         enabled: bridge.storyboard.model.count > 0
@@ -95,6 +112,17 @@ Item {
                                 function() { bridge.storyboard.batch_generate_design_images(page.projectId) }
                             )
                         }
+                    }
+
+                    Button {
+                        Layout.preferredHeight: 34
+                        text: "→"
+                        highlighted: true
+                        topPadding: 6
+                        bottomPadding: 6
+                        leftPadding: 12
+                        rightPadding: 12
+                        onClicked: page.navigateToMediaLibrary(page.projectId)
                     }
                 }
 
@@ -393,6 +421,12 @@ Item {
 
     Dialogs.AlertDialog { id: alertDialog }
     Dialogs.ConfirmDialog { id: confirmDialog }
+    Dialogs.AIOptimizeDialog {
+        id: aiOptimizeDialog
+        onOptimizeRequested: function(userInput) {
+            bridge.storyboard.optimize_with_ai(userInput, page.projectId)
+        }
+    }
 
     QtDialogs.FileDialog {
         id: designImageDialog

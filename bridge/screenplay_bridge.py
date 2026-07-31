@@ -6,7 +6,7 @@ from PySide6.QtCore import QObject, Property, Signal, Slot
 
 from bridge.models.scene_model import SceneListModel
 from bridge.models.screenplay_history_model import ScreenplayHistoryListModel
-from bridge.workers import ScriptGenerateWorker
+from bridge.workers import ScriptGenerateWorker, OptimizeWorker
 from models.enums import SceneLocation, SceneTime
 
 
@@ -18,6 +18,8 @@ class ScreenplayBridge(QObject):
     history_restored = Signal()
     script_generated = Signal(str, int)  # title, scene_count
     script_failed = Signal(str)
+    script_optimized = Signal(int)  # scene_count
+    isOptimizingChanged = Signal()
     error = Signal(str)
     current_scene_changed = Signal()
 
@@ -38,14 +40,17 @@ class ScreenplayBridge(QObject):
     }
     _TIME_TYPE_REVERSE = {v: k for k, v in _TIME_TYPE_MAP.items()}
 
-    def __init__(self, screenplay_service, text_model_service, parent=None):
+    def __init__(self, screenplay_service, text_model_service, story_outline_service, parent=None):
         super().__init__(parent)
         self._service = screenplay_service
         self._text_service = text_model_service
+        self._story_outline_service = story_outline_service
         self._scene_model = SceneListModel(self)
         self._history_model = ScreenplayHistoryListModel(self)
         self._project_id: int = -1
         self._worker: ScriptGenerateWorker | None = None
+        self._optimize_worker: OptimizeWorker | None = None
+        self._optimizing: bool = False
         self._cur_scene_id: int = -1
         self._cur_scene_number: int = 0
         self._cur_location_type_index: int = 0
@@ -89,6 +94,10 @@ class ScreenplayBridge(QObject):
     @Property(str, notify=current_scene_changed)
     def curContent(self):
         return self._cur_content
+
+    @Property(bool, notify=isOptimizingChanged)
+    def isOptimizing(self):
+        return self._optimizing
 
     @Slot(int)
     def load_for_project(self, project_id: int) -> None:
@@ -237,3 +246,123 @@ class ScreenplayBridge(QObject):
         self._worker.finished.connect(on_finished)
         self._worker.failed.connect(on_failed)
         self._worker.start()
+
+    @Slot(str, int)
+    def optimize_with_ai(self, user_input: str, project_id: int) -> None:
+        """AI 优化剧本：自动判断生成或优化"""
+        if self._optimizing:
+            return
+
+        try:
+            # 1. 查询大纲内容
+            outline = self._story_outline_service.get_or_create_story_outline(project_id)
+            if not outline.content.strip():
+                self.error.emit("大纲内容为空，无法生成剧本")
+                return
+
+            # 2. 查询现有剧本
+            scenes = self._service.list_scenes(project_id)
+
+            # 3. 判断分支
+            if not scenes:
+                # 生成模式：根据大纲生成剧本
+                self._generate_from_outline(outline.content, user_input)
+            else:
+                # 优化模式：优化现有剧本
+                self._optimize_existing_script(outline.content, scenes, user_input)
+
+        except Exception as e:
+            logger.exception("AI 优化剧本失败")
+            self.error.emit(str(e))
+
+    def _generate_from_outline(self, outline_content: str, user_input: str) -> None:
+        """生成模式：从大纲生成剧本"""
+        # 复用现有的 generate_script 逻辑
+        combined_content = f"{outline_content}\n\n用户要求：{user_input}"
+        self.generate_script(combined_content)
+
+    def _optimize_existing_script(self, outline_content: str, scenes: list, user_input: str) -> None:
+        """优化模式：优化现有剧本"""
+        self._optimizing = True
+        self.isOptimizingChanged.emit()
+
+        # 格式化当前剧本为文本
+        current_script = self._format_scenes_as_text(scenes)
+
+        # 构建优化消息
+        try:
+            messages = self._text_service._prompt_manager.get_template("screenplay_optimization").build_messages(
+                outline_content=outline_content,
+                current_script=current_script,
+                user_requirement=user_input,
+            )
+        except Exception as e:
+            logger.error(f"构建优化提示词失败: {e}")
+            self._optimizing = False
+            self.isOptimizingChanged.emit()
+            self.script_failed.emit(f"构建优化提示词失败：{e}")
+            return
+
+        self._optimize_worker = OptimizeWorker(self._text_service, messages)
+
+        def on_finished(result: str) -> None:
+            self._optimizing = False
+            self.isOptimizingChanged.emit()
+            try:
+                # 解析优化后的剧本
+                from utils.script_parser import ScriptParser
+                title, new_scenes = ScriptParser.parse(result)
+
+                # 删除旧场次
+                for scene in scenes:
+                    self._service.delete_scene(scene.id)
+
+                # 保存新场次
+                if self._project_id >= 0 and new_scenes:
+                    self._service.batch_create_scenes(self._project_id, new_scenes)
+
+                self._load_scenes()
+                self._load_history()
+                self.script_optimized.emit(len(new_scenes))
+
+            except Exception as e:
+                logger.exception("保存优化后的剧本失败")
+                self.script_failed.emit(f"保存失败：{e}")
+
+        def on_failed(err: str) -> None:
+            self._optimizing = False
+            self.isOptimizingChanged.emit()
+            self.script_failed.emit(err)
+
+        self._optimize_worker.finished.connect(on_finished)
+        self._optimize_worker.failed.connect(on_failed)
+        self._optimize_worker.finished.connect(self._optimize_worker.deleteLater)
+        self._optimize_worker.start()
+
+    def _format_scenes_as_text(self, scenes: list) -> str:
+        """将场次列表格式化为文本"""
+        lines = []
+        for scene in scenes:
+            # 场次标题
+            location_type_str = {
+                SceneLocation.INTERIOR: "内景",
+                SceneLocation.EXTERIOR: "外景",
+                SceneLocation.INTERIOR_EXTERIOR: "内景/外景",
+            }.get(scene.location_type, "内景")
+
+            time_type_str = {
+                SceneTime.DAY: "日",
+                SceneTime.NIGHT: "夜",
+                SceneTime.DAWN: "晨",
+                SceneTime.DUSK: "黄昏",
+                SceneTime.EVENING: "傍晚",
+                SceneTime.CUSTOM: scene.time_detail,
+            }.get(scene.time_type, "日")
+
+            lines.append(f"第{scene.scene_number}场 {location_type_str} {scene.location} {time_type_str}")
+            lines.append("")
+            lines.append(scene.content)
+            lines.append("")
+            lines.append("")
+
+        return "\n".join(lines)

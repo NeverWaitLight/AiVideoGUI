@@ -357,3 +357,78 @@ class TextModelService:
 
         logger.info(f"调用文本模型生成角色设计图提示词，模型：{model or self.DEFAULT_MODEL}，角色：{character_name}")
         return self.chat(messages, model)
+
+    def generate_characters(
+        self,
+        outline_content: str,
+        script_content: str,
+        user_requirement: str,
+        model: str | None = None,
+    ) -> list[dict]:
+        """生成角色：返回角色列表"""
+        template = self._prompt_manager.get_template("character_generation")
+        messages = template.build_messages(
+            outline_content=outline_content,
+            script_content=script_content,
+            user_requirement=user_requirement,
+        )
+
+        logger.info(f"调用文本模型生成角色，模型：{model or self.DEFAULT_MODEL}")
+        result = self.chat(messages, model)
+
+        from utils.character_parser import CharacterParser
+        characters = CharacterParser.parse(result)
+        logger.info(f"角色解析成功：共 {len(characters)} 个角色")
+        return characters
+
+    def optimize_characters(
+        self,
+        outline_content: str,
+        script_content: str,
+        current_characters: str,
+        user_requirement: str,
+        model: str | None = None,
+    ) -> list[dict]:
+        """优化角色：返回角色列表"""
+        template = self._prompt_manager.get_template("character_optimization")
+        messages = template.build_messages(
+            outline_content=outline_content,
+            script_content=script_content,
+            current_characters=current_characters,
+            user_requirement=user_requirement,
+        )
+
+        logger.info(f"调用文本模型优化角色，模型：{model or self.DEFAULT_MODEL}")
+        result = self.chat(messages, model)
+
+        from utils.character_parser import CharacterParser
+        characters = CharacterParser.parse(result)
+        logger.info(f"角色解析成功：共 {len(characters)} 个角色")
+        return characters
+
+    def optimize_storyboard(
+        self,
+        outline_content: str,
+        script_content: str,
+        character_content: str,
+        current_storyboard: str,
+        user_requirement: str,
+        model: str | None = None,
+    ) -> list[dict]:
+        """优化分镜：返回分镜列表"""
+        template = self._prompt_manager.get_template("storyboard_optimization")
+        messages = template.build_messages(
+            outline_content=outline_content,
+            script_content=script_content,
+            character_content=character_content,
+            current_storyboard=current_storyboard,
+            user_requirement=user_requirement,
+        )
+
+        logger.info(f"调用文本模型优化分镜，模型：{model or self.DEFAULT_MODEL}")
+        result = self.chat(messages, model)
+
+        from utils.shot_parser import ShotParser
+        shots = ShotParser.parse(result)
+        logger.info(f"分镜解析成功：共 {len(shots)} 个镜头")
+        return shots

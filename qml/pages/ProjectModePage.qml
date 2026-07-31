@@ -52,15 +52,17 @@ Item {
         ScreenplayPage {
             projectId: projectMode.currentProjectId
             onBackClicked: projectMode.currentPage = "detail"
-            onGenerateStoryboardClicked: function(pid) {
-                bridge.storyboard.generate_from_screenplay(pid)
-                projectMode.currentPage = "storyboard"
+            onNavigateToCharacters: function(pid) {
+                projectMode.currentPage = "character"
             }
         }
 
         StoryboardPage {
             projectId: projectMode.currentProjectId
             onBackClicked: projectMode.currentPage = "detail"
+            onNavigateToMediaLibrary: function(pid) {
+                projectMode.currentPage = "media"
+            }
 
             Connections {
                 target: bridge.storyboard
@@ -74,6 +76,9 @@ Item {
         CharacterPage {
             projectId: projectMode.currentProjectId
             onBackClicked: projectMode.currentPage = "detail"
+            onNavigateToStoryboard: function(pid) {
+                projectMode.currentPage = "storyboard"
+            }
         }
 
         MediaLibraryPage {

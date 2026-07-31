@@ -13,7 +13,7 @@ Item {
     property string _outlineContent: ""
 
     signal backClicked()
-    signal generateStoryboardClicked(int projectId)
+    signal navigateToCharacters(int projectId)
 
     onProjectIdChanged: {
         if (projectId > 0) {
@@ -43,6 +43,10 @@ Item {
             alertDialog.info("成功", "剧本已生成，共 " + sceneCount + " 场")
         }
 
+        function onScript_optimized(sceneCount) {
+            alertDialog.info("成功", "剧本优化完成，共 " + sceneCount + " 场")
+        }
+
         function onScript_failed(error) {
             alertDialog.error("错误", "生成剧本失败：" + error)
         }
@@ -68,14 +72,24 @@ Item {
 
                     Button {
                         Layout.preferredHeight: 34
-                        text: "生成分镜"
-                        highlighted: true
-                        enabled: bridge.screenplay.sceneModel.count > 0
+                        text: "AI优化"
+                        enabled: !bridge.screenplay.isOptimizing
                         topPadding: 6
                         bottomPadding: 6
                         leftPadding: 12
                         rightPadding: 12
-                        onClicked: page.generateStoryboardClicked(page.projectId)
+                        onClicked: aiOptimizeDialog.show("AI 优化剧本", "请输入优化要求（如修改剧情、增减场次等）...", "开始优化")
+                    }
+
+                    Button {
+                        Layout.preferredHeight: 34
+                        text: "→"
+                        highlighted: true
+                        topPadding: 6
+                        bottomPadding: 6
+                        leftPadding: 12
+                        rightPadding: 12
+                        onClicked: page.navigateToCharacters(page.projectId)
                     }
                 }
 
@@ -299,6 +313,13 @@ Item {
 
     Dialogs.ConfirmDialog {
         id: confirmDialog
+    }
+
+    Dialogs.AIOptimizeDialog {
+        id: aiOptimizeDialog
+        onOptimizeRequested: function(userInput) {
+            bridge.screenplay.optimize_with_ai(userInput, page.projectId)
+        }
     }
 
     function _saveCurrentScene() {

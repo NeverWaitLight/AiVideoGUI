@@ -14,6 +14,7 @@ Item {
     property var _selectedIds: []
 
     signal backClicked()
+    signal navigateToStoryboard(int projectId)
 
     onProjectIdChanged: {
         if (projectId > 0) {
@@ -33,6 +34,12 @@ Item {
         function onDesign_image_failed(error) {
             alertDialog.error("错误", "设计图生成失败：" + error)
         }
+        function onCharacters_generated(count) {
+            alertDialog.info("成功", "角色生成完成，共 " + count + " 个角色")
+        }
+        function onCharacters_optimized(count) {
+            alertDialog.info("成功", "角色优化完成，共 " + count + " 个角色")
+        }
         function onError(msg) {
             alertDialog.error("错误", msg)
         }
@@ -46,6 +53,19 @@ Item {
             title: "角色管理"
             Layout.fillWidth: true
             onBackClicked: page.backClicked()
+
+            Button {
+                Layout.preferredHeight: 34
+                text: "AI优化"
+                enabled: !bridge.characters.isOptimizing
+                topPadding: 6
+                bottomPadding: 6
+                leftPadding: 12
+                rightPadding: 12
+                onClicked: {
+                    aiOptimizeDialog.show("AI 优化角色", "请输入优化要求（如添加/删除角色、调整形象描述等）...", "开始优化")
+                }
+            }
 
             Button {
                 Layout.preferredHeight: 34
@@ -84,6 +104,17 @@ Item {
                 leftPadding: 12
                 rightPadding: 12
                 onClicked: _openAddDialog()
+            }
+
+            Button {
+                Layout.preferredHeight: 34
+                text: "→"
+                highlighted: true
+                topPadding: 6
+                bottomPadding: 6
+                leftPadding: 12
+                rightPadding: 12
+                onClicked: page.navigateToStoryboard(page.projectId)
             }
         }
 
@@ -252,9 +283,6 @@ Item {
         }
     }
 
-    Dialogs.AlertDialog { id: alertDialog }
-    Dialogs.ConfirmDialog { id: confirmDialog }
-
     component CharacterCardDelegate: Pane {
         id: charCard
         property int characterId: 0
@@ -376,6 +404,21 @@ Item {
             _selectedIds = []
         } else {
             _selectedIds = allIds
+        }
+    }
+
+    Dialogs.AlertDialog {
+        id: alertDialog
+    }
+
+    Dialogs.ConfirmDialog {
+        id: confirmDialog
+    }
+
+    Dialogs.AIOptimizeDialog {
+        id: aiOptimizeDialog
+        onOptimizeRequested: function(userInput) {
+            bridge.characters.optimize_with_ai(userInput, page.projectId)
         }
     }
 }

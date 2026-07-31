@@ -23,7 +23,9 @@ class StoryboardBridge(QObject):
     shot_saved = Signal()
     shot_deleted = Signal()
     storyboard_generated = Signal(int)  # shot_count
+    storyboard_optimized = Signal(int)  # shot_count
     storyboard_generation_failed = Signal(str)
+    isOptimizingChanged = Signal()
     error = Signal(str)
 
     _SHOT_SIZE_INDEX_MAP = {
@@ -38,7 +40,7 @@ class StoryboardBridge(QObject):
     def __init__(
         self, storyboard_service, screenplay_service,
         text_model_service, image_service, character_service,
-        media_service, container, parent=None,
+        media_service, story_outline_service, container, parent=None,
     ):
         super().__init__(parent)
         self._storyboard_service = storyboard_service
@@ -47,9 +49,11 @@ class StoryboardBridge(QObject):
         self._image_service = image_service
         self._character_service = character_service
         self._media_service = media_service
+        self._story_outline_service = story_outline_service
         self._container = container
         self._model = StoryboardListModel(self)
         self._workers = []
+        self._optimizing = False
         self._project_id: int = -1
         self._cur_shot_id: int = -1
         self._cur_scene_number: int = 0
@@ -99,6 +103,9 @@ class StoryboardBridge(QObject):
 
     @Property(str, notify=shot_detail_changed)
     def curDesignImage(self): return self._cur_design_image
+
+    @Property(bool, notify=isOptimizingChanged)
+    def isOptimizing(self): return self._optimizing
 
     @Slot(int)
     def load_for_project(self, project_id: int) -> None:
@@ -454,3 +461,213 @@ class StoryboardBridge(QObject):
     def _on_design_done(self, shot_id: int, path: str) -> None:
         self._model.update_design_image(shot_id, path)
         self.design_image_ready.emit(str(shot_id), path)
+
+    @Slot(str, int)
+    def optimize_with_ai(self, user_input: str, project_id: int) -> None:
+        """AI 优化分镜：自动判断生成或优化"""
+        if self._optimizing:
+            return
+
+        try:
+            # 1. 获取大纲、剧本、角色
+            outline = self._story_outline_service.get_or_create_story_outline(project_id)
+            scenes = self._screenplay_service.list_scenes(project_id)
+            characters = self._character_service.list_characters(project_id)
+
+            if not outline.content.strip() or not scenes:
+                self.error.emit("必须先完成大纲和剧本")
+                return
+
+            # 2. 查询现有分镜
+            storyboards = self._storyboard_service.list_storyboards(project_id)
+
+            # 3. 判断分支
+            if not storyboards:
+                # 生成模式：复用现有逻辑
+                self._generate_storyboard_with_requirement(outline.content, scenes, characters, user_input, project_id)
+            else:
+                # 优化模式：优化现有分镜
+                self._optimize_storyboard(outline.content, scenes, characters, storyboards, user_input, project_id)
+
+        except Exception as e:
+            logger.exception("AI 优化分镜失败")
+            self.error.emit(str(e))
+
+    def _generate_storyboard_with_requirement(self, outline_content: str, scenes: list, characters: list, user_input: str, project_id: int) -> None:
+        """生成模式：从剧本生成分镜"""
+        # 格式化剧本内容
+        script_content = self._format_script_as_text(scenes)
+        character_content = self._format_characters_as_text(characters)
+
+        # 合并用户要求到艺术风格
+        combined_requirement = f"用户要求：{user_input}\n\n大纲参考：{outline_content}"
+
+        worker = StoryboardGenerateWorker(self._text_model_service, script_content, combined_requirement)
+
+        def on_finished(result: dict) -> None:
+            try:
+                shots_data = result.get("shots", [])
+                characters_data = result.get("characters", [])
+
+                if not shots_data:
+                    self.storyboard_generation_failed.emit("AI 返回的分镜数据为空")
+                    return
+
+                # 保存分镜
+                self._storyboard_service.batch_create_storyboards(project_id, shots_data)
+
+                # 保存角色（如果有新角色）
+                for char_data in characters_data:
+                    try:
+                        self._character_service.create_character(
+                            project_id=project_id,
+                            name=char_data.get("name", ""),
+                            ref_code=char_data.get("ref_code", ""),
+                            description=char_data.get("description", ""),
+                        )
+                    except Exception:
+                        pass  # 可能已存在，忽略
+
+                self.load_for_project(project_id)
+                self.storyboard_generated.emit(len(shots_data))
+
+            except Exception as e:
+                logger.exception("保存生成的分镜失败")
+                self.storyboard_generation_failed.emit(f"保存失败：{e}")
+
+        def on_failed(err: str) -> None:
+            self.storyboard_generation_failed.emit(err)
+
+        worker.finished.connect(on_finished)
+        worker.failed.connect(on_failed)
+        worker.start()
+
+    def _optimize_storyboard(self, outline_content: str, scenes: list, characters: list, storyboards: list, user_input: str, project_id: int) -> None:
+        """优化模式：优化现有分镜"""
+        self._optimizing = True
+        self.isOptimizingChanged.emit()
+
+        script_content = self._format_script_as_text(scenes)
+        character_content = self._format_characters_as_text(characters)
+        current_storyboard = self._format_storyboards_as_text(storyboards)
+
+        from bridge.workers import OptimizeWorker
+
+        worker = OptimizeWorker(self._text_model_service, [])
+        worker._service = self._text_model_service
+        worker._outline = outline_content
+        worker._script = script_content
+        worker._characters = character_content
+        worker._current = current_storyboard
+        worker._requirement = user_input
+
+        def do_work():
+            try:
+                shots = worker._service.optimize_storyboard(
+                    worker._outline,
+                    worker._script,
+                    worker._characters,
+                    worker._current,
+                    worker._requirement,
+                )
+                return shots
+            except Exception as e:
+                raise e
+
+        worker.run = lambda: worker.finished.emit(do_work())
+
+        def on_finished(new_shots: list) -> None:
+            self._optimizing = False
+            self.isOptimizingChanged.emit()
+            try:
+                # 删除旧分镜
+                for shot in storyboards:
+                    self._storyboard_service.delete_storyboard(shot.id)
+
+                # 保存新分镜
+                self._storyboard_service.batch_create_storyboards(project_id, new_shots)
+
+                self.load_for_project(project_id)
+                self.storyboard_optimized.emit(len(new_shots))
+
+            except Exception as e:
+                logger.exception("保存优化后的分镜失败")
+                self.storyboard_generation_failed.emit(f"保存失败：{e}")
+
+        def on_failed(err: str) -> None:
+            self._optimizing = False
+            self.isOptimizingChanged.emit()
+            self.storyboard_generation_failed.emit(f"优化分镜失败：{err}")
+
+        worker.finished.connect(on_finished)
+        worker.failed.connect(on_failed)
+        worker.finished.connect(worker.deleteLater)
+        worker.start()
+
+    def _format_script_as_text(self, scenes: list) -> str:
+        """将场次列表格式化为文本"""
+        lines = []
+        for scene in scenes:
+            location_type_map = {
+                "interior": "内景",
+                "exterior": "外景",
+                "interior_exterior": "内景/外景"
+            }
+            time_type_map = {
+                "day": "日",
+                "night": "夜",
+                "dawn": "晨",
+                "dusk": "黄昏",
+                "evening": "傍晚"
+            }
+            loc_type = location_type_map.get(scene.location_type.value, "内景")
+            time_type = time_type_map.get(scene.time_type.value, "日")
+
+            lines.append(f"第{scene.scene_number}场 {loc_type} {scene.location} {time_type}")
+            lines.append(scene.content)
+            lines.append("")
+
+        return "\n".join(lines)
+
+    def _format_characters_as_text(self, characters: list) -> str:
+        """将角色列表格式化为文本"""
+        if not characters:
+            return "（无角色设计）"
+
+        lines = []
+        for char in characters:
+            lines.append(f"【{char.name}】（{char.ref_code}）")
+            lines.append(char.description)
+            lines.append("")
+
+        return "\n".join(lines)
+
+    def _format_storyboards_as_text(self, storyboards: list) -> str:
+        """将分镜列表格式化为 Markdown 表格"""
+        lines = [
+            "| 场次 | 镜头序号 | 景别 | 画面内容描述 | 运镜方式 | 音效/台词 | 时长(秒) | 色调/光影 |",
+            "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |",
+        ]
+
+        shot_size_map = {
+            "extreme_close_up": "极近特写",
+            "close_up": "特写",
+            "medium_shot": "中景",
+            "full_shot": "全景",
+            "long_shot": "远景",
+            "extreme_long_shot": "大远景",
+        }
+
+        for shot in storyboards:
+            shot_size = shot_size_map.get(shot.shot_size, "中景")
+            dialogue = shot.dialogue or "无"
+            sound_effect = shot.sound_effect or "无"
+            audio_str = f"{dialogue}；{sound_effect}" if sound_effect != "无" else dialogue
+
+            lines.append(
+                f"| {shot.scene_number} | {shot.shot_number} | {shot_size} | "
+                f"{shot.visual_content} | {shot.camera_movement} | {audio_str} | "
+                f"{shot.duration} | {shot.notes or '无'} |"
+            )
+
+        return "\n".join(lines)
