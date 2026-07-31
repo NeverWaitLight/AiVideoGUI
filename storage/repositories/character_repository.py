@@ -1,5 +1,3 @@
-"""角色 Repository。"""
-
 from datetime import datetime
 from typing import List, Optional
 
@@ -13,20 +11,17 @@ from utils.path_converter import to_absolute_path
 
 
 class CharacterRepository(BaseRepository[CharacterEntity, Character]):
-    """角色 Repository。"""
 
     def __init__(self, session: Session, workspace_root: str = ""):
         super().__init__(session, CharacterEntity)
         self._workspace_root = workspace_root
 
     def get_by_id(self, id: str) -> Optional[Character]:
-        """根据 UUID 查询角色（覆盖基类，使用 uuid 字段查找）。"""
         stmt = select(CharacterEntity).where(CharacterEntity.uuid == id)
         entity = self.session.execute(stmt).scalar_one_or_none()
         return self._to_dto(entity) if entity else None
 
     def _to_dto(self, entity: CharacterEntity) -> Character:
-        """Entity → DTO 转换（自动将相对路径转换为绝对路径）。"""
         return Character(
             id=entity.id,
             uuid=entity.uuid,
@@ -40,7 +35,6 @@ class CharacterRepository(BaseRepository[CharacterEntity, Character]):
         )
 
     def _to_entity(self, dto: Character) -> CharacterEntity:
-        """DTO → Entity 转换。"""
         entity = CharacterEntity(
             uuid=dto.uuid,
             project_id=dto.project_id,
@@ -56,7 +50,6 @@ class CharacterRepository(BaseRepository[CharacterEntity, Character]):
         return entity
 
     def list_by_project(self, project_id: int) -> List[Character]:
-        """查询项目的所有角色（按自增ID升序）。"""
         stmt = (
             select(CharacterEntity)
             .where(CharacterEntity.project_id == project_id)
@@ -66,7 +59,6 @@ class CharacterRepository(BaseRepository[CharacterEntity, Character]):
         return [self._to_dto(e) for e in entities]
 
     def get_by_ref_code(self, project_id: int, ref_code: str) -> Optional[Character]:
-        """根据引用代号查询角色。"""
         stmt = (
             select(CharacterEntity)
             .where(
@@ -78,7 +70,6 @@ class CharacterRepository(BaseRepository[CharacterEntity, Character]):
         return self._to_dto(entity) if entity else None
 
     def update(self, dto: Character) -> None:
-        """更新角色信息。"""
         stmt = select(CharacterEntity).where(CharacterEntity.uuid == dto.uuid)
         entity = self.session.execute(stmt).scalar_one_or_none()
         if entity:
@@ -87,34 +78,27 @@ class CharacterRepository(BaseRepository[CharacterEntity, Character]):
             entity.design_image = dto.design_image
             entity.description = dto.description
             entity.updated_at = datetime.now()
-            # Transaction control handled by SessionManager
 
     def delete(self, id: str) -> bool:
-        """根据 UUID 删除角色。"""
         stmt = select(CharacterEntity).where(CharacterEntity.uuid == id)
         entity = self.session.execute(stmt).scalar_one_or_none()
         if entity:
             self.session.delete(entity)
-            # Transaction control handled by SessionManager
             return True
         return False
 
     def batch_create(self, characters: List[Character]) -> None:
-        """批量创建角色。"""
         for char in characters:
             entity = self._to_entity(char)
             self.session.add(entity)
-        # Transaction control handled by SessionManager
 
 
 class CharacterHistoryRepository(BaseRepository[CharacterHistoryEntity, CharacterHistory]):
-    """角色编辑历史 Repository。"""
 
     def __init__(self, session: Session):
         super().__init__(session, CharacterHistoryEntity)
 
     def _to_dto(self, entity: CharacterHistoryEntity) -> CharacterHistory:
-        """Entity → DTO 转换。"""
         return CharacterHistory(
             id=entity.id,
             character_id=entity.character_id,
@@ -127,7 +111,6 @@ class CharacterHistoryRepository(BaseRepository[CharacterHistoryEntity, Characte
         )
 
     def _to_entity(self, dto: CharacterHistory) -> CharacterHistoryEntity:
-        """DTO → Entity 转换。"""
         return CharacterHistoryEntity(
             character_id=dto.character_id,
             project_id=dto.project_id,
@@ -139,7 +122,6 @@ class CharacterHistoryRepository(BaseRepository[CharacterHistoryEntity, Characte
         )
 
     def list_by_character(self, character_id: str) -> List[CharacterHistory]:
-        """查询角色的所有编辑历史（按时间倒序）。"""
         stmt = (
             select(CharacterHistoryEntity)
             .where(CharacterHistoryEntity.character_id == character_id)

@@ -5,17 +5,17 @@ from dataclasses import dataclass
 
 @dataclass
 class StoryOutline:
-    id: int  # 自增ID
+    id: int
     project_id: int
-    content: str  # 大纲文本内容
-    created_at: int  # 13位时间戳（毫秒）
-    updated_at: int  # 13位时间戳（毫秒）
+    content: str
+    created_at: int
+    updated_at: int
 
 
 @dataclass
 class StoryOutlineHistory:
-    id: int  # 自增ID
-    story_outline_id: int  # 指向原始大纲ID
+    id: int
+    story_outline_id: int
     project_id: int
-    content: str  # 历史版本的大纲内容
-    created_at: int  # 13位时间戳（毫秒）
+    content: str
+    created_at: int

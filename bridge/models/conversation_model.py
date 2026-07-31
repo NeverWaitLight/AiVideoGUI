@@ -1,5 +1,3 @@
-"""对话列表模型，供 QML ListView 使用。"""
-
 from __future__ import annotations
 
 from PySide6.QtCore import QAbstractListModel, QModelIndex, Qt
@@ -8,7 +6,6 @@ from models.conversation import Conversation
 
 
 def _format_conv_time(dt) -> str:
-    """格式化对话时间（今天显示 HH:MM，其他显示 YYYY-MM-DD HH:MM）。"""
     from datetime import datetime
     if not isinstance(dt, datetime):
         return str(dt)

@@ -1,5 +1,3 @@
-"""测试 VideoPromptBuilder"""
-
 import unittest
 from models.enums import SceneLocation, SceneTime, ShotSize
 from models.scene import Scene
@@ -8,10 +6,8 @@ from utils.prompt_builder import VideoPromptBuilder
 
 
 class TestVideoPromptBuilder(unittest.TestCase):
-    """测试视频 Prompt 构建器"""
 
     def test_build_shot_prompt_minimal(self):
-        """测试最小化分镜（仅画面描述）"""
         storyboard = Storyboard(
             id=1,
             scene_number=1,
@@ -33,13 +29,11 @@ class TestVideoPromptBuilder(unittest.TestCase):
         self.assertIn("【镜头参数】", prompt)
         self.assertIn("景别：中景", prompt)
         self.assertIn("时长：5.0秒", prompt)
-        # 不应包含空字段的段落
         self.assertNotIn("【台词】", prompt)
         self.assertNotIn("【音效】", prompt)
         self.assertNotIn("【场景上下文】", prompt)
 
     def test_build_shot_prompt_with_scene_context(self):
-        """测试包含场景上下文的分镜"""
         scene = Scene(
             id=1,
             project_id=1,
@@ -78,7 +72,6 @@ class TestVideoPromptBuilder(unittest.TestCase):
         self.assertIn("运镜：跟拍", prompt)
 
     def test_build_shot_prompt_with_all_fields(self):
-        """测试包含所有字段的分镜"""
         scene = Scene(
             id=1,
             project_id=1,
@@ -106,7 +99,6 @@ class TestVideoPromptBuilder(unittest.TestCase):
 
         prompt = VideoPromptBuilder.build_shot_prompt(storyboard, scene=scene)
 
-        # 验证所有段落都存在
         self.assertIn("【场景上下文】", prompt)
         self.assertIn("第 2 场", prompt)
         self.assertIn("内景", prompt)
@@ -126,7 +118,6 @@ class TestVideoPromptBuilder(unittest.TestCase):
         self.assertIn("注意光影对比", prompt)
 
     def test_build_shot_prompt_with_continuity(self):
-        """测试包含相邻镜头上下文的分镜"""
         prev_shot = Storyboard(
             id=1,
             scene_number=1,
@@ -180,8 +171,7 @@ class TestVideoPromptBuilder(unittest.TestCase):
         self.assertIn("张三走进一家咖啡店", prompt)
 
     def test_build_shot_prompt_long_content_truncation(self):
-        """测试长文本截断（场景内容和相邻镜头）"""
-        long_scene_content = "这是一段非常长的场景描述。" * 30  # 超过 200 字符
+        long_scene_content = "这是一段非常长的场景描述。" * 30
 
         scene = Scene(
             id=1,
@@ -194,7 +184,7 @@ class TestVideoPromptBuilder(unittest.TestCase):
             content=long_scene_content,
         )
 
-        long_visual_content = "这是一段非常长的画面描述。" * 10  # 超过 80 字符
+        long_visual_content = "这是一段非常长的画面描述。" * 10
 
         prev_shot = Storyboard(
             id=1,
@@ -228,12 +218,9 @@ class TestVideoPromptBuilder(unittest.TestCase):
             current_shot, scene=scene, prev_shot=prev_shot
         )
 
-        # 验证长文本被截断（包含省略号）
         self.assertIn("...", prompt)
-        # 场景内容应截断到 200 字符
         scene_section = prompt.split("【场景上下文】")[1].split("【")[0]
-        self.assertLess(len(scene_section), 250)  # 留一些缓冲
-        # 相邻镜头应截断到 80 字符
+        self.assertLess(len(scene_section), 250)
         if "【连贯性提示】" in prompt:
             continuity_section = prompt.split("【连贯性提示】")[1].split("【")[0] if "【连贯性提示】" in prompt.split("【镜头画面】")[-1] else prompt.split("【连贯性提示】")[1]
             self.assertLess(len(continuity_section), 150)

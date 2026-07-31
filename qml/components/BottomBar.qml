@@ -7,7 +7,6 @@ Item {
     id: bottomBar
     implicitHeight: Theme.bottomBarHeight
 
-    // 模拟系统数据更新
     Timer {
         interval: 2000
         running: true
@@ -24,7 +23,6 @@ Item {
         anchors.fill: parent
         color: Material.background
 
-        // 左侧：资源占用率
         RowLayout {
             anchors.left: parent.left
             anchors.leftMargin: 18
@@ -53,7 +51,6 @@ Item {
             }
         }
 
-        // 右侧：温度和版本信息
         RowLayout {
             anchors.right: parent.right
             anchors.rightMargin: 18
@@ -80,6 +77,4 @@ Item {
             }
         }
     }
-
-    // 顶部分割线已移除
 }

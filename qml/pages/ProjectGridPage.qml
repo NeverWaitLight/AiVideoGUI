@@ -11,16 +11,13 @@ Item {
     signal projectSelected(int projectId)
     signal createProjectClicked()
 
-    // 正在生成封面的项目 ID 列表
     property var generatingCoverIds: []
 
-    // 监听封面生成信号
     Connections {
         target: bridge
 
         function onCover_generation_started(projectId) {
             console.log("封面生成开始：项目 ID =", projectId)
-            // 添加到生成中列表
             var ids = projectGridPage.generatingCoverIds.slice()
             if (ids.indexOf(projectId) === -1) {
                 ids.push(projectId)
@@ -30,20 +27,17 @@ Item {
 
         function onCover_generation_finished(projectId) {
             console.log("封面生成完成：项目 ID =", projectId)
-            // 从生成中列表移除
             var ids = projectGridPage.generatingCoverIds.slice()
             var index = ids.indexOf(projectId)
             if (index !== -1) {
                 ids.splice(index, 1)
                 projectGridPage.generatingCoverIds = ids
             }
-            // 刷新项目列表（更新封面路径）
             bridge.projects.load_projects()
         }
 
         function onCover_generation_failed(projectId, errorMessage) {
             console.log("封面生成失败：项目 ID =", projectId, "错误：", errorMessage)
-            // 从生成中列表移除
             var ids = projectGridPage.generatingCoverIds.slice()
             var index = ids.indexOf(projectId)
             if (index !== -1) {
@@ -57,7 +51,6 @@ Item {
         anchors.fill: parent
         spacing: 0
 
-        // 标题栏
         Pane {
             Layout.fillWidth: true
             Layout.preferredHeight: 44
@@ -114,7 +107,6 @@ Item {
             }
         }
 
-        // 项目网格布局
         Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -170,17 +162,14 @@ Item {
         }
     }
 
-    // 项目对话框
     Dialogs.ProjectDialog {
         id: projectDialog
     }
 
-    // 确认对话框
     Dialogs.ConfirmDialog {
         id: confirmDialog
     }
 
-    // 对外暴露方法
     function openCreateDialog() {
         projectDialog.openForCreate()
     }

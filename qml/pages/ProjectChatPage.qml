@@ -23,7 +23,6 @@ Item {
             implicitWidth: 1
         }
 
-        // 项目对话列表
         Pane {
             SplitView.preferredWidth: 260
             SplitView.minimumWidth: 200
@@ -34,7 +33,6 @@ Item {
                 anchors.fill: parent
                 spacing: 0
 
-                // 列表头
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 48
@@ -65,7 +63,6 @@ Item {
                     }
                 }
 
-                // 对话列表
                 ListView {
                     id: convList
                     Layout.fillWidth: true
@@ -73,7 +70,6 @@ Item {
                     model: bridge.conversations.model
                     clip: true
                     spacing: 2
-
 
                     Comp.EmptyState {
                         visible: convList.count === 0
@@ -86,7 +82,6 @@ Item {
             }
         }
 
-        // 聊天区域
         Comp.ChatArea {
             SplitView.fillWidth: true
         }

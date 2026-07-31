@@ -1,5 +1,3 @@
-"""素材库 Repository。"""
-
 from typing import List, Optional
 
 from sqlalchemy import select
@@ -13,14 +11,12 @@ from utils.path_converter import to_absolute_path
 
 
 class MediaRepository(BaseRepository[MediaFileEntity, MediaFile]):
-    """素材库 Repository。"""
 
     def __init__(self, session: Session, workspace_root: str = ""):
         super().__init__(session, MediaFileEntity)
         self._workspace_root = workspace_root
 
     def _to_dto(self, entity: MediaFileEntity) -> MediaFile:
-        """Entity → DTO 转换（自动将相对路径转换为绝对路径）。"""
         return MediaFile(
             id=entity.id,
             filename=entity.filename,
@@ -40,7 +36,6 @@ class MediaRepository(BaseRepository[MediaFileEntity, MediaFile]):
         )
 
     def _to_entity(self, dto: MediaFile) -> MediaFileEntity:
-        """DTO → Entity 转换。"""
         return MediaFileEntity(
             id=dto.id,
             filename=dto.filename,
@@ -60,15 +55,6 @@ class MediaRepository(BaseRepository[MediaFileEntity, MediaFile]):
         )
 
     def list_all(self, media_type: Optional[MediaType] = None) -> List[MediaFile]:
-        """
-        查询所有素材文件（按创建时间倒序）。
-
-        Args:
-            media_type: 素材类型过滤（可选）
-
-        Returns:
-            素材文件列表
-        """
         stmt = select(MediaFileEntity).order_by(MediaFileEntity.created_at.desc())
         if media_type:
             stmt = stmt.where(MediaFileEntity.media_type == media_type.value)
@@ -76,15 +62,6 @@ class MediaRepository(BaseRepository[MediaFileEntity, MediaFile]):
         return [self._to_dto(e) for e in entities]
 
     def list_by_storyboard(self, storyboard_id: int) -> List[MediaFile]:
-        """
-        查询指定分镜关联的所有素材文件（按创建时间倒序）。
-
-        Args:
-            storyboard_id: 分镜 ID
-
-        Returns:
-            素材文件列表
-        """
         stmt = (
             select(MediaFileEntity)
             .where(MediaFileEntity.storyboard_id == storyboard_id)
@@ -94,13 +71,6 @@ class MediaRepository(BaseRepository[MediaFileEntity, MediaFile]):
         return [self._to_dto(e) for e in entities]
 
     def set_featured(self, file_id: str, storyboard_id: int) -> None:
-        """
-        将指定文件设为分镜封面（同分镜下其他文件取消封面标记）。
-
-        Args:
-            file_id: 文件 ID
-            storyboard_id: 分镜 ID
-        """
         stmt = select(MediaFileEntity).where(
             MediaFileEntity.storyboard_id == storyboard_id,
             MediaFileEntity.featured == True,
@@ -111,7 +81,6 @@ class MediaRepository(BaseRepository[MediaFileEntity, MediaFile]):
         target = self.session.get(MediaFileEntity, file_id)
         if target:
             target.featured = True
-        # 移除 commit()，由外层 SessionManager 控制事务
 
     def update_metadata(
         self,
@@ -121,16 +90,6 @@ class MediaRepository(BaseRepository[MediaFileEntity, MediaFile]):
         width: int = 0,
         height: int = 0,
     ) -> None:
-        """
-        更新视频元数据。
-
-        Args:
-            file_id: 文件 ID
-            thumbnail_path: 缩略图路径
-            duration: 时长（秒）
-            width: 宽度
-            height: 高度
-        """
         entity = self.session.get(MediaFileEntity, file_id)
         if not entity:
             return
@@ -143,18 +102,8 @@ class MediaRepository(BaseRepository[MediaFileEntity, MediaFile]):
             entity.width = width
         if height > 0:
             entity.height = height
-        # 移除 commit()，由外层 SessionManager 控制事务
 
     def get_by_message_id(self, message_id: str) -> Optional[MediaFile]:
-        """
-        根据消息 ID 查询素材文件。
-
-        Args:
-            message_id: 消息 ID
-
-        Returns:
-            素材文件，如果不存在则返回 None
-        """
         stmt = select(MediaFileEntity).where(MediaFileEntity.message_id == message_id)
         entity = self.session.execute(stmt).scalar_one_or_none()
         return self._to_dto(entity) if entity else None
@@ -165,17 +114,6 @@ class MediaRepository(BaseRepository[MediaFileEntity, MediaFile]):
         keyword: Optional[str] = None,
         conversation_ids: Optional[set[str]] = None,
     ) -> List[MediaFile]:
-        """
-        查询素材文件（支持多种过滤条件）。
-
-        Args:
-            media_type: 素材类型过滤
-            keyword: 关键词过滤（文件名）
-            conversation_ids: 对话 ID 集合过滤
-
-        Returns:
-            素材文件列表
-        """
         stmt = select(MediaFileEntity).order_by(MediaFileEntity.created_at.desc())
 
         if media_type:

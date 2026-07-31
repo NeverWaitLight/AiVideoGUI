@@ -32,7 +32,6 @@ Pane {
                 visible: source !== ""
             }
 
-            // 类型标签
             Rectangle {
                 anchors.top: parent.top
                 anchors.right: parent.right

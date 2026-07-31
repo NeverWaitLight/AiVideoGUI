@@ -24,7 +24,6 @@ Pane {
         anchors.fill: parent
         spacing: 12
 
-        // 设计图缩略图
         Rectangle {
             width: 100; height: 72; radius: Theme.radiusMedium
             clip: true
@@ -77,7 +76,6 @@ Pane {
             }
         }
 
-        // 生成视频按钮
         Button {
             text: "生成视频"
             highlighted: true

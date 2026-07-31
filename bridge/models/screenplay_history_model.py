@@ -1,5 +1,3 @@
-"""剧本历史版本列表模型（按时间戳分组），供 QML ListView 使用。"""
-
 from __future__ import annotations
 
 from datetime import datetime
@@ -20,7 +18,7 @@ class ScreenplayHistoryListModel(QAbstractListModel):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._data: list[tuple[int, int]] = []  # (timestamp_ms, scene_count)
+        self._data: list[tuple[int, int]] = []
 
     def roleNames(self):
         return self._ROLE_NAMES

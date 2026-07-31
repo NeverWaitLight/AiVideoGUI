@@ -1,9 +1,3 @@
-"""DashScope万相文生图 Provider。
-
-使用万相 wan2.6-t2i 模型生成图片，支持同步调用模式。
-API 文档：https://help.aliyun.com/zh/model-studio/getting-started/models/wanx-image-generation-api
-"""
-
 from loguru import logger
 import os
 from typing import Any
@@ -14,7 +8,6 @@ from models.provider_config import ProviderConfig
 from providers.image_base import ImageProvider
 
 class DashScopeImageProvider(ImageProvider):
-    """DashScope万相文生图实现（wan2.6-t2i）。"""
 
     BASE_URL = "https://dashscope.aliyuncs.com/api/v1"
     SUBMIT_URL = f"{BASE_URL}/services/aigc/multimodal-generation/generation"
@@ -26,7 +19,6 @@ class DashScopeImageProvider(ImageProvider):
         self._model = config.default_model or self.DEFAULT_MODEL
 
     def _headers(self) -> dict[str, str]:
-        """构建请求头。"""
         return {
             "Authorization": f"Bearer {self._api_key}",
             "Content-Type": "application/json",
@@ -42,29 +34,6 @@ class DashScopeImageProvider(ImageProvider):
         watermark: bool = False,
         seed: int | None = None,
     ) -> str:
-        """同步生成图片并返回图片 URL。
-
-        Args:
-            prompt: 正向提示词（中英文，最多 2100 字符）
-            size: 图片尺寸，格式 "宽*高"，默认 "1280*1280"
-                  常见比例推荐：
-                  - 1:1 → 1280*1280
-                  - 3:4 → 1104*1472
-                  - 4:3 → 1472*1104
-                  - 9:16 → 960*1696
-                  - 16:9 → 1696*960
-            negative_prompt: 反向提示词（不希望出现的内容，最多 500 字符）
-            n: 生成图片数量（1-4），默认 1（按张计费，测试建议设为 1）
-            prompt_extend: 是否开启提示词智能改写（增加 3-4 秒耗时）
-            watermark: 是否添加水印（右下角 "AI生成"）
-            seed: 随机数种子（0-2147483647），保持相对稳定
-
-        Returns:
-            图片 URL（有效期 24 小时，需及时下载）
-
-        Raises:
-            RuntimeError: API 调用失败
-        """
         payload = {
             "model": self._model,
             "input": {
@@ -84,7 +53,6 @@ class DashScopeImageProvider(ImageProvider):
             },
         }
 
-        # 可选参数：seed
         if seed is not None:
             payload["parameters"]["seed"] = seed
 
@@ -96,7 +64,7 @@ class DashScopeImageProvider(ImageProvider):
                 self.SUBMIT_URL,
                 json=payload,
                 headers=self._headers(),
-                timeout=120,  # wan2.6 同步调用可能需要较长时间
+                timeout=120,
             )
             resp.raise_for_status()
             data = resp.json()
@@ -105,7 +73,6 @@ class DashScopeImageProvider(ImageProvider):
             logger.exception("提交图片生成任务失败")
             raise RuntimeError(f"网络请求失败：{e}")
 
-        # 解析响应（wan2.6 同步调用格式）
         output = data.get("output", {})
         choices = output.get("choices", [])
 
@@ -116,7 +83,6 @@ class DashScopeImageProvider(ImageProvider):
             logger.error(f"图片生成失败：{error}")
             raise RuntimeError(f"图片生成失败：{error}")
 
-        # 提取第一张图片 URL
         first_choice = choices[0]
         message_obj = first_choice.get("message", {})
         content = message_obj.get("content", [])
@@ -132,18 +98,6 @@ class DashScopeImageProvider(ImageProvider):
         return image_url
 
     def download(self, image_url: str, save_path: str) -> str:
-        """下载图片到本地路径。
-
-        Args:
-            image_url: 图片 URL（有效期 24 小时）
-            save_path: 本地保存路径
-
-        Returns:
-            保存后的本地文件路径
-
-        Raises:
-            RuntimeError: 下载失败
-        """
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         logger.info(f"下载图片：{image_url} -> {save_path}")
 

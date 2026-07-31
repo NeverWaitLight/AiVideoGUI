@@ -3,7 +3,6 @@ import QtQuick.Controls 2.15
 import QtQuick.Controls.Material 2.15
 import QtQuick.Layouts 1.15
 
-// AI 对话面板 - 可在侧边栏显示的窄版聊天界面
 Control {
     id: aiChatPanel
     padding: 0
@@ -15,7 +14,6 @@ Control {
     contentItem: ColumnLayout {
         spacing: 0
 
-        // 标题栏
         Pane {
             Layout.fillWidth: true
             Layout.preferredHeight: 44
@@ -65,19 +63,16 @@ Control {
             }
         }
 
-        // 消息列表或空白状态（占据除输入区外的所有空间）
         Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
 
-            // 空白状态（messageList.count === 0 时显示）
             EmptyChatState {
                 anchors.fill: parent
                 anchors.margins: 16
                 visible: messageList.count === 0
             }
 
-            // 消息列表（messageList.count > 0 时显示）
             ListView {
                 id: messageList
                 anchors.fill: parent
@@ -104,7 +99,6 @@ Control {
             }
         }
 
-        // 底部固定输入区（带边框的容器）
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 180
@@ -116,7 +110,6 @@ Control {
             border.width: 0
             radius: 0
 
-            // 顶部白色边框
             Rectangle {
                 anchors.left: parent.left
                 anchors.right: parent.right
@@ -130,7 +123,6 @@ Control {
                 anchors.margins: 12
                 spacing: 0
 
-                // 用户输入内容区域（占 2/3 高度）
                 TextArea {
                     id: inputArea
                     Layout.fillWidth: true
@@ -158,7 +150,6 @@ Control {
                     color: Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.12)
                 }
 
-                // 用户输入操作栏（占 1/3 高度）
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: parent.height / 3
@@ -169,7 +160,6 @@ Control {
                         anchors.fill: parent
                         spacing: 8
 
-                    // 对话模型选择下拉框
                     ComboBox {
                         id: modelSelector
                         Layout.preferredWidth: 120
@@ -181,7 +171,6 @@ Control {
 
                     Item { Layout.fillWidth: true }
 
-                    // 用户设置按钮
                     Button {
                         Layout.preferredWidth: 36
                         Layout.preferredHeight: 36
@@ -205,7 +194,6 @@ Control {
                         }
                     }
 
-                    // 发送按钮
                     Button {
                         Layout.preferredWidth: 80
                         Layout.preferredHeight: 36
@@ -233,7 +221,6 @@ Control {
     }
     }
 
-    // 参数弹出面板
     Popup {
         id: paramPopup
         width: parent.width * 0.95
@@ -246,7 +233,6 @@ Control {
             anchors.fill: parent
             spacing: 0
 
-            // 标题栏
             Pane {
                 Layout.fillWidth: true
                 padding: 12
@@ -277,7 +263,6 @@ Control {
                 color: Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.12)
             }
 
-            // 参数面板内容
             ParameterPanel {
                 id: paramPanel
                 Layout.fillWidth: true

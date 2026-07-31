@@ -75,7 +75,6 @@ Dialog {
                 height: 56
                 padding: 8
 
-
                 RowLayout {
                     anchors.fill: parent
                     spacing: 12
@@ -101,7 +100,6 @@ Dialog {
                 }
             }
 
-            // 空状态
             Label {
                 visible: !historyDialog.model || historyDialog.model.count === 0
                 anchors.centerIn: parent

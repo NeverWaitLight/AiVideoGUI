@@ -1,5 +1,3 @@
-"""对话相关桥接：管理对话列表和消息。"""
-
 from __future__ import annotations
 
 from loguru import logger
@@ -15,7 +13,6 @@ from storage.repositories.media_repository import MediaRepository
 
 
 def format_time_short(dt) -> str:
-    """格式化时间（今天 HH:MM，其他 MM-DD HH:MM）。"""
     from datetime import datetime
     if not isinstance(dt, datetime):
         return str(dt)
@@ -26,8 +23,6 @@ def format_time_short(dt) -> str:
 
 
 class ConversationBridge(QObject):
-    """对话管理桥接。"""
-
     conversation_created = Signal(str)
     message_added = Signal(str, str, str)  # msg_id, role, content
     conversation_list_changed = Signal()
@@ -69,14 +64,12 @@ class ConversationBridge(QObject):
 
     @Slot(int)
     def load_for_project(self, project_id: int) -> None:
-        """加载项目关联的对话列表。"""
         conv_repo = self._session_manager.get_repo(ConversationRepository)
         convs = conv_repo.list_by_project(project_id, is_hidden=False)
         self._model.reset(convs)
 
     @Slot(int)
     def create_for_project(self, project_id: int) -> None:
-        """在项目中创建新对话。"""
         conv = self._video_service.create_conversation(
             provider_name="dashscope", model_name="wan2.7-t2v",
             title="新对话", project_id=str(project_id),
@@ -113,8 +106,6 @@ class ConversationBridge(QObject):
                      prompt_extend: bool = True, watermark: bool = False) -> None:
         if not text.strip():
             return
-
-        # 如果没有当前对话，自动创建一个
         if not self._current_conv_id:
             conv = self._video_service.create_conversation(
                 provider_name=provider, model_name=model,
@@ -124,38 +115,27 @@ class ConversationBridge(QObject):
             self._current_conv_id = conv.id
             self._messages.reset([])
             self.conversation_created.emit(conv.id)
-
-        # 添加用户消息
         user_msg = self._video_service.add_user_message(self._current_conv_id, text)
         self._messages.append(user_msg)
         self.message_added.emit(user_msg.id, "user", text)
-
-        # 调用对话模型生成回复（纯文本对话，不生成视频）
         from bridge.workers import ChatWorker
         worker = ChatWorker(self._chat_service, self._current_conv_id, text, self)
         worker.reply_ready.connect(self._on_chat_reply)
         worker.reply_failed.connect(self._on_chat_failed)
         worker.start()
-
-        # 异步生成标题
         self._chat_service.generate_title(self._current_conv_id, text)
 
     def _on_chat_reply(self, conv_id: str, reply: str) -> None:
-        """对话回复成功回调。"""
         if conv_id != self._current_conv_id:
             return
-
-        # 保存助手回复消息
         assistant_msg = self._video_service.add_assistant_message(conv_id, reply)
         self._messages.append(assistant_msg)
         self.message_added.emit(assistant_msg.id, "assistant", reply)
 
     def _on_chat_failed(self, conv_id: str, error: str) -> None:
-        """对话回复失败回调。"""
         if conv_id != self._current_conv_id:
             return
         logger.error(f"对话回复失败: {error}")
-        # 可选：添加错误消息到界面
         error_msg = self._video_service.add_assistant_message(conv_id, f"[错误] {error}")
         self._messages.append(error_msg)
         self.message_added.emit(error_msg.id, "assistant", f"[错误] {error}")

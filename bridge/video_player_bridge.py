@@ -1,5 +1,3 @@
-"""视频播放器桥接：播放列表管理。"""
-
 from __future__ import annotations
 
 import json
@@ -14,8 +12,6 @@ from storage.repositories.media_repository import MediaRepository
 
 
 class VideoPlayerBridge(QObject):
-    """视频播放器桥接。"""
-
     playlist_changed = Signal()
     current_index_changed = Signal()
 
@@ -35,7 +31,6 @@ class VideoPlayerBridge(QObject):
 
     @Slot(int)
     def load_playlist(self, project_id: int) -> None:
-        """从项目分镜视频生成播放列表。"""
         conv_repo = self._session_manager.get_repo(ConversationRepository)
         media_repo = self._session_manager.get_repo(MediaRepository)
 
@@ -45,8 +40,6 @@ class VideoPlayerBridge(QObject):
         media_files = media_repo.list_with_filters(
             media_type=MediaType.VIDEO, conversation_ids=conv_ids,
         )
-
-        # 按场次-镜头分组，选择最新版本
         shot_videos: dict[tuple[int, int], list[tuple[int, object]]] = {}
         pattern = re.compile(r"^(\d+)-(\d+)-(\d+)\.mp4$")
 
@@ -60,8 +53,6 @@ class VideoPlayerBridge(QObject):
                 if key not in shot_videos:
                     shot_videos[key] = []
                 shot_videos[key].append((seq, media))
-
-        # 每组选最大序号（最新版本）
         playlist = []
         for (scene, shot), videos in sorted(shot_videos.items()):
             latest_seq, latest_media = max(videos, key=lambda x: x[0])
@@ -84,33 +75,28 @@ class VideoPlayerBridge(QObject):
 
     @Slot(result=str)
     def get_playlist_json(self) -> str:
-        """返回播放列表 JSON。"""
         return json.dumps(self._playlist)
 
     @Slot(result=str)
     def get_current_video(self) -> str:
-        """获取当前视频信息 JSON。"""
         if 0 <= self._current_index < len(self._playlist):
             return json.dumps(self._playlist[self._current_index])
         return "{}"
 
     @Slot(int)
     def set_current_index(self, index: int) -> None:
-        """设置当前播放索引。"""
         if 0 <= index < len(self._playlist):
             self._current_index = index
             self.current_index_changed.emit()
 
     @Slot()
     def play_next(self) -> None:
-        """切换到下一个视频。"""
         if self._current_index < len(self._playlist) - 1:
             self._current_index += 1
             self.current_index_changed.emit()
 
     @Slot()
     def play_previous(self) -> None:
-        """切换到上一个视频。"""
         if self._current_index > 0:
             self._current_index -= 1
             self.current_index_changed.emit()

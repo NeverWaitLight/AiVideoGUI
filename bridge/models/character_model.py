@@ -1,5 +1,3 @@
-"""角色列表模型，供 QML ListView 使用。"""
-
 from __future__ import annotations
 
 from PySide6.QtCore import QAbstractListModel, QModelIndex, Qt

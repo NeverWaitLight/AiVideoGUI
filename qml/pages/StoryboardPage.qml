@@ -59,7 +59,6 @@ Item {
         anchors.fill: parent
         currentIndex: _showDetail ? 1 : 0
 
-        // ═══════════ 0: 分镜列表视图 ═══════════
         Item {
             ColumnLayout {
                 anchors.fill: parent
@@ -136,7 +135,6 @@ Item {
             }
         }
 
-        // ═══════════ 1: 分镜详情编辑视图 ═══════════
         Item {
             ColumnLayout {
                 anchors.fill: parent
@@ -196,13 +194,11 @@ Item {
 
                         Item { width: 1; height: 8 }
 
-                        // 基本信息卡片
                         Pane {
                             Layout.fillWidth: true
                             Layout.leftMargin: 24
                             Layout.rightMargin: 24
                             padding: 16
-
 
                             GridLayout {
                                 anchors.fill: parent
@@ -252,7 +248,6 @@ Item {
                             }
                         }
 
-                        // 设计图区域
                         RowLayout {
                             Layout.leftMargin: 24
                             Layout.rightMargin: 24
@@ -292,7 +287,6 @@ Item {
                             Item { Layout.fillWidth: true }
                         }
 
-                        // 画面内容
                         Label {
                             text: "画面内容描述"
                             font.pixelSize: Theme.fontSizeMedium; font.bold: true
@@ -308,7 +302,6 @@ Item {
                             }
                         }
 
-                        // 台词
                         Label {
                             text: "台词/对白"
                             font.pixelSize: Theme.fontSizeMedium; font.bold: true
@@ -324,7 +317,6 @@ Item {
                             }
                         }
 
-                        // 音效
                         Label {
                             text: "音效"
                             font.pixelSize: Theme.fontSizeMedium; font.bold: true
@@ -336,7 +328,6 @@ Item {
                             Layout.fillWidth: true; Layout.leftMargin: 24; Layout.rightMargin: 24
                         }
 
-                        // 备注
                         Label {
                             text: "备注"
                             font.pixelSize: Theme.fontSizeMedium; font.bold: true
@@ -352,7 +343,6 @@ Item {
                             }
                         }
 
-                        // ── 关联视频 ──
                         Label {
                             text: "关联视频"
                             font.pixelSize: Theme.fontSizeMedium; font.bold: true
@@ -401,11 +391,9 @@ Item {
         }
     }
 
-    // ── 对话框 ──
     Dialogs.AlertDialog { id: alertDialog }
     Dialogs.ConfirmDialog { id: confirmDialog }
 
-    // 设计图上传
     QtDialogs.FileDialog {
         id: designImageDialog
         title: "选择设计图"
@@ -418,7 +406,6 @@ Item {
         }
     }
 
-    // 提示词预览对话框
     Dialog {
         id: promptDialog
         modal: true
@@ -442,7 +429,6 @@ Item {
         }
     }
 
-    // ── 关联视频行组件 ──
     component VideoRowDelegate: Pane {
         property var videoData: ({})
         signal playClicked()
@@ -455,7 +441,6 @@ Item {
             anchors.fill: parent
             spacing: 10
 
-            // 封面标记
             Image {
                 source: "qrc:/resources/icons/star.svg"
                 sourceSize.width: 20
@@ -463,7 +448,6 @@ Item {
                 visible: videoData.featured
             }
 
-            // 缩略图
             Rectangle {
                 width: 64; height: 48; radius: 4
                 clip: true
@@ -482,7 +466,6 @@ Item {
                 }
             }
 
-            // 文件信息
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 2
@@ -513,7 +496,6 @@ Item {
         }
     }
 
-    // ── 内部函数 ──
     function _saveCurrentShot() {
         bridge.storyboard.save_shot(
             _editingShotId,

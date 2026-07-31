@@ -1,5 +1,3 @@
-"""素材文件列表模型，供 QML GridView 使用。"""
-
 from __future__ import annotations
 
 from PySide6.QtCore import QAbstractListModel, QModelIndex, Qt

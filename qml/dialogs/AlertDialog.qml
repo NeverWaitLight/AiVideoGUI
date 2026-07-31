@@ -11,7 +11,7 @@ Dialog {
     title: "提示"
 
     property string alertMessage: ""
-    property string alertType: "info"  // info, warning, error
+    property string alertType: "info"
 
     Label {
         text: alertMessage

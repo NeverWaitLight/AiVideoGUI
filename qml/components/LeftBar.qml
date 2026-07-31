@@ -11,7 +11,6 @@ Item {
     signal libraryClicked()
     signal settingsClicked()
 
-    // 由 main.qml 根据 root.currentPage 响应式设置，不再独立维护
     property int currentIndex: 0
 
     ColumnLayout {
@@ -22,7 +21,6 @@ Item {
         anchors.rightMargin: 6
         spacing: 10
 
-        // 项目管理按钮
         TabButton {
             Layout.alignment: Qt.AlignHCenter
             Layout.preferredWidth: 38
@@ -40,7 +38,6 @@ Item {
             ToolTip.visible: hovered
         }
 
-        // 素材库按钮
         TabButton {
             Layout.alignment: Qt.AlignHCenter
             Layout.preferredWidth: 38
@@ -60,7 +57,6 @@ Item {
 
         Item { Layout.fillHeight: true }
 
-        // 设置按钮
         TabButton {
             Layout.alignment: Qt.AlignHCenter
             Layout.preferredWidth: 38

@@ -1,5 +1,3 @@
-"""分镜 Repository。"""
-
 from typing import List
 
 from sqlalchemy import delete, select
@@ -14,14 +12,12 @@ from utils.path_converter import to_absolute_path
 
 
 class StoryboardRepository(BaseRepository[StoryboardEntity, Storyboard]):
-    """分镜 Repository。"""
 
     def __init__(self, session: Session, workspace_root: str = ""):
         super().__init__(session, StoryboardEntity)
         self._workspace_root = workspace_root
 
     def _to_dto(self, entity: StoryboardEntity) -> Storyboard:
-        """Entity → DTO 转换（自动将相对路径转换为绝对路径）。"""
         return Storyboard(
             id=entity.id,
             scene_id=entity.scene_id,
@@ -40,7 +36,6 @@ class StoryboardRepository(BaseRepository[StoryboardEntity, Storyboard]):
         )
 
     def _to_entity(self, dto: Storyboard) -> StoryboardEntity:
-        """DTO → Entity 转换。"""
         entity = StoryboardEntity(
             scene_id=dto.scene_id,
             scene_number=dto.scene_number,
@@ -61,7 +56,6 @@ class StoryboardRepository(BaseRepository[StoryboardEntity, Storyboard]):
         return entity
 
     def list_by_scene(self, scene_id: int) -> List[Storyboard]:
-        """查询场次的所有分镜（按镜头号升序）。"""
         stmt = (
             select(StoryboardEntity)
             .where(StoryboardEntity.scene_id == scene_id)
@@ -71,7 +65,6 @@ class StoryboardRepository(BaseRepository[StoryboardEntity, Storyboard]):
         return [self._to_dto(e) for e in entities]
 
     def list_by_project(self, project_id: int) -> List[Storyboard]:
-        """查询项目的所有分镜（通过 JOIN 查询）。"""
         stmt = (
             select(StoryboardEntity)
             .join(ScreenplayEntity, StoryboardEntity.scene_id == ScreenplayEntity.id)
@@ -82,13 +75,11 @@ class StoryboardRepository(BaseRepository[StoryboardEntity, Storyboard]):
         return [self._to_dto(e) for e in entities]
 
     def delete_by_scene(self, scene_id: int) -> None:
-        """删除场次的所有分镜。"""
         stmt = delete(StoryboardEntity).where(StoryboardEntity.scene_id == scene_id)
         self.session.execute(stmt)
         self.session.commit()
 
     def delete_by_project(self, project_id: int) -> None:
-        """删除项目的所有分镜（通过 JOIN 查询）。"""
         stmt = (
             delete(StoryboardEntity)
             .where(
@@ -102,13 +93,11 @@ class StoryboardRepository(BaseRepository[StoryboardEntity, Storyboard]):
 
 
 class StoryboardHistoryRepository(BaseRepository[StoryboardHistoryEntity, StoryboardHistory]):
-    """分镜历史 Repository。"""
 
     def __init__(self, session: Session):
         super().__init__(session, StoryboardHistoryEntity)
 
     def _to_dto(self, entity: StoryboardHistoryEntity) -> StoryboardHistory:
-        """Entity → DTO 转换。"""
         return StoryboardHistory(
             id=entity.id,
             storyboard_id=entity.storyboard_id,
@@ -128,7 +117,6 @@ class StoryboardHistoryRepository(BaseRepository[StoryboardHistoryEntity, Storyb
         )
 
     def _to_entity(self, dto: StoryboardHistory) -> StoryboardHistoryEntity:
-        """DTO → Entity 转换。"""
         return StoryboardHistoryEntity(
             storyboard_id=dto.storyboard_id,
             project_id=dto.project_id,
@@ -147,7 +135,6 @@ class StoryboardHistoryRepository(BaseRepository[StoryboardHistoryEntity, Storyb
         )
 
     def list_by_project(self, project_id: int) -> List[StoryboardHistory]:
-        """查询项目的所有分镜历史（按时间倒序）。"""
         stmt = (
             select(StoryboardHistoryEntity)
             .where(StoryboardHistoryEntity.project_id == project_id)
@@ -157,7 +144,6 @@ class StoryboardHistoryRepository(BaseRepository[StoryboardHistoryEntity, Storyb
         return [self._to_dto(e) for e in entities]
 
     def distinct_timestamps_by_project(self, project_id: int) -> List[int]:
-        """查询项目的所有不同保存时间戳（按时间倒序）。"""
         stmt = (
             select(StoryboardHistoryEntity.created_at)
             .where(StoryboardHistoryEntity.project_id == project_id)
@@ -169,7 +155,6 @@ class StoryboardHistoryRepository(BaseRepository[StoryboardHistoryEntity, Storyb
     def list_by_project_and_timestamp(
         self, project_id: int, created_at: int
     ) -> List[StoryboardHistory]:
-        """查询项目在指定时间戳保存的所有分镜历史。"""
         stmt = (
             select(StoryboardHistoryEntity)
             .where(

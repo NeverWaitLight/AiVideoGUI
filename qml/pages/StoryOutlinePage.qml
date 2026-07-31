@@ -23,7 +23,6 @@ Item {
         }
     }
 
-    // Bridge connections
     Connections {
         target: bridge.storyOutline
 
@@ -68,7 +67,6 @@ Item {
         }
     }
 
-    // Chat message model
     ListModel {
         id: chatModel
     }
@@ -77,26 +75,10 @@ Item {
         anchors.fill: parent
         spacing: 0
 
-        // ── 顶部导航栏 ──
         Comp.PageHeader {
             title: "大纲"
             Layout.fillWidth: true
             onBackClicked: page.backClicked()
-
-            // 历史版本按钮已隐藏
-            // Button {
-            //     Layout.preferredHeight: 34
-            //     text: "历史版本"
-            //     flat: true
-            //     topPadding: 6
-            //     bottomPadding: 6
-            //     leftPadding: 12
-            //     rightPadding: 12
-            //     onClicked: {
-            //         bridge.storyOutline.load_history()
-            //         historyDialog.open()
-            //     }
-            // }
 
             Button {
                 Layout.preferredHeight: 34
@@ -135,7 +117,6 @@ Item {
             }
         }
 
-        // ── 主内容区 ──
         SplitView {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -145,7 +126,6 @@ Item {
                 implicitWidth: 1
             }
 
-            // 左侧：大纲编辑区
             Item {
                 SplitView.fillWidth: true
                 SplitView.minimumWidth: 400
@@ -159,7 +139,6 @@ Item {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         clip: true
-
 
                         TextArea {
                             id: textArea
@@ -175,7 +154,6 @@ Item {
                 }
             }
 
-            // 右侧：AI 对话面板
             Rectangle {
                 SplitView.preferredWidth: 340
                 SplitView.minimumWidth: 260
@@ -184,7 +162,6 @@ Item {
                     anchors.fill: parent
                     spacing: 0
 
-                    // 面板标题
                     Rectangle {
                         Layout.fillWidth: true
                         height: 44
@@ -205,7 +182,6 @@ Item {
                         }
                     }
 
-                    // 消息列表
                     ListView {
                         id: chatView
                         Layout.fillWidth: true
@@ -217,7 +193,6 @@ Item {
                         model: chatModel
 
 
-                        // 空状态提示
                         Label {
                             visible: chatModel.count === 0
                             anchors.centerIn: parent
@@ -227,7 +202,6 @@ Item {
                         }
                     }
 
-                    // 输入区域
                     Rectangle {
                         Layout.fillWidth: true
                         height: 60
@@ -247,7 +221,6 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
                                 clip: true
-
 
                                 TextArea {
                                     id: chatInput
@@ -271,8 +244,6 @@ Item {
         }
     }
 
-    // ── 对话框 ──
-
     Dialogs.AlertDialog {
         id: alertDialog
     }
@@ -280,22 +251,6 @@ Item {
     Dialogs.ConfirmDialog {
         id: confirmDialog
     }
-
-    // 历史记录对话框已隐藏
-    // Dialogs.HistoryDialog {
-    //     id: historyDialog
-    //     model: bridge.storyOutline.historyModel
-    //     onRestoreRequested: function(historyId) {
-    //         confirmDialog.confirm(
-    //             "确定要恢复到此历史版本吗？当前内容将被保存为新的历史版本。",
-    //             function() {
-    //                 bridge.storyOutline.restore_history(historyId)
-    //             }
-    //         )
-    //     }
-    // }
-
-    // ── 内部函数 ──
 
     function _sendChat() {
         var text = chatInput.text.trim()

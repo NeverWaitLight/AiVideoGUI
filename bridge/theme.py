@@ -1,15 +1,10 @@
-"""全局布局和尺寸常量，通过 setContextProperty 暴露给 QML。"""
-
 from PySide6.QtCore import QObject, Property
 
 
 class Theme(QObject):
-    """全局字体/尺寸/布局常量（不包含颜色样式）。"""
-
     def __init__(self, parent=None):
         super().__init__(parent)
 
-    # 字体大小
     @Property(int, constant=True)
     def fontSizeTiny(self):
         return 10
@@ -34,7 +29,6 @@ class Theme(QObject):
     def fontSizeTitle(self):
         return 18
 
-    # 布局尺寸
     @Property(int, constant=True)
     def tabBarWidth(self):
         return 52
@@ -59,7 +53,6 @@ class Theme(QObject):
     def headerHeight(self):
         return 44
 
-    # 圆角尺寸
     @Property(int, constant=True)
     def radiusSmall(self):
         return 4

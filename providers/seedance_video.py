@@ -1,5 +1,3 @@
-"""Seedance 视频生成 Provider。"""
-
 from loguru import logger
 import os
 from typing import Any, Callable
@@ -13,7 +11,6 @@ from models.task_result import TaskResult
 from providers.video_base import VideoProvider
 
 class SeedanceVideoProvider(VideoProvider):
-    """Seedance 视频生成实现（支持 Seedance 2.0 和 2.5）。"""
 
     BASE_URL = "https://api.evolink.ai/v1"
     SUBMIT_URL = f"{BASE_URL}/videos/generations"
@@ -33,19 +30,8 @@ class SeedanceVideoProvider(VideoProvider):
         }
 
     def build_payload(self, prompt: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
-        """构建提交给 Seedance API 的完整请求体（不发起网络请求）。
-
-        支持的参数：
-        - duration: 视频时长 (4-15秒)，默认 5
-        - quality: 画质 ("480p" | "720p" | "1080p" | "4k")，默认 "720p"
-        - aspect_ratio: 宽高比 ("16:9" | "9:16" | "1:1" | "4:3" | "3:4" | "21:9" | "adaptive")，默认 "16:9"
-        - generate_audio: 是否生成同步音频 (bool)，默认 True
-        - model_params.web_search: 是否启用联网检索 (bool)，默认 False
-        - callback_url: 任务完成回调 URL (str)，可选
-        """
         api_params = params.copy() if params else {}
 
-        # 基础参数
         payload = {
             "model": self._model,
             "prompt": prompt,
@@ -55,11 +41,9 @@ class SeedanceVideoProvider(VideoProvider):
             "generate_audio": api_params.pop("generate_audio", True),
         }
 
-        # 可选的高级参数
         if "callback_url" in api_params:
             payload["callback_url"] = api_params.pop("callback_url")
 
-        # model_params 嵌套参数
         model_params = {}
         if "web_search" in api_params:
             model_params["web_search"] = api_params.pop("web_search")
@@ -70,7 +54,6 @@ class SeedanceVideoProvider(VideoProvider):
         return payload
 
     def _submit_task(self, payload: dict[str, Any]) -> tuple[str, dict[str, Any]]:
-        """提交任务到 Seedance API，返回 (task_id, payload)。"""
         logger.info(f"提交 Seedance 任务，模型：{self._model}")
         logger.debug(f"请求体：{payload}")
 
@@ -91,30 +74,25 @@ class SeedanceVideoProvider(VideoProvider):
         return task_id, payload
 
     def t2v(self, prompt: str, params: dict[str, Any] | None = None) -> tuple[str, dict[str, Any]]:
-        """文生视频：提交文本生成视频任务，返回 (task_id, 完整请求参数)。"""
         payload = self.build_payload(prompt, params)
         return self._submit_task(payload)
 
     def p2v(
         self, prompt: str, image_path: str, params: dict[str, Any] | None = None
     ) -> tuple[str, dict[str, Any]]:
-        """图生视频：提交图片+文本生成视频任务，返回 (task_id, 完整请求参数)。"""
         raise NotImplementedError("Seedance p2v 尚未实现")
 
     def r2v(
         self, prompt: str, reference_path: str, params: dict[str, Any] | None = None
     ) -> tuple[str, dict[str, Any]]:
-        """参考生视频：提交参考素材+文本生成视频任务，返回 (task_id, 完整请求参数)。"""
         raise NotImplementedError("Seedance r2v 尚未实现")
 
     def extend(
         self, prompt: str, video_path: str, params: dict[str, Any] | None = None
     ) -> tuple[str, dict[str, Any]]:
-        """视频续写：基于已有视频继续生成后续内容，返回 (task_id, 完整请求参数)。"""
         raise NotImplementedError("Seedance extend 尚未实现")
 
     def check_status(self, task_id: str) -> TaskResult:
-        """查询任务状态。"""
         url = f"{self.TASK_URL}/{task_id}"
         resp = requests.get(url, headers=self._headers(), timeout=30)
         resp.raise_for_status()
@@ -138,7 +116,6 @@ class SeedanceVideoProvider(VideoProvider):
         if status == "processing":
             return TaskResult(status=TaskStatus.RUNNING)
 
-        # pending 或其他未知状态
         return TaskResult(status=TaskStatus.PENDING)
 
     def download(
@@ -147,7 +124,6 @@ class SeedanceVideoProvider(VideoProvider):
         save_path: str,
         progress_callback: Callable[[int, int], None] | None = None,
     ) -> str:
-        """流式下载视频到本地。"""
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         logger.info(f"开始下载视频：{video_url} -> {save_path}")
 
@@ -166,29 +142,25 @@ class SeedanceVideoProvider(VideoProvider):
         return save_path
 
     def get_model_info(self) -> list[ModelInfo]:
-        """返回支持的模型列表。"""
-        # 根据当前模型返回对应的能力信息
         if "2.5" in self._model or "seedance-2.5" in self._model:
-            # Seedance 2.5（原生 4K，30 秒，50 个参考）
             return [
                 ModelInfo(
                     name=self._model,
                     provider_name=self.provider_name,
                     supported_resolutions=["480p", "720p", "1080p", "4k"],
                     supported_ratios=["16:9", "9:16", "1:1", "4:3", "3:4", "21:9", "adaptive"],
-                    max_duration=30,  # 2.5 支持 30 秒
+                    max_duration=30,
                     description="Seedance 2.5 文生视频模型（原生 4K，最长 30 秒）",
                 ),
             ]
         else:
-            # Seedance 2.0（默认）
             return [
                 ModelInfo(
                     name=self._model,
                     provider_name=self.provider_name,
                     supported_resolutions=["480p", "720p", "1080p", "4k"],
                     supported_ratios=["16:9", "9:16", "1:1", "4:3", "3:4", "21:9", "adaptive"],
-                    max_duration=15,  # 2.0 支持 4-15 秒
+                    max_duration=15,
                     description="Seedance 2.0 文生视频模型（最长 15 秒）",
                 ),
             ]

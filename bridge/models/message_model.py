@@ -1,5 +1,3 @@
-"""消息列表模型，供 QML ListView 使用。"""
-
 from __future__ import annotations
 
 from PySide6.QtCore import QAbstractListModel, QModelIndex, Qt
@@ -8,7 +6,6 @@ from models.message import Message
 
 
 def _format_msg_time(dt) -> str:
-    """格式化消息时间（今天显示 HH:MM，其他显示 MM-DD HH:MM）。"""
     from datetime import datetime
     if not isinstance(dt, datetime):
         return str(dt)
@@ -48,7 +45,7 @@ class MessageListModel(QAbstractListModel):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._data: list[Message] = []
-        self._meta: dict[str, dict] = {}  # msg_id -> {duration, width, height}
+        self._meta: dict[str, dict] = {}
 
     def roleNames(self):
         return self._ROLE_NAMES

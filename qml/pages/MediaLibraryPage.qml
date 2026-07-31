@@ -123,7 +123,6 @@ Item {
         }
     }
 
-    // ── 文件选择对话框 ──
     QtDialogs.FileDialog {
         id: fileDialog
         title: "选择要导入的文件"
@@ -148,16 +147,13 @@ Item {
         }
     }
 
-    // ── 对话框 ──
     Dialogs.AlertDialog { id: alertDialog }
     Dialogs.ConfirmDialog { id: confirmDialog }
 
-    // ── 内部函数 ──
     function _reloadFiles() {
         bridge.media.load_files_filtered(_filterType, _searchText, projectId)
     }
 
-    // ── 素材卡片组件 ──
     component MediaCardDelegate: Pane {
         property string fileId: ""
         property string fileName: ""
@@ -176,12 +172,10 @@ Item {
         padding: 8
         height: 210
 
-
         ColumnLayout {
             anchors.fill: parent
             spacing: 6
 
-            // 缩略图
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 120
@@ -194,7 +188,6 @@ Item {
                     visible: source !== ""
                 }
 
-                // 类型标签
                 Rectangle {
                     anchors.top: parent.top; anchors.right: parent.right
                     width: typeLabel.implicitWidth + 8; height: 18; radius: Theme.radiusSmall
@@ -204,7 +197,6 @@ Item {
                     }
                 }
 
-                // 播放按钮（仅视频）
                 Button {
                     anchors.centerIn: parent
                     icon.source: "qrc:/resources/icons/play_arrow.svg"
@@ -217,7 +209,6 @@ Item {
                     onClicked: playRequested()
                 }
 
-                // 时长标签
                 Rectangle {
                     anchors.bottom: parent.bottom; anchors.right: parent.right
                     width: durationLabel.implicitWidth + 8; height: 18; radius: Theme.radiusSmall
@@ -229,7 +220,6 @@ Item {
                 }
             }
 
-            // 文件名
             Label {
                 text: fileName
                 font.pixelSize: Theme.fontSizeSmall
@@ -237,7 +227,6 @@ Item {
                 Layout.fillWidth: true
             }
 
-            // 元信息 + 操作
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 4

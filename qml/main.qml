@@ -18,9 +18,9 @@ ApplicationWindow {
     flags: Qt.Window | Qt.FramelessWindowHint
 
     property string currentPage: "project"
-    property int resizeBorderWidth: 5  // 边框拖动检测区域宽度
+    property int resizeBorderWidth: 5
 
-    // 边框拖动调整大小
+
     MouseArea {
         id: resizeMouseArea
         anchors.fill: parent
@@ -39,14 +39,12 @@ ApplicationWindow {
             var topEdge = mouseY < resizeBorderWidth
             var bottomEdge = mouseY > height - resizeBorderWidth
 
-            // 计算边缘标志位
             edges = 0
             if (leftEdge) edges |= Qt.LeftEdge
             if (rightEdge) edges |= Qt.RightEdge
             if (topEdge) edges |= Qt.TopEdge
             if (bottomEdge) edges |= Qt.BottomEdge
 
-            // 设置光标形状
             if ((topEdge && leftEdge) || (bottomEdge && rightEdge)) {
                 cursorShape = Qt.SizeFDiagCursor
             } else if ((topEdge && rightEdge) || (bottomEdge && leftEdge)) {
@@ -77,7 +75,6 @@ ApplicationWindow {
         anchors.fill: parent
         spacing: 0
 
-        // ===== TopBar | 顶部标题栏 | 显示应用标题和窗口控制按钮 =====
         Comp.TopBar {
             id: titleBar
             Layout.fillWidth: true
@@ -90,7 +87,6 @@ ApplicationWindow {
             Layout.fillHeight: true
             spacing: 0
 
-            // ===== LeftBar | 左侧边栏 | 项目/素材库标签页切换和设置入口 =====
             Comp.LeftBar {
                 id: tabBar
                 Layout.fillHeight: true
@@ -107,7 +103,6 @@ ApplicationWindow {
                 }
             }
 
-            // ===== 主内容区统一容器 | 包裹 MainPanel 和 AIChatPanel，提供统一圆角背景 =====
             Control {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -121,7 +116,6 @@ ApplicationWindow {
                 contentItem: RowLayout {
                     spacing: 0
 
-                    // MainPanel - 主页面区域（项目管理/素材库）
                     Comp.MainPanel {
                         id: mainPanel
                         Layout.fillWidth: true
@@ -130,7 +124,6 @@ ApplicationWindow {
                         onCurrentPageChanged: root.currentPage = currentPage
                     }
 
-                    // 竖线分隔符
                     Rectangle {
                         Layout.fillHeight: true
                         width: 1
@@ -138,7 +131,6 @@ ApplicationWindow {
                         visible: rightBar.aiChatVisible
                     }
 
-                    // AIChatPanel - AI 助手对话面板
                     Comp.AIChatPanel {
                         id: aiChatPanel
                         Layout.preferredWidth: 320
@@ -148,7 +140,6 @@ ApplicationWindow {
                 }
             }
 
-            // ===== RightBar | 右侧边栏 | 功能按钮栏（AI 助手开关等） =====
             Comp.RightBar {
                 id: rightBar
                 Layout.fillHeight: true
@@ -156,13 +147,11 @@ ApplicationWindow {
             }
         }
 
-        // ===== BottomBar | 底部状态栏 | 显示应用状态和版本信息 =====
         Comp.BottomBar {
             Layout.fillWidth: true
         }
     }
 
-    // 全局信号监听
     Connections {
         target: bridge
 
@@ -183,23 +172,19 @@ ApplicationWindow {
         }
     }
 
-    // 设置对话框
     Dialogs.SettingsDialog {
         id: settingsDialog
     }
 
-    // 通用确认对话框
     Dialogs.ConfirmDialog {
         id: confirmDialog
     }
 
-    // 通用提示对话框
     Dialogs.AlertDialog {
         id: alertDialog
     }
 
     Component.onCompleted: {
-        // 居中显示窗口
         x = (Screen.width - width) / 2
         y = (Screen.height - height) / 2
 

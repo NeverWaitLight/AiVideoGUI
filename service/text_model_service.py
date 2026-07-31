@@ -1,5 +1,3 @@
-"""文本模型服务：调用大模型 API 进行文本生成和优化。"""
-
 from loguru import logger
 
 import requests
@@ -8,17 +6,15 @@ from config.manager import ConfigManager
 from prompts.manager import PromptTemplateManager
 
 class TextModelService:
-    """文本模型服务：支持调用 DashScope 的通义千问等文本模型。"""
 
     DASHSCOPE_TEXT_URL = "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation"
-    DEFAULT_MODEL = "qwen-max"  # 通义千问最强模型
+    DEFAULT_MODEL = "qwen-max"
 
     def __init__(self, config_manager: ConfigManager, prompt_manager: PromptTemplateManager) -> None:
         self._config = config_manager
         self._prompt_manager = prompt_manager
 
     def chat(self, messages: list[dict], model: str | None = None) -> str:
-        """通用对话接口：发送 messages 列表，返回助手回复文本。"""
         provider_config = self._config.get_provider("dashscope")
         if not provider_config or not provider_config.api_key:
             raise RuntimeError("未配置 DashScope API Key，请在设置中配置")
@@ -54,21 +50,6 @@ class TextModelService:
         user_requirement: str,
         model: str | None = None,
     ) -> str:
-        """
-        使用大模型优化故事大纲内容。
-
-        Args:
-            original_content: 原始大纲内容
-            user_requirement: 用户的优化要求
-            model: 使用的模型名称，默认使用 qwen-max
-
-        Returns:
-            优化后的大纲内容
-
-        Raises:
-            RuntimeError: API 调用失败
-        """
-        # 使用模板构建消息
         template = self._prompt_manager.get_template("outline_optimization")
         messages = template.build_messages(
             original_content=original_content if original_content.strip() else "（空大纲）",
@@ -83,27 +64,12 @@ class TextModelService:
         outline_content: str,
         model: str | None = None,
     ) -> tuple[str, list[dict]]:
-        """
-        根据大纲生成剧本内容，并解析为场次结构。
-
-        Args:
-            outline_content: 大纲内容
-            model: 使用的模型名称，默认使用 qwen-max
-
-        Returns:
-            (剧本标题, 场次列表)
-
-        Raises:
-            RuntimeError: API 调用失败或解析失败
-        """
-        # 获取 DashScope 配置
         provider_config = self._config.get_provider("dashscope")
         if not provider_config or not provider_config.api_key:
             raise RuntimeError("未配置 DashScope API Key，请在设置中配置")
 
         model = model or self.DEFAULT_MODEL
 
-        # 构造剧本生成 prompt（使用专业编剧提示词）
         system_prompt = """你是一位经验丰富的影视编剧，精通剧本格式规范。请将以下故事内容，按照标准影视剧本格式转换为剧本。
 
 转换规则：
@@ -152,7 +118,6 @@ class TextModelService:
 
 请将这份大纲转换为标准影视剧本格式。"""
 
-        # 调用 DashScope API
         payload = {
             "model": model,
             "input": {
@@ -179,13 +144,12 @@ class TextModelService:
                 self.DASHSCOPE_TEXT_URL,
                 json=payload,
                 headers=headers,
-                timeout=120,  # 剧本生成可能需要更长时间
+                timeout=120,
             )
             resp.raise_for_status()
             data = resp.json()
             logger.debug(f"响应：{data}")
 
-            # 解析响应
             output = data.get("output", {})
             choices = output.get("choices", [])
             if not choices:
@@ -199,7 +163,6 @@ class TextModelService:
 
             logger.info("剧本生成成功")
 
-            # 解析剧本为场次结构
             from utils.script_parser import ScriptParser
 
             title, scenes = ScriptParser.parse(script_content)
@@ -220,29 +183,12 @@ class TextModelService:
         art_style: str = "",
         model: str | None = None,
     ) -> dict:
-        """
-        根据剧本生成分镜头脚本，并解析为结构化数据。
-
-        Args:
-            script_content: 剧本内容
-            art_style: 艺术风格（可选，如"韦斯·安德森风格"）
-            model: 使用的模型名称，默认使用 qwen-max
-
-        Returns:
-            包含 shots 和 characters 的字典：
-            {"shots": list[dict], "characters": list[dict]}
-
-        Raises:
-            RuntimeError: API 调用失败或解析失败
-        """
-        # 获取 DashScope 配置
         provider_config = self._config.get_provider("dashscope")
         if not provider_config or not provider_config.api_key:
             raise RuntimeError("未配置 DashScope API Key，请在设置中配置")
 
         model = model or self.DEFAULT_MODEL
 
-        # 构造分镜生成 prompt（使用专业导演提示词）
         system_prompt = """你是一位专业的电影导演兼分镜师。请严格遵循以下步骤与规范，将用户提供的剧本转化为详细的分镜头脚本。
 
 **第一步：确认艺术风格（可选，但推荐）**
@@ -314,7 +260,6 @@ class TextModelService:
 
 请将这份剧本转换为详细的分镜头脚本（Markdown表格格式）。"""
 
-        # 调用 DashScope API
         payload = {
             "model": model,
             "input": {
@@ -347,7 +292,6 @@ class TextModelService:
             data = resp.json()
             logger.debug(f"响应：{data}")
 
-            # 解析响应
             output = data.get("output", {})
             choices = output.get("choices", [])
             if not choices:
@@ -361,7 +305,6 @@ class TextModelService:
 
             logger.info("分镜生成成功")
 
-            # 解析分镜和角色为结构化数据
             from utils.shot_parser import ShotParser
 
             shots = ShotParser.parse(storyboard_content)
@@ -387,24 +330,6 @@ class TextModelService:
         character_info: str = "",
         model: str | None = None,
     ) -> str:
-        """根据分镜信息生成设计图的英文提示词。
-
-        Args:
-            visual_content: 画面内容描述
-            shot_size: 景别（中文）
-            camera_movement: 运镜方式
-            dialogue: 台词/对白
-            notes: 备注（色调/光影）
-            character_info: 角色形象描述（已替换代号后的文本）
-            model: 使用的模型名称，默认使用 qwen-max
-
-        Returns:
-            英文图片生成提示词
-
-        Raises:
-            RuntimeError: API 调用失败
-        """
-        # 使用模板构建消息
         template = self._prompt_manager.get_template("image_prompt_generation")
         messages = template.build_messages(
             visual_content=visual_content,
@@ -424,20 +349,6 @@ class TextModelService:
         description: str,
         model: str | None = None,
     ) -> str:
-        """根据角色形象描述生成角色设计图的英文提示词。
-
-        Args:
-            character_name: 角色名
-            description: 结构化形象描述（含固定特征和默认服装）
-            model: 使用的模型名称，默认使用 qwen-max
-
-        Returns:
-            英文图片生成提示词
-
-        Raises:
-            RuntimeError: API 调用失败
-        """
-        # 使用模板构建消息
         template = self._prompt_manager.get_template("character_image_prompt_generation")
         messages = template.build_messages(
             character_name=character_name,

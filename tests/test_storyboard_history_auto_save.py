@@ -1,5 +1,3 @@
-"""测试 Storyboard 历史版本自动保存功能。"""
-
 import os
 import tempfile
 import time
@@ -16,10 +14,8 @@ from storage.repositories.storyboard_repository import StoryboardRepository, Sto
 
 
 class TestStoryboardHistoryAutoSave(unittest.TestCase):
-    """测试 Storyboard 创建/更新时自动保存历史版本。"""
 
     def setUp(self):
-        """创建临时数据库。"""
         fd, self.temp_db_path = tempfile.mkstemp(suffix=".db")
         os.close(fd)
 
@@ -32,7 +28,6 @@ class TestStoryboardHistoryAutoSave(unittest.TestCase):
         create_all_tables()
 
     def tearDown(self):
-        """删除临时数据库。"""
         from storage.orm.base import close_session, engine
         close_session()
         if engine:
@@ -44,7 +39,6 @@ class TestStoryboardHistoryAutoSave(unittest.TestCase):
             pass
 
     def _create_project_and_scene(self):
-        """辅助方法：创建项目和场次。"""
         session = get_session()
         project_repo = ProjectRepository(session)
         screenplay_repo = ScreenplayRepository(session)
@@ -81,7 +75,6 @@ class TestStoryboardHistoryAutoSave(unittest.TestCase):
 
     def _make_storyboard(self, scene_id, scene_number=1, shot_number=1,
                          visual_content="画面内容"):
-        """辅助方法：构建 Storyboard DTO（id 由数据库自动生成）。"""
         now_ms = int(time.time() * 1000)
         return Storyboard(
             id=0,
@@ -101,7 +94,6 @@ class TestStoryboardHistoryAutoSave(unittest.TestCase):
         )
 
     def test_auto_save_history_on_insert(self):
-        """测试创建分镜时自动保存初始快照。"""
         project, scene = self._create_project_and_scene()
 
         session = get_session()
@@ -118,7 +110,6 @@ class TestStoryboardHistoryAutoSave(unittest.TestCase):
         self.assertEqual(history[0].project_id, project.id)
 
     def test_auto_save_history_on_update(self):
-        """测试更新分镜时自动保存历史。"""
         project, scene = self._create_project_and_scene()
 
         session = get_session()
@@ -128,7 +119,6 @@ class TestStoryboardHistoryAutoSave(unittest.TestCase):
         sb = storyboard_repo.create(self._make_storyboard(scene.id))
         session.commit()
 
-        # Update the storyboard
         entity = session.get(storyboard_repo.entity_class, sb.id)
         entity.visual_content = "修改后的画面"
         entity.updated_at = int(time.time() * 1000)
@@ -139,7 +129,6 @@ class TestStoryboardHistoryAutoSave(unittest.TestCase):
         self.assertEqual(history[0].visual_content, "修改后的画面")
 
     def test_no_history_on_updated_at_only(self):
-        """测试仅更新 updated_at 时不保存历史。"""
         project, scene = self._create_project_and_scene()
 
         session = get_session()
@@ -149,7 +138,6 @@ class TestStoryboardHistoryAutoSave(unittest.TestCase):
         sb = storyboard_repo.create(self._make_storyboard(scene.id))
         session.commit()
 
-        # Update only updated_at
         entity = session.get(storyboard_repo.entity_class, sb.id)
         entity.updated_at = int(time.time() * 1000)
         session.commit()
@@ -158,7 +146,6 @@ class TestStoryboardHistoryAutoSave(unittest.TestCase):
         self.assertEqual(len(history), 1, "仅 updated_at 变化不应新增历史")
 
     def test_batch_create_saves_history(self):
-        """测试批量创建分镜时每条都保存历史。"""
         project, scene = self._create_project_and_scene()
 
         session = get_session()
@@ -179,7 +166,6 @@ class TestStoryboardHistoryAutoSave(unittest.TestCase):
         self.assertEqual(len(history), 3, "批量创建 3 条分镜应各保存 1 条历史")
 
     def test_history_contains_all_fields(self):
-        """测试历史记录包含所有分镜字段。"""
         project, scene = self._create_project_and_scene()
 
         session = get_session()
@@ -216,7 +202,6 @@ class TestStoryboardHistoryAutoSave(unittest.TestCase):
         self.assertEqual(h.notes, "注意光影")
 
     def test_multiple_updates_accumulate(self):
-        """测试多次更新累积历史记录。"""
         project, scene = self._create_project_and_scene()
 
         session = get_session()

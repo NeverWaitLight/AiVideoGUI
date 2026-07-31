@@ -1,5 +1,3 @@
-"""视频元数据提取工具。"""
-
 from loguru import logger
 import os
 from pathlib import Path
@@ -7,26 +5,8 @@ from pathlib import Path
 import ffmpeg
 
 class VideoMetadataExtractor:
-    """使用 ffmpeg 提取视频元数据和生成缩略图。"""
-
     @staticmethod
     def extract_metadata(video_path: str) -> dict:
-        """
-        提取视频元数据。
-
-        Args:
-            video_path: 视频文件路径
-
-        Returns:
-            包含以下字段的字典：
-            - duration: 时长（秒）
-            - width: 分辨率宽度
-            - height: 分辨率高度
-            - file_size: 文件大小（字节）
-
-        Raises:
-            RuntimeError: ffmpeg 执行失败
-        """
         if not os.path.exists(video_path):
             raise FileNotFoundError(f"视频文件不存在: {video_path}")
 
@@ -60,31 +40,15 @@ class VideoMetadataExtractor:
 
     @staticmethod
     def generate_thumbnail(video_path: str, output_path: str, time_offset: float = 1.0) -> str:
-        """
-        生成视频缩略图。
-
-        Args:
-            video_path: 视频文件路径
-            output_path: 缩略图输出路径（应为 .jpg 或 .png）
-            time_offset: 截取时间点（秒），默认第 1 秒
-
-        Returns:
-            生成的缩略图路径
-
-        Raises:
-            RuntimeError: ffmpeg 执行失败
-        """
         if not os.path.exists(video_path):
             raise FileNotFoundError(f"视频文件不存在: {video_path}")
 
-        # 确保输出目录存在
         Path(output_path).parent.mkdir(parents=True, exist_ok=True)
 
         try:
-            # 提取指定时间点的帧作为缩略图
             (
                 ffmpeg.input(video_path, ss=time_offset)
-                .filter("scale", 320, -1)  # 宽度 320px，高度自适应
+                .filter("scale", 320, -1)
                 .output(output_path, vframes=1, format="image2", vcodec="mjpeg")
                 .overwrite_output()
                 .run(capture_stdout=True, capture_stderr=True, quiet=True)
@@ -99,27 +63,8 @@ class VideoMetadataExtractor:
 
     @staticmethod
     def extract_all(video_path: str, thumbnail_dir: str) -> dict:
-        """
-        提取视频元数据并生成缩略图（一站式方法）。
-
-        Args:
-            video_path: 视频文件路径
-            thumbnail_dir: 缩略图保存目录
-
-        Returns:
-            包含元数据和缩略图路径的字典：
-            - duration: 时长（秒）
-            - width: 分辨率宽度
-            - height: 分辨率高度
-            - file_size: 文件大小（字节）
-            - thumbnail_path: 缩略图路径
-
-        Raises:
-            RuntimeError: 提取失败
-        """
         metadata = VideoMetadataExtractor.extract_metadata(video_path)
 
-        # 生成缩略图文件名（基于视频文件名）
         video_name = Path(video_path).stem
         thumbnail_path = os.path.join(thumbnail_dir, f"{video_name}_thumb.jpg")
 

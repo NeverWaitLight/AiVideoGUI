@@ -1,5 +1,3 @@
-"""项目相关桥接：项目 CRUD 和导航。"""
-
 from __future__ import annotations
 
 import json
@@ -19,8 +17,6 @@ from utils import paths
 
 
 class ProjectBridge(QObject):
-    """项目管理桥接。"""
-
     project_created = Signal(int)
     project_updated = Signal(int)
     project_deleted = Signal(int)
@@ -73,7 +69,6 @@ class ProjectBridge(QObject):
     @Slot(int)
     def delete_project(self, project_id: int) -> None:
         self._project_service.delete_project(project_id)
-        # 清理项目目录
         project_dir = paths.projects_dir(paths.workspace_root())
         target = f"{project_dir}/{project_id}"
         if os.path.isdir(target):
@@ -89,7 +84,6 @@ class ProjectBridge(QObject):
 
     @Slot(int, result=str)
     def get_project_info(self, project_id: int) -> str:
-        """获取项目详情（JSON），包含名称、分辨率、宽高比、视频数、是否有分镜视频。"""
         project = self._project_service.get_project(project_id)
         if not project:
             return "{}"
@@ -105,7 +99,6 @@ class ProjectBridge(QObject):
         })
 
     def _has_storyboard_videos(self, project_id: int) -> bool:
-        """判断项目是否有分镜视频（文件名匹配 场次-镜头-序号.mp4 格式）。"""
         conv_repo = self._session_manager.get_repo(ConversationRepository)
         conversations = conv_repo.list_by_project(project_id)
         conv_ids = {c.id for c in conversations}

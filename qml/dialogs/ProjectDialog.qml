@@ -102,7 +102,6 @@ Dialog {
         anchors.margins: 24
         spacing: 20
 
-        // 项目名称
         ColumnLayout {
             spacing: 8
             Layout.fillWidth: true
@@ -119,7 +118,6 @@ Dialog {
             }
         }
 
-        // 封面图
         ColumnLayout {
             spacing: 8
             Layout.fillWidth: true
@@ -173,7 +171,6 @@ Dialog {
             }
         }
 
-        // 画面比例
         ColumnLayout {
             spacing: 8
             Layout.fillWidth: true
@@ -190,7 +187,6 @@ Dialog {
             }
         }
 
-        // 分辨率
         ColumnLayout {
             spacing: 8
             Layout.fillWidth: true
@@ -227,16 +223,13 @@ Dialog {
         var info = JSON.parse(bridge.projects.get_project_info(projectId))
         nameField.text = info.name || ""
         coverImagePath = info.coverImage || ""
-        // 设置宽高比
         var ratioIdx = ratioCombo.model.indexOf(info.aspectRatio)
         if (ratioIdx >= 0) ratioCombo.currentIndex = ratioIdx
-        // 设置分辨率
         var resIdx = resCombo.model.indexOf(info.resolution)
         if (resIdx >= 0) resCombo.currentIndex = resIdx
         open()
     }
 
-    // 封面图选择对话框
     QtDialogs.FileDialog {
         id: coverFileDialog
         title: "选择封面图片"

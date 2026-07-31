@@ -1,5 +1,3 @@
-"""角色管理桥接。"""
-
 from __future__ import annotations
 
 import json
@@ -13,8 +11,6 @@ from bridge.workers import CharacterDesignImageWorker
 
 
 class CharacterBridge(QObject):
-    """角色管理桥接。"""
-
     data_changed = Signal()
     design_image_ready = Signal(str, str)  # char_uuid, image_path
     design_image_progress = Signal(str)
@@ -27,7 +23,7 @@ class CharacterBridge(QObject):
         self._text_model_service = text_model_service
         self._image_service = image_service
         self._model = CharacterListModel(self)
-        self._workers: list = []
+        self._workers = []
 
     @Property(QObject, constant=True)
     def model(self):
@@ -60,7 +56,6 @@ class CharacterBridge(QObject):
 
     @Slot(str, result=str)
     def extract_traits(self, description: str) -> str:
-        """提取角色固定特征（同步调用）。"""
         return self._character_service.extract_fixed_traits(description)
 
     @Slot(str, int)
@@ -90,7 +85,6 @@ class CharacterBridge(QObject):
 
     @Slot(str, result=str)
     def get_history(self, char_uuid: str) -> str:
-        """获取角色编辑历史（JSON 列表）。"""
         try:
             history = self._character_service.list_history(char_uuid)
             result = []
@@ -109,7 +103,6 @@ class CharacterBridge(QObject):
 
     @Slot(str, str)
     def upload_design_image(self, char_uuid: str, image_path: str) -> None:
-        """上传角色设计图。"""
         try:
             self._character_service.update_character(
                 character_uuid=char_uuid, design_image=image_path,
@@ -122,7 +115,6 @@ class CharacterBridge(QObject):
 
     @Slot(list)
     def batch_delete(self, char_ids: list) -> None:
-        """批量删除角色。"""
         for cid in char_ids:
             try:
                 self._character_service.delete_character(cid)
@@ -132,6 +124,5 @@ class CharacterBridge(QObject):
 
     @Slot(result=str)
     def get_all_ids(self) -> str:
-        """返回所有角色 ID 列表（JSON）。"""
         ids = [c.id for c in self._model._data]
         return json.dumps(ids)

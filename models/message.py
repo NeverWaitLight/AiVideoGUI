@@ -10,7 +10,7 @@ from models.enums import MessageStatus
 class Message:
     id: str
     conversation_id: str
-    role: str  # "user" or "assistant"
+    role: str
     content: str
     created_at: datetime
     task_id: str = ""

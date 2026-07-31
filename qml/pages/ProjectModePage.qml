@@ -25,7 +25,6 @@ Item {
             }
         }
 
-        // 0: 项目网格
         ProjectGridPage {
             id: projectGridPage
             onProjectSelected: function(projectId) {
@@ -34,7 +33,6 @@ Item {
             }
         }
 
-        // 1: 项目详情（模块入口）
         ProjectDetailPage {
             projectId: projectMode.currentProjectId
             onBackClicked: projectMode.currentPage = "grid"
@@ -43,7 +41,6 @@ Item {
             }
         }
 
-        // 2: 故事大纲
         StoryOutlinePage {
             projectId: projectMode.currentProjectId
             onBackClicked: projectMode.currentPage = "detail"
@@ -53,7 +50,6 @@ Item {
             }
         }
 
-        // 3: 剧本编辑
         ScreenplayPage {
             projectId: projectMode.currentProjectId
             onBackClicked: projectMode.currentPage = "detail"
@@ -63,7 +59,6 @@ Item {
             }
         }
 
-        // 4: 分镜编辑
         StoryboardPage {
             projectId: projectMode.currentProjectId
             onBackClicked: projectMode.currentPage = "detail"
@@ -71,33 +66,27 @@ Item {
             Connections {
                 target: bridge.storyboard
                 function onStoryboard_generated(shotCount) {
-                    // 分镜生成成功的提示已经在页面内处理
                 }
                 function onStoryboard_generation_failed(error) {
-                    // 错误提示已经在页面内处理
                 }
             }
         }
 
-        // 5: 角色管理
         CharacterPage {
             projectId: projectMode.currentProjectId
             onBackClicked: projectMode.currentPage = "detail"
         }
 
-        // 6: 素材库
         MediaLibraryPage {
             projectId: projectMode.currentProjectId
             onBackClicked: projectMode.currentPage = "detail"
         }
 
-        // 7: 视频播放
         VideoPlayerPage {
             projectId: projectMode.currentProjectId
             onBackClicked: projectMode.currentPage = "detail"
         }
 
-        // 8: 项目对话
         ProjectChatPage {
             projectId: projectMode.currentProjectId
             onBackClicked: projectMode.currentPage = "detail"

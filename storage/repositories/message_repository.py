@@ -1,5 +1,3 @@
-"""消息 Repository。"""
-
 from typing import List, Optional
 
 from sqlalchemy import select
@@ -13,14 +11,12 @@ from utils.path_converter import to_absolute_path
 
 
 class MessageRepository(BaseRepository[MessageEntity, Message]):
-    """消息 Repository。"""
 
     def __init__(self, session: Session, workspace_root: str = ""):
         super().__init__(session, MessageEntity)
         self._workspace_root = workspace_root
 
     def _to_dto(self, entity: MessageEntity) -> Message:
-        """Entity → DTO 转换（自动将相对路径转换为绝对路径）。"""
         return Message(
             id=entity.id,
             conversation_id=entity.conversation_id,
@@ -35,7 +31,6 @@ class MessageRepository(BaseRepository[MessageEntity, Message]):
         )
 
     def _to_entity(self, dto: Message) -> MessageEntity:
-        """DTO → Entity 转换。"""
         return MessageEntity(
             id=dto.id,
             conversation_id=dto.conversation_id,
@@ -50,15 +45,6 @@ class MessageRepository(BaseRepository[MessageEntity, Message]):
         )
 
     def list_by_conversation(self, conversation_id: str) -> List[Message]:
-        """
-        查询对话的所有消息（按时间升序）。
-
-        Args:
-            conversation_id: 对话 ID
-
-        Returns:
-            消息列表
-        """
         stmt = (
             select(MessageEntity)
             .where(MessageEntity.conversation_id == conversation_id)
@@ -76,17 +62,6 @@ class MessageRepository(BaseRepository[MessageEntity, Message]):
         local_path: str = "",
         error_message: Optional[str] = None,
     ) -> None:
-        """
-        更新消息状态。
-
-        Args:
-            message_id: 消息 ID
-            status: 消息状态
-            task_id: 任务 ID（可选）
-            video_url: 视频 URL（可选）
-            local_path: 本地路径（可选）
-            error_message: 错误消息（可选）
-        """
         entity = self.session.get(MessageEntity, message_id)
         if not entity:
             return

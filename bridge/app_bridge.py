@@ -1,5 +1,3 @@
-"""Python ↔ QML 统一桥接入口。通过 setContextProperty 暴露给 QML。"""
-
 from __future__ import annotations
 
 import os
@@ -25,23 +23,14 @@ from bridge.video_player_bridge import VideoPlayerBridge
 
 
 class AppBridge(QObject):
-    """QML 前端的唯一 Python 入口。"""
-
-    # ── 轮询服务信号转发 ──
     task_status_changed = Signal(str, str)
     task_download_progress = Signal(str, int, int)
     task_finished = Signal(str, str, int)
     task_failed = Signal(str, str)
-
-    # ── 对话服务信号转发 ──
     title_ready = Signal(str, str)
-
-    # ── 批量生成信号 ──
     batch_progress = Signal(int, int, str)
     batch_done = Signal(int, int)
     batch_terminated = Signal(int, int)
-
-    # ── AI Worker 信号 ──
     script_generated = Signal(str, list)
     script_failed = Signal(str)
     storyboard_generated = Signal(dict)
@@ -51,20 +40,14 @@ class AppBridge(QObject):
     design_image_failed = Signal(str)
     batch_design_progress = Signal(int, str, str)
     batch_design_done = Signal(int, int)
-
-    # ── 导航 ──
-    navigate_requested = Signal(str, str)  # page_name, params_json
-
-    # ── 封面生成进度信号 ──
-    cover_generation_started = Signal(int)  # project_id
-    cover_generation_finished = Signal(int)  # project_id
-    cover_generation_failed = Signal(int, str)  # project_id, error_message
+    navigate_requested = Signal(str, str)
+    cover_generation_started = Signal(int)
+    cover_generation_finished = Signal(int)
+    cover_generation_failed = Signal(int, str)
 
     def __init__(self, container, parent: QObject | None = None):
         super().__init__(parent)
         self._container = container
-
-        # Service 实例
         self._video_service = container.video_service()
         self._chat_service = container.chat_service()
         self._project_service = container.project_service()
@@ -78,8 +61,6 @@ class AppBridge(QObject):
         self._session_manager = container.session_manager()
         self._config = container.config_manager()
         self._scheduler = container.background_scheduler()
-
-        # 子 Bridge
         self._conversations = ConversationBridge(
             self._video_service, self._chat_service, self._session_manager, self,
         )
@@ -107,31 +88,21 @@ class AppBridge(QObject):
         )
         self._settings_bridge = SettingsBridge(self._config, self)
         self._video_player = VideoPlayerBridge(self._session_manager, self)
-
-        # 获取视频轮询任务的信号发射器并连接信号
         self._video_polling_task = container.video_polling_task()
         signal_emitter = self._video_polling_task.signal_emitter
         signal_emitter.status_changed.connect(self.task_status_changed.emit)
         signal_emitter.download_progress.connect(self.task_download_progress.emit)
         signal_emitter.task_finished.connect(self.task_finished.emit)
         signal_emitter.task_failed.connect(self.task_failed.emit)
-
-        # 获取项目封面生成任务的信号发射器并连接信号
         self._project_cover_task = container.project_cover_task()
         cover_signal_emitter = self._project_cover_task.signal_emitter
         cover_signal_emitter.cover_generation_started.connect(self.cover_generation_started.emit)
         cover_signal_emitter.cover_generation_finished.connect(self.cover_generation_finished.emit)
         cover_signal_emitter.cover_generation_failed.connect(self.cover_generation_failed.emit)
-
-        # 转发对话服务信号
         self._chat_service.title_ready.connect(self.title_ready.emit)
-
-        # 转发分镜 Bridge 信号
         self._storyboard_bridge.design_image_ready.connect(self.design_image_ready.emit)
         self._storyboard_bridge.design_image_progress.connect(self.design_image_progress.emit)
         self._storyboard_bridge.design_image_failed.connect(self.design_image_failed.emit)
-
-    # ── 子 Bridge 属性 ──
 
     @Property(QObject, constant=True)
     def conversations(self):
@@ -169,8 +140,6 @@ class AppBridge(QObject):
     def videoPlayer(self):
         return self._video_player
 
-    # ── 全局操作 ──
-
     @Slot(str)
     def play_video(self, path: str) -> None:
         if os.path.isfile(path):
@@ -188,8 +157,6 @@ class AppBridge(QObject):
         target = select if select else path
         if os.path.exists(target):
             subprocess.run(["explorer", "/select,", target])
-
-    # ── 窗口控制 ──
 
     def _window(self):
         windows = QGuiApplication.topLevelWindows()
@@ -216,15 +183,8 @@ class AppBridge(QObject):
         if w:
             w.close()
 
-    # ── 后台任务控制 ──
-
     @Slot(result=bool)
     def trigger_project_cover_generation(self) -> bool:
-        """触发项目封面自动生成任务。
-
-        Returns:
-            True 表示触发成功，False 表示失败
-        """
         try:
             success = self._scheduler.trigger_task("project_cover_generation")
             if success:

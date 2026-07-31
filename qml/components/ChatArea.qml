@@ -3,7 +3,6 @@ import QtQuick.Controls 2.15
 import QtQuick.Controls.Material 2.15
 import QtQuick.Layouts 1.15
 
-// 完整的聊天区域 - 用于全屏模式
 Pane {
     id: chatArea
     padding: 0
@@ -12,19 +11,16 @@ Pane {
         anchors.fill: parent
         spacing: 0
 
-        // 消息列表或空白状态（占据除输入区外的所有空间）
         Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
 
-            // 空白状态（messageList.count === 0 时显示）
             EmptyChatState {
                 anchors.fill: parent
                 anchors.margins: 32
                 visible: messageList.count === 0
             }
 
-            // 消息列表（messageList.count > 0 时显示）
             ListView {
                 id: messageList
                 anchors.fill: parent
@@ -57,7 +53,6 @@ Pane {
             color: Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.12)
         }
 
-        // 底部固定输入区（卡片样式）
         Pane {
             Layout.fillWidth: true
             Layout.margins: 16
@@ -67,7 +62,6 @@ Pane {
                 anchors.fill: parent
                 spacing: 12
 
-                // 多行输入框
                 TextArea {
                     id: inputArea
                     Layout.fillWidth: true
@@ -92,7 +86,6 @@ Pane {
                     }
                 }
 
-                // 功能按钮行
                 RowLayout {
                     spacing: 12
 
@@ -127,7 +120,6 @@ Pane {
         }
     }
 
-    // 参数弹出面板
     Popup {
         id: paramPopup
         width: Math.min(parent.width * 0.8, 600)
@@ -140,7 +132,6 @@ Pane {
             anchors.fill: parent
             spacing: 0
 
-            // 标题栏
             Pane {
                 Layout.fillWidth: true
                 padding: 16
@@ -171,7 +162,6 @@ Pane {
                 color: Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.12)
             }
 
-            // 参数面板内容
             ParameterPanel {
                 id: paramPanel
                 Layout.fillWidth: true

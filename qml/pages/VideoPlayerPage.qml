@@ -43,7 +43,6 @@ Item {
         anchors.fill: parent
         spacing: 0
 
-        // Header
         Comp.PageHeader {
             title: "项目视频播放"
             subtitle: bridge.videoPlayer.playlistCount > 0
@@ -56,7 +55,6 @@ Item {
             }
         }
 
-        // 视频容器
         Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -66,7 +64,6 @@ Item {
                 anchors.fill: parent
             }
 
-            // 叠加层标签
             Rectangle {
                 anchors.top: parent.top
                 anchors.left: parent.left
@@ -85,7 +82,6 @@ Item {
                 }
             }
 
-            // 空状态
             Label {
                 anchors.centerIn: parent
                 text: "没有可播放的分镜视频"
@@ -94,7 +90,6 @@ Item {
             }
         }
 
-        // ── 时间轴（分段显示）──
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 32
@@ -110,7 +105,6 @@ Item {
             }
         }
 
-        // ── 控制栏 ──
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 60
@@ -120,7 +114,6 @@ Item {
                 anchors.margins: 12
                 spacing: 8
 
-                // 上一个
                 Button {
                     flat: true
                     icon.source: "qrc:/resources/icons/skip_previous.svg"
@@ -132,7 +125,6 @@ Item {
                     ToolTip.visible: hovered
                 }
 
-                // 播放/暂停
                 Button {
                     flat: true
                     icon.source: mediaPlayer.playbackState === MediaPlayer.PlayingState
@@ -149,7 +141,6 @@ Item {
                     }
                 }
 
-                // 下一个
                 Button {
                     flat: true
                     icon.source: "qrc:/resources/icons/skip_next.svg"
@@ -161,14 +152,12 @@ Item {
                     ToolTip.visible: hovered
                 }
 
-                // 当前时间
                 Label {
                     text: _formatTime(mediaPlayer.position)
                     font.pixelSize: Theme.fontSizeSmall
                     Layout.preferredWidth: 40
                 }
 
-                // 进度条
                 Slider {
                     id: positionSlider
                     Layout.fillWidth: true
@@ -179,14 +168,12 @@ Item {
                     onMoved: mediaPlayer.position = value
                 }
 
-                // 总时长
                 Label {
                     text: _formatTime(mediaPlayer.duration)
                     font.pixelSize: Theme.fontSizeSmall
                     Layout.preferredWidth: 40
                 }
 
-                // 音量
                 Button {
                     flat: true
                     icon.source: audioOutput.muted
@@ -207,14 +194,12 @@ Item {
         }
     }
 
-    // 播放器
     MediaPlayer {
         id: mediaPlayer
         videoOutput: videoOutput
         audioOutput: AudioOutput { id: audioOutput }
 
         onPlaybackStateChanged: function(state) {
-            // 自动播放下一个
         }
 
         onMediaStatusChanged: function(status) {
@@ -226,7 +211,6 @@ Item {
         }
     }
 
-    // 页面隐藏时暂停
     Component.onDestruction: {
         mediaPlayer.stop()
     }

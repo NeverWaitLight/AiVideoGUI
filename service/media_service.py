@@ -1,5 +1,3 @@
-"""素材库服务：管理媒体文件的导入、查询、删除和自动入库。"""
-
 from loguru import logger
 import os
 import shutil
@@ -22,7 +20,6 @@ _AUDIO_EXTENSIONS = {".mp3", ".wav", ".flac", ".aac", ".ogg", ".wma", ".m4a"}
 _ALL_MEDIA_EXTENSIONS = _VIDEO_EXTENSIONS | _IMAGE_EXTENSIONS | _AUDIO_EXTENSIONS
 
 def detect_media_type(filename: str) -> MediaType | None:
-    """根据文件扩展名判断媒体类型。"""
     ext = Path(filename).suffix.lower()
     if ext in _VIDEO_EXTENSIONS:
         return MediaType.VIDEO
@@ -33,11 +30,9 @@ def detect_media_type(filename: str) -> MediaType | None:
     return None
 
 def supported_extensions() -> set[str]:
-    """返回所有支持的媒体文件扩展名。"""
     return _ALL_MEDIA_EXTENSIONS
 
 class MediaService:
-    """素材库业务服务。"""
 
     def __init__(self, session_manager: SessionManager, workspace_root: str) -> None:
         self._sm = session_manager
@@ -52,7 +47,6 @@ class MediaService:
         conversation_id: str = "",
         storyboard_id: int = 0,
     ) -> None:
-        """视频任务完成后自动入库（防重复）。"""
         media_repo = self._sm.get_repo(MediaRepository)
 
         if media_repo.get_by_message_id(message_id):
@@ -63,12 +57,10 @@ class MediaService:
         media_type = detect_media_type(filename) or MediaType.VIDEO
         file_size = os.path.getsize(local_path) if os.path.exists(local_path) else 0
 
-        # 缩略图存放在文件所在目录的 .thumbnails 子目录
         file_dir = os.path.dirname(local_path)
         thumb_dir = paths.thumbnail_dir(file_dir)
         os.makedirs(thumb_dir, exist_ok=True)
 
-        # 提取视频元数据
         thumbnail_path = ""
         duration = 0.0
         width = 0
@@ -81,7 +73,6 @@ class MediaService:
                 duration = metadata.get("duration", 0.0)
                 width = metadata.get("width", 0)
                 height = metadata.get("height", 0)
-                # 如果提取到的 file_size 更准确，使用 ffmpeg 的结果
                 if metadata.get("file_size", 0) > 0:
                     file_size = metadata["file_size"]
                 logger.info(
@@ -94,7 +85,6 @@ class MediaService:
             except Exception as e:
                 logger.warning(f"视频元数据提取失败，将使用默认值：{e}")
 
-        # 转换为相对路径存储
         relative_local_path = to_relative_path(local_path, self._root)
         relative_thumbnail_path = to_relative_path(thumbnail_path, self._root) if thumbnail_path else ""
 
@@ -126,7 +116,6 @@ class MediaService:
             raise
 
     def import_files(self, file_paths: list[str], project_id: int = "") -> list[MediaFile]:
-        """将外部文件复制到目标目录并入库。project_id 非空时存入项目目录，否则存入 chat 目录。"""
         target_dir = paths.project_dir(self._root, project_id) if project_id else self._chat_dir
         os.makedirs(target_dir, exist_ok=True)
         imported: list[MediaFile] = []
@@ -148,11 +137,9 @@ class MediaService:
 
             file_size = os.path.getsize(dest_path)
 
-            # 缩略图存放在文件所在目录的 .thumbnails 子目录
             thumb_dir = paths.thumbnail_dir(target_dir)
             os.makedirs(thumb_dir, exist_ok=True)
 
-            # 提取视频元数据
             thumbnail_path = ""
             duration = 0.0
             width = 0
@@ -177,7 +164,6 @@ class MediaService:
                 except Exception as e:
                     logger.warning(f"导入视频元数据提取失败，将使用默认值：{e}")
 
-            # 转换为相对路径存储
             relative_dest_path = to_relative_path(dest_path, self._root)
             relative_thumbnail_path = to_relative_path(thumbnail_path, self._root) if thumbnail_path else ""
 
@@ -205,7 +191,6 @@ class MediaService:
             except Exception as e:
                 self._sm.rollback_write()
                 logger.error(f"导入素材入库失败: {e}")
-                # 文件已复制但数据库失败，尝试删除已复制的文件
                 self._try_remove_file(dest_path)
                 if thumbnail_path:
                     self._try_remove_file(thumbnail_path)
@@ -219,15 +204,12 @@ class MediaService:
         keyword: str | None = None,
         project_id: int | None = None,
     ) -> list[MediaFile]:
-        """查询素材列表，可选按项目过滤。"""
         media_repo = self._sm.get_repo(MediaRepository)
 
-        # 转换字符串为 MediaType 枚举（处理 UI 层传入的字符串）
         media_type_enum = None
         if media_type:
             media_type_enum = MediaType(media_type)
 
-        # 如果需要按项目过滤，获取项目关联的对话 ID
         conversation_ids = None
         if project_id:
             conv_repo = self._sm.get_repo(ConversationRepository)
@@ -241,15 +223,12 @@ class MediaService:
         )
 
     def delete_file(self, media_id: str) -> bool:
-        """删除单个素材（文件 + 缩略图 + 数据库记录）。"""
         media_repo = self._sm.get_repo(MediaRepository)
 
-        # 先查询记录
         media = media_repo.get_by_id(media_id)
         if not media:
             return False
 
-        # 删除数据库记录
         self._sm.begin_write()
         try:
             media_repo.delete(media_id)
@@ -259,10 +238,7 @@ class MediaService:
             logger.error(f"删除素材记录失败: {e}")
             raise
 
-        # 数据库删除成功后，再删除文件系统中的文件
-        # 注意：Repository 返回的路径已经是绝对路径，可以直接使用
         self._try_remove_file(media.local_path)
-        # 同时删除缩略图
         if media.thumbnail_path:
             self._try_remove_file(media.thumbnail_path)
 
@@ -270,7 +246,6 @@ class MediaService:
         return True
 
     def delete_files(self, media_ids: list[str]) -> int:
-        """批量删除素材，返回成功删除数量。"""
         count = 0
         for mid in media_ids:
             if self.delete_file(mid):
@@ -278,12 +253,10 @@ class MediaService:
         return count
 
     def list_by_storyboard(self, storyboard_id: int) -> list[MediaFile]:
-        """查询指定分镜关联的所有素材文件。"""
         media_repo = self._sm.get_repo(MediaRepository)
         return media_repo.list_by_storyboard(storyboard_id)
 
     def set_featured(self, file_id: str, storyboard_id: int) -> None:
-        """将指定文件设为分镜封面。"""
         media_repo = self._sm.get_repo(MediaRepository)
 
         self._sm.begin_write()
@@ -296,7 +269,6 @@ class MediaService:
             raise
 
     def _resolve_dest_path(self, filename: str, target_dir: str) -> str:
-        """避免目标文件重名：同名时追加序号。"""
         dest = os.path.join(target_dir, filename)
         if not os.path.exists(dest):
             return dest
@@ -310,7 +282,6 @@ class MediaService:
 
     @staticmethod
     def _try_remove_file(path: str) -> None:
-        """尝试删除磁盘文件，失败时仅记录日志。"""
         if not path or not os.path.exists(path):
             return
         try:

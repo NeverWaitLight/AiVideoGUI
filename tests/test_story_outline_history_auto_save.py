@@ -1,5 +1,3 @@
-"""测试 StoryOutline 历史版本自动保存功能。"""
-
 import os
 import tempfile
 import time
@@ -14,10 +12,8 @@ from storage.repositories.story_outline_repository import StoryOutlineRepository
 
 
 class TestStoryOutlineHistoryAutoSave(unittest.TestCase):
-    """测试 StoryOutline 创建/更新时自动保存历史版本。"""
 
     def setUp(self):
-        """创建临时数据库。"""
         fd, self.temp_db_path = tempfile.mkstemp(suffix=".db")
         os.close(fd)
 
@@ -30,7 +26,6 @@ class TestStoryOutlineHistoryAutoSave(unittest.TestCase):
         create_all_tables()
 
     def tearDown(self):
-        """删除临时数据库。"""
         from storage.orm.base import engine
         close_session()
         if engine:
@@ -42,7 +37,6 @@ class TestStoryOutlineHistoryAutoSave(unittest.TestCase):
             pass
 
     def _create_project_and_outline(self, content="初始大纲内容"):
-        """辅助方法：创建项目和大纲。"""
         session = get_session()
         project_repo = ProjectRepository(session)
         outline_repo = StoryOutlineRepository(session)
@@ -73,7 +67,6 @@ class TestStoryOutlineHistoryAutoSave(unittest.TestCase):
         return project, story_outline
 
     def test_auto_save_history_on_insert(self):
-        """测试创建大纲时自动保存初始快照。"""
         project, story_outline = self._create_project_and_outline("初始大纲内容")
 
         session = get_session()
@@ -86,7 +79,6 @@ class TestStoryOutlineHistoryAutoSave(unittest.TestCase):
         self.assertEqual(history_list[0].project_id, project.id)
 
     def test_auto_save_history_on_update(self):
-        """测试更新 StoryOutline 时自动保存历史版本。"""
         project, story_outline = self._create_project_and_outline()
 
         session = get_session()
@@ -111,7 +103,6 @@ class TestStoryOutlineHistoryAutoSave(unittest.TestCase):
         self.assertEqual(history_list[1].content, "第一次修改的内容")
 
     def test_history_contains_project_id(self):
-        """测试历史记录包含 project_id 字段。"""
         project, story_outline = self._create_project_and_outline("初始内容")
 
         session = get_session()

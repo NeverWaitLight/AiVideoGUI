@@ -7,10 +7,8 @@ Item {
     id: rightBar
     width: Theme.rightBarWidth
 
-    // 对外暴露 AI 助手面板的可见性状态
     property alias aiChatVisible: root.aiChatVisible
 
-    // 内部根 Item，用于管理状态
     QtObject {
         id: root
         property bool aiChatVisible: true
@@ -24,7 +22,6 @@ Item {
         anchors.rightMargin: 6
         spacing: 10
 
-        // AI 助手按钮
         RightBarButton {
             Layout.alignment: Qt.AlignHCenter
             Layout.preferredWidth: 38
@@ -42,7 +39,6 @@ Item {
 
         Item { Layout.fillHeight: true }
 
-        // 占位按钮
         RightBarButton {
             Layout.alignment: Qt.AlignHCenter
             Layout.preferredWidth: 38
@@ -55,7 +51,6 @@ Item {
         }
     }
 
-    // 自定义按钮组件，与 LeftBar 的 TabButton 保持一致
     component RightBarButton: Button {
         property bool isActive: false
         flat: true
@@ -76,6 +71,4 @@ Item {
                     : "transparent"
         }
     }
-
-    // 左侧分割线已移除
 }

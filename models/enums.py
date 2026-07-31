@@ -24,27 +24,24 @@ class MediaType(enum.Enum):
 
 
 class SceneLocation(enum.Enum):
-    """场景内外景类型"""
-    INTERIOR = "interior"  # 内景
-    EXTERIOR = "exterior"  # 外景
-    INTERIOR_EXTERIOR = "interior_exterior"  # 内景/外景
+    INTERIOR = "interior"
+    EXTERIOR = "exterior"
+    INTERIOR_EXTERIOR = "interior_exterior"
 
 
 class SceneTime(enum.Enum):
-    """场景时间类型"""
-    DAY = "day"  # 日
-    NIGHT = "night"  # 夜
-    DAWN = "dawn"  # 晨/黎明
-    DUSK = "dusk"  # 黄昏/傍晚
-    EVENING = "evening"  # 傍晚
-    CUSTOM = "custom"  # 自定义
+    DAY = "day"
+    NIGHT = "night"
+    DAWN = "dawn"
+    DUSK = "dusk"
+    EVENING = "evening"
+    CUSTOM = "custom"
 
 
 class ShotSize(enum.Enum):
-    """景别类型"""
-    EXTREME_CLOSE_UP = "extreme_close_up"  # 特写
-    CLOSE_UP = "close_up"  # 近景
-    MEDIUM_SHOT = "medium_shot"  # 中景
-    FULL_SHOT = "full_shot"  # 全景
-    LONG_SHOT = "long_shot"  # 远景
-    EXTREME_LONG_SHOT = "extreme_long_shot"  # 大远景
+    EXTREME_CLOSE_UP = "extreme_close_up"
+    CLOSE_UP = "close_up"
+    MEDIUM_SHOT = "medium_shot"
+    FULL_SHOT = "full_shot"
+    LONG_SHOT = "long_shot"
+    EXTREME_LONG_SHOT = "extreme_long_shot"

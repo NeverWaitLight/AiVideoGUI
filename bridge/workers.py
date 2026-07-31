@@ -1,5 +1,3 @@
-"""从 main_window.py 迁移的 QThread Worker 类，改用 PySide6 Signal。"""
-
 from __future__ import annotations
 
 import os
@@ -16,8 +14,6 @@ from utils import paths
 
 
 class ChatWorker(QThread):
-    """纯对话模型 Worker（不生成视频）。"""
-
     reply_ready = Signal(str, str)  # conv_id, reply
     reply_failed = Signal(str, str)  # conv_id, error
 
@@ -40,8 +36,6 @@ class ChatWorker(QThread):
 
 
 class ScriptGenerateWorker(QThread):
-    """AI 剧本生成 Worker。"""
-
     finished = Signal(str, list)
     failed = Signal(str)
 
@@ -60,8 +54,6 @@ class ScriptGenerateWorker(QThread):
 
 
 class StoryboardGenerateWorker(QThread):
-    """AI 分镜生成 Worker。"""
-
     finished = Signal(dict)
     failed = Signal(str)
 
@@ -80,8 +72,6 @@ class StoryboardGenerateWorker(QThread):
 
 
 class DesignImageWorker(QThread):
-    """单个分镜设计图生成 Worker。"""
-
     finished = Signal(str)
     failed = Signal(str)
     progress_update = Signal(str)
@@ -132,8 +122,6 @@ class DesignImageWorker(QThread):
 
 
 class BatchDesignImageWorker(QThread):
-    """批量分镜设计图生成 Worker。"""
-
     progress_update = Signal(int, str, str)
     finished = Signal(int, int)
     failed = Signal(str)
@@ -218,8 +206,6 @@ class BatchDesignImageWorker(QThread):
 
 
 class CharacterDesignImageWorker(QThread):
-    """角色设计图生成 Worker。"""
-
     finished = Signal(str)
     failed = Signal(str)
     progress_update = Signal(str)
@@ -260,8 +246,6 @@ class CharacterDesignImageWorker(QThread):
 
 
 class OptimizeWorker(QThread):
-    """AI 大纲优化 Worker（从 story_outline_editor.py 迁移）。"""
-
     finished = Signal(str)
     failed = Signal(str)
 
@@ -280,8 +264,6 @@ class OptimizeWorker(QThread):
 
 
 class BatchGenerationController(QObject):
-    """批量并行生成控制器：一次性提交所有任务到供应商，不等待前一个完成。"""
-
     progress = Signal(int, int, str)
     all_done = Signal(int, int)
     terminated = Signal(int, int)

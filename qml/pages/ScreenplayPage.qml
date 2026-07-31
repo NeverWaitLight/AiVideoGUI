@@ -23,7 +23,6 @@ Item {
         }
     }
 
-    // Bridge connections
     Connections {
         target: bridge.screenplay
 
@@ -57,7 +56,6 @@ Item {
         anchors.fill: parent
         currentIndex: _showDetail ? 1 : 0
 
-        // ═══════════ 0: 场次列表视图 ═══════════
         Item {
             ColumnLayout {
                 anchors.fill: parent
@@ -79,27 +77,6 @@ Item {
                         rightPadding: 12
                         onClicked: page.generateStoryboardClicked(page.projectId)
                     }
-
-                    // 历史版本按钮已隐藏
-                    // Button {
-                    //     Layout.preferredHeight: 34
-                    //     text: "保存历史版本"
-                    //     topPadding: 6
-                    //     bottomPadding: 6
-                    //     leftPadding: 12
-                    //     rightPadding: 12
-                    //     onClicked: bridge.screenplay.save_history()
-                    // }
-
-                    // Button {
-                    //     Layout.preferredHeight: 34
-                    //     text: _showHistory ? "隐藏历史" : "历史版本"
-                    //     topPadding: 6
-                    //     bottomPadding: 6
-                    //     leftPadding: 12
-                    //     rightPadding: 12
-                    //     onClicked: _showHistory = !_showHistory
-                    // }
                 }
 
                 SplitView {
@@ -111,7 +88,6 @@ Item {
                         implicitWidth: 1
                     }
 
-                    // 左侧：场次列表
                     Item {
                         SplitView.fillWidth: true
                         SplitView.minimumWidth: 400
@@ -162,81 +138,10 @@ Item {
                             }
                         }
                     }
-
-                    // 右侧：历史版本面板已隐藏
-                    // Rectangle {
-                    //     visible: _showHistory
-                    //     SplitView.preferredWidth: _showHistory ? 300 : 0
-                    //     SplitView.minimumWidth: 200
-
-                    //     ColumnLayout {
-                    //         anchors.fill: parent
-                    //         anchors.margins: 16
-                    //         spacing: 12
-
-                    //         Label {
-                    //             text: "历史版本"
-                    //             font.pixelSize: Theme.fontSizeMedium
-                    //             font.bold: true
-                    //         }
-
-                    //         ListView {
-                    //             Layout.fillWidth: true
-                    //             Layout.fillHeight: true
-                    //             clip: true
-                    //             spacing: 6
-                    //             model: bridge.screenplay.historyModel
-
-                    //             delegate: Pane {
-                    //                 width: ListView.view.width - 4
-                    //                 padding: 8
-
-
-                    //                 RowLayout {
-                    //                     anchors.fill: parent
-                    //                     spacing: 8
-
-                    //                     ColumnLayout {
-                    //                         Layout.fillWidth: true
-                    //                         spacing: 2
-                    //                         Label {
-                    //                             text: model.displayTime || ""
-                    //                             font.pixelSize: Theme.fontSizeSmall
-                    //                         }
-                    //                         Label {
-                    //                             text: (model.sceneCount || 0) + " 场"
-                    //                             font.pixelSize: Theme.fontSizeSmall
-                    //                         }
-                    //                     }
-
-                    //                     Button {
-                    //                         text: "恢复"
-                    //                         flat: true
-                    //                         onClicked: {
-                    //                             var ts = model.createdAt
-                    //                             confirmDialog.confirm(
-                    //                                 "确定要恢复到此历史版本吗？当前所有场次将被覆盖。",
-                    //                                 function() { bridge.screenplay.restore_history(ts) }
-                    //                             )
-                    //                         }
-                    //                     }
-                    //                 }
-                    //             }
-
-                    //             Label {
-                    //                 visible: !bridge.screenplay.historyModel || bridge.screenplay.historyModel.count === 0
-                    //                 anchors.centerIn: parent
-                    //                 text: "暂无历史版本"
-                    //                 font.pixelSize: Theme.fontSizeSmall
-                    //             }
-                    //         }
-                    //     }
-                    // }
                 }
             }
         }
 
-        // ═══════════ 1: 场次详情编辑视图 ═══════════
         Item {
             ColumnLayout {
                 anchors.fill: parent
@@ -291,13 +196,11 @@ Item {
 
                         Item { width: 1; height: 8 }
 
-                        // 场景信息卡片
                         Pane {
                             Layout.fillWidth: true
                             Layout.leftMargin: 24
                             Layout.rightMargin: 24
                             padding: 16
-
 
                             GridLayout {
                                 anchors.fill: parent
@@ -374,7 +277,6 @@ Item {
                             Layout.rightMargin: 24
                             clip: true
 
-
                             TextArea {
                                 id: contentEdit
                                 text: bridge.screenplay.curContent
@@ -391,8 +293,6 @@ Item {
         }
     }
 
-    // ── 对话框 ──
-
     Dialogs.AlertDialog {
         id: alertDialog
     }
@@ -400,8 +300,6 @@ Item {
     Dialogs.ConfirmDialog {
         id: confirmDialog
     }
-
-    // ── 内部函数 ──
 
     function _saveCurrentScene() {
         bridge.screenplay.save_scene(
@@ -413,8 +311,6 @@ Item {
             contentEdit.text
         )
     }
-
-    // ── 场次卡片组件 ──
 
     component SceneCardDelegate: Pane {
         id: cardRoot
@@ -430,12 +326,10 @@ Item {
         padding: 12
         height: 110
 
-
         ColumnLayout {
             anchors.fill: parent
             spacing: 6
 
-            // 标题行
             RowLayout {
                 spacing: 10
                 Label {
@@ -477,7 +371,6 @@ Item {
                 }
             }
 
-            // 地点
             Label {
                 text: location
                 font.pixelSize: Theme.fontSizeSmall
@@ -485,7 +378,6 @@ Item {
                 Layout.fillWidth: true
             }
 
-            // 内容预览
             Label {
                 text: content.length > 60 ? content.substring(0, 60) + "..." : content
                 font.pixelSize: Theme.fontSizeSmall

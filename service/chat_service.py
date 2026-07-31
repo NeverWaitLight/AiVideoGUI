@@ -1,5 +1,3 @@
-"""对话模型服务：调用 LLM 生成对话标题等辅助功能。"""
-
 from loguru import logger
 
 from PySide6.QtCore import QObject, QThread, Signal
@@ -18,7 +16,6 @@ _TITLE_SYSTEM_PROMPT = (
 )
 
 class _TitleWorker(QThread):
-    """后台线程调用 LLM 生成标题。"""
 
     title_ready = Signal(str, str)
     title_failed = Signal(str, str)
@@ -48,7 +45,6 @@ class _TitleWorker(QThread):
             self.title_failed.emit(self._conv_id, str(e))
 
 class ChatService(QObject):
-    """对话模型服务：提供标题生成等 LLM 辅助功能。"""
 
     title_ready = Signal(str, str)
     title_failed = Signal(str, str)
@@ -73,17 +69,15 @@ class ChatService(QObject):
         return self._provider
 
     def generate_title(self, conv_id: str, user_text: str) -> None:
-        """异步生成对话标题。"""
         try:
             provider = self._get_provider()
         except KeyError as e:
             logger.warning(f"无法生成标题：{e}")
             return
 
-        # 清理旧线程
         if self._worker and self._worker.isRunning():
             self._worker.quit()
-            self._worker.wait(1000)  # 最多等待1秒
+            self._worker.wait(1000)
 
         self._worker = _TitleWorker(provider, conv_id, user_text)
         self._worker.title_ready.connect(self.title_ready)
@@ -92,14 +86,6 @@ class ChatService(QObject):
         self._worker.start()
 
     def chat(self, messages: list[dict]) -> str:
-        """同步调用对话模型（在 Worker 线程中调用）。
-
-        Args:
-            messages: 消息列表，格式 [{"role": "user", "content": "..."}]
-
-        Returns:
-            模型回复文本
-        """
         provider = self._get_provider()
         return provider.chat(messages)
 
@@ -109,14 +95,12 @@ class ChatService(QObject):
             self._worker = None
 
     def cleanup(self) -> None:
-        """应用退出时清理资源。"""
         if self._worker and self._worker.isRunning():
             self._worker.quit()
-            self._worker.wait(2000)  # 最多等待2秒
+            self._worker.wait(2000)
         if self._worker:
             self._worker.deleteLater()
             self._worker = None
 
     def reset_provider(self) -> None:
-        """配置变更后清除缓存的 provider 实例。"""
         self._provider = None

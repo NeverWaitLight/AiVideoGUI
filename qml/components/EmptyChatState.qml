@@ -3,7 +3,6 @@ import QtQuick.Controls 2.15
 import QtQuick.Controls.Material 2.15
 import QtQuick.Layouts 1.15
 
-// 空白状态 - 无消息时显示的居中提示
 Item {
     id: root
 
@@ -12,7 +11,6 @@ Item {
         spacing: 16
         width: Math.min(parent.width * 0.8, 400)
 
-        // AI 助手图标
         Rectangle {
             Layout.alignment: Qt.AlignHCenter
             width: 64
@@ -27,7 +25,6 @@ Item {
             }
         }
 
-        // 标题
         Label {
             Layout.alignment: Qt.AlignHCenter
             text: "AI 视频生成助手"
@@ -36,7 +33,6 @@ Item {
             color: Material.foreground
         }
 
-        // 提示文字
         Label {
             Layout.alignment: Qt.AlignHCenter
             Layout.fillWidth: true
@@ -47,7 +43,6 @@ Item {
             horizontalAlignment: Text.AlignHCenter
         }
 
-        // 功能提示（可选）
         ColumnLayout {
             Layout.alignment: Qt.AlignHCenter
             Layout.topMargin: 8

@@ -1,5 +1,3 @@
-"""剧本编辑桥接：场次 CRUD、历史版本、AI 生成剧本。"""
-
 from __future__ import annotations
 
 from loguru import logger
@@ -13,8 +11,6 @@ from models.enums import SceneLocation, SceneTime
 
 
 class ScreenplayBridge(QObject):
-    """剧本编辑桥接。"""
-
     scenes_loaded = Signal()
     scene_saved = Signal()
     scene_deleted = Signal()
@@ -23,8 +19,6 @@ class ScreenplayBridge(QObject):
     script_generated = Signal(str, int)  # title, scene_count
     script_failed = Signal(str)
     error = Signal(str)
-
-    # 当前编辑的场次信号
     current_scene_changed = Signal()
 
     _LOCATION_TYPE_MAP = {
@@ -52,8 +46,6 @@ class ScreenplayBridge(QObject):
         self._history_model = ScreenplayHistoryListModel(self)
         self._project_id: int = -1
         self._worker: ScriptGenerateWorker | None = None
-
-        # 当前编辑的场次
         self._cur_scene_id: int = -1
         self._cur_scene_number: int = 0
         self._cur_location_type_index: int = 0
@@ -69,8 +61,6 @@ class ScreenplayBridge(QObject):
     @Property(QObject, constant=True)
     def historyModel(self):
         return self._history_model
-
-    # ── 当前场次属性 ──
 
     @Property(int, notify=current_scene_changed)
     def curSceneId(self):
@@ -100,11 +90,8 @@ class ScreenplayBridge(QObject):
     def curContent(self):
         return self._cur_content
 
-    # ── 场次列表操作 ──
-
     @Slot(int)
     def load_for_project(self, project_id: int) -> None:
-        """加载项目场次列表和历史。"""
         self._project_id = project_id
         self._load_scenes()
         self._load_history()
@@ -134,11 +121,8 @@ class ScreenplayBridge(QObject):
             logger.exception("加载历史版本失败")
             self.error.emit(str(e))
 
-    # ── 场次详情操作 ──
-
     @Slot(int)
     def load_scene(self, scene_id: int) -> None:
-        """加载单个场次到编辑属性。"""
         try:
             scene = self._service.get_scene(scene_id)
             if not scene:
@@ -167,7 +151,6 @@ class ScreenplayBridge(QObject):
         time_detail: str,
         content: str,
     ) -> None:
-        """保存场次编辑。"""
         if not location.strip():
             self.error.emit("请输入地点")
             return
@@ -196,7 +179,6 @@ class ScreenplayBridge(QObject):
 
     @Slot(int)
     def delete_scene(self, scene_id: int) -> None:
-        """删除场次。"""
         try:
             self._service.delete_scene(scene_id)
             self.scene_deleted.emit()
@@ -205,11 +187,8 @@ class ScreenplayBridge(QObject):
             logger.exception("删除场次失败")
             self.error.emit(str(e))
 
-    # ── 历史版本 ──
-
     @Slot()
     def save_history(self) -> None:
-        """保存当前剧本为历史版本快照。"""
         if self._project_id < 0:
             return
         try:
@@ -222,7 +201,6 @@ class ScreenplayBridge(QObject):
 
     @Slot(int)
     def restore_history(self, created_at: int) -> None:
-        """从历史版本恢复剧本。"""
         if self._project_id < 0:
             return
         try:
@@ -234,11 +212,8 @@ class ScreenplayBridge(QObject):
             logger.exception("恢复历史版本失败")
             self.error.emit(str(e))
 
-    # ── AI 生成剧本 ──
-
     @Slot(str)
     def generate_script(self, outline_content: str) -> None:
-        """从大纲 AI 生成剧本（后台线程）。"""
         if not outline_content.strip():
             self.error.emit("大纲内容为空，无法生成剧本")
             return

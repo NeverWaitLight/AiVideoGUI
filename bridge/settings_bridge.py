@@ -1,5 +1,3 @@
-"""设置桥接：Provider 配置和应用设置读写。"""
-
 from __future__ import annotations
 
 from loguru import logger
@@ -12,8 +10,6 @@ from utils import paths
 
 
 class SettingsBridge(QObject):
-    """设置桥接。"""
-
     settings_saved = Signal()
 
     def __init__(self, config_manager, parent=None):
@@ -94,12 +90,10 @@ class SettingsBridge(QObject):
 
     @Slot(result=str)
     def get_color_scheme(self) -> str:
-        """获取当前颜色方案：Light, Dark, System"""
         return self._config.settings.color_scheme or "System"
 
     @Slot(str)
     def set_color_scheme(self, scheme: str) -> None:
-        """设置颜色方案"""
         if scheme in ("Light", "Dark", "System"):
             self._config.update_settings(color_scheme=scheme)
             self.settings_saved.emit()

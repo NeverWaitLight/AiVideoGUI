@@ -69,7 +69,6 @@ Item {
         }
     }
 
-    // 底部分割线
     Rectangle {
         anchors.bottom: parent.bottom
         width: parent.width

@@ -26,7 +26,6 @@ Item {
         anchors.fill: parent
         spacing: 0
 
-        // 标题栏
         Pane {
             Layout.fillWidth: true
             Layout.preferredHeight: 44
@@ -93,7 +92,6 @@ Item {
             }
         }
 
-        // 固定 3x2 网格布局（6 个模块）
         Grid {
             Layout.fillWidth: true
             Layout.fillHeight: true

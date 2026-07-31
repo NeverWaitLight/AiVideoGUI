@@ -19,7 +19,6 @@ Item {
             anchors.fill: parent
             spacing: 0
 
-            // ── 拖拽区域（标题栏主体） ──
             Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -69,8 +68,6 @@ Item {
                     }
                 }
             }
-
-            // ── 窗口控制按钮 ──
 
             WindowButton {
                 id: minBtn
@@ -166,9 +163,6 @@ Item {
         }
     }
 
-    // 底部分割线已移除
-
-    // ── 按钮组件 ──
     component WindowButton: Button {
         property bool isClose: false
 

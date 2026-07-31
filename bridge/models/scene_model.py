@@ -1,5 +1,3 @@
-"""场次列表模型，供 QML ListView 使用。"""
-
 from __future__ import annotations
 
 from PySide6.QtCore import QAbstractListModel, QModelIndex, Property, Qt, Signal
@@ -42,7 +40,6 @@ class SceneListModel(QAbstractListModel):
 
     @Property(int, notify=count_changed)
     def count(self):
-        """返回模型中的数据条数，供 QML 使用。"""
         return len(self._data)
 
     def data(self, index, role=Qt.DisplayRole):

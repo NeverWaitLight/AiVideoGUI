@@ -1,5 +1,3 @@
-"""JSON 配置文件管理。"""
-
 import json
 from loguru import logger
 import os
@@ -8,8 +6,6 @@ from models.app_settings import AppSettings
 from models.provider_config import ProviderConfig
 
 class ConfigManager:
-    """读写应用配置和 Provider 凭证。"""
-
     def __init__(self, config_path: str) -> None:
         self._path = config_path
         self._providers: dict[str, ProviderConfig] = {}
@@ -77,8 +73,6 @@ class ConfigManager:
             json.dump(data, f, ensure_ascii=False, indent=2)
         logger.info(f"配置已保存：{self._path}")
 
-    # ---------- providers ----------
-
     def get_provider(self, name: str) -> ProviderConfig | None:
         return self._providers.get(name)
 
@@ -94,8 +88,6 @@ class ConfigManager:
         if self._settings.default_provider == name:
             self._settings.default_provider = ""
         self.save()
-
-    # ---------- settings ----------
 
     @property
     def settings(self) -> AppSettings:

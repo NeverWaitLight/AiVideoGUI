@@ -6,7 +6,6 @@ from datetime import datetime
 
 @dataclass
 class ActiveTask:
-    """活跃任务记录"""
     id: int
     provider_task_id: str
     message_id: str

@@ -1,5 +1,3 @@
-"""通用历史版本列表模型，供 QML ListView 使用。"""
-
 from __future__ import annotations
 
 from typing import Any
@@ -10,7 +8,6 @@ from utils.time_format import format_timestamp_short
 
 
 def _format_history_time(ts) -> str:
-    """格式化历史时间，兼容 int 时间戳和 datetime 对象。"""
     from datetime import datetime
     if isinstance(ts, int):
         return format_timestamp_short(ts)
@@ -49,7 +46,6 @@ class HistoryListModel(QAbstractListModel):
         if role == self.CreatedAtRole:
             return _format_history_time(item.created_at)
         if role == self.PreviewTextRole:
-            # 尝试从常见字段获取预览文本
             for attr in ("content", "visual_content", "description", "name"):
                 val = getattr(item, attr, "")
                 if val:

@@ -1,5 +1,3 @@
-"""素材库桥接：文件列表、导入、删除。"""
-
 from __future__ import annotations
 
 from loguru import logger
@@ -10,8 +8,6 @@ from bridge.models.media_file_model import MediaFileListModel
 
 
 class MediaBridge(QObject):
-    """素材库桥接。"""
-
     files_changed = Signal()
 
     def __init__(self, media_service, parent=None):
@@ -47,7 +43,6 @@ class MediaBridge(QObject):
 
     @Slot(str, str, int)
     def load_files_filtered(self, media_type: str, keyword: str, project_id: int) -> None:
-        """组合筛选：类型 + 关键词 + 项目。"""
         files = self._media_service.list_files(
             media_type=media_type or None,
             keyword=keyword or None,
@@ -69,5 +64,4 @@ class MediaBridge(QObject):
 
     @Slot(str, int)
     def set_featured(self, file_id: str, storyboard_id: int) -> None:
-        """将指定文件设为分镜封面。"""
         self._media_service.set_featured(file_id, storyboard_id)

@@ -21,14 +21,12 @@ from models.character import Character, CharacterHistory
 from models.active_task import ActiveTask
 
 __all__ = [
-    # enums
     "TaskStatus",
     "MessageStatus",
     "MediaType",
     "SceneLocation",
     "SceneTime",
     "ShotSize",
-    # dataclasses
     "ActiveTask",
     "AppSettings",
     "Character",

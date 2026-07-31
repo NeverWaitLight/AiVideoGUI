@@ -4,7 +4,6 @@ import QtQuick.Controls.Material 2.15
 import QtQuick.Layouts 1.15
 import "../pages" as Pages
 
-// 主内容面板 - 中间主页面区域（项目管理/素材库）
 Control {
     id: mainPanel
     padding: 0
@@ -30,7 +29,6 @@ Control {
         }
     }
 
-    // 暴露内部页面引用，供外部访问
     readonly property alias projectModePage: projectModePage
     readonly property alias mediaLibraryPage: globalMediaPage
 }

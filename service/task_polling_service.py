@@ -1,5 +1,3 @@
-"""全局任务轮询服务：独立后台线程，按照 active_tasks 表驱动轮询策略。"""
-
 from __future__ import annotations
 
 from loguru import logger
@@ -21,7 +19,6 @@ from storage.repositories.oss_cache_repository import OSSFileCacheRepository
 from utils import paths
 
 class TaskPollingService(QObject):
-    """全局任务轮询服务：应用启动时运行，根据 active_tasks 表自动启停。"""
 
     status_changed = Signal(str, str)
     download_progress = Signal(str, int, int)
@@ -46,17 +43,14 @@ class TaskPollingService(QObject):
         self._worker: _PollingWorker | None = None
         self._media_service: Any = None
 
-        # 轮询策略配置
-        self.poll_interval = 10.0  # 任务状态检查间隔（秒）
-        self.idle_check_interval = 60.0  # 空闲时检查表是否有新任务的间隔（秒）
-        self.max_polls_per_task = 150  # 单个任务最大轮询次数
+        self.poll_interval = 10.0
+        self.idle_check_interval = 60.0
+        self.max_polls_per_task = 150
 
     def set_media_service(self, media_service: Any) -> None:
-        """注入素材库服务，用于任务完成后自动入库。"""
         self._media_service = media_service
 
     def get_provider(self, name: str) -> VideoProvider:
-        """获取或创建 Provider 实例。"""
         if name in self._providers:
             return self._providers[name]
         cfg = self._config.get_provider(name)
@@ -67,7 +61,6 @@ class TaskPollingService(QObject):
             raise KeyError(f"未注册的 Provider：{name}")
         provider = cls(cfg)
 
-        # 注入 SessionManager（用于 OSS 缓存）
         if hasattr(provider, "set_session_manager"):
             provider.set_session_manager(self._session_manager)
 
@@ -75,7 +68,6 @@ class TaskPollingService(QObject):
         return provider
 
     def start(self) -> None:
-        """启动全局轮询服务。"""
         if self._worker is not None:
             logger.warning("轮询服务已在运行")
             return
@@ -96,15 +88,12 @@ class TaskPollingService(QObject):
         logger.info("任务轮询服务已启动")
 
     def shutdown(self) -> None:
-        """停止轮询服务。"""
         if self._worker is None:
             return
         self._worker.stop()
         self._worker.wait(5000)
         self._worker = None
         logger.info("任务轮询服务已停止")
-
-    # ---------- Worker 信号处理 ----------
 
     def _on_status_changed(self, message_id: str, status: str) -> None:
         _TASK_TO_MSG_STATUS = {
@@ -161,7 +150,6 @@ class TaskPollingService(QObject):
         self.task_failed.emit(message_id, error)
 
 class _PollingWorker(QThread):
-    """后台轮询线程：周期性扫描 active_tasks 表，按任务创建时间执行轮询策略。"""
 
     status_changed = Signal(str, str)
     download_progress = Signal(str, int, int)
@@ -188,13 +176,12 @@ class _PollingWorker(QThread):
         self._root = workspace_root
         self._cache_dir = cache_dir
         self._stopped = False
-        self._task_poll_count: dict[int, int] = {}  # internal task id -> 已轮询次数
+        self._task_poll_count: dict[int, int] = {}
 
     def stop(self) -> None:
         self._stopped = True
 
     def _interruptible_sleep(self, seconds: float) -> bool:
-        """可中断 sleep，每秒检查 _stopped 标志。返回 True 表示被中断。"""
         elapsed = 0.0
         while elapsed < seconds:
             if self._stopped:
@@ -204,14 +191,12 @@ class _PollingWorker(QThread):
         return False
 
     def run(self) -> None:
-        """主循环：检查 active_tasks 表，处理待轮询任务。"""
         logger.info("轮询线程进入主循环")
         last_cleanup_time = time.time()
-        cleanup_interval = 3600.0  # 每小时清理一次过期 OSS 缓存
+        cleanup_interval = 3600.0
 
         while not self._stopped:
             try:
-                # 定期清理过期 OSS 缓存
                 now = time.time()
                 if now - last_cleanup_time >= cleanup_interval:
                     self._cleanup_expired_oss_caches()
@@ -220,18 +205,15 @@ class _PollingWorker(QThread):
                 task_repo = self._session_manager.get_repo(ActiveTaskRepository)
                 tasks = task_repo.list_active_tasks()
                 if not tasks:
-                    # 表空，进入空闲模式
                     if self._interruptible_sleep(self._idle_check_interval):
                         break
                     continue
 
-                # 处理每个活跃任务
                 for task_info in tasks:
                     if self._stopped:
                         break
                     self._process_task(task_info)
 
-                # 正常轮询间隔
                 if self._interruptible_sleep(self._poll_interval):
                     break
 
@@ -243,7 +225,6 @@ class _PollingWorker(QThread):
         logger.info("轮询线程已退出")
 
     def _cleanup_expired_oss_caches(self) -> None:
-        """清理过期的 OSS 缓存记录（异步执行，不阻塞主循环）"""
         try:
             oss_cache_repo = self._session_manager.get_repo(OSSFileCacheRepository)
             self._session_manager.begin_write()
@@ -259,14 +240,12 @@ class _PollingWorker(QThread):
             logger.warning(f"清理过期 OSS 缓存失败: {e}")
 
     def _process_task(self, task_info: dict[str, Any]) -> None:
-        """处理单个任务：检查是否需要轮询、执行状态查询、下载视频。"""
         internal_task_id = task_info["id"]
         provider_task_id = task_info["provider_task_id"]
         message_id = task_info["message_id"]
         provider_name = task_info["provider_name"]
         model_name = task_info["model_name"]
 
-        # 检查消息状态
         msg_repo = self._session_manager.get_repo(MessageRepository)
         msg = msg_repo.get_by_id(message_id)
         if not msg:
@@ -282,7 +261,6 @@ class _PollingWorker(QThread):
             self._task_poll_count.pop(internal_task_id, None)
             return
 
-        # 消息已是终态，标记任务完成
         if msg.status in (MessageStatus.COMPLETED, MessageStatus.FAILED):
             task_repo = self._session_manager.get_repo(ActiveTaskRepository)
             self._session_manager.begin_write()
@@ -295,7 +273,6 @@ class _PollingWorker(QThread):
             self._task_poll_count.pop(internal_task_id, None)
             return
 
-        # 检查是否超过最大轮询次数
         poll_count = self._task_poll_count.get(internal_task_id, 0)
         if poll_count >= self._max_polls_per_task:
             error_msg = f"轮询超时（已查询 {poll_count} 次，任务仍未完成）"
@@ -312,7 +289,6 @@ class _PollingWorker(QThread):
             self._task_poll_count.pop(internal_task_id, None)
             return
 
-        # 执行状态查询
         try:
             provider = self._service.get_provider(provider_name)
             result = provider.check_status(provider_task_id)
@@ -376,9 +352,7 @@ class _PollingWorker(QThread):
         save_path: str = "",
         storyboard_id: int = 0,
     ) -> None:
-        """下载视频并标记任务完成。"""
         try:
-            # 确定保存路径：有 save_path 时为 workspace 相对路径，否则为对话视频
             workspace = paths.workspace_dir(self._root)
             if save_path:
                 save_path = os.path.join(workspace, save_path)

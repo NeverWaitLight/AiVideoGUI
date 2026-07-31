@@ -6,13 +6,12 @@ import "../components" as Comp
 
 Dialog {
     id: settingsDialog
-    title: ""  // 移除默认标题，使用自定义标题栏
+    title: ""
     modal: true
     width: 720
     height: 640
     anchors.centerIn: parent
 
-    // 移除默认的 header padding
     topPadding: 0
     leftPadding: 0
     rightPadding: 0
@@ -44,7 +43,6 @@ Dialog {
         anchors.fill: parent
         spacing: 0
 
-        // 顶部标题栏
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 64
@@ -57,7 +55,7 @@ Dialog {
                 spacing: 16
 
                 Label {
-                    text: ""  // settings icon
+                    text: ""
                     font.family: "Material Icons"
                     font.pixelSize: 28
                     color: "white"
@@ -115,7 +113,6 @@ Dialog {
             Layout.fillHeight: true
             currentIndex: tabBar.currentIndex
 
-            // 视频模型配置
             ScrollView {
                 ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
                 clip: true
@@ -127,7 +124,6 @@ Dialog {
 
                     Item { Layout.preferredHeight: 8 }
 
-                    // 配置卡片
                     Pane {
                         Layout.fillWidth: true
                         Layout.leftMargin: 0
@@ -145,7 +141,6 @@ Dialog {
                             anchors.fill: parent
                             spacing: 16
 
-                            // 标题
                             ColumnLayout {
                                 spacing: 4
                                 Layout.fillWidth: true
@@ -239,7 +234,6 @@ Dialog {
                 }
             }
 
-            // 对话模型配置
             ScrollView {
                 ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
                 clip: true
@@ -251,7 +245,6 @@ Dialog {
 
                     Item { Layout.preferredHeight: 8 }
 
-                    // 配置卡片
                     Pane {
                         Layout.fillWidth: true
                         Layout.leftMargin: 0
@@ -269,7 +262,6 @@ Dialog {
                             anchors.fill: parent
                             spacing: 16
 
-                            // 标题
                             ColumnLayout {
                                 spacing: 4
                                 Layout.fillWidth: true
@@ -363,7 +355,6 @@ Dialog {
                 }
             }
 
-            // 图片模型配置
             ScrollView {
                 ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
                 clip: true
@@ -375,7 +366,6 @@ Dialog {
 
                     Item { Layout.preferredHeight: 8 }
 
-                    // 配置卡片
                     Pane {
                         Layout.fillWidth: true
                         Layout.leftMargin: 0
@@ -393,7 +383,6 @@ Dialog {
                             anchors.fill: parent
                             spacing: 16
 
-                            // 标题
                             ColumnLayout {
                                 spacing: 4
                                 Layout.fillWidth: true
@@ -487,7 +476,6 @@ Dialog {
                 }
             }
 
-            // 工作目录配置
             ScrollView {
                 ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
                 clip: true
@@ -499,7 +487,6 @@ Dialog {
 
                     Item { Layout.preferredHeight: 8 }
 
-                    // 配置卡片
                     Pane {
                         Layout.fillWidth: true
                         Layout.leftMargin: 0
@@ -517,7 +504,6 @@ Dialog {
                             anchors.fill: parent
                             spacing: 16
 
-                            // 标题
                             ColumnLayout {
                                 spacing: 4
                                 Layout.fillWidth: true
@@ -592,7 +578,6 @@ Dialog {
                 }
             }
 
-            // 外观配置
             ScrollView {
                 ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
                 clip: true
@@ -604,7 +589,6 @@ Dialog {
 
                     Item { Layout.preferredHeight: 8 }
 
-                    // 配置卡片
                     Pane {
                         Layout.fillWidth: true
                         Layout.leftMargin: 0
@@ -622,7 +606,6 @@ Dialog {
                             anchors.fill: parent
                             spacing: 16
 
-                            // 标题
                             ColumnLayout {
                                 spacing: 4
                                 Layout.fillWidth: true
@@ -672,7 +655,6 @@ Dialog {
                                     spacing: 12
                                     Layout.fillWidth: true
 
-                                    // 亮色模式
                                     Pane {
                                         Layout.fillWidth: true
                                         Material.elevation: 0
@@ -695,7 +677,7 @@ Dialog {
                                             }
 
                                             Label {
-                                                text: ""  // light_mode icon
+                                                text: ""
                                                 font.family: "Material Icons"
                                                 font.pixelSize: 24
                                                 color: Material.accent
@@ -720,7 +702,6 @@ Dialog {
                                         }
                                     }
 
-                                    // 暗色模式
                                     Pane {
                                         Layout.fillWidth: true
                                         Material.elevation: 0
@@ -743,7 +724,7 @@ Dialog {
                                             }
 
                                             Label {
-                                                text: ""  // dark_mode icon
+                                                text: ""
                                                 font.family: "Material Icons"
                                                 font.pixelSize: 24
                                                 color: Material.accent
@@ -768,7 +749,6 @@ Dialog {
                                         }
                                     }
 
-                                    // 跟随系统
                                     Pane {
                                         Layout.fillWidth: true
                                         Material.elevation: 0
@@ -792,7 +772,7 @@ Dialog {
                                             }
 
                                             Label {
-                                                text: ""  // settings_suggest icon
+                                                text: ""
                                                 font.family: "Material Icons"
                                                 font.pixelSize: 24
                                                 color: Material.accent
@@ -880,7 +860,6 @@ Dialog {
         workspacePath = bridge.settings.get_workspace_dir()
         workspaceDirField.text = workspacePath
 
-        // 加载颜色方案设置
         var currentColorScheme = bridge.settings.get_color_scheme()
         if (currentColorScheme === "Light") {
             colorSchemeLight.checked = true
@@ -905,7 +884,6 @@ Dialog {
             bridge.settings.set_workspace_dir(workspacePath)
         }
 
-        // 保存颜色方案设置
         var oldColorScheme = bridge.settings.get_color_scheme()
         var newColorScheme = colorSchemeLight.checked ? "Light" : (colorSchemeDark.checked ? "Dark" : "System")
 
@@ -917,7 +895,6 @@ Dialog {
         }
 
         if (needRestart) {
-            // 显示提示信息
             Qt.callLater(function() {
                 alertDialog.info("设置已保存", "颜色方案的更改需要重启应用才能生效。")
             })

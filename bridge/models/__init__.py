@@ -1,5 +1,3 @@
-"""QAbstractListModel 子类，供 QML ListView/GridView 使用。"""
-
 from bridge.models.conversation_model import ConversationListModel
 from bridge.models.message_model import MessageListModel
 from bridge.models.project_model import ProjectListModel

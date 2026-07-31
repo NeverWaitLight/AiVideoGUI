@@ -1,5 +1,3 @@
-"""分镜桥接：分镜 CRUD、批量生成、设计图生成。"""
-
 from __future__ import annotations
 
 import json
@@ -15,8 +13,6 @@ from bridge.workers import (
 
 
 class StoryboardBridge(QObject):
-    """分镜编辑桥接。"""
-
     data_changed = Signal()
     design_image_ready = Signal(str, str)  # shot_id, image_path
     design_image_progress = Signal(str)
@@ -53,10 +49,8 @@ class StoryboardBridge(QObject):
         self._media_service = media_service
         self._container = container
         self._model = StoryboardListModel(self)
-        self._workers: list = []  # 保持 worker 引用
+        self._workers = []
         self._project_id: int = -1
-
-        # 当前编辑的分镜属性
         self._cur_shot_id: int = -1
         self._cur_scene_number: int = 0
         self._cur_shot_number: int = 0
@@ -72,8 +66,6 @@ class StoryboardBridge(QObject):
     @Property(QObject, constant=True)
     def model(self):
         return self._model
-
-    # ── 当前分镜属性 ──
 
     @Property(int, notify=shot_detail_changed)
     def curShotId(self): return self._cur_shot_id
@@ -116,17 +108,14 @@ class StoryboardBridge(QObject):
 
     @Slot(int)
     def generate_from_screenplay(self, project_id: int) -> None:
-        """从剧本生成分镜（后台线程）。"""
         self._project_id = project_id
 
-        # 加载项目的所有场次
         try:
             scenes = self._screenplay_service.list_scenes(project_id)
             if not scenes:
                 self.error.emit("该项目还没有剧本场次，请先生成剧本")
                 return
 
-            # 将场次拼接成完整剧本
             script_lines = []
             for scene in scenes:
                 location_type_map = {
@@ -150,21 +139,17 @@ class StoryboardBridge(QObject):
 
             script_content = "\n".join(script_lines)
 
-            # 启动 Worker
             worker = StoryboardGenerateWorker(self._text_model_service, script_content)
 
             def on_finished(result: dict) -> None:
                 try:
-                    # result: {"shots": list[dict], "characters": list[dict]}
                     shots_data = result.get("shots", [])
                     if not shots_data:
                         self.storyboard_generation_failed.emit("AI 返回的分镜数据为空")
                         return
 
-                    # 构建场次号到 scene_id 的映射
                     scene_map = {scene.scene_number: scene.id for scene in scenes}
 
-                    # 保存分镜到数据库
                     from models.enums import ShotSize
                     shot_size_map = {
                         "特写": ShotSize.CLOSE_UP,
@@ -200,7 +185,6 @@ class StoryboardBridge(QObject):
                             notes=shot_dict.get("notes", ""),
                         )
 
-                    # 重新加载分镜列表
                     self.load_for_project(project_id)
                     self.storyboard_generated.emit(len(shots_data))
 
@@ -223,7 +207,6 @@ class StoryboardBridge(QObject):
 
     @Slot(int)
     def load_shot(self, shot_id: int) -> None:
-        """加载单个分镜到编辑属性。"""
         try:
             shot = self._storyboard_service.get_storyboard(shot_id)
             if not shot:
@@ -251,7 +234,6 @@ class StoryboardBridge(QObject):
         visual_content: str, duration: float, dialogue: str,
         sound_effect: str, notes: str, design_image: str,
     ) -> None:
-        """保存分镜编辑。"""
         from models.enums import ShotSize
         shot_size_str = self._SHOT_SIZE_INDEX_MAP.get(shot_size_index, "medium_shot")
         try:
@@ -275,7 +257,6 @@ class StoryboardBridge(QObject):
 
     @Slot(int)
     def delete_shot(self, shot_id: int) -> None:
-        """删除分镜。"""
         try:
             self._storyboard_service.delete_storyboard(shot_id)
             self.shot_deleted.emit()
@@ -306,7 +287,6 @@ class StoryboardBridge(QObject):
     def generate_video(self, shot_id: int, scene_number: int, shot_number: int,
                        prompt: str, project_id: int, design_image: str,
                        provider_name: str, model_name: str) -> None:
-        """提交单个分镜视频生成任务（通过 Bridge 转发给 QML 处理对话框逻辑）。"""
         self.data_changed.emit()
 
     @Slot(int, int)
@@ -350,14 +330,12 @@ class StoryboardBridge(QObject):
 
     @Slot(int)
     def batch_generate_design_images(self, project_id: int) -> None:
-        """批量生成所有分镜的设计图。"""
         try:
             shots = self._storyboard_service.list_storyboards(project_id)
             if not shots:
                 self.error.emit("没有分镜可以生成设计图")
                 return
 
-            # 准备数据列表
             shot_list = []
             for shot in shots:
                 shot_list.append({
@@ -372,7 +350,6 @@ class StoryboardBridge(QObject):
                     "notes": shot.notes,
                 })
 
-            # 启动 Worker
             worker = BatchDesignImageWorker(
                 self._text_model_service,
                 self._image_service,
@@ -386,7 +363,6 @@ class StoryboardBridge(QObject):
 
             def on_finished(success_count: int, total: int) -> None:
                 self.batch_done.emit(success_count, total)
-                # 重新加载分镜列表以更新设计图路径
                 self.load_for_project(project_id)
 
             worker.progress_update.connect(on_progress)
@@ -418,7 +394,6 @@ class StoryboardBridge(QObject):
 
     @Slot(int, result=str)
     def get_related_videos(self, shot_id: int) -> str:
-        """获取分镜关联的视频列表（JSON）。"""
         try:
             videos = self._media_service.list_by_storyboard(shot_id)
             result = []
@@ -440,7 +415,6 @@ class StoryboardBridge(QObject):
 
     @Slot(int, int, result=str)
     def preview_prompt(self, shot_id: int, project_id: int) -> str:
-        """构建并返回视频生成 Prompt 预览文本。"""
         from utils.prompt_builder import VideoPromptBuilder
         try:
             storyboard = self._storyboard_service.get_storyboard(shot_id)

@@ -1,5 +1,3 @@
-"""故事大纲桥接：大纲加载、保存、历史版本和 AI 优化。"""
-
 from __future__ import annotations
 
 from loguru import logger
@@ -11,8 +9,6 @@ from bridge.workers import OptimizeWorker
 
 
 class StoryOutlineBridge(QObject):
-    """故事大纲桥接。"""
-
     loaded = Signal(str)
     saved = Signal()
     optimize_finished = Signal(str)
@@ -50,7 +46,6 @@ class StoryOutlineBridge(QObject):
 
     @Slot(int)
     def load(self, project_id: int) -> None:
-        """加载项目故事大纲。"""
         self._project_id = project_id
         self._loading = True
         try:
@@ -67,7 +62,6 @@ class StoryOutlineBridge(QObject):
 
     @Slot(str)
     def save(self, content: str) -> None:
-        """保存故事大纲。"""
         if self._outline_id < 0:
             self.error.emit("大纲未加载")
             return
@@ -82,7 +76,6 @@ class StoryOutlineBridge(QObject):
 
     @Slot()
     def load_history(self) -> None:
-        """加载历史版本列表。"""
         if self._outline_id < 0:
             return
         try:
@@ -94,7 +87,6 @@ class StoryOutlineBridge(QObject):
 
     @Slot(int)
     def restore_history(self, history_id: int) -> None:
-        """从历史版本恢复。"""
         if self._outline_id < 0:
             return
         try:
@@ -108,11 +100,10 @@ class StoryOutlineBridge(QObject):
 
     @Slot(str, str)
     def optimize(self, requirement: str, current_content: str) -> None:
-        """AI 优化大纲内容。"""
         if self._optimizing:
             return
 
-        self._content = current_content  # 确保使用最新编辑内容
+        self._content = current_content
 
         messages = [
             {
@@ -141,6 +132,5 @@ class StoryOutlineBridge(QObject):
 
         self._worker.finished.connect(on_finished)
         self._worker.failed.connect(on_failed)
-        # 线程结束后安全删除 worker
         self._worker.finished.connect(self._worker.deleteLater)
         self._worker.start()

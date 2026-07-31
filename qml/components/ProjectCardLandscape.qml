@@ -30,7 +30,6 @@ Pane {
         anchors.margins: 12
         spacing: 12
 
-        // 上部：封面图（横版比例）
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 130
@@ -71,7 +70,6 @@ Pane {
             }
         }
 
-        // 信息区域
         ColumnLayout {
             Layout.fillWidth: true
             Layout.preferredHeight: 56
@@ -111,7 +109,6 @@ Pane {
             }
         }
 
-        // 操作按钮
         RowLayout {
             Layout.fillWidth: true
             Layout.preferredHeight: 40

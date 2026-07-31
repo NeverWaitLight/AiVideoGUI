@@ -16,7 +16,6 @@ Pane {
         anchors.margins: 8
         spacing: 8
 
-        // Generating
         ColumnLayout {
             visible: status === "generating" || status === ""
             Layout.fillWidth: true
@@ -25,7 +24,6 @@ Pane {
             Label { text: "视频生成中..."; font.pixelSize: Theme.fontSizeSmall }
         }
 
-        // Downloading
         ColumnLayout {
             visible: status === "downloading"
             Layout.fillWidth: true
@@ -34,7 +32,6 @@ Pane {
             Label { text: "正在下载视频..."; font.pixelSize: Theme.fontSizeSmall }
         }
 
-        // Completed
         ColumnLayout {
             visible: status === "completed"
             Layout.fillWidth: true
@@ -64,7 +61,6 @@ Pane {
             }
         }
 
-        // Failed
         ColumnLayout {
             visible: status === "failed"
             Layout.fillWidth: true

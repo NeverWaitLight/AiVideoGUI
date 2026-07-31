@@ -30,7 +30,6 @@ Pane {
         anchors.margins: 12
         spacing: 12
 
-        // 左侧：封面图（背景透明，至少占卡片一半宽度）
         Rectangle {
             Layout.minimumWidth: Math.max(0, (card.width - 24 - 12) * 0.5)
             Layout.fillWidth: true
@@ -72,13 +71,11 @@ Pane {
             }
         }
 
-        // 右侧：信息 + 操作按钮
         ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
             spacing: 6
 
-            // 项目名
             Label {
                 text: projectName
                 font.pixelSize: Theme.fontSizeMedium
@@ -88,7 +85,6 @@ Pane {
                 Layout.fillWidth: true
             }
 
-            // 分辨率
             Label {
                 text: resolution
                 font.pixelSize: Theme.fontSizeSmall
@@ -96,7 +92,6 @@ Pane {
                 Layout.fillWidth: true
             }
 
-            // 视频比例
             Label {
                 text: aspectRatio
                 font.pixelSize: Theme.fontSizeSmall
@@ -104,7 +99,6 @@ Pane {
                 Layout.fillWidth: true
             }
 
-            // 创建时间
             Label {
                 text: createdAt
                 font.pixelSize: Theme.fontSizeSmall
@@ -114,7 +108,6 @@ Pane {
 
             Item { Layout.fillHeight: true }
 
-            // 编辑按钮
             Button {
                 Layout.preferredHeight: 36
                 Layout.fillWidth: true
@@ -137,7 +130,6 @@ Pane {
                 }
             }
 
-            // 删除按钮
             Button {
                 Layout.preferredHeight: 36
                 Layout.fillWidth: true

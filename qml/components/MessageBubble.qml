@@ -20,7 +20,7 @@ Item {
         spacing: 8
         layoutDirection: isUser ? Qt.RightToLeft : Qt.LeftToRight
 
-        Item { Layout.preferredWidth: 40 }  // 留空对齐
+        Item { Layout.preferredWidth: 40 }
 
         Rectangle {
             Layout.maximumWidth: parent.width * 0.7
@@ -36,7 +36,6 @@ Item {
                 anchors.margins: 8
                 spacing: 4
 
-                // 文本内容
                 Label {
                     visible: messageText.length > 0
                     text: messageText
@@ -45,7 +44,6 @@ Item {
                     Layout.fillWidth: true
                 }
 
-                // 视频状态卡片
                 VideoStatusCard {
                     visible: !isUser && msgStatus !== ""
                     Layout.fillWidth: true
@@ -54,7 +52,6 @@ Item {
                     errorMsg: errorMessage
                 }
 
-                // 时间标签
                 Label {
                     text: timeText
                     font.pixelSize: Theme.fontSizeTiny

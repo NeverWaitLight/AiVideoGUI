@@ -14,7 +14,6 @@ Item {
             implicitWidth: 1
         }
 
-        // 左侧边栏
         Comp.Sidebar {
             id: sidebar
             SplitView.preferredWidth: Theme.sidebarWidth
@@ -22,7 +21,6 @@ Item {
             SplitView.maximumWidth: 360
         }
 
-        // 右侧聊天区域
         Comp.ChatArea {
             id: chatArea
             SplitView.fillWidth: true
