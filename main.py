@@ -101,10 +101,9 @@ def main():
     create_all_tables()
     ensure_columns()
 
-    bridge = AppBridge(container)
-    theme = Theme()
-
     engine = QQmlApplicationEngine()
+    bridge = AppBridge(container, parent=engine)
+    theme = Theme(parent=engine)
 
     warnings_list = []
     def on_warnings(qml_warnings):
