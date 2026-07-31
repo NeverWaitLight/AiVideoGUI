@@ -106,14 +106,6 @@ Item {
             ModuleCard {
                 width: parent.cardWidth
                 height: parent.cardHeight
-                title: "粗剪"
-                iconSource: "qrc:/resources/icons/play_circle.svg"
-                description: "播放项目分镜视频"
-                moduleName: "player"
-            }
-            ModuleCard {
-                width: parent.cardWidth
-                height: parent.cardHeight
                 title: "大纲"
                 iconSource: "qrc:/resources/icons/article.svg"
                 description: "编辑故事大纲"
@@ -142,6 +134,14 @@ Item {
                 iconSource: "qrc:/resources/icons/person.svg"
                 description: "管理角色形象"
                 moduleName: "character"
+            }
+            ModuleCard {
+                width: parent.cardWidth
+                height: parent.cardHeight
+                title: "粗剪"
+                iconSource: "qrc:/resources/icons/play_circle.svg"
+                description: "播放项目分镜视频"
+                moduleName: "player"
             }
             ModuleCard {
                 width: parent.cardWidth
