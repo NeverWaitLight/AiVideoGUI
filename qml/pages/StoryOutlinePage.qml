@@ -8,18 +8,14 @@ Item {
     id: page
     property int projectId: -1
     property bool _dirty: false
-    property var _chatMessages: []
-    property string _loadedContent: ""  // 跟踪加载的原始内容
+    property string _loadedContent: ""
 
     signal backClicked()
     signal nextStepClicked(string content)
 
-    // Load outline when projectId changes
     onProjectIdChanged: {
         if (projectId > 0) {
             bridge.storyOutline.load(projectId)
-            _chatMessages = []
-            chatModel.clear()
         }
     }
 
@@ -28,47 +24,19 @@ Item {
 
         function onLoaded(content) {
             textArea.text = content
-            _loadedContent = content  // 记录加载的原始内容
+            _loadedContent = content
             _dirty = false
         }
 
         function onSaved() {
             _dirty = false
-            _loadedContent = textArea.text  // 更新已保存的内容基准
+            _loadedContent = textArea.text
             alertDialog.info("提示", "大纲已保存")
-        }
-
-        function onOptimize_finished(result) {
-            // 移除"正在思考中…"的占位气泡
-            if (chatModel.count > 0) {
-                var lastIdx = chatModel.count - 1
-                if (chatModel.get(lastIdx).role === "assistant") {
-                    chatModel.remove(lastIdx)
-                }
-            }
-            textArea.text = result
-            _dirty = true
-            _addChatBubble("assistant", "已根据你的要求优化大纲，内容已更新到编辑器。")
-        }
-
-        function onOptimize_failed(error) {
-            // 移除"正在思考中…"的占位气泡
-            if (chatModel.count > 0) {
-                var lastIdx = chatModel.count - 1
-                if (chatModel.get(lastIdx).role === "assistant") {
-                    chatModel.remove(lastIdx)
-                }
-            }
-            _addChatBubble("assistant", "优化失败：" + error)
         }
 
         function onError(msg) {
             alertDialog.error("错误", msg)
         }
-    }
-
-    ListModel {
-        id: chatModel
     }
 
     ColumnLayout {
@@ -117,128 +85,24 @@ Item {
             }
         }
 
-        SplitView {
+        ScrollView {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            orientation: Qt.Horizontal
+            Layout.topMargin: 16
+            Layout.leftMargin: 16
+            Layout.rightMargin: 16
+            Layout.bottomMargin: 16
+            clip: true
 
-            handle: Rectangle {
-                implicitWidth: 1
-            }
-
-            Item {
-                SplitView.fillWidth: true
-                SplitView.minimumWidth: 400
-
-                ColumnLayout {
-                    anchors.fill: parent
-                    anchors.margins: 20
-                    spacing: 12
-
-                    ScrollView {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        clip: true
-
-                        TextArea {
-                            id: textArea
-                            placeholderText: "请输入项目大纲..."
-                            wrapMode: TextArea.Wrap
-                            font.pixelSize: Theme.fontSizeMedium
-                            padding: 12
-                            onTextChanged: {
-                                // 只在内容与加载的原始内容不同时标记为脏
-                                _dirty = (textArea.text !== _loadedContent)
-                            }
-                    }
-                }
-            }
-
-            Rectangle {
-                SplitView.preferredWidth: 340
-                SplitView.minimumWidth: 260
-
-                ColumnLayout {
-                    anchors.fill: parent
-                    spacing: 0
-
-                    Rectangle {
-                        Layout.fillWidth: true
-                        height: 44
-
-                        Label {
-                            anchors.verticalCenter: parent.verticalCenter
-                            anchors.left: parent.left
-                            anchors.leftMargin: 16
-                            text: "AI 助手"
-                            font.pixelSize: Theme.fontSizeMedium
-                            font.bold: true
-                        }
-
-                        Rectangle {
-                            anchors.bottom: parent.bottom
-                            width: parent.width
-                            height: 1
-                        }
-                    }
-
-                    ListView {
-                        id: chatView
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        clip: true
-                        spacing: 6
-                        topMargin: 8
-                        bottomMargin: 8
-                        model: chatModel
-
-
-                        Label {
-                            visible: chatModel.count === 0
-                            anchors.centerIn: parent
-                            text: "在下方输入你的修改要求，\nAI 将帮你优化大纲"
-                            font.pixelSize: Theme.fontSizeSmall
-                            horizontalAlignment: Text.AlignHCenter
-                        }
-                    }
-
-                    Rectangle {
-                        Layout.fillWidth: true
-                        height: 60
-
-                        Rectangle {
-                            anchors.top: parent.top
-                            width: parent.width
-                            height: 1
-                        }
-
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.margins: 10
-                            spacing: 8
-
-                            ScrollView {
-                                Layout.fillWidth: true
-                                Layout.fillHeight: true
-                                clip: true
-
-                                TextArea {
-                                    id: chatInput
-                                    placeholderText: "描述你想修改的内容…"
-                                    wrapMode: TextArea.Wrap
-                                    font.pixelSize: Theme.fontSizeSmall
-                                    padding: 6
-                            }
-
-                            Button {
-                                text: "发送"
-                                highlighted: true
-                                enabled: chatInput.text.trim().length > 0 && !bridge.storyOutline.isOptimizing
-                                Layout.preferredHeight: 40
-                                onClicked: _sendChat()
-                            }
-                        }
-                    }
+            TextArea {
+                id: textArea
+                placeholderText: "请输入项目大纲..."
+                wrapMode: TextArea.Wrap
+                font.pixelSize: Theme.fontSizeMedium
+                padding: 0
+                background: null
+                onTextChanged: {
+                    _dirty = (textArea.text !== _loadedContent)
                 }
             }
         }
@@ -251,28 +115,4 @@ Item {
     Dialogs.ConfirmDialog {
         id: confirmDialog
     }
-
-    function _sendChat() {
-        var text = chatInput.text.trim()
-        if (!text) return
-
-        _addChatBubble("user", text)
-        chatInput.text = ""
-
-        if (!textArea.text.trim()) {
-            _addChatBubble("assistant", "请先在左侧编辑器中输入大纲内容，再使用 AI 优化。")
-            return
-        }
-
-        _addChatBubble("assistant", "正在思考中…")
-        bridge.storyOutline.optimize(text, textArea.text)
-    }
-
-    function _addChatBubble(role, text) {
-        _chatMessages.push({role: role, text: text})
-        chatModel.append({role: role, text: text})
-    }
-}
-
-}
 }
