@@ -14,6 +14,7 @@ from storage.repositories.media_repository import MediaRepository
 from storage.repositories.conversation_repository import ConversationRepository
 from utils import paths
 from utils.video_metadata import VideoMetadataExtractor
+from utils.path_converter import to_relative_path
 
 _VIDEO_EXTENSIONS = {".mp4", ".avi", ".mov", ".mkv", ".wmv", ".flv", ".webm"}
 _IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg"}
@@ -93,17 +94,21 @@ class MediaService:
             except Exception as e:
                 logger.warning(f"视频元数据提取失败，将使用默认值：{e}")
 
+        # 转换为相对路径存储
+        relative_local_path = to_relative_path(local_path, self._root)
+        relative_thumbnail_path = to_relative_path(thumbnail_path, self._root) if thumbnail_path else ""
+
         media = MediaFile(
             id=uuid.uuid4().hex,
             filename=filename,
             media_type=media_type,
-            local_path=local_path,
+            local_path=relative_local_path,
             file_size=file_size,
             source="task",
             conversation_id=conversation_id,
             message_id=message_id,
             created_at=datetime.now(),
-            thumbnail_path=thumbnail_path,
+            thumbnail_path=relative_thumbnail_path,
             duration=duration,
             width=width,
             height=height,
@@ -172,15 +177,19 @@ class MediaService:
                 except Exception as e:
                     logger.warning(f"导入视频元数据提取失败，将使用默认值：{e}")
 
+            # 转换为相对路径存储
+            relative_dest_path = to_relative_path(dest_path, self._root)
+            relative_thumbnail_path = to_relative_path(thumbnail_path, self._root) if thumbnail_path else ""
+
             media = MediaFile(
                 id=uuid.uuid4().hex,
                 filename=os.path.basename(dest_path),
                 media_type=media_type,
-                local_path=dest_path,
+                local_path=relative_dest_path,
                 file_size=file_size,
                 source="import",
                 created_at=datetime.now(),
-                thumbnail_path=thumbnail_path,
+                thumbnail_path=relative_thumbnail_path,
                 duration=duration,
                 width=width,
                 height=height,
@@ -251,6 +260,7 @@ class MediaService:
             raise
 
         # 数据库删除成功后，再删除文件系统中的文件
+        # 注意：Repository 返回的路径已经是绝对路径，可以直接使用
         self._try_remove_file(media.local_path)
         # 同时删除缩略图
         if media.thumbnail_path:

@@ -83,19 +83,20 @@ Item {
             Layout.fillWidth: true
             onBackClicked: page.backClicked()
 
-            Button {
-                Layout.preferredHeight: 34
-                text: "历史版本"
-                flat: true
-                topPadding: 6
-                bottomPadding: 6
-                leftPadding: 12
-                rightPadding: 12
-                onClicked: {
-                    bridge.storyOutline.load_history()
-                    historyDialog.open()
-                }
-            }
+            // 历史版本按钮已隐藏
+            // Button {
+            //     Layout.preferredHeight: 34
+            //     text: "历史版本"
+            //     flat: true
+            //     topPadding: 6
+            //     bottomPadding: 6
+            //     leftPadding: 12
+            //     rightPadding: 12
+            //     onClicked: {
+            //         bridge.storyOutline.load_history()
+            //         historyDialog.open()
+            //     }
+            // }
 
             Button {
                 Layout.preferredHeight: 34
@@ -280,18 +281,19 @@ Item {
         id: confirmDialog
     }
 
-    Dialogs.HistoryDialog {
-        id: historyDialog
-        model: bridge.storyOutline.historyModel
-        onRestoreRequested: function(historyId) {
-            confirmDialog.confirm(
-                "确定要恢复到此历史版本吗？当前内容将被保存为新的历史版本。",
-                function() {
-                    bridge.storyOutline.restore_history(historyId)
-                }
-            )
-        }
-    }
+    // 历史记录对话框已隐藏
+    // Dialogs.HistoryDialog {
+    //     id: historyDialog
+    //     model: bridge.storyOutline.historyModel
+    //     onRestoreRequested: function(historyId) {
+    //         confirmDialog.confirm(
+    //             "确定要恢复到此历史版本吗？当前内容将被保存为新的历史版本。",
+    //             function() {
+    //                 bridge.storyOutline.restore_history(historyId)
+    //             }
+    //         )
+    //     }
+    // }
 
     // ── 内部函数 ──
 

@@ -18,6 +18,7 @@ from storage.repositories.active_task_repository import ActiveTaskRepository
 from storage.repositories.message_repository import MessageRepository
 from storage.repositories.oss_cache_repository import OSSFileCacheRepository
 from utils import paths
+from utils.path_converter import to_relative_path
 
 if TYPE_CHECKING:
     from providers.video_base import VideoProvider
@@ -313,11 +314,14 @@ class VideoTaskPollingTask(BackgroundTask):
             os.makedirs(os.path.dirname(save_path), exist_ok=True)
             shutil.move(tmp_path, save_path)
 
+            # 转换为相对路径存储
+            relative_save_path = to_relative_path(save_path, self._workspace_root)
+
             # 更新消息
             msg_repo = self._sm.get_repo(MessageRepository)
             self._sm.begin_write()
             try:
-                msg_repo.update_status(message_id, MessageStatus.COMPLETED, local_path=save_path)
+                msg_repo.update_status(message_id, MessageStatus.COMPLETED, local_path=relative_save_path)
                 self._sm.commit_write()
             except Exception:
                 self._sm.rollback_write()

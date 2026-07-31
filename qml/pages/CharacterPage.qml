@@ -60,7 +60,7 @@ Item {
 
             Button {
                 Layout.preferredHeight: 34
-                text: "删除选中 (" + _selectedIds.length + ")"
+                text: "删除"
                 visible: _selectedIds.length > 0
                 topPadding: 6
                 bottomPadding: 6
@@ -77,7 +77,7 @@ Item {
 
             Button {
                 Layout.preferredHeight: 34
-                text: "添加角色"
+                text: "新建"
                 highlighted: true
                 topPadding: 6
                 bottomPadding: 6
@@ -106,14 +106,14 @@ Item {
                 isSelected: _selectedIds.indexOf(characterId) >= 0
                 onCardClicked: _openEditDialog(model)
                 onToggleSelect: _toggleSelect(characterId)
-                onHistoryClicked: _showHistory(characterUuid)
+                // onHistoryClicked: _showHistory(characterUuid)  // 已隐藏历史功能
             }
 
             Comp.EmptyState {
                 visible: bridge.characters.model.count === 0
                 anchors.centerIn: parent
                 text: "还没有角色"
-                buttonText: "添加角色"
+                buttonText: "新建"
                 onButtonClicked: _openAddDialog()
             }
         }
@@ -229,7 +229,7 @@ Item {
                 }
                 Item { Layout.fillWidth: true }
                 Button {
-                    text: "删除角色"
+                    text: "删除"
                     visible: _editingExisting
                     onClicked: {
                         charDialog.close()
@@ -243,64 +243,64 @@ Item {
         }
     }
 
-    // ── 历史记录对话框 ──
-    Dialog {
-        id: historyDialog
-        modal: true
-        title: "编辑历史"
-        width: 560
-        height: 420
-        anchors.centerIn: parent
-        standardButtons: Dialog.Close
+    // ── 历史记录对话框已隐藏 ──
+    // Dialog {
+    //     id: historyDialog
+    //     modal: true
+    //     title: "编辑历史"
+    //     width: 560
+    //     height: 420
+    //     anchors.centerIn: parent
+    //     standardButtons: Dialog.Close
 
-        property var historyData: []
+    //     property var historyData: []
 
-        ColumnLayout {
-            anchors.fill: parent
-            spacing: 8
+    //     ColumnLayout {
+    //         anchors.fill: parent
+    //         spacing: 8
 
-            ListView {
-                id: historyList
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                model: historyDialog.historyData
-                clip: true
-                spacing: 4
+    //         ListView {
+    //             id: historyList
+    //             Layout.fillWidth: true
+    //             Layout.fillHeight: true
+    //             model: historyDialog.historyData
+    //             clip: true
+    //             spacing: 4
 
-                delegate: Pane {
-                    width: historyList.width - 4
-                    padding: 8
-                    ColumnLayout {
-                        anchors.fill: parent
-                        spacing: 4
-                        Label {
-                            text: modelData.displayTime
-                            font.pixelSize: Theme.fontSizeSmall
-                        }
-                        Label {
-                            text: modelData.name + " (" + modelData.refCode + ")"
-                            font.pixelSize: Theme.fontSizeSmall
-                            font.bold: true
-                        }
-                        Label {
-                            text: modelData.description
-                            font.pixelSize: Theme.fontSizeSmall
-                            elide: Text.ElideRight
-                            maximumLineCount: 2
-                            wrapMode: Text.Wrap
-                            Layout.fillWidth: true
-                        }
-                    }
-                }
+    //             delegate: Pane {
+    //                 width: historyList.width - 4
+    //                 padding: 8
+    //                 ColumnLayout {
+    //                     anchors.fill: parent
+    //                     spacing: 4
+    //                     Label {
+    //                         text: modelData.displayTime
+    //                         font.pixelSize: Theme.fontSizeSmall
+    //                     }
+    //                     Label {
+    //                         text: modelData.name + " (" + modelData.refCode + ")"
+    //                         font.pixelSize: Theme.fontSizeSmall
+    //                         font.bold: true
+    //                     }
+    //                     Label {
+    //                         text: modelData.description
+    //                         font.pixelSize: Theme.fontSizeSmall
+    //                         elide: Text.ElideRight
+    //                         maximumLineCount: 2
+    //                         wrapMode: Text.Wrap
+    //                         Layout.fillWidth: true
+    //                     }
+    //                 }
+    //             }
 
-                Label {
-                    visible: historyList.count === 0
-                    anchors.centerIn: parent
-                    text: "暂无编辑历史"
-                }
-            }
-        }
-    }
+    //             Label {
+    //                 visible: historyList.count === 0
+    //                 anchors.centerIn: parent
+    //                 text: "暂无编辑历史"
+    //             }
+    //         }
+    //     }
+    // }
 
     // 设计图上传
     QtDialogs.FileDialog {
@@ -332,7 +332,7 @@ Item {
 
         signal cardClicked()
         signal toggleSelect()
-        signal historyClicked()
+        // signal historyClicked()  // 已隐藏历史功能
 
         padding: 10
         height: 100
@@ -399,11 +399,11 @@ Item {
                 }
             }
 
-            // 历史按钮
-            Button {
-                text: "历史"
-                onClicked: historyClicked()
-            }
+            // 历史按钮已隐藏
+            // Button {
+            //     text: "历史"
+            //     onClicked: historyClicked()
+            // }
         }
 
         MouseArea {
@@ -456,9 +456,9 @@ Item {
         }
     }
 
-    function _showHistory(charUuid) {
-        var json = bridge.characters.get_history(charUuid)
-        historyDialog.historyData = JSON.parse(json)
-        historyDialog.open()
-    }
+    // function _showHistory(charUuid) {
+    //     var json = bridge.characters.get_history(charUuid)
+    //     historyDialog.historyData = JSON.parse(json)
+    //     historyDialog.open()
+    // }
 }

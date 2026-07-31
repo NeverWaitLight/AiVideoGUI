@@ -79,7 +79,7 @@ Item {
                         visible: convList.count === 0
                         anchors.centerIn: parent
                         text: "暂无对话"
-                        buttonText: "新建对话"
+                        buttonText: "新建"
                         onButtonClicked: bridge.conversations.create_for_project(projectId)
                     }
                 }

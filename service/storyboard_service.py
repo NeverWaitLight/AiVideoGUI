@@ -7,12 +7,14 @@ from models.enums import ShotSize
 from models.storyboard import Storyboard, StoryboardHistory
 from storage.session_manager import SessionManager
 from storage.repositories.storyboard_repository import StoryboardRepository, StoryboardHistoryRepository
+from utils.path_converter import to_relative_path
 
 class StoryboardService:
     """分镜头业务逻辑服务。"""
 
-    def __init__(self, session_mgr: SessionManager) -> None:
+    def __init__(self, session_mgr: SessionManager, workspace_root: str) -> None:
         self._session_mgr = session_mgr
+        self._workspace_root = workspace_root
 
     # ---------- 分镜 CRUD ----------
 
@@ -51,13 +53,16 @@ class StoryboardService:
         design_image: str = "",
     ) -> Storyboard:
         """创建新分镜。"""
+        # 转换为相对路径存储
+        relative_design_image = to_relative_path(design_image, self._workspace_root) if design_image else ""
+
         now_ms = int(time.time() * 1000)
         storyboard = Storyboard(
             id=0,  # 自增ID，数据库自动生成
             scene_id=scene_id,
             scene_number=scene_number,
             shot_number=shot_number,
-            design_image=design_image,
+            design_image=relative_design_image,
             shot_size=shot_size,
             camera_movement=camera_movement,
             visual_content=visual_content,
@@ -114,9 +119,9 @@ class StoryboardService:
             if not storyboard:
                 raise ValueError(f"分镜不存在：{storyboard_id}")
 
-            # 更新字段
+            # 更新字段（设计图需要转换为相对路径）
             if design_image is not None:
-                storyboard.design_image = design_image
+                storyboard.design_image = to_relative_path(design_image, self._workspace_root) if design_image else ""
             if shot_size is not None:
                 storyboard.shot_size = shot_size
             if camera_movement is not None:

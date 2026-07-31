@@ -9,27 +9,29 @@ from models.enums import MediaType
 from models.media_file import MediaFile
 from storage.orm.media_entity import MediaFileEntity
 from storage.repositories.base_repository import BaseRepository
+from utils.path_converter import to_absolute_path
 
 
 class MediaRepository(BaseRepository[MediaFileEntity, MediaFile]):
     """素材库 Repository。"""
 
-    def __init__(self, session: Session):
+    def __init__(self, session: Session, workspace_root: str = ""):
         super().__init__(session, MediaFileEntity)
+        self._workspace_root = workspace_root
 
     def _to_dto(self, entity: MediaFileEntity) -> MediaFile:
-        """Entity → DTO 转换。"""
+        """Entity → DTO 转换（自动将相对路径转换为绝对路径）。"""
         return MediaFile(
             id=entity.id,
             filename=entity.filename,
             media_type=MediaType(entity.media_type),
-            local_path=entity.local_path,
+            local_path=to_absolute_path(entity.local_path, self._workspace_root),
             file_size=entity.file_size,
             source=entity.source,
             conversation_id=entity.conversation_id,
             message_id=entity.message_id,
             created_at=entity.created_at,
-            thumbnail_path=entity.thumbnail_path,
+            thumbnail_path=to_absolute_path(entity.thumbnail_path, self._workspace_root),
             duration=entity.duration,
             width=entity.width,
             height=entity.height,

@@ -32,7 +32,7 @@ Pane {
                 bridge.conversations.create_new()
                 sidebar.newConversationClicked()
             }
-            ToolTip.text: "新建对话"
+            ToolTip.text: "新建"
             ToolTip.visible: hovered
 
             background: Rectangle {

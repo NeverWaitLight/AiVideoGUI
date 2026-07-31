@@ -849,7 +849,7 @@ Dialog {
             Material.elevation: 0
         }
         Button {
-            text: "保存设置"
+            text: "保存"
             DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole
             Material.elevation: 1
             highlighted: true

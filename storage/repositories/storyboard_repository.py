@@ -10,22 +10,24 @@ from models.storyboard import Storyboard, StoryboardHistory
 from storage.orm.storyboard_entity import StoryboardEntity, StoryboardHistoryEntity
 from storage.orm.screenplay_entity import ScreenplayEntity
 from storage.repositories.base_repository import BaseRepository
+from utils.path_converter import to_absolute_path
 
 
 class StoryboardRepository(BaseRepository[StoryboardEntity, Storyboard]):
     """分镜 Repository。"""
 
-    def __init__(self, session: Session):
+    def __init__(self, session: Session, workspace_root: str = ""):
         super().__init__(session, StoryboardEntity)
+        self._workspace_root = workspace_root
 
     def _to_dto(self, entity: StoryboardEntity) -> Storyboard:
-        """Entity → DTO 转换。"""
+        """Entity → DTO 转换（自动将相对路径转换为绝对路径）。"""
         return Storyboard(
             id=entity.id,
             scene_id=entity.scene_id,
             scene_number=entity.scene_number,
             shot_number=entity.shot_number,
-            design_image=entity.design_image,
+            design_image=to_absolute_path(entity.design_image, self._workspace_root),
             shot_size=ShotSize(entity.shot_size) if isinstance(entity.shot_size, str) else entity.shot_size,
             camera_movement=entity.camera_movement,
             visual_content=entity.visual_content,

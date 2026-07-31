@@ -9,16 +9,18 @@ from models.enums import MessageStatus
 from models.message import Message
 from storage.orm.project_entity import MessageEntity
 from storage.repositories.base_repository import BaseRepository
+from utils.path_converter import to_absolute_path
 
 
 class MessageRepository(BaseRepository[MessageEntity, Message]):
     """消息 Repository。"""
 
-    def __init__(self, session: Session):
+    def __init__(self, session: Session, workspace_root: str = ""):
         super().__init__(session, MessageEntity)
+        self._workspace_root = workspace_root
 
     def _to_dto(self, entity: MessageEntity) -> Message:
-        """Entity → DTO 转换。"""
+        """Entity → DTO 转换（自动将相对路径转换为绝对路径）。"""
         return Message(
             id=entity.id,
             conversation_id=entity.conversation_id,
@@ -27,7 +29,7 @@ class MessageRepository(BaseRepository[MessageEntity, Message]):
             created_at=entity.created_at,
             task_id=entity.task_id,
             video_url=entity.video_url,
-            local_path=entity.local_path,
+            local_path=to_absolute_path(entity.local_path, self._workspace_root),
             status=MessageStatus(entity.status),
             error_message=entity.error_message,
         )

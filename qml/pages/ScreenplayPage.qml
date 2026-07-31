@@ -80,25 +80,26 @@ Item {
                         onClicked: page.generateStoryboardClicked(page.projectId)
                     }
 
-                    Button {
-                        Layout.preferredHeight: 34
-                        text: "保存历史版本"
-                        topPadding: 6
-                        bottomPadding: 6
-                        leftPadding: 12
-                        rightPadding: 12
-                        onClicked: bridge.screenplay.save_history()
-                    }
+                    // 历史版本按钮已隐藏
+                    // Button {
+                    //     Layout.preferredHeight: 34
+                    //     text: "保存历史版本"
+                    //     topPadding: 6
+                    //     bottomPadding: 6
+                    //     leftPadding: 12
+                    //     rightPadding: 12
+                    //     onClicked: bridge.screenplay.save_history()
+                    // }
 
-                    Button {
-                        Layout.preferredHeight: 34
-                        text: _showHistory ? "隐藏历史" : "历史版本"
-                        topPadding: 6
-                        bottomPadding: 6
-                        leftPadding: 12
-                        rightPadding: 12
-                        onClicked: _showHistory = !_showHistory
-                    }
+                    // Button {
+                    //     Layout.preferredHeight: 34
+                    //     text: _showHistory ? "隐藏历史" : "历史版本"
+                    //     topPadding: 6
+                    //     bottomPadding: 6
+                    //     leftPadding: 12
+                    //     rightPadding: 12
+                    //     onClicked: _showHistory = !_showHistory
+                    // }
                 }
 
                 SplitView {
@@ -162,75 +163,75 @@ Item {
                         }
                     }
 
-                    // 右侧：历史版本面板（可切换）
-                    Rectangle {
-                        visible: _showHistory
-                        SplitView.preferredWidth: _showHistory ? 300 : 0
-                        SplitView.minimumWidth: 200
+                    // 右侧：历史版本面板已隐藏
+                    // Rectangle {
+                    //     visible: _showHistory
+                    //     SplitView.preferredWidth: _showHistory ? 300 : 0
+                    //     SplitView.minimumWidth: 200
 
-                        ColumnLayout {
-                            anchors.fill: parent
-                            anchors.margins: 16
-                            spacing: 12
+                    //     ColumnLayout {
+                    //         anchors.fill: parent
+                    //         anchors.margins: 16
+                    //         spacing: 12
 
-                            Label {
-                                text: "历史版本"
-                                font.pixelSize: Theme.fontSizeMedium
-                                font.bold: true
-                            }
+                    //         Label {
+                    //             text: "历史版本"
+                    //             font.pixelSize: Theme.fontSizeMedium
+                    //             font.bold: true
+                    //         }
 
-                            ListView {
-                                Layout.fillWidth: true
-                                Layout.fillHeight: true
-                                clip: true
-                                spacing: 6
-                                model: bridge.screenplay.historyModel
+                    //         ListView {
+                    //             Layout.fillWidth: true
+                    //             Layout.fillHeight: true
+                    //             clip: true
+                    //             spacing: 6
+                    //             model: bridge.screenplay.historyModel
 
-                                delegate: Pane {
-                                    width: ListView.view.width - 4
-                                    padding: 8
+                    //             delegate: Pane {
+                    //                 width: ListView.view.width - 4
+                    //                 padding: 8
 
 
-                                    RowLayout {
-                                        anchors.fill: parent
-                                        spacing: 8
+                    //                 RowLayout {
+                    //                     anchors.fill: parent
+                    //                     spacing: 8
 
-                                        ColumnLayout {
-                                            Layout.fillWidth: true
-                                            spacing: 2
-                                            Label {
-                                                text: model.displayTime || ""
-                                                font.pixelSize: Theme.fontSizeSmall
-                                            }
-                                            Label {
-                                                text: (model.sceneCount || 0) + " 场"
-                                                font.pixelSize: Theme.fontSizeSmall
-                                            }
-                                        }
+                    //                     ColumnLayout {
+                    //                         Layout.fillWidth: true
+                    //                         spacing: 2
+                    //                         Label {
+                    //                             text: model.displayTime || ""
+                    //                             font.pixelSize: Theme.fontSizeSmall
+                    //                         }
+                    //                         Label {
+                    //                             text: (model.sceneCount || 0) + " 场"
+                    //                             font.pixelSize: Theme.fontSizeSmall
+                    //                         }
+                    //                     }
 
-                                        Button {
-                                            text: "恢复"
-                                            flat: true
-                                            onClicked: {
-                                                var ts = model.createdAt
-                                                confirmDialog.confirm(
-                                                    "确定要恢复到此历史版本吗？当前所有场次将被覆盖。",
-                                                    function() { bridge.screenplay.restore_history(ts) }
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
+                    //                     Button {
+                    //                         text: "恢复"
+                    //                         flat: true
+                    //                         onClicked: {
+                    //                             var ts = model.createdAt
+                    //                             confirmDialog.confirm(
+                    //                                 "确定要恢复到此历史版本吗？当前所有场次将被覆盖。",
+                    //                                 function() { bridge.screenplay.restore_history(ts) }
+                    //                             )
+                    //                         }
+                    //                     }
+                    //                 }
+                    //             }
 
-                                Label {
-                                    visible: !bridge.screenplay.historyModel || bridge.screenplay.historyModel.count === 0
-                                    anchors.centerIn: parent
-                                    text: "暂无历史版本"
-                                    font.pixelSize: Theme.fontSizeSmall
-                                }
-                            }
-                        }
-                    }
+                    //             Label {
+                    //                 visible: !bridge.screenplay.historyModel || bridge.screenplay.historyModel.count === 0
+                    //                 anchors.centerIn: parent
+                    //                 text: "暂无历史版本"
+                    //                 font.pixelSize: Theme.fontSizeSmall
+                    //             }
+                    //         }
+                    //     }
+                    // }
                 }
             }
         }

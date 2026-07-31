@@ -100,7 +100,7 @@ Item {
                     leftPadding: 7
                     rightPadding: 7
                     ToolTip.visible: hovered
-                    ToolTip.text: "新建项目"
+                    ToolTip.text: "新建"
                     onClicked: projectDialog.openForCreate()
 
                     background: Rectangle {
@@ -165,7 +165,7 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
             text: "还没有项目，点击右上角创建"
-            buttonText: "新建项目"
+            buttonText: "新建"
             onButtonClicked: projectGridPage.createProjectClicked()
         }
     }

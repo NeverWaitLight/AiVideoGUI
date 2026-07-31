@@ -7,12 +7,14 @@ from datetime import datetime
 from models.character import Character, CharacterHistory
 from storage.session_manager import SessionManager
 from storage.repositories.character_repository import CharacterRepository, CharacterHistoryRepository
+from utils.path_converter import to_relative_path
 
 class CharacterService:
     """角色业务逻辑服务。"""
 
-    def __init__(self, session_manager: SessionManager) -> None:
+    def __init__(self, session_manager: SessionManager, workspace_root: str) -> None:
         self._sm = session_manager
+        self._workspace_root = workspace_root
 
     def list_characters(self, project_id: int) -> list[Character]:
         """获取项目的所有角色。"""
@@ -33,6 +35,9 @@ class CharacterService:
         design_image: str = "",
     ) -> Character:
         """创建新角色。"""
+        # 转换为相对路径存储
+        relative_design_image = to_relative_path(design_image, self._workspace_root) if design_image else ""
+
         character = Character(
             id=0,
             uuid=str(uuid.uuid4()),
@@ -40,7 +45,7 @@ class CharacterService:
             name=name,
             ref_code=ref_code,
             description=description,
-            design_image=design_image,
+            design_image=relative_design_image,
             created_at=datetime.now(),
             updated_at=datetime.now(),
         )
@@ -74,6 +79,11 @@ class CharacterService:
             logger.warning(f"角色不存在：{character_uuid}")
             return
 
+        # 转换设计图路径为相对路径（如果提供了新路径）
+        final_design_image = character.design_image
+        if design_image is not None:
+            final_design_image = to_relative_path(design_image, self._workspace_root) if design_image else ""
+
         # 更新字段
         updated_character = Character(
             id=character.id,
@@ -82,7 +92,7 @@ class CharacterService:
             name=name if name is not None else character.name,
             ref_code=ref_code if ref_code is not None else character.ref_code,
             description=description if description is not None else character.description,
-            design_image=design_image if design_image is not None else character.design_image,
+            design_image=final_design_image,
             created_at=character.created_at,
             updated_at=datetime.now(),
         )

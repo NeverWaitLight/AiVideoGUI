@@ -43,7 +43,7 @@ Dialog {
                 anchors.left: parent.left
                 anchors.leftMargin: 20
                 anchors.verticalCenter: parent.verticalCenter
-                text: projectDialog.isEdit ? "编辑项目" : "新建项目"
+                text: projectDialog.isEdit ? "编辑" : "新建"
                 font.pixelSize: Theme.fontSizeLarge
                 font.bold: true
             }

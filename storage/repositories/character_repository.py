@@ -9,13 +9,15 @@ from sqlalchemy.orm import Session
 from models.character import Character, CharacterHistory
 from storage.orm.character_entity import CharacterEntity, CharacterHistoryEntity
 from storage.repositories.base_repository import BaseRepository
+from utils.path_converter import to_absolute_path
 
 
 class CharacterRepository(BaseRepository[CharacterEntity, Character]):
     """角色 Repository。"""
 
-    def __init__(self, session: Session):
+    def __init__(self, session: Session, workspace_root: str = ""):
         super().__init__(session, CharacterEntity)
+        self._workspace_root = workspace_root
 
     def get_by_id(self, id: str) -> Optional[Character]:
         """根据 UUID 查询角色（覆盖基类，使用 uuid 字段查找）。"""
@@ -24,14 +26,14 @@ class CharacterRepository(BaseRepository[CharacterEntity, Character]):
         return self._to_dto(entity) if entity else None
 
     def _to_dto(self, entity: CharacterEntity) -> Character:
-        """Entity → DTO 转换。"""
+        """Entity → DTO 转换（自动将相对路径转换为绝对路径）。"""
         return Character(
             id=entity.id,
             uuid=entity.uuid,
             project_id=entity.project_id,
             name=entity.name,
             ref_code=entity.ref_code,
-            design_image=entity.design_image,
+            design_image=to_absolute_path(entity.design_image, self._workspace_root),
             description=entity.description,
             created_at=entity.created_at,
             updated_at=entity.updated_at,

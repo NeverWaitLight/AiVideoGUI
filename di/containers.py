@@ -49,8 +49,11 @@ class ApplicationContainer(containers.DeclarativeContainer):
 
     # ==================== 基础设施层 ====================
 
-    # SessionManager（单例）
-    session_manager = providers.Singleton(SessionManager)
+    # SessionManager（单例，注入 workspace_root）
+    session_manager = providers.Singleton(
+        SessionManager,
+        workspace_root=config.workspace_root,
+    )
 
     # ConfigManager（单例，需要 config_path）
     config_manager = providers.Singleton(
@@ -103,16 +106,18 @@ class ApplicationContainer(containers.DeclarativeContainer):
         session_manager=session_manager,
     )
 
-    # StoryboardService（单例）
+    # StoryboardService（单例，注入 SessionManager 和 workspace_root）
     storyboard_service = providers.Singleton(
         StoryboardService,
         session_mgr=session_manager,
+        workspace_root=config.workspace_root,
     )
 
-    # CharacterService（单例）
+    # CharacterService（单例，注入 SessionManager 和 workspace_root）
     character_service = providers.Singleton(
         CharacterService,
         session_manager=session_manager,
+        workspace_root=config.workspace_root,
     )
 
     # ChatService（单例）

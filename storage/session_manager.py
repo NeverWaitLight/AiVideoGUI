@@ -41,8 +41,12 @@ class SessionManager:
             raise
     """
 
-    def __init__(self):
-        """初始化 SessionManager。"""
+    def __init__(self, workspace_root: str = ""):
+        """初始化 SessionManager。
+
+        Args:
+            workspace_root: 工作区根目录（用于路径转换）
+        """
         # 写操作锁（递归锁，允许同一线程多次获取）
         self._write_lock = threading.RLock()
 
@@ -52,6 +56,9 @@ class SessionManager:
 
         # 缓存锁（保护 _repo_cache 字典的并发访问）
         self._cache_lock = threading.Lock()
+
+        # 工作区根目录（用于 Repository 的路径转换）
+        self._workspace_root = workspace_root
 
         logger.debug("SessionManager 初始化完成")
 
@@ -91,7 +98,19 @@ class SessionManager:
             if repo_class not in self._repo_cache:
                 # 创建 Repository 实例，传入当前线程的 Session
                 session = self.get_session()
-                repo_instance = repo_class(session)
+
+                # 检查 Repository 是否需要 workspace_root 参数
+                # MediaRepository, CharacterRepository, StoryboardRepository 等需要路径转换
+                from storage.repositories.media_repository import MediaRepository
+                from storage.repositories.character_repository import CharacterRepository
+                from storage.repositories.storyboard_repository import StoryboardRepository
+                from storage.repositories.message_repository import MessageRepository
+
+                if repo_class in (MediaRepository, CharacterRepository, StoryboardRepository, MessageRepository):
+                    repo_instance = repo_class(session, self._workspace_root)
+                else:
+                    repo_instance = repo_class(session)
+
                 self._repo_cache[repo_class] = repo_instance
                 logger.debug(f"创建并缓存 Repository 实例：{repo_class.__name__}")
 
