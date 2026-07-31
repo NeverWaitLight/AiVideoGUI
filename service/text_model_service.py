@@ -358,6 +358,30 @@ class TextModelService:
         logger.info(f"调用文本模型生成角色设计图提示词，模型：{model or self.DEFAULT_MODEL}，角色：{character_name}")
         return self.chat(messages, model)
 
+    def optimize_screenplay(
+        self,
+        outline_content: str,
+        current_script: str,
+        user_requirement: str,
+        model: str | None = None
+    ) -> tuple[str, list[dict]]:
+        """优化剧本：返回 (title, scenes)"""
+        template = self._prompt_manager.get_template("screenplay_optimization")
+        messages = template.build_messages(
+            outline_content=outline_content,
+            current_script=current_script,
+            user_requirement=user_requirement,
+        )
+
+        logger.info(f"调用文本模型优化剧本，模型：{model or self.DEFAULT_MODEL}")
+        result = self.chat(messages, model)
+
+        from utils.script_parser import ScriptParser
+        title, scenes = ScriptParser.parse(result)
+        logger.info(f"剧本解析成功：标题='{title}'，共 {len(scenes)} 场")
+
+        return title, scenes
+
     def generate_characters(
         self,
         outline_content: str,

@@ -6,7 +6,7 @@ from PySide6.QtCore import QObject, Property, Signal, Slot
 
 from bridge.models.scene_model import SceneListModel
 from bridge.models.screenplay_history_model import ScreenplayHistoryListModel
-from bridge.workers import ScriptGenerateWorker, OptimizeWorker
+from bridge.workers import ScriptGenerateWorker, ScreenplayOptimizeWorker
 from models.enums import SceneLocation, SceneTime
 
 
@@ -49,7 +49,7 @@ class ScreenplayBridge(QObject):
         self._history_model = ScreenplayHistoryListModel(self)
         self._project_id: int = -1
         self._worker: ScriptGenerateWorker | None = None
-        self._optimize_worker: OptimizeWorker | None = None
+        self._optimize_worker: ScreenplayOptimizeWorker | None = None
         self._optimizing: bool = False
         self._cur_scene_id: int = -1
         self._cur_scene_number: int = 0
@@ -249,26 +249,20 @@ class ScreenplayBridge(QObject):
 
     @Slot(str, int)
     def optimize_with_ai(self, user_input: str, project_id: int) -> None:
-        """AI 优化剧本：自动判断生成或优化"""
         if self._optimizing:
             return
 
         try:
-            # 1. 查询大纲内容
             outline = self._story_outline_service.get_or_create_story_outline(project_id)
             if not outline.content.strip():
                 self.error.emit("大纲内容为空，无法生成剧本")
                 return
 
-            # 2. 查询现有剧本
             scenes = self._service.list_scenes(project_id)
 
-            # 3. 判断分支
             if not scenes:
-                # 生成模式：根据大纲生成剧本
                 self._generate_from_outline(outline.content, user_input)
             else:
-                # 优化模式：优化现有剧本
                 self._optimize_existing_script(outline.content, scenes, user_input)
 
         except Exception as e:
@@ -276,48 +270,29 @@ class ScreenplayBridge(QObject):
             self.error.emit(str(e))
 
     def _generate_from_outline(self, outline_content: str, user_input: str) -> None:
-        """生成模式：从大纲生成剧本"""
-        # 复用现有的 generate_script 逻辑
         combined_content = f"{outline_content}\n\n用户要求：{user_input}"
         self.generate_script(combined_content)
 
     def _optimize_existing_script(self, outline_content: str, scenes: list, user_input: str) -> None:
-        """优化模式：优化现有剧本"""
         self._optimizing = True
         self.isOptimizingChanged.emit()
 
-        # 格式化当前剧本为文本
         current_script = self._format_scenes_as_text(scenes)
 
-        # 构建优化消息
-        try:
-            messages = self._text_service._prompt_manager.get_template("screenplay_optimization").build_messages(
-                outline_content=outline_content,
-                current_script=current_script,
-                user_requirement=user_input,
-            )
-        except Exception as e:
-            logger.error(f"构建优化提示词失败: {e}")
-            self._optimizing = False
-            self.isOptimizingChanged.emit()
-            self.script_failed.emit(f"构建优化提示词失败：{e}")
-            return
+        self._optimize_worker = ScreenplayOptimizeWorker(
+            self._text_service,
+            outline_content,
+            current_script,
+            user_input,
+        )
 
-        self._optimize_worker = OptimizeWorker(self._text_service, messages)
-
-        def on_finished(result: str) -> None:
+        def on_finished(title: str, new_scenes: list) -> None:
             self._optimizing = False
             self.isOptimizingChanged.emit()
             try:
-                # 解析优化后的剧本
-                from utils.script_parser import ScriptParser
-                title, new_scenes = ScriptParser.parse(result)
-
-                # 删除旧场次
                 for scene in scenes:
                     self._service.delete_scene(scene.id)
 
-                # 保存新场次
                 if self._project_id >= 0 and new_scenes:
                     self._service.batch_create_scenes(self._project_id, new_scenes)
 
@@ -340,7 +315,6 @@ class ScreenplayBridge(QObject):
         self._optimize_worker.start()
 
     def _format_scenes_as_text(self, scenes: list) -> str:
-        """将场次列表格式化为文本"""
         lines = []
         for scene in scenes:
             # 场次标题

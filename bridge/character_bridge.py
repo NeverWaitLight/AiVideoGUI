@@ -7,7 +7,7 @@ from loguru import logger
 from PySide6.QtCore import QObject, Property, Signal, Slot
 
 from bridge.models.character_model import CharacterListModel
-from bridge.workers import CharacterDesignImageWorker, OptimizeWorker
+from bridge.workers import CharacterDesignImageWorker, CharacterWorker
 
 
 class CharacterBridge(QObject):
@@ -31,6 +31,7 @@ class CharacterBridge(QObject):
         self._model = CharacterListModel(self)
         self._workers = []
         self._optimizing = False
+        self._character_worker = None
 
     @Property(QObject, constant=True)
     def model(self):
@@ -167,36 +168,23 @@ class CharacterBridge(QObject):
             self.error.emit(str(e))
 
     def _generate_characters(self, outline_content: str, scenes: list, user_input: str, project_id: int) -> None:
-        """生成模式：从大纲和剧本生成角色"""
         self._optimizing = True
         self.isOptimizingChanged.emit()
 
         script_content = self._format_script_as_text(scenes)
 
-        worker = OptimizeWorker(self._text_model_service, [])
-        worker._service = self._text_model_service
-        worker._outline = outline_content
-        worker._script = script_content
-        worker._requirement = user_input
-
-        def do_work():
-            try:
-                characters = worker._service.generate_characters(
-                    worker._outline,
-                    worker._script,
-                    worker._requirement,
-                )
-                return characters
-            except Exception as e:
-                raise e
-
-        worker.run = lambda: worker.finished.emit(do_work())
+        self._character_worker = CharacterWorker(
+            self._text_model_service,
+            'generate',
+            outline_content=outline_content,
+            script_content=script_content,
+            user_requirement=user_input,
+        )
 
         def on_finished(characters: list) -> None:
             self._optimizing = False
             self.isOptimizingChanged.emit()
             try:
-                # 保存角色
                 for char_data in characters:
                     self._character_service.create_character(
                         project_id=project_id,
@@ -217,49 +205,34 @@ class CharacterBridge(QObject):
             self.isOptimizingChanged.emit()
             self.error.emit(f"生成角色失败：{err}")
 
-        worker.finished.connect(on_finished)
-        worker.failed.connect(on_failed)
-        worker.finished.connect(worker.deleteLater)
-        worker.start()
+        self._character_worker.finished.connect(on_finished)
+        self._character_worker.failed.connect(on_failed)
+        self._character_worker.finished.connect(self._character_worker.deleteLater)
+        self._character_worker.start()
 
     def _optimize_characters(self, outline_content: str, scenes: list, characters: list, user_input: str, project_id: int) -> None:
-        """优化模式：优化现有角色"""
         self._optimizing = True
         self.isOptimizingChanged.emit()
 
         script_content = self._format_script_as_text(scenes)
         current_characters = self._format_characters_as_text(characters)
 
-        worker = OptimizeWorker(self._text_model_service, [])
-        worker._service = self._text_model_service
-        worker._outline = outline_content
-        worker._script = script_content
-        worker._current = current_characters
-        worker._requirement = user_input
-
-        def do_work():
-            try:
-                characters = worker._service.optimize_characters(
-                    worker._outline,
-                    worker._script,
-                    worker._current,
-                    worker._requirement,
-                )
-                return characters
-            except Exception as e:
-                raise e
-
-        worker.run = lambda: worker.finished.emit(do_work())
+        self._character_worker = CharacterWorker(
+            self._text_model_service,
+            'optimize',
+            outline_content=outline_content,
+            script_content=script_content,
+            current_characters=current_characters,
+            user_requirement=user_input,
+        )
 
         def on_finished(new_characters: list) -> None:
             self._optimizing = False
             self.isOptimizingChanged.emit()
             try:
-                # 删除旧角色
                 for char in characters:
                     self._character_service.delete_character(char.id)
 
-                # 保存新角色
                 for char_data in new_characters:
                     self._character_service.create_character(
                         project_id=project_id,
@@ -280,13 +253,12 @@ class CharacterBridge(QObject):
             self.isOptimizingChanged.emit()
             self.error.emit(f"优化角色失败：{err}")
 
-        worker.finished.connect(on_finished)
-        worker.failed.connect(on_failed)
-        worker.finished.connect(worker.deleteLater)
-        worker.start()
+        self._character_worker.finished.connect(on_finished)
+        self._character_worker.failed.connect(on_failed)
+        self._character_worker.finished.connect(self._character_worker.deleteLater)
+        self._character_worker.start()
 
     def _format_script_as_text(self, scenes: list) -> str:
-        """将场次列表格式化为文本"""
         from models.enums import SceneLocation, SceneTime
 
         lines = []
@@ -313,7 +285,6 @@ class CharacterBridge(QObject):
         return "\n".join(lines)
 
     def _format_characters_as_text(self, characters: list) -> str:
-        """将角色列表格式化为文本"""
         lines = []
         for char in characters:
             lines.append(f"【{char.name}】（引用代号：{char.ref_code}）")

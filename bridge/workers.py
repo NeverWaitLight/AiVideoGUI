@@ -34,17 +34,102 @@ class StoryboardGenerateWorker(QThread):
     finished = Signal(dict)
     failed = Signal(str)
 
-    def __init__(self, text_service, script_content: str, parent=None):
+    def __init__(self, text_service, script_content: str, art_style: str = "", parent=None):
         super().__init__(parent)
         self._text_service = text_service
         self._script_content = script_content
+        self._art_style = art_style
 
     def run(self):
         try:
-            result = self._text_service.generate_storyboard(self._script_content)
+            result = self._text_service.generate_storyboard(self._script_content, self._art_style)
             self.finished.emit(result)
         except Exception as e:
             logger.exception("生成分镜失败")
+            self.failed.emit(str(e))
+
+
+class CharacterWorker(QThread):
+    finished = Signal(list)
+    failed = Signal(str)
+
+    def __init__(self, text_service, mode: str, **kwargs):
+        super().__init__()
+        self._text_service = text_service
+        self._mode = mode
+        self._kwargs = kwargs
+
+    def run(self):
+        try:
+            if self._mode == 'generate':
+                characters = self._text_service.generate_characters(
+                    outline_content=self._kwargs['outline_content'],
+                    script_content=self._kwargs['script_content'],
+                    user_requirement=self._kwargs['user_requirement'],
+                )
+            else:
+                characters = self._text_service.optimize_characters(
+                    outline_content=self._kwargs['outline_content'],
+                    script_content=self._kwargs['script_content'],
+                    current_characters=self._kwargs['current_characters'],
+                    user_requirement=self._kwargs['user_requirement'],
+                )
+            self.finished.emit(characters)
+        except Exception as e:
+            logger.exception(f"{'生成' if self._mode == 'generate' else '优化'}角色失败")
+            self.failed.emit(str(e))
+
+
+class ScreenplayOptimizeWorker(QThread):
+    finished = Signal(str, list)
+    failed = Signal(str)
+
+    def __init__(self, text_service, outline_content: str, current_script: str, user_requirement: str, parent=None):
+        super().__init__(parent)
+        self._text_service = text_service
+        self._outline_content = outline_content
+        self._current_script = current_script
+        self._user_requirement = user_requirement
+
+    def run(self):
+        try:
+            title, scenes = self._text_service.optimize_screenplay(
+                self._outline_content,
+                self._current_script,
+                self._user_requirement,
+            )
+            self.finished.emit(title, scenes)
+        except Exception as e:
+            logger.exception("优化剧本失败")
+            self.failed.emit(str(e))
+
+
+class StoryboardOptimizeWorker(QThread):
+    finished = Signal(list)
+    failed = Signal(str)
+
+    def __init__(self, text_service, outline_content: str, script_content: str,
+                 character_content: str, current_storyboard: str, user_requirement: str, parent=None):
+        super().__init__(parent)
+        self._text_service = text_service
+        self._outline_content = outline_content
+        self._script_content = script_content
+        self._character_content = character_content
+        self._current_storyboard = current_storyboard
+        self._user_requirement = user_requirement
+
+    def run(self):
+        try:
+            shots = self._text_service.optimize_storyboard(
+                self._outline_content,
+                self._script_content,
+                self._character_content,
+                self._current_storyboard,
+                self._user_requirement,
+            )
+            self.finished.emit(shots)
+        except Exception as e:
+            logger.exception("优化分镜失败")
             self.failed.emit(str(e))
 
 

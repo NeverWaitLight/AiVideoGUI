@@ -8,7 +8,7 @@ from PySide6.QtCore import QObject, Property, Signal, Slot
 from bridge.models.storyboard_model import StoryboardListModel
 from bridge.workers import (
     DesignImageWorker, BatchDesignImageWorker, BatchGenerationController,
-    StoryboardGenerateWorker,
+    StoryboardGenerateWorker, StoryboardOptimizeWorker,
 )
 
 
@@ -54,6 +54,8 @@ class StoryboardBridge(QObject):
         self._model = StoryboardListModel(self)
         self._workers = []
         self._optimizing = False
+        self._optimize_worker = None
+        self._generate_worker = None
         self._project_id: int = -1
         self._cur_shot_id: int = -1
         self._cur_scene_number: int = 0
@@ -494,42 +496,60 @@ class StoryboardBridge(QObject):
             self.error.emit(str(e))
 
     def _generate_storyboard_with_requirement(self, outline_content: str, scenes: list, characters: list, user_input: str, project_id: int) -> None:
-        """生成模式：从剧本生成分镜"""
-        # 格式化剧本内容
         script_content = self._format_script_as_text(scenes)
         character_content = self._format_characters_as_text(characters)
 
-        # 合并用户要求到艺术风格
         combined_requirement = f"用户要求：{user_input}\n\n大纲参考：{outline_content}"
 
-        worker = StoryboardGenerateWorker(self._text_model_service, script_content, combined_requirement)
+        self._generate_worker = StoryboardGenerateWorker(self._text_model_service, script_content, combined_requirement)
 
         def on_finished(result: dict) -> None:
             try:
                 shots_data = result.get("shots", [])
-                characters_data = result.get("characters", [])
 
                 if not shots_data:
                     self.storyboard_generation_failed.emit("AI 返回的分镜数据为空")
                     return
 
-                # 保存分镜
-                self._storyboard_service.batch_create_storyboards(project_id, shots_data)
+                scene_map = {s.scene_number: s.id for s in scenes}
 
-                # 保存角色（如果有新角色）
-                for char_data in characters_data:
-                    try:
-                        self._character_service.create_character(
-                            project_id=project_id,
-                            name=char_data.get("name", ""),
-                            ref_code=char_data.get("ref_code", ""),
-                            description=char_data.get("description", ""),
-                        )
-                    except Exception:
-                        pass  # 可能已存在，忽略
+                storyboards = []
+                for shot_data in shots_data:
+                    scene_number = shot_data.get("scene_number", 1)
+                    scene_id = scene_map.get(scene_number, 0)
+
+                    from models.storyboard import Storyboard
+                    from models.enums import ShotSize
+
+                    shot_size_map = {
+                        "extreme_close_up": ShotSize.EXTREME_CLOSE_UP,
+                        "close_up": ShotSize.CLOSE_UP,
+                        "medium_shot": ShotSize.MEDIUM_SHOT,
+                        "full_shot": ShotSize.FULL_SHOT,
+                        "long_shot": ShotSize.LONG_SHOT,
+                        "extreme_long_shot": ShotSize.EXTREME_LONG_SHOT,
+                    }
+
+                    shot_size = shot_size_map.get(shot_data.get("shot_size", "medium_shot"), ShotSize.MEDIUM_SHOT)
+
+                    storyboard = Storyboard(
+                        scene_id=scene_id,
+                        scene_number=scene_number,
+                        shot_number=shot_data.get("shot_number", 1),
+                        shot_size=shot_size,
+                        camera_movement=shot_data.get("camera_movement", ""),
+                        visual_content=shot_data.get("visual_content", ""),
+                        dialogue=shot_data.get("dialogue", ""),
+                        sound_effect=shot_data.get("sound_effect", ""),
+                        duration=shot_data.get("duration", 5.0),
+                        notes=shot_data.get("color_lighting", ""),
+                    )
+                    storyboards.append(storyboard)
+
+                self._storyboard_service.batch_create_storyboards(storyboards)
 
                 self.load_for_project(project_id)
-                self.storyboard_generated.emit(len(shots_data))
+                self.storyboard_generated.emit(len(storyboards))
 
             except Exception as e:
                 logger.exception("保存生成的分镜失败")
@@ -538,12 +558,12 @@ class StoryboardBridge(QObject):
         def on_failed(err: str) -> None:
             self.storyboard_generation_failed.emit(err)
 
-        worker.finished.connect(on_finished)
-        worker.failed.connect(on_failed)
-        worker.start()
+        self._generate_worker.finished.connect(on_finished)
+        self._generate_worker.failed.connect(on_failed)
+        self._generate_worker.finished.connect(self._generate_worker.deleteLater)
+        self._generate_worker.start()
 
     def _optimize_storyboard(self, outline_content: str, scenes: list, characters: list, storyboards: list, user_input: str, project_id: int) -> None:
-        """优化模式：优化现有分镜"""
         self._optimizing = True
         self.isOptimizingChanged.emit()
 
@@ -551,44 +571,61 @@ class StoryboardBridge(QObject):
         character_content = self._format_characters_as_text(characters)
         current_storyboard = self._format_storyboards_as_text(storyboards)
 
-        from bridge.workers import OptimizeWorker
-
-        worker = OptimizeWorker(self._text_model_service, [])
-        worker._service = self._text_model_service
-        worker._outline = outline_content
-        worker._script = script_content
-        worker._characters = character_content
-        worker._current = current_storyboard
-        worker._requirement = user_input
-
-        def do_work():
-            try:
-                shots = worker._service.optimize_storyboard(
-                    worker._outline,
-                    worker._script,
-                    worker._characters,
-                    worker._current,
-                    worker._requirement,
-                )
-                return shots
-            except Exception as e:
-                raise e
-
-        worker.run = lambda: worker.finished.emit(do_work())
+        self._optimize_worker = StoryboardOptimizeWorker(
+            self._text_model_service,
+            outline_content,
+            script_content,
+            character_content,
+            current_storyboard,
+            user_input,
+        )
 
         def on_finished(new_shots: list) -> None:
             self._optimizing = False
             self.isOptimizingChanged.emit()
             try:
-                # 删除旧分镜
                 for shot in storyboards:
                     self._storyboard_service.delete_storyboard(shot.id)
 
-                # 保存新分镜
-                self._storyboard_service.batch_create_storyboards(project_id, new_shots)
+                scene_map = {s.scene_number: s.id for s in scenes}
+
+                storyboards_to_create = []
+                for shot_data in new_shots:
+                    scene_number = shot_data.get("scene_number", 1)
+                    scene_id = scene_map.get(scene_number, 0)
+
+                    from models.storyboard import Storyboard
+                    from models.enums import ShotSize
+
+                    shot_size_map = {
+                        "extreme_close_up": ShotSize.EXTREME_CLOSE_UP,
+                        "close_up": ShotSize.CLOSE_UP,
+                        "medium_shot": ShotSize.MEDIUM_SHOT,
+                        "full_shot": ShotSize.FULL_SHOT,
+                        "long_shot": ShotSize.LONG_SHOT,
+                        "extreme_long_shot": ShotSize.EXTREME_LONG_SHOT,
+                    }
+
+                    shot_size = shot_size_map.get(shot_data.get("shot_size", "medium_shot"), ShotSize.MEDIUM_SHOT)
+
+                    storyboard = Storyboard(
+                        scene_id=scene_id,
+                        scene_number=scene_number,
+                        shot_number=shot_data.get("shot_number", 1),
+                        shot_size=shot_size,
+                        camera_movement=shot_data.get("camera_movement", ""),
+                        visual_content=shot_data.get("visual_content", ""),
+                        dialogue=shot_data.get("dialogue", ""),
+                        sound_effect=shot_data.get("sound_effect", ""),
+                        duration=shot_data.get("duration", 5.0),
+                        notes=shot_data.get("color_lighting", ""),
+                    )
+                    storyboards_to_create.append(storyboard)
+
+                self._storyboard_service.batch_create_storyboards(storyboards_to_create)
 
                 self.load_for_project(project_id)
-                self.storyboard_optimized.emit(len(new_shots))
+                self.storyboard_optimized.emit(len(storyboards_to_create))
 
             except Exception as e:
                 logger.exception("保存优化后的分镜失败")
@@ -599,10 +636,10 @@ class StoryboardBridge(QObject):
             self.isOptimizingChanged.emit()
             self.storyboard_generation_failed.emit(f"优化分镜失败：{err}")
 
-        worker.finished.connect(on_finished)
-        worker.failed.connect(on_failed)
-        worker.finished.connect(worker.deleteLater)
-        worker.start()
+        self._optimize_worker.finished.connect(on_finished)
+        self._optimize_worker.failed.connect(on_failed)
+        self._optimize_worker.finished.connect(self._optimize_worker.deleteLater)
+        self._optimize_worker.start()
 
     def _format_script_as_text(self, scenes: list) -> str:
         """将场次列表格式化为文本"""
