@@ -9,15 +9,11 @@ from typing import Any
 from PySide6.QtCore import QObject
 
 from config.manager import ConfigManager
-from models.conversation import Conversation
 from models.enums import MessageStatus
-from models.message import Message
 from providers.video_base import VideoProvider
 from providers.dashscope_video import DashScopeVideoProvider
 from providers.seedance_video import SeedanceVideoProvider
 from storage.session_manager import SessionManager
-from storage.repositories.conversation_repository import ConversationRepository
-from storage.repositories.message_repository import MessageRepository
 from storage.repositories.active_task_repository import ActiveTaskRepository
 
 _PROVIDER_REGISTRY: dict[str, type[VideoProvider]] = {
@@ -55,82 +51,15 @@ class VideoService(QObject):
         self._providers[name] = provider
         return provider
 
-    def create_conversation(
-        self, provider_name: str, model_name: str, title: str = "新对话", project_id: str = "", is_hidden: bool = False
-    ) -> Conversation:
-        conv = Conversation(
-            id=uuid.uuid4().hex,
-            title=title,
-            created_at=datetime.now(),
-            model_name=model_name,
-            provider_name=provider_name,
-            project_id=project_id,
-            is_hidden=is_hidden,
-        )
-
-        conv_repo = self._sm.get_repo(ConversationRepository)
-        self._sm.begin_write()
-        try:
-            conv_repo.save(conv)
-            self._sm.commit_write()
-            return conv
-        except Exception as e:
-            self._sm.rollback_write()
-            logger.error(f"创建对话失败: {e}")
-            raise
-
-    def add_user_message(self, conversation_id: str, content: str) -> Message:
-        msg = Message(
-            id=uuid.uuid4().hex,
-            conversation_id=conversation_id,
-            role="user",
-            content=content,
-            created_at=datetime.now(),
-            status=MessageStatus.COMPLETED,
-        )
-
-        msg_repo = self._sm.get_repo(MessageRepository)
-        self._sm.begin_write()
-        try:
-            msg_repo.save(msg)
-            self._sm.commit_write()
-            return msg
-        except Exception as e:
-            self._sm.rollback_write()
-            logger.error(f"添加用户消息失败: {e}")
-            raise
-
-    def add_assistant_message(self, conversation_id: str, content: str) -> Message:
-        msg = Message(
-            id=uuid.uuid4().hex,
-            conversation_id=conversation_id,
-            role="assistant",
-            content=content,
-            created_at=datetime.now(),
-            status=MessageStatus.COMPLETED,
-        )
-
-        msg_repo = self._sm.get_repo(MessageRepository)
-        self._sm.begin_write()
-        try:
-            msg_repo.save(msg)
-            self._sm.commit_write()
-            return msg
-        except Exception as e:
-            self._sm.rollback_write()
-            logger.error(f"添加助手消息失败: {e}")
-            raise
-
     def submit_task(
         self,
-        conversation_id: str,
         prompt: str,
         provider_name: str,
         params: dict[str, Any] | None = None,
         save_path: str = "",
         storyboard_id: int = 0,
         reference_image: str = "",
-    ) -> Message:
+    ) -> str:
         provider = self.get_provider(provider_name)
 
         if reference_image:
@@ -140,26 +69,12 @@ class VideoService(QObject):
             provider_task_id, request_params = provider.t2v(prompt, params)
             logger.info(f"使用文生视频 (t2v)")
 
-        assistant_msg = Message(
-            id=uuid.uuid4().hex,
-            conversation_id=conversation_id,
-            role="assistant",
-            content="",
-            created_at=datetime.now(),
-            task_id=provider_task_id,
-            status=MessageStatus.GENERATING,
-        )
-
-        msg_repo = self._sm.get_repo(MessageRepository)
         task_repo = self._sm.get_repo(ActiveTaskRepository)
 
         self._sm.begin_write()
         try:
-            msg_repo.save(assistant_msg)
-
             active_task_id = task_repo.add(
                 provider_task_id=provider_task_id,
-                message_id=assistant_msg.id,
                 provider_name=provider_name,
                 model_name=provider._config.default_model,
                 save_path=save_path,
@@ -170,14 +85,14 @@ class VideoService(QObject):
             self._sm.commit_write()
 
             logger.info(
-                "任务已提交 message=%s provider_task=%s active_task=%s provider=%s save_path=%s",
-                assistant_msg.id,
+                "任务已提交 provider_task=%s active_task=%s provider=%s save_path=%s storyboard_id=%s",
                 provider_task_id,
                 active_task_id,
                 provider_name,
                 save_path,
+                storyboard_id,
             )
-            return assistant_msg
+            return provider_task_id
         except Exception as e:
             self._sm.rollback_write()
             logger.error(f"提交任务失败: {e}")

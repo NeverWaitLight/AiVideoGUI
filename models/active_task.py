@@ -8,7 +8,6 @@ from datetime import datetime
 class ActiveTask:
     id: int
     provider_task_id: str
-    message_id: str
     provider_name: str
     model_name: str
     status: str

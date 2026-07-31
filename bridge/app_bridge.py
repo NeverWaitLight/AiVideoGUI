@@ -11,7 +11,6 @@ from PySide6.QtGui import QGuiApplication
 if TYPE_CHECKING:
     from di import ApplicationContainer
 
-from bridge.conversation_bridge import ConversationBridge
 from bridge.project_bridge import ProjectBridge
 from bridge.media_bridge import MediaBridge
 from bridge.storyboard_bridge import StoryboardBridge
@@ -27,7 +26,6 @@ class AppBridge(QObject):
     task_download_progress = Signal(str, int, int)
     task_finished = Signal(str, str, int)
     task_failed = Signal(str, str)
-    title_ready = Signal(str, str)
     batch_progress = Signal(int, int, str)
     batch_done = Signal(int, int)
     batch_terminated = Signal(int, int)
@@ -49,7 +47,6 @@ class AppBridge(QObject):
         super().__init__(parent)
         self._container = container
         self._video_service = container.video_service()
-        self._chat_service = container.chat_service()
         self._project_service = container.project_service()
         self._story_outline_service = container.story_outline_service()
         self._screenplay_service = container.screenplay_service()
@@ -61,9 +58,6 @@ class AppBridge(QObject):
         self._session_manager = container.session_manager()
         self._config = container.config_manager()
         self._scheduler = container.background_scheduler()
-        self._conversations = ConversationBridge(
-            self._video_service, self._chat_service, self._session_manager, self,
-        )
         self._projects = ProjectBridge(
             self._project_service, self._session_manager, self,
         )
@@ -99,14 +93,9 @@ class AppBridge(QObject):
         cover_signal_emitter.cover_generation_started.connect(self.cover_generation_started.emit)
         cover_signal_emitter.cover_generation_finished.connect(self.cover_generation_finished.emit)
         cover_signal_emitter.cover_generation_failed.connect(self.cover_generation_failed.emit)
-        self._chat_service.title_ready.connect(self.title_ready.emit)
         self._storyboard_bridge.design_image_ready.connect(self.design_image_ready.emit)
         self._storyboard_bridge.design_image_progress.connect(self.design_image_progress.emit)
         self._storyboard_bridge.design_image_failed.connect(self.design_image_failed.emit)
-
-    @Property(QObject, constant=True)
-    def conversations(self):
-        return self._conversations
 
     @Property(QObject, constant=True)
     def projects(self):

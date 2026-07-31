@@ -123,52 +123,8 @@ ApplicationWindow {
                         currentPage: root.currentPage
                         onCurrentPageChanged: root.currentPage = currentPage
                     }
-
-                    Rectangle {
-                        Layout.fillHeight: true
-                        width: 1
-                        color: "white"
-                        visible: rightBar.aiChatVisible
-                    }
-
-                    Comp.AIChatPanel {
-                        id: aiChatPanel
-                        Layout.preferredWidth: 320
-                        Layout.fillHeight: true
-                        visible: rightBar.aiChatVisible
-                    }
                 }
             }
-
-            Comp.RightBar {
-                id: rightBar
-                Layout.fillHeight: true
-                Layout.preferredWidth: Theme.rightBarWidth
-            }
-        }
-
-        Comp.BottomBar {
-            Layout.fillWidth: true
-        }
-    }
-
-    Connections {
-        target: bridge
-
-        function onTask_finished(messageId, localPath, storyboardId) {
-            bridge.conversations.set_completed(messageId, localPath)
-        }
-
-        function onTask_failed(messageId, error) {
-            bridge.conversations.set_failed(messageId, error)
-        }
-
-        function onTask_status_changed(messageId, status) {
-            bridge.conversations.update_status(messageId, status)
-        }
-
-        function onTitle_ready(convId, title) {
-            bridge.conversations.update_title(convId, title)
         }
     }
 
@@ -188,7 +144,6 @@ ApplicationWindow {
         x = (Screen.width - width) / 2
         y = (Screen.height - height) / 2
 
-        bridge.conversations.load_all()
         bridge.projects.load_projects()
     }
 }

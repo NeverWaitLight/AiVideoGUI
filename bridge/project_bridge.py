@@ -9,9 +9,7 @@ from loguru import logger
 from PySide6.QtCore import QObject, Property, Signal, Slot
 
 from bridge.models.project_model import ProjectListModel
-from bridge.models.conversation_model import ConversationListModel
 from models.enums import MediaType
-from storage.repositories.conversation_repository import ConversationRepository
 from storage.repositories.media_repository import MediaRepository
 from utils import paths
 
@@ -27,7 +25,6 @@ class ProjectBridge(QObject):
         self._session_manager = session_manager
         self._grid_model = ProjectListModel(self)
         self._list_model = ProjectListModel(self)
-        self._project_conversations = ConversationListModel(self)
 
     @Property(QObject, constant=True)
     def gridModel(self):
@@ -36,10 +33,6 @@ class ProjectBridge(QObject):
     @Property(QObject, constant=True)
     def listModel(self):
         return self._list_model
-
-    @Property(QObject, constant=True)
-    def projectConversations(self):
-        return self._project_conversations
 
     @Slot()
     def load_projects(self) -> None:
@@ -76,37 +69,25 @@ class ProjectBridge(QObject):
         self.load_projects()
         self.project_deleted.emit(project_id)
 
-    @Slot(int)
-    def load_project_conversations(self, project_id: int) -> None:
-        conv_repo = self._session_manager.get_repo(ConversationRepository)
-        convs = conv_repo.list_by_project(project_id)
-        self._project_conversations.reset(convs)
-
     @Slot(int, result=str)
     def get_project_info(self, project_id: int) -> str:
         project = self._project_service.get_project(project_id)
         if not project:
             return "{}"
-        video_count = self._project_service.get_project_video_count(project_id)
         has_videos = self._has_storyboard_videos(project_id)
         return json.dumps({
             "name": project.name,
             "resolution": project.resolution,
             "aspectRatio": project.aspect_ratio,
             "coverImage": project.cover_image,
-            "videoCount": video_count,
+            "videoCount": 0,
             "hasStoryboardVideos": has_videos,
         })
 
     def _has_storyboard_videos(self, project_id: int) -> bool:
-        conv_repo = self._session_manager.get_repo(ConversationRepository)
-        conversations = conv_repo.list_by_project(project_id)
-        conv_ids = {c.id for c in conversations}
-        if not conv_ids:
-            return False
         media_repo = self._session_manager.get_repo(MediaRepository)
         media_files = media_repo.list_with_filters(
-            media_type=MediaType.VIDEO, conversation_ids=conv_ids,
+            media_type=MediaType.VIDEO, conversation_ids=None,
         )
         pattern = re.compile(r"^\d+-\d+-\d+\.mp4$")
         return any(pattern.match(m.filename) for m in media_files)

@@ -147,8 +147,6 @@ def main():
 
     def on_about_to_quit():
         logger.info("应用即将退出，清理资源...")
-        chat_service = container.chat_service()
-        chat_service.cleanup()
         scheduler.shutdown()
         logger.info("资源清理完成")
 

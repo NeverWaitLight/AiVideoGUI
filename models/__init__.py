@@ -6,8 +6,6 @@ from models.enums import (
     ShotSize,
     TaskStatus,
 )
-from models.conversation import Conversation
-from models.message import Message
 from models.provider_config import ProviderConfig
 from models.app_settings import AppSettings
 from models.task_result import TaskResult
@@ -31,9 +29,7 @@ __all__ = [
     "AppSettings",
     "Character",
     "CharacterHistory",
-    "Conversation",
     "MediaFile",
-    "Message",
     "ModelInfo",
     "Project",
     "ProviderConfig",

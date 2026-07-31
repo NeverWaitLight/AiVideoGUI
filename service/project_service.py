@@ -5,12 +5,9 @@ import os
 import shutil
 from datetime import datetime
 
-from models.conversation import Conversation
 from models.project import Project
 from storage.session_manager import SessionManager
 from storage.repositories.project_repository import ProjectRepository
-from storage.repositories.conversation_repository import ConversationRepository
-from storage.repositories.message_repository import MessageRepository
 from storage.repositories.media_repository import MediaRepository
 from utils import paths
 
@@ -80,24 +77,11 @@ class ProjectService:
     def delete_project(self, project_id: int) -> None:
         logger.info(f"开始删除项目：project_id={project_id}")
 
-        conv_repo = self._sm.get_repo(ConversationRepository)
-        media_repo = self._sm.get_repo(MediaRepository)
         project_repo = self._sm.get_repo(ProjectRepository)
 
         self._sm.begin_write()
         try:
-            project_convs = conv_repo.list_by_project(project_id)
-            conv_ids = {c.id for c in project_convs}
-
-            all_media_files = media_repo.list_all()
-            project_media_files = [f for f in all_media_files if f.conversation_id in conv_ids]
-
-            logger.info(f"找到 {len(project_media_files)} 个项目关联的素材文件")
-            for media in project_media_files:
-                media_repo.delete(media.id)
-
             project_repo.delete(project_id)
-
             self._sm.commit_write()
         except Exception as e:
             self._sm.rollback_write()
@@ -113,18 +97,3 @@ class ProjectService:
                 logger.warning(f"删除项目目录失败 {proj_dir}: {e}")
 
         logger.info(f"项目删除完成：project_id={project_id}")
-
-    def list_project_conversations(self, project_id: int) -> list[Conversation]:
-        conv_repo = self._sm.get_repo(ConversationRepository)
-        return conv_repo.list_by_project(project_id)
-
-    def get_project_video_count(self, project_id: int) -> int:
-        conv_repo = self._sm.get_repo(ConversationRepository)
-        msg_repo = self._sm.get_repo(MessageRepository)
-
-        convs = conv_repo.list_by_project(project_id)
-        count = 0
-        for conv in convs:
-            messages = msg_repo.list_by_conversation(conv.id)
-            count += sum(1 for msg in messages if msg.role == "assistant" and msg.local_path)
-        return count

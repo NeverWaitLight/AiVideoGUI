@@ -7,7 +7,6 @@ from loguru import logger
 from PySide6.QtCore import QObject, Property, Signal, Slot
 
 from models.enums import MediaType
-from storage.repositories.conversation_repository import ConversationRepository
 from storage.repositories.media_repository import MediaRepository
 
 
@@ -31,14 +30,10 @@ class VideoPlayerBridge(QObject):
 
     @Slot(int)
     def load_playlist(self, project_id: int) -> None:
-        conv_repo = self._session_manager.get_repo(ConversationRepository)
         media_repo = self._session_manager.get_repo(MediaRepository)
 
-        conversations = conv_repo.list_by_project(project_id, is_hidden=False)
-        conv_ids = {c.id for c in conversations}
-
         media_files = media_repo.list_with_filters(
-            media_type=MediaType.VIDEO, conversation_ids=conv_ids,
+            media_type=MediaType.VIDEO, conversation_ids=None,
         )
         shot_videos: dict[tuple[int, int], list[tuple[int, object]]] = {}
         pattern = re.compile(r"^(\d+)-(\d+)-(\d+)\.mp4$")
@@ -102,13 +97,13 @@ class VideoPlayerBridge(QObject):
             self.current_index_changed.emit()
 
     @Slot(str, result=str)
-    def get_thumbnail(self, message_id: str) -> str:
+    def get_thumbnail(self, task_id: str) -> str:
         media_repo = self._session_manager.get_repo(MediaRepository)
-        media_file = media_repo.get_by_message_id(message_id)
+        media_file = media_repo.get_by_message_id(task_id)
         return media_file.thumbnail_path if media_file else ""
 
     @Slot(str, result=float)
-    def get_duration(self, message_id: str) -> float:
+    def get_duration(self, task_id: str) -> float:
         media_repo = self._session_manager.get_repo(MediaRepository)
-        media_file = media_repo.get_by_message_id(message_id)
+        media_file = media_repo.get_by_message_id(task_id)
         return media_file.duration if media_file else 0.0

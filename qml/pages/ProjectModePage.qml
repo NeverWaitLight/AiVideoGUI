@@ -5,7 +5,7 @@ import QtQuick.Layouts 1.15
 Item {
     id: projectMode
 
-    property string currentPage: "grid"  // grid, detail, outline, screenplay, storyboard, character, media, player, chat
+    property string currentPage: "grid"  // grid, detail, outline, screenplay, storyboard, character, media, player
     property int currentProjectId: -1
 
     StackLayout {
@@ -20,7 +20,6 @@ Item {
                 case "character": return 5
                 case "media": return 6
                 case "player": return 7
-                case "chat": return 8
                 default: return 0
             }
         }
@@ -83,11 +82,6 @@ Item {
         }
 
         VideoPlayerPage {
-            projectId: projectMode.currentProjectId
-            onBackClicked: projectMode.currentPage = "detail"
-        }
-
-        ProjectChatPage {
             projectId: projectMode.currentProjectId
             onBackClicked: projectMode.currentPage = "detail"
         }

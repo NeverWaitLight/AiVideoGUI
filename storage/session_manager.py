@@ -28,9 +28,8 @@ class SessionManager:
                 from storage.repositories.media_repository import MediaRepository
                 from storage.repositories.character_repository import CharacterRepository
                 from storage.repositories.storyboard_repository import StoryboardRepository
-                from storage.repositories.message_repository import MessageRepository
 
-                if repo_class in (MediaRepository, CharacterRepository, StoryboardRepository, MessageRepository):
+                if repo_class in (MediaRepository, CharacterRepository, StoryboardRepository):
                     repo_instance = repo_class(session, self._workspace_root)
                 else:
                     repo_instance = repo_class(session)

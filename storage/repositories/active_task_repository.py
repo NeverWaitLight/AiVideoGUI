@@ -19,7 +19,6 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
         return ActiveTask(
             id=entity.id,
             provider_task_id=entity.provider_task_id,
-            message_id=entity.message_id,
             provider_name=entity.provider_name,
             model_name=entity.model_name,
             status=entity.status,
@@ -37,7 +36,6 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
         return ActiveTaskEntity(
             id=dto.id,
             provider_task_id=dto.provider_task_id,
-            message_id=dto.message_id,
             provider_name=dto.provider_name,
             model_name=dto.model_name,
             status=dto.status,
@@ -54,7 +52,6 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
     def add(
         self,
         provider_task_id: str,
-        message_id: str,
         provider_name: str,
         model_name: str,
         save_path: str,
@@ -63,7 +60,6 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
     ) -> int:
         entity = ActiveTaskEntity(
             provider_task_id=provider_task_id,
-            message_id=message_id,
             provider_name=provider_name,
             model_name=model_name,
             status="pending",
@@ -91,7 +87,6 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
             {
                 "id": e.id,
                 "provider_task_id": e.provider_task_id,
-                "message_id": e.message_id,
                 "provider_name": e.provider_name,
                 "model_name": e.model_name,
                 "status": e.status,
@@ -114,7 +109,6 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
         return {
             "id": entity.id,
             "provider_task_id": entity.provider_task_id,
-            "message_id": entity.message_id,
             "provider_name": entity.provider_name,
             "model_name": entity.model_name,
             "status": entity.status,
@@ -138,7 +132,6 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
         return {
             "id": entity.id,
             "provider_task_id": entity.provider_task_id,
-            "message_id": entity.message_id,
             "provider_name": entity.provider_name,
             "model_name": entity.model_name,
             "status": entity.status,
@@ -193,7 +186,6 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
             {
                 "id": e.id,
                 "provider_task_id": e.provider_task_id,
-                "message_id": e.message_id,
                 "provider_name": e.provider_name,
                 "model_name": e.model_name,
                 "status": e.status,

@@ -9,7 +9,6 @@ from models.enums import MediaType
 from models.media_file import MediaFile
 from storage.session_manager import SessionManager
 from storage.repositories.media_repository import MediaRepository
-from storage.repositories.conversation_repository import ConversationRepository
 from utils import paths
 from utils.video_metadata import VideoMetadataExtractor
 from utils.path_converter import to_relative_path
@@ -42,15 +41,15 @@ class MediaService:
 
     def register_task_result(
         self,
-        message_id: str,
+        task_id: str,
         local_path: str,
         conversation_id: str = "",
         storyboard_id: int = 0,
     ) -> None:
         media_repo = self._sm.get_repo(MediaRepository)
 
-        if media_repo.get_by_message_id(message_id):
-            logger.debug(f"素材已入库，跳过 message_id={message_id}")
+        if media_repo.get_by_message_id(task_id):
+            logger.debug(f"素材已入库，跳过 task_id={task_id}")
             return
 
         filename = os.path.basename(local_path)
@@ -95,8 +94,8 @@ class MediaService:
             local_path=relative_local_path,
             file_size=file_size,
             source="task",
-            conversation_id=conversation_id,
-            message_id=message_id,
+            conversation_id="",
+            message_id=task_id,
             created_at=datetime.now(),
             thumbnail_path=relative_thumbnail_path,
             duration=duration,
@@ -210,16 +209,10 @@ class MediaService:
         if media_type:
             media_type_enum = MediaType(media_type)
 
-        conversation_ids = None
-        if project_id:
-            conv_repo = self._sm.get_repo(ConversationRepository)
-            project_convs = conv_repo.list_by_project(project_id)
-            conversation_ids = {c.id for c in project_convs}
-
         return media_repo.list_with_filters(
             media_type=media_type_enum,
             keyword=keyword,
-            conversation_ids=conversation_ids,
+            conversation_ids=None,
         )
 
     def delete_file(self, media_id: str) -> bool:

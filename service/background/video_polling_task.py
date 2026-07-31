@@ -13,7 +13,6 @@ from service.background.task_base import BackgroundTask, TaskType
 from models.enums import MessageStatus, TaskStatus
 from storage.session_manager import SessionManager
 from storage.repositories.active_task_repository import ActiveTaskRepository
-from storage.repositories.message_repository import MessageRepository
 from storage.repositories.oss_cache_repository import OSSFileCacheRepository
 from utils import paths
 from utils.path_converter import to_relative_path
@@ -132,26 +131,15 @@ class VideoTaskPollingTask(BackgroundTask):
     def _process_task(self, task_info: dict[str, Any]) -> None:
         internal_task_id = task_info["id"]
         provider_task_id = task_info["provider_task_id"]
-        message_id = task_info["message_id"]
         provider_name = task_info["provider_name"]
         model_name = task_info["model_name"]
-
-        msg_repo = self._sm.get_repo(MessageRepository)
-        msg = msg_repo.get_by_id(message_id)
-        if not msg:
-            logger.warning(f"任务关联消息不存在，标记完成 internal_id={internal_task_id}")
-            self._mark_task_completed(internal_task_id)
-            return
-
-        if msg.status in (MessageStatus.COMPLETED, MessageStatus.FAILED):
-            self._mark_task_completed(internal_task_id)
-            return
+        storyboard_id = task_info.get("storyboard_id", 0)
 
         poll_count = self._task_poll_count.get(internal_task_id, 0)
         if poll_count >= self._max_polls_per_task:
             error_msg = f"轮询超时（已查询 {poll_count} 次，任务仍未完成）"
             logger.warning(f"任务超时 internal_id={internal_task_id}")
-            self._handle_task_failed(message_id, internal_task_id, error_msg)
+            self._handle_task_failed(provider_task_id, internal_task_id, error_msg)
             return
 
         try:
@@ -168,9 +156,7 @@ class VideoTaskPollingTask(BackgroundTask):
                 self._sm.rollback_write()
                 raise
 
-            self._update_message_status(message_id, result.status.value)
-
-            self._signal_emitter.status_changed.emit(message_id, result.status.value)
+            self._signal_emitter.status_changed.emit(provider_task_id, result.status.value)
 
             if result.status == TaskStatus.SUCCEEDED:
                 if not result.video_url:
@@ -178,17 +164,16 @@ class VideoTaskPollingTask(BackgroundTask):
                 self._download_and_finish(
                     provider=provider,
                     internal_task_id=internal_task_id,
-                    message_id=message_id,
+                    provider_task_id=provider_task_id,
                     video_url=result.video_url,
                     model_name=model_name,
-                    prompt=msg.content,
                     save_path=task_info.get("save_path", ""),
-                    storyboard_id=task_info.get("storyboard_id", 0),
+                    storyboard_id=storyboard_id,
                 )
             elif result.status == TaskStatus.FAILED:
                 error_msg = result.error_message or "未知原因"
-                self._handle_task_failed(message_id, internal_task_id, f"任务失败：{error_msg}")
-                self._signal_emitter.task_failed.emit(message_id, f"任务失败：{error_msg}")
+                self._handle_task_failed(provider_task_id, internal_task_id, f"任务失败：{error_msg}")
+                self._signal_emitter.task_failed.emit(provider_task_id, f"任务失败：{error_msg}")
 
         except Exception as e:
             logger.warning(f"轮询异常 internal_id={internal_task_id}（第 {poll_count + 1} 次）：{e}")
@@ -205,44 +190,17 @@ class VideoTaskPollingTask(BackgroundTask):
             raise
         self._task_poll_count.pop(internal_task_id, None)
 
-    def _update_message_status(self, message_id: str, task_status: str) -> None:
-        _TASK_TO_MSG_STATUS = {
-            "pending": MessageStatus.GENERATING,
-            "running": MessageStatus.GENERATING,
-            "succeeded": MessageStatus.COMPLETED,
-            "failed": MessageStatus.FAILED,
-        }
-        msg_status = _TASK_TO_MSG_STATUS.get(task_status)
-        if msg_status is not None:
-            msg_repo = self._sm.get_repo(MessageRepository)
-            self._sm.begin_write()
-            try:
-                msg_repo.update_status(message_id, msg_status)
-                self._sm.commit_write()
-            except Exception:
-                self._sm.rollback_write()
-                raise
-
-    def _handle_task_failed(self, message_id: str, internal_task_id: int, error: str) -> None:
-        msg_repo = self._sm.get_repo(MessageRepository)
-        self._sm.begin_write()
-        try:
-            msg_repo.update_status(message_id, MessageStatus.FAILED, error_message=error)
-            self._sm.commit_write()
-        except Exception:
-            self._sm.rollback_write()
-            raise
+    def _handle_task_failed(self, provider_task_id: str, internal_task_id: int, error: str) -> None:
         self._mark_task_completed(internal_task_id)
-        self._signal_emitter.task_failed.emit(message_id, error)
+        self._signal_emitter.task_failed.emit(provider_task_id, error)
 
     def _download_and_finish(
         self,
         provider: VideoProvider,
         internal_task_id: int,
-        message_id: str,
+        provider_task_id: str,
         video_url: str,
         model_name: str,
-        prompt: str,
         save_path: str = "",
         storyboard_id: int = 0,
     ) -> None:
@@ -255,14 +213,12 @@ class VideoTaskPollingTask(BackgroundTask):
                 target_dir = paths.chat_dir(self._workspace_root)
                 now = datetime.now()
                 stamp = now.strftime("%Y%m%d_%H%M%S")
-                safe_prompt = "".join(c for c in prompt[:20] if c.isalnum() or c in " _-").strip() or "video"
-                filename = f"{stamp}_{model_name}_{safe_prompt}.mp4"
+                filename = f"{stamp}_{model_name}_video.mp4"
                 save_path = os.path.join(target_dir, filename)
 
             os.makedirs(self._cache_dir, exist_ok=True)
             tmp_path = os.path.join(self._cache_dir, f"{uuid.uuid4().hex}.mp4.part")
 
-            self._update_message_status(message_id, MessageStatus.DOWNLOADING.value)
             provider.download(video_url, tmp_path, progress_callback=None)
 
             os.makedirs(os.path.dirname(save_path), exist_ok=True)
@@ -270,33 +226,22 @@ class VideoTaskPollingTask(BackgroundTask):
 
             relative_save_path = to_relative_path(save_path, self._workspace_root)
 
-            msg_repo = self._sm.get_repo(MessageRepository)
-            self._sm.begin_write()
-            try:
-                msg_repo.update_status(message_id, MessageStatus.COMPLETED, local_path=relative_save_path)
-                self._sm.commit_write()
-            except Exception:
-                self._sm.rollback_write()
-                raise
-
             if self._media_service:
-                msg = msg_repo.get_by_id(message_id)
-                if msg:
-                    try:
-                        self._media_service.register_task_result(
-                            message_id, save_path, msg.conversation_id, storyboard_id=storyboard_id
-                        )
-                    except Exception as e:
-                        logger.warning(f"素材自动入库失败：{e}")
+                try:
+                    self._media_service.register_task_result(
+                        provider_task_id, save_path, "", storyboard_id=storyboard_id
+                    )
+                except Exception as e:
+                    logger.warning(f"素材自动入库失败：{e}")
 
             self._mark_task_completed(internal_task_id)
             logger.info(f"任务完成 internal_id={internal_task_id} local_path={save_path}")
 
-            self._signal_emitter.task_finished.emit(message_id, save_path, storyboard_id)
+            self._signal_emitter.task_finished.emit(provider_task_id, save_path, storyboard_id)
 
         except Exception as e:
             logger.exception(f"下载失败 internal_id={internal_task_id}")
-            self._handle_task_failed(message_id, internal_task_id, f"下载失败：{e}")
+            self._handle_task_failed(provider_task_id, internal_task_id, f"下载失败：{e}")
 
     def should_continue(self) -> bool:
         return True

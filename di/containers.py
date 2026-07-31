@@ -8,7 +8,6 @@ from service.background.enhanced_scheduler import BackgroundTaskScheduler
 from service.background.video_polling_task import VideoTaskPollingTask
 from service.background.project_cover_task import ProjectCoverGenerationTask
 from service.character_service import CharacterService
-from service.chat_service import ChatService
 from service.image_service import ImageService
 from service.media_service import MediaService
 from service.project_service import ProjectService
@@ -82,11 +81,6 @@ class ApplicationContainer(containers.DeclarativeContainer):
         CharacterService,
         session_manager=session_manager,
         workspace_root=config.workspace_root,
-    )
-
-    chat_service = providers.Singleton(
-        ChatService,
-        config=config_manager,
     )
 
     text_model_service = providers.Singleton(
