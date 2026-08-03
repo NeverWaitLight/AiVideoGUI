@@ -341,6 +341,33 @@ Item {
                             function() { bridge.storyboard.delete_shot(_editingShotId) }
                         )
                     }
+
+                    Button {
+                        Layout.preferredWidth: 36
+                        Layout.preferredHeight: 36
+                        display: AbstractButton.IconOnly
+                        icon.source: "qrc:/resources/icons/video_camera_back.svg"
+                        icon.width: 20
+                        icon.height: 20
+                        icon.color: "white"
+                        topPadding: 8
+                        bottomPadding: 8
+                        leftPadding: 8
+                        rightPadding: 8
+                        ToolTip.visible: hovered
+                        ToolTip.text: "生成视频"
+
+                        background: Rectangle {
+                            anchors.fill: parent
+                            radius: parent.width / 2
+                            color: parent.pressed ? "#C62828" : (parent.hovered ? "#E53935" : "#F44336")
+                        }
+
+                        onClicked: confirmDialog.confirm(
+                            "确定要为此分镜生成视频吗？",
+                            function() { bridge.storyboard.batch_generate_videos(page.projectId, JSON.stringify([bridge.storyboard.curShotId])) }
+                        )
+                    }
                 }
 
                 ScrollView {

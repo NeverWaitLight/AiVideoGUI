@@ -422,7 +422,7 @@ class StoryboardBridge(QObject):
                 self.error.emit("未选中任何分镜")
                 return
 
-            shots = self._storyboard_service.list_storyboards(project_id)
+            shots = self._storyboard_service.list_storyboards(project_id=project_id)
             selected_shots = [s for s in shots if s.id in selected_ids]
             if not selected_shots:
                 self.error.emit("未找到选中的分镜")
