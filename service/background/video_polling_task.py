@@ -142,6 +142,8 @@ class VideoTaskPollingTask(BackgroundTask):
             self._handle_task_failed(provider_task_id, internal_task_id, error_msg)
             return
 
+        write_lock_acquired = False
+
         try:
             provider = self.get_provider(provider_name)
             result = provider.check_status(provider_task_id)
@@ -149,11 +151,14 @@ class VideoTaskPollingTask(BackgroundTask):
 
             task_repo = self._sm.get_repo(GenerateTaskRepository)
             self._sm.begin_write()
+            write_lock_acquired = True
             try:
                 task_repo.update_status(internal_task_id, result.status.value, video_url=result.video_url or "")
                 self._sm.commit_write()
+                write_lock_acquired = False
             except Exception:
                 self._sm.rollback_write()
+                write_lock_acquired = False
                 raise
 
             self._signal_emitter.status_changed.emit(provider_task_id, result.status.value)
@@ -176,6 +181,12 @@ class VideoTaskPollingTask(BackgroundTask):
                 self._signal_emitter.task_failed.emit(provider_task_id, f"任务失败：{error_msg}")
 
         except Exception as e:
+            if write_lock_acquired:
+                try:
+                    self._sm.rollback_write()
+                except Exception as rollback_error:
+                    logger.error(f"回滚写锁失败: {rollback_error}")
+
             logger.warning(f"轮询异常 internal_id={internal_task_id}（第 {poll_count + 1} 次）：{e}")
             self._task_poll_count[internal_task_id] = poll_count + 1
 

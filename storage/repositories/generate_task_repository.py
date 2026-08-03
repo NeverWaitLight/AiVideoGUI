@@ -162,7 +162,6 @@ class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
         if error_message:
             entity.error_message = error_message
         entity.updated_at = datetime.now()
-        self.session.commit()
 
     def mark_completed(self, task_id: int) -> None:
         entity = self.session.get(GenerateTaskEntity, task_id)
@@ -171,7 +170,6 @@ class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
 
         entity.completed = True
         entity.updated_at = datetime.now()
-        self.session.commit()
 
     def list_completed_tasks(self, limit: int = 50, offset: int = 0) -> List[dict]:
         stmt = (

@@ -22,6 +22,16 @@ def init_engine(database_url: str, echo: bool = False, **kwargs) -> Engine:
         **kwargs,
     )
 
+    if database_url.startswith("sqlite"):
+        from sqlalchemy import event
+
+        @event.listens_for(engine, "connect")
+        def set_sqlite_pragma(dbapi_conn, connection_record):
+            cursor = dbapi_conn.cursor()
+            cursor.execute("PRAGMA journal_mode=WAL")
+            cursor.execute("PRAGMA synchronous=NORMAL")
+            cursor.close()
+
     SessionLocal = scoped_session(
         sessionmaker(
             bind=engine,
