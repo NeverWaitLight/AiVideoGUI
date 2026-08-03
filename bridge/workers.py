@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import glob
 import os
+import re
 from loguru import logger
 from typing import TYPE_CHECKING
 
@@ -396,6 +398,8 @@ class BatchGenerationController(QThread):
         self._signal_emitter.task_finished.connect(self._on_task_finished)
         self._signal_emitter.task_failed.connect(self._on_task_failed)
 
+        gen_counts = self._scan_existing_gen_counts()
+
         submitted = 0
         for i, shot in enumerate(self._shot_list):
             if self._stopped:
@@ -415,10 +419,11 @@ class BatchGenerationController(QThread):
                 params["resolution"] = self._project.resolution
                 params["ratio"] = self._project.aspect_ratio
 
-                seq = scene_number * 1000 + shot_number
+                key = (scene_number, shot_number)
+                gen_counts[key] = gen_counts.get(key, 0) + 1
                 save_path = os.path.join(
                     paths.projects_dir(paths.workspace_root()),
-                    str(project_id), f"{scene_number}-{shot_number}-{seq}.mp4",
+                    str(project_id), f"{scene_number}-{shot_number}-{gen_counts[key]}.mp4",
                 )
 
                 provider_task_id = self._service.submit_task(
@@ -466,6 +471,24 @@ class BatchGenerationController(QThread):
         except RuntimeError:
             pass
         self.all_done.emit(self._success, self._failed)
+
+    def _scan_existing_gen_counts(self) -> dict[tuple[int, int], int]:
+        """扫描项目目录中已有的视频文件，返回每个 (场次, 镜头) 的最大生成次数。"""
+        counts: dict[tuple[int, int], int] = {}
+        project_dir = os.path.join(
+            paths.projects_dir(paths.workspace_root()),
+            str(self._project.id),
+        )
+        if not os.path.isdir(project_dir):
+            return counts
+        pattern = re.compile(r"^(\d+)-(\d+)-(\d+)\.mp4$")
+        for filename in os.listdir(project_dir):
+            m = pattern.match(filename)
+            if m:
+                key = (int(m.group(1)), int(m.group(2)))
+                gen = int(m.group(3))
+                counts[key] = max(counts.get(key, 0), gen)
+        return counts
 
     def _on_task_finished(self, provider_task_id: str, save_path: str, storyboard_id: int = 0) -> None:
         if provider_task_id not in self._submitted_task_ids:
