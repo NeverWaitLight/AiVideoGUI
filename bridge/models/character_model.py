@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QAbstractListModel, QModelIndex, Qt
+from PySide6.QtCore import QAbstractListModel, QModelIndex, Property, Qt, Signal
 
 from models.character import Character
 
@@ -22,6 +22,8 @@ class CharacterListModel(QAbstractListModel):
         DesignImageRole: b"designImagePath",
     }
 
+    count_changed = Signal()
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self._data: list[Character] = []
@@ -30,6 +32,10 @@ class CharacterListModel(QAbstractListModel):
         return self._ROLE_NAMES
 
     def rowCount(self, parent=QModelIndex()):
+        return len(self._data)
+
+    @Property(int, notify=count_changed)
+    def count(self):
         return len(self._data)
 
     def data(self, index, role=Qt.DisplayRole):
@@ -54,6 +60,7 @@ class CharacterListModel(QAbstractListModel):
         self.beginResetModel()
         self._data = list(characters)
         self.endResetModel()
+        self.count_changed.emit()
 
     def get_by_index(self, row: int) -> Character | None:
         if 0 <= row < len(self._data):

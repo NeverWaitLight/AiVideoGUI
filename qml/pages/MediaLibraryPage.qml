@@ -1,5 +1,6 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
+import QtQuick.Controls.Material 2.15
 import QtQuick.Layouts 1.15
 import QtQuick.Dialogs as QtDialogs
 import "../components" as Comp
@@ -12,6 +13,7 @@ Item {
     property string _searchText: ""
 
     signal backClicked()
+    signal playClicked()
 
     onProjectIdChanged: {
         if (projectId > 0) {
@@ -34,6 +36,28 @@ Item {
             title: "素材库"
             Layout.fillWidth: true
             onBackClicked: page.backClicked()
+
+            Button {
+                Layout.preferredWidth: 34
+                Layout.preferredHeight: 34
+                flat: true
+                display: AbstractButton.IconOnly
+                icon.source: "qrc:/resources/icons/play_circle.svg"
+                icon.width: 22
+                icon.height: 22
+                visible: page.projectId > 0
+                ToolTip.visible: hovered
+                ToolTip.text: "粗剪播放"
+                onClicked: page.playClicked()
+
+                background: Rectangle {
+                    anchors.fill: parent
+                    radius: Theme.radiusSmall
+                    color: parent.hovered
+                        ? Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.08)
+                        : "transparent"
+                }
+            }
 
             ComboBox {
                 id: typeFilter

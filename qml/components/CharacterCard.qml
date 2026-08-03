@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "." as Comp
 
 Pane {
     id: card
@@ -20,22 +21,11 @@ Pane {
         anchors.fill: parent
         spacing: 12
 
-        Rectangle {
+        Comp.ImagePreview {
             width: 72; height: 72; radius: 36
-            clip: true
-            Image {
-                anchors.fill: parent
-                source: designImage ? "file:///" + designImage : ""
-                fillMode: Image.PreserveAspectCrop
-                visible: source !== ""
-            }
-            Image {
-                anchors.centerIn: parent
-                source: "qrc:/resources/icons/person.svg"
-                sourceSize.width: 32
-                sourceSize.height: 32
-                visible: !designImage
-            }
+            imageSource: designImage
+            placeholderIcon: "qrc:/resources/icons/person.svg"
+            placeholderIconSize: 32
         }
 
         ColumnLayout {

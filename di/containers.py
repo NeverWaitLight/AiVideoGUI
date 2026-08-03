@@ -6,7 +6,6 @@ from config.manager import ConfigManager
 from prompts.manager import PromptTemplateManager
 from service.background.enhanced_scheduler import BackgroundTaskScheduler
 from service.background.video_polling_task import VideoTaskPollingTask
-from service.background.project_cover_task import ProjectCoverGenerationTask
 from service.character_service import CharacterService
 from service.image_service import ImageService
 from service.media_service import MediaService
@@ -106,12 +105,5 @@ class ApplicationContainer(containers.DeclarativeContainer):
         poll_interval=10.0,
         idle_check_interval=60.0,
         max_polls_per_task=150,
-    )
-
-    project_cover_task = providers.Singleton(
-        ProjectCoverGenerationTask,
-        session_manager=session_manager,
-        image_service=image_service,
-        workspace_root=config.workspace_root,
     )
 

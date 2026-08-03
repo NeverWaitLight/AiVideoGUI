@@ -14,6 +14,7 @@ class ScreenplayBridge(QObject):
     scenes_loaded = Signal()
     scene_saved = Signal()
     scene_deleted = Signal()
+    new_scene_created = Signal()
     history_saved = Signal()
     history_restored = Signal()
     script_generated = Signal(str, int)  # title, scene_count
@@ -194,6 +195,61 @@ class ScreenplayBridge(QObject):
             self._load_scenes()
         except Exception as e:
             logger.exception("删除场次失败")
+            self.error.emit(str(e))
+
+    @Slot(int)
+    def prepare_new_scene(self, project_id: int) -> None:
+        try:
+            scenes = self._service.list_scenes(project_id)
+            max_num = max((s.scene_number for s in scenes), default=0)
+            self._cur_scene_id = -1
+            self._cur_scene_number = max_num + 1
+            self._cur_location_type_index = 0
+            self._cur_location = ""
+            self._cur_time_type_index = 0
+            self._cur_time_detail = ""
+            self._cur_content = ""
+            self.current_scene_changed.emit()
+            self.new_scene_created.emit()
+        except Exception as e:
+            logger.exception("准备新增场次失败")
+            self.error.emit(str(e))
+
+    @Slot(int, int, str, int, str, str)
+    def create_scene(
+        self,
+        project_id: int,
+        location_type_index: int,
+        location: str,
+        time_type_index: int,
+        time_detail: str,
+        content: str,
+    ) -> None:
+        if not location.strip():
+            self.error.emit("请输入地点")
+            return
+        if not content.strip():
+            self.error.emit("请输入场次内容")
+            return
+
+        location_type = self._LOCATION_TYPE_MAP.get(location_type_index, SceneLocation.INTERIOR)
+        time_type = self._TIME_TYPE_MAP.get(time_type_index, SceneTime.DAY)
+
+        try:
+            new_scene = self._service.create_scene(
+                project_id=project_id,
+                scene_number=self._cur_scene_number,
+                location_type=location_type,
+                location=location.strip(),
+                time_type=time_type,
+                time_detail=time_detail.strip(),
+                content=content.strip(),
+            )
+            self._load_scenes()
+            self.load_scene(new_scene.id)
+            self.scene_saved.emit()
+        except Exception as e:
+            logger.exception("保存新增场次失败")
             self.error.emit(str(e))
 
     @Slot()

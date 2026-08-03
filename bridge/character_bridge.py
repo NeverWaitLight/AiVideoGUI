@@ -12,6 +12,7 @@ from bridge.workers import CharacterDesignImageWorker, CharacterWorker
 
 class CharacterBridge(QObject):
     data_changed = Signal()
+    character_saved = Signal()
     design_image_ready = Signal(str, str)  # char_uuid, image_path
     design_image_progress = Signal(str)
     design_image_failed = Signal(str)
@@ -53,6 +54,30 @@ class CharacterBridge(QObject):
         )
         self.load_for_project(project_id)
         self.data_changed.emit()
+        self.character_saved.emit()
+
+    @Slot(int, str, str, str)
+    def save_new_character(self, project_id: int, name: str, ref_code: str, description: str) -> None:
+        if not name.strip():
+            self.error.emit("请输入角色名")
+            return
+        self._character_service.create_character(
+            project_id=project_id, name=name.strip(), ref_code=ref_code.strip(), description=description.strip(),
+        )
+        self.load_for_project(project_id)
+        self.data_changed.emit()
+        self.character_saved.emit()
+
+    @Slot(int, str, str, str)
+    def save_existing_character(self, char_id: int, name: str, ref_code: str, description: str) -> None:
+        if not name.strip():
+            self.error.emit("请输入角色名")
+            return
+        self._character_service.update_character(
+            character_id=char_id, name=name.strip(), ref_code=ref_code.strip(), description=description.strip(),
+        )
+        self.data_changed.emit()
+        self.character_saved.emit()
 
     @Slot(int, str, str, str)
     def update_character(self, char_id: int, name: str, ref_code: str, description: str) -> None:
@@ -61,14 +86,10 @@ class CharacterBridge(QObject):
         )
         self.data_changed.emit()
 
-    @Slot(int)
-    def delete_character(self, char_id: int) -> None:
-        self._character_service.delete_character(char_id)
+    @Slot(str)
+    def delete_character(self, char_uuid: str) -> None:
+        self._character_service.delete_character(char_uuid)
         self.data_changed.emit()
-
-    @Slot(str, result=str)
-    def extract_traits(self, description: str) -> str:
-        return self._character_service.extract_fixed_traits(description)
 
     @Slot(str, int)
     def generate_design_image(self, char_uuid: str, project_id: int) -> None:
@@ -136,7 +157,7 @@ class CharacterBridge(QObject):
 
     @Slot(result=str)
     def get_all_ids(self) -> str:
-        ids = [c.id for c in self._model._data]
+        ids = [c.uuid for c in self._model._data]
         return json.dumps(ids)
 
     @Slot(str, int)

@@ -106,6 +106,14 @@ Item {
             ModuleCard {
                 width: parent.cardWidth
                 height: parent.cardHeight
+                title: "详情"
+                iconSource: "qrc:/resources/icons/info.svg"
+                description: "编辑项目信息"
+                moduleName: "project_info"
+            }
+            ModuleCard {
+                width: parent.cardWidth
+                height: parent.cardHeight
                 title: "大纲"
                 iconSource: "qrc:/resources/icons/article.svg"
                 description: "编辑故事大纲"
@@ -122,14 +130,6 @@ Item {
             ModuleCard {
                 width: parent.cardWidth
                 height: parent.cardHeight
-                title: "分镜"
-                iconSource: "qrc:/resources/icons/video_camera_back.svg"
-                description: "编辑分镜头脚本"
-                moduleName: "storyboard"
-            }
-            ModuleCard {
-                width: parent.cardWidth
-                height: parent.cardHeight
                 title: "角色"
                 iconSource: "qrc:/resources/icons/person.svg"
                 description: "管理角色形象"
@@ -138,15 +138,15 @@ Item {
             ModuleCard {
                 width: parent.cardWidth
                 height: parent.cardHeight
-                title: "粗剪"
-                iconSource: "qrc:/resources/icons/play_circle.svg"
-                description: "播放项目分镜视频"
-                moduleName: "player"
+                title: "分镜"
+                iconSource: "qrc:/resources/icons/video_camera_back.svg"
+                description: "编辑分镜头脚本"
+                moduleName: "storyboard"
             }
             ModuleCard {
                 width: parent.cardWidth
                 height: parent.cardHeight
-                title: "素材"
+                title: "素材库"
                 iconSource: "qrc:/resources/icons/video_library.svg"
                 description: "管理项目素材"
                 moduleName: "media"

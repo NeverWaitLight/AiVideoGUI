@@ -4,6 +4,7 @@ import QtQuick.Controls.Material 2.15
 import QtQuick.Layouts 1.15
 import QtQuick.Dialogs as QtDialogs
 import "../components" as Comp
+import "../dialogs" as Dialogs
 
 Dialog {
     id: projectDialog
@@ -15,8 +16,27 @@ Dialog {
     property bool isEdit: false
     property int editProjectId: 0
     property string coverImagePath: ""
+    property bool isGeneratingCover: false
 
     title: ""
+
+    Connections {
+        target: bridge.projects
+
+        function onCover_generation_started() {
+            isGeneratingCover = true
+        }
+
+        function onCover_generation_finished(relativePath) {
+            isGeneratingCover = false
+            coverImagePath = relativePath
+        }
+
+        function onCover_generation_failed(errorMsg) {
+            isGeneratingCover = false
+            console.error("封面生成失败:", errorMsg)
+        }
+    }
 
     background: Rectangle {
         color: Material.dialogColor
@@ -161,6 +181,55 @@ Dialog {
                     }
 
                     Button {
+                        Layout.preferredWidth: 36
+                        Layout.preferredHeight: 36
+                        display: AbstractButton.IconOnly
+                        icon.source: "qrc:/resources/icons/auto_awesome.svg"
+                        icon.width: 20
+                        icon.height: 20
+                        icon.color: "white"
+                        enabled: !isGeneratingCover
+                        topPadding: 8
+                        bottomPadding: 8
+                        leftPadding: 8
+                        rightPadding: 8
+                        ToolTip.visible: hovered
+                        ToolTip.text: isGeneratingCover ? "生成中..." : "AI 生成封面图"
+
+                        background: Rectangle {
+                            anchors.fill: parent
+                            radius: parent.width / 2
+                            color: parent.enabled ? (parent.pressed ? "#E65100" : (parent.hovered ? "#FB8C00" : "#FF9800")) : "#BDBDBD"
+                        }
+
+                        onClicked: {
+                            if (!editProjectId || editProjectId <= 0) {
+                                alertDialog.error("错误", "请先保存项目后再生成封面图")
+                                return
+                            }
+
+                            // 检查是否有大纲内容
+                            var outlineContent = bridge.storyOutline.get_outline_content(editProjectId)
+                            if (!outlineContent || outlineContent.trim() === "") {
+                                alertDialog.error("错误", "请先编写项目大纲后再生成封面图")
+                                return
+                            }
+
+                            characterSelectDialog.projectId = editProjectId
+                            characterSelectDialog.outlineContent = outlineContent
+                            characterSelectDialog.open()
+                        }
+
+                        BusyIndicator {
+                            anchors.centerIn: parent
+                            width: 24
+                            height: 24
+                            visible: isGeneratingCover
+                            running: isGeneratingCover
+                        }
+                    }
+
+                    Button {
                         text: "选择"
                         flat: true
                         Layout.preferredHeight: 36
@@ -251,5 +320,38 @@ Dialog {
             if (p.startsWith("file:///")) p = p.substring(8)
             coverImagePath = p
         }
+    }
+
+    Dialogs.CharacterSelectDialog {
+        id: characterSelectDialog
+        projectId: projectDialog.editProjectId > 0 ? projectDialog.editProjectId : 0
+
+        property string outlineContent: ""
+
+        onCharacterSelected: function(characterId, characterName, appearance, designImageUrl) {
+            if (!projectDialog.editProjectId || projectDialog.editProjectId <= 0) {
+                alertDialog.error("错误", "无效的项目 ID")
+                return
+            }
+
+            if (!designImageUrl || designImageUrl === "") {
+                alertDialog.error("错误", "所选角色没有设计图，请先生成角色设计图")
+                return
+            }
+
+            bridge.projects.generate_cover_with_character(
+                projectDialog.editProjectId,
+                characterName,
+                appearance,
+                ratioCombo.currentText,
+                nameField.text,
+                outlineContent,
+                designImageUrl
+            )
+        }
+    }
+
+    Dialogs.AlertDialog {
+        id: alertDialog
     }
 }

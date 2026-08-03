@@ -97,3 +97,24 @@ class ProjectService:
                 logger.warning(f"删除项目目录失败 {proj_dir}: {e}")
 
         logger.info(f"项目删除完成：project_id={project_id}")
+
+    def update_cover_image(self, project_id: int, cover_image: str) -> bool:
+        project_repo = self._sm.get_repo(ProjectRepository)
+
+        self._sm.begin_write()
+        try:
+            project = project_repo.get_by_id(project_id)
+            if not project:
+                logger.warning(f"项目不存在：project_id={project_id}")
+                return False
+
+            project_repo.update_project(
+                project_id, project.name, project.resolution,
+                project.aspect_ratio, cover_image
+            )
+            self._sm.commit_write()
+            return True
+        except Exception as e:
+            self._sm.rollback_write()
+            logger.error(f"更新项目封面失败: {e}")
+            raise

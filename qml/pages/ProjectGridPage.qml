@@ -9,7 +9,8 @@ Item {
     id: projectGridPage
 
     signal projectSelected(int projectId)
-    signal createProjectClicked()
+    signal createRequested()
+    signal editRequested(int projectId)
 
     property var generatingCoverIds: []
 
@@ -94,7 +95,7 @@ Item {
                     rightPadding: 7
                     ToolTip.visible: hovered
                     ToolTip.text: "新建"
-                    onClicked: projectDialog.openForCreate()
+                    onClicked: projectGridPage.createRequested()
 
                     background: Rectangle {
                         anchors.fill: parent
@@ -141,7 +142,7 @@ Item {
 
                             onClicked: projectGridPage.projectSelected(projectId)
                             onEditClicked: function(id) {
-                                projectDialog.openForEdit(id)
+                                projectGridPage.editRequested(id)
                             }
                             onDeleteClicked: function(id) {
                                 confirmDialog.confirmDelete("项目", function() {
@@ -160,19 +161,11 @@ Item {
             Layout.fillHeight: true
             text: "还没有项目，点击右上角创建"
             buttonText: "新建"
-            onButtonClicked: projectGridPage.createProjectClicked()
+            onButtonClicked: projectGridPage.createRequested()
         }
-    }
-
-    Dialogs.ProjectDialog {
-        id: projectDialog
     }
 
     Dialogs.ConfirmDialog {
         id: confirmDialog
-    }
-
-    function openCreateDialog() {
-        projectDialog.openForCreate()
     }
 }

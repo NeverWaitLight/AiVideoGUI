@@ -74,6 +74,15 @@ class StoryOutlineBridge(QObject):
             logger.exception("保存故事大纲失败")
             self.error.emit(str(e))
 
+    @Slot(int, result=str)
+    def get_outline_content(self, project_id: int) -> str:
+        try:
+            outline = self._service.get_or_create_story_outline(project_id)
+            return outline.content if outline else ""
+        except Exception as e:
+            logger.exception(f"获取大纲内容失败: {e}")
+            return ""
+
     @Slot()
     def load_history(self) -> None:
         if self._outline_id < 0:

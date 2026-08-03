@@ -284,7 +284,7 @@ class CharacterDesignImageWorker(QThread):
         try:
             self.progress_update.emit("正在生成角色设计图提示词...")
             image_prompt = self._text_service.generate_character_design_image_prompt(
-                name=self._character.name,
+                character_name=self._character.name,
                 description=self._character.description,
             )
             logger.info(f"角色设计图提示词：{image_prompt}")
@@ -298,7 +298,7 @@ class CharacterDesignImageWorker(QThread):
             result_path = self._image_service.generate(prompt=image_prompt, save_path=save_path)
 
             self._character_service.update_character(
-                character_id=self._character.id, design_image=result_path,
+                character_uuid=self._character.uuid, design_image=result_path,
             )
             logger.info(f"角色设计图生成完成：{result_path}")
             self.finished.emit(result_path)
@@ -322,6 +322,23 @@ class OptimizeWorker(QThread):
             self.finished.emit(reply)
         except Exception as e:
             logger.exception("AI 优化失败")
+            self.failed.emit(str(e))
+
+
+class GeneralWorker(QObject):
+    finished = Signal(object)
+    failed = Signal(str)
+
+    def __init__(self, task_func, parent=None):
+        super().__init__(parent)
+        self._task_func = task_func
+
+    def run(self):
+        try:
+            result = self._task_func()
+            self.finished.emit(result)
+        except Exception as e:
+            logger.exception("任务执行失败")
             self.failed.emit(str(e))
 
 

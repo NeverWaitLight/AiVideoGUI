@@ -1,11 +1,12 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "." as Comp
 
 Pane {
     id: card
     height: 100
-    padding: 10
+    padding: 0
 
     property int shotId: 0
     property int sceneNumber: 0
@@ -14,32 +15,30 @@ Pane {
     property string designImage: ""
     property string cameraMovement: ""
     property real duration: 0
+    property bool multiSelect: false
     property bool selected: false
 
     signal clicked()
     signal generateVideoClicked()
 
+    background: Rectangle {
+        radius: Theme.cardRadius
+        color: card.selected ? Qt.rgba(1, 1, 1, 0.08) : Qt.rgba(0, 0, 0, 0.08)
+    }
 
     RowLayout {
         anchors.fill: parent
+        anchors.leftMargin: 16
+        anchors.rightMargin: multiSelect ? 48 : 16
+        anchors.topMargin: 12
+        anchors.bottomMargin: 12
         spacing: 12
 
-        Rectangle {
-            width: 100; height: 72; radius: Theme.radiusMedium
-            clip: true
-            Image {
-                anchors.fill: parent
-                source: designImage ? "file:///" + designImage : ""
-                fillMode: Image.PreserveAspectCrop
-                visible: source !== ""
-            }
-            Image {
-                anchors.centerIn: parent
-                source: "qrc:/resources/icons/image.svg"
-                sourceSize.width: 32
-                sourceSize.height: 32
-                visible: !designImage
-            }
+        Comp.ImagePreview {
+            width: 100; height: 72
+            imageSource: designImage
+            placeholderIcon: "qrc:/resources/icons/image.svg"
+            placeholderIconSize: 32
         }
 
         ColumnLayout {
@@ -77,12 +76,21 @@ Pane {
         }
 
         Button {
+            visible: !multiSelect
             text: "生成视频"
             highlighted: true
             implicitWidth: 80
             Layout.alignment: Qt.AlignVCenter
             onClicked: generateVideoClicked()
         }
+    }
+
+    CheckBox {
+        visible: multiSelect
+        checked: selected
+        anchors.right: parent.right
+        anchors.rightMargin: 16
+        anchors.verticalCenter: parent.verticalCenter
     }
 
     MouseArea {

@@ -136,14 +136,8 @@ def main():
     video_polling_task.set_media_service(container.media_service())
     scheduler.register_task(video_polling_task)
 
-    project_cover_task = container.project_cover_task()
-    scheduler.register_task(project_cover_task)
-
     scheduler.start()
     logger.info("后台任务调度器已启动")
-
-    scheduler.trigger_task("project_cover_generation")
-    logger.info("已触发启动时封面生成任务")
 
     def on_about_to_quit():
         logger.info("应用即将退出，清理资源...")

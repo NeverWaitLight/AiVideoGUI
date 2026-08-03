@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import "." as Comp
 
 Pane {
     id: card
@@ -19,18 +20,11 @@ Pane {
         anchors.fill: parent
         spacing: 8
 
-        Rectangle {
+        Comp.ImagePreview {
             Layout.fillWidth: true
             Layout.preferredHeight: 130
             radius: Theme.radiusSmall
-            clip: true
-
-            Image {
-                anchors.fill: parent
-                source: thumbnailPath ? "file:///" + thumbnailPath : ""
-                fillMode: Image.PreserveAspectCrop
-                visible: source !== ""
-            }
+            imageSource: thumbnailPath
 
             Rectangle {
                 anchors.top: parent.top

@@ -1,5 +1,6 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
+import QtQuick.Controls.Material 2.15
 import QtQuick.Layouts 1.15
 import QtQuick.Dialogs as QtDialogs
 import "../components" as Comp
@@ -11,9 +12,20 @@ Item {
     property bool _showDetail: false
     property int _editingShotId: -1
     property var _relatedVideos: []
+    property bool _multiSelect: false
+    property var _selectedIds: []
 
     signal backClicked()
     signal navigateToMediaLibrary(int projectId)
+
+    Shortcut {
+        sequence: "Escape"
+        enabled: _multiSelect
+        onActivated: {
+            _multiSelect = false
+            _selectedIds = []
+        }
+    }
 
     onProjectIdChanged: {
         if (projectId > 0) {
@@ -33,12 +45,15 @@ Item {
             _showDetail = false
         }
         function onStoryboard_generated(shotCount) {
+            aiOptimizeDialog.finishOptimizing()
             alertDialog.info("成功", "分镜已生成，共 " + shotCount + " 个镜头")
         }
         function onStoryboard_optimized(shotCount) {
+            aiOptimizeDialog.finishOptimizing()
             alertDialog.info("成功", "分镜优化完成，共 " + shotCount + " 个镜头")
         }
         function onStoryboard_generation_failed(error) {
+            aiOptimizeDialog.finishOptimizing()
             alertDialog.error("错误", "生成分镜失败：" + error)
         }
         function onDesign_image_ready(shotId, path) {
@@ -74,19 +89,7 @@ Item {
                     onBackClicked: page.backClicked()
 
                     Button {
-                        Layout.preferredHeight: 34
-                        text: "AI优化"
-                        enabled: !bridge.storyboard.isOptimizing
-                        topPadding: 6
-                        bottomPadding: 6
-                        leftPadding: 12
-                        rightPadding: 12
-                        onClicked: {
-                            aiOptimizeDialog.show("AI 优化分镜", "请输入优化要求（如增减镜头、调整景别、修改画面描述等）...", "开始优化")
-                        }
-                    }
-
-                    Button {
+                        visible: _multiSelect && _selectedIds.length > 0
                         Layout.preferredHeight: 34
                         text: "批量生成视频"
                         highlighted: true
@@ -99,6 +102,7 @@ Item {
                     }
 
                     Button {
+                        visible: _multiSelect && _selectedIds.length > 0
                         Layout.preferredHeight: 34
                         text: "批量设计图"
                         enabled: bridge.storyboard.model.count > 0
@@ -115,13 +119,137 @@ Item {
                     }
 
                     Button {
+                        visible: _multiSelect && _selectedIds.length > 0
+                        Layout.preferredWidth: 34
                         Layout.preferredHeight: 34
-                        text: "→"
-                        highlighted: true
+                        display: AbstractButton.IconOnly
+                        icon.source: "qrc:/resources/icons/delete.svg"
+                        icon.width: 20
+                        icon.height: 20
+                        topPadding: 7
+                        bottomPadding: 7
+                        leftPadding: 7
+                        rightPadding: 7
+                        ToolTip.visible: hovered
+                        ToolTip.text: "删除选中"
+
+                        background: Rectangle {
+                            anchors.fill: parent
+                            radius: Theme.radiusSmall
+                            color: parent.hovered
+                                ? Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.08)
+                                : "transparent"
+                        }
+
+                        onClicked: confirmDialog.confirm(
+                            "确定要删除选中的 " + _selectedIds.length + " 个分镜吗？",
+                            function() {
+                                for (var i = 0; i < _selectedIds.length; i++)
+                                    bridge.storyboard.delete_shot(_selectedIds[i])
+                                _selectedIds = []
+                                _multiSelect = false
+                            }
+                        )
+                    }
+
+                    Button {
+                        visible: _multiSelect
+                        Layout.preferredHeight: 34
+                        text: "全选"
                         topPadding: 6
                         bottomPadding: 6
                         leftPadding: 12
                         rightPadding: 12
+                        onClicked: {
+                            var ids = []
+                            var m = bridge.storyboard.model
+                            for (var i = 0; i < m.count; i++)
+                                ids.push(m.data(m.index(i, 0), 257))
+                            _selectedIds = _selectedIds.length === ids.length ? [] : ids
+                        }
+                    }
+
+                    Button {
+                        Layout.preferredWidth: 34
+                        Layout.preferredHeight: 34
+                        display: AbstractButton.IconOnly
+                        icon.source: _multiSelect ? "qrc:/resources/icons/close.svg" : "qrc:/resources/icons/checklist.svg"
+                        icon.width: 20
+                        icon.height: 20
+                        topPadding: 7
+                        bottomPadding: 7
+                        leftPadding: 7
+                        rightPadding: 7
+                        ToolTip.visible: hovered
+                        ToolTip.text: _multiSelect ? "取消" : "多选"
+
+                        background: Rectangle {
+                            anchors.fill: parent
+                            radius: Theme.radiusSmall
+                            color: parent.hovered
+                                ? Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.08)
+                                : "transparent"
+                        }
+
+                        onClicked: {
+                            if (_multiSelect) {
+                                _multiSelect = false
+                                _selectedIds = []
+                            } else {
+                                _multiSelect = true
+                            }
+                        }
+                    }
+
+                    Button {
+                        Layout.preferredWidth: 36
+                        Layout.preferredHeight: 36
+                        display: AbstractButton.IconOnly
+                        icon.source: "qrc:/resources/icons/auto_awesome.svg"
+                        icon.width: 20
+                        icon.height: 20
+                        icon.color: "white"
+                        enabled: !bridge.storyboard.isOptimizing
+                        topPadding: 8
+                        bottomPadding: 8
+                        leftPadding: 8
+                        rightPadding: 8
+                        ToolTip.visible: hovered
+                        ToolTip.text: "AI优化"
+
+                        background: Rectangle {
+                            anchors.fill: parent
+                            radius: parent.width / 2
+                            color: parent.enabled ? (parent.pressed ? "#E65100" : (parent.hovered ? "#FB8C00" : "#FF9800")) : "#BDBDBD"
+                        }
+
+                        onClicked: {
+                            aiOptimizeDialog.show("AI 优化分镜", "请输入优化要求（如增减镜头、调整景别、修改画面描述等）...", "开始优化")
+                        }
+                    }
+
+                    Button {
+                        Layout.preferredWidth: 34
+                        Layout.preferredHeight: 34
+                        display: AbstractButton.IconOnly
+                        icon.source: "qrc:/resources/icons/arrow_forward.svg"
+                        icon.width: 20
+                        icon.height: 20
+                        topPadding: 7
+                        bottomPadding: 7
+                        leftPadding: 7
+                        rightPadding: 7
+                        ToolTip.visible: hovered
+                        ToolTip.text: "下一步"
+
+                        background: Rectangle {
+                            anchors.fill: parent
+                            radius: Theme.radiusSmall
+                            color: parent.hovered
+                                ? Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.08)
+                                : "transparent"
+                        }
+
                         onClicked: page.navigateToMediaLibrary(page.projectId)
                     }
                 }
@@ -135,7 +263,7 @@ Item {
                     clip: true
 
                     delegate: Comp.StoryboardCard {
-                        width: ListView.view.width - 4
+                        width: ListView.view.width - 32
                         shotId: model.shotId || 0
                         sceneNumber: model.sceneNumber || 0
                         shotNumber: model.shotNumber || 0
@@ -143,11 +271,21 @@ Item {
                         designImage: model.designImagePath || ""
                         cameraMovement: model.cameraMovement || ""
                         duration: model.duration || 0
+                        multiSelect: _multiSelect
+                        selected: _selectedIds.indexOf(model.shotId) >= 0
                         onClicked: {
-                            _editingShotId = model.shotId
-                            bridge.storyboard.load_shot(model.shotId)
-                            _showDetail = true
-                            _loadRelatedVideos()
+                            if (_multiSelect) {
+                                var ids = _selectedIds.slice()
+                                var idx = ids.indexOf(model.shotId)
+                                if (idx >= 0) ids.splice(idx, 1)
+                                else ids.push(model.shotId)
+                                _selectedIds = ids
+                            } else {
+                                _editingShotId = model.shotId
+                                bridge.storyboard.load_shot(model.shotId)
+                                _showDetail = true
+                                _loadRelatedVideos()
+                            }
                         }
                         onGenerateVideoClicked: {
                             alertDialog.info("提示", "单个视频生成功能开发中")

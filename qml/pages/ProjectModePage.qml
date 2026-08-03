@@ -5,7 +5,7 @@ import QtQuick.Layouts 1.15
 Item {
     id: projectMode
 
-    property string currentPage: "grid"  // grid, detail, outline, screenplay, storyboard, character, media, player
+    property string currentPage: "grid"  // grid, detail, project_info, outline, screenplay, storyboard, character, media, player
     property int currentProjectId: -1
 
     StackLayout {
@@ -14,12 +14,13 @@ Item {
             switch (currentPage) {
                 case "grid": return 0
                 case "detail": return 1
-                case "outline": return 2
-                case "screenplay": return 3
-                case "storyboard": return 4
-                case "character": return 5
-                case "media": return 6
-                case "player": return 7
+                case "project_info": return 2
+                case "outline": return 3
+                case "screenplay": return 4
+                case "storyboard": return 5
+                case "character": return 6
+                case "media": return 7
+                case "player": return 8
                 default: return 0
             }
         }
@@ -29,6 +30,19 @@ Item {
             onProjectSelected: function(projectId) {
                 projectMode.currentProjectId = projectId
                 projectMode.currentPage = "detail"
+            }
+            onCreateRequested: {
+                var newId = bridge.projects.create_project_default("未命名项目")
+                if (newId > 0) {
+                    projectInfoPage.isCreate = true
+                    projectMode.currentProjectId = newId
+                    projectMode.currentPage = "project_info"
+                }
+            }
+            onEditRequested: function(projectId) {
+                projectInfoPage.isCreate = false
+                projectMode.currentProjectId = projectId
+                projectMode.currentPage = "project_info"
             }
         }
 
@@ -40,11 +54,27 @@ Item {
             }
         }
 
+        ProjectInfoPage {
+            id: projectInfoPage
+            projectId: projectMode.currentProjectId
+            onBackClicked: {
+                if (isCreate) {
+                    bridge.projects.delete_project(projectId)
+                    projectMode.currentPage = "grid"
+                } else {
+                    projectMode.currentPage = "detail"
+                }
+            }
+            onProjectSaved: function(pid) {
+                projectMode.currentProjectId = pid
+                projectMode.currentPage = "detail"
+            }
+        }
+
         StoryOutlinePage {
             projectId: projectMode.currentProjectId
             onBackClicked: projectMode.currentPage = "detail"
             onNextStepClicked: function(content) {
-                bridge.screenplay.generate_script(content)
                 projectMode.currentPage = "screenplay"
             }
         }
@@ -82,13 +112,15 @@ Item {
         }
 
         MediaLibraryPage {
+            id: projectMediaPage
             projectId: projectMode.currentProjectId
             onBackClicked: projectMode.currentPage = "detail"
+            onPlayClicked: projectMode.currentPage = "player"
         }
 
         VideoPlayerPage {
             projectId: projectMode.currentProjectId
-            onBackClicked: projectMode.currentPage = "detail"
+            onBackClicked: projectMode.currentPage = "media"
         }
     }
 
@@ -98,6 +130,11 @@ Item {
     }
 
     function openCreateDialog() {
-        projectGridPage.openCreateDialog()
+        var newId = bridge.projects.create_project_default("未命名项目")
+        if (newId > 0) {
+            projectInfoPage.isCreate = true
+            currentProjectId = newId
+            currentPage = "project_info"
+        }
     }
 }

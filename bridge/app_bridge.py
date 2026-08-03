@@ -39,9 +39,9 @@ class AppBridge(QObject):
     batch_design_progress = Signal(int, str, str)
     batch_design_done = Signal(int, int)
     navigate_requested = Signal(str, str)
-    cover_generation_started = Signal(int)
-    cover_generation_finished = Signal(int)
-    cover_generation_failed = Signal(int, str)
+    cover_generation_started = Signal()
+    cover_generation_finished = Signal(str)
+    cover_generation_failed = Signal(str)
 
     def __init__(self, container, parent: QObject | None = None):
         super().__init__(parent)
@@ -61,6 +61,11 @@ class AppBridge(QObject):
         self._projects = ProjectBridge(
             self._project_service, self._session_manager, self,
         )
+        self._projects.set_image_service(self._image_service)
+        self._projects.set_workspace_root(container.config.workspace_root())
+        self._projects.cover_generation_started.connect(self.cover_generation_started.emit)
+        self._projects.cover_generation_finished.connect(self.cover_generation_finished.emit)
+        self._projects.cover_generation_failed.connect(self.cover_generation_failed.emit)
         self._media = MediaBridge(
             self._media_service, self,
         )
@@ -90,11 +95,6 @@ class AppBridge(QObject):
         signal_emitter.download_progress.connect(self.task_download_progress.emit)
         signal_emitter.task_finished.connect(self.task_finished.emit)
         signal_emitter.task_failed.connect(self.task_failed.emit)
-        self._project_cover_task = container.project_cover_task()
-        cover_signal_emitter = self._project_cover_task.signal_emitter
-        cover_signal_emitter.cover_generation_started.connect(self.cover_generation_started.emit)
-        cover_signal_emitter.cover_generation_finished.connect(self.cover_generation_finished.emit)
-        cover_signal_emitter.cover_generation_failed.connect(self.cover_generation_failed.emit)
         self._storyboard_bridge.design_image_ready.connect(self.design_image_ready.emit)
         self._storyboard_bridge.design_image_progress.connect(self.design_image_progress.emit)
         self._storyboard_bridge.design_image_failed.connect(self.design_image_failed.emit)
@@ -173,15 +173,4 @@ class AppBridge(QObject):
         w = self._window()
         if w:
             w.close()
-
-    @Slot(result=bool)
-    def trigger_project_cover_generation(self) -> bool:
-        try:
-            success = self._scheduler.trigger_task("project_cover_generation")
-            if success:
-                logger.info("已触发项目封面生成任务")
-            return success
-        except Exception as e:
-            logger.error(f"触发项目封面生成任务失败：{e}")
-            return False
 

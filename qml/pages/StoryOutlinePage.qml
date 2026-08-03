@@ -1,5 +1,6 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
+import QtQuick.Controls.Material 2.15
 import QtQuick.Layouts 1.15
 import "../components" as Comp
 import "../dialogs" as Dialogs
@@ -37,10 +38,12 @@ Item {
         function onOptimize_finished(result) {
             textArea.text = result
             _dirty = true
+            aiOptimizeDialog.finishOptimizing()
             alertDialog.info("成功", "大纲优化完成")
         }
 
         function onOptimize_failed(error) {
+            aiOptimizeDialog.finishOptimizing()
             alertDialog.error("错误", "优化失败：" + error)
         }
 
@@ -59,39 +62,81 @@ Item {
             onBackClicked: page.backClicked()
 
             Button {
+                Layout.preferredWidth: 34
                 Layout.preferredHeight: 34
-                text: "保存"
-                highlighted: _dirty
+                display: AbstractButton.IconOnly
+                icon.source: "qrc:/resources/icons/save.svg"
+                icon.width: 20
+                icon.height: 20
                 enabled: _dirty
-                topPadding: 6
-                bottomPadding: 6
-                leftPadding: 12
-                rightPadding: 12
+                topPadding: 7
+                bottomPadding: 7
+                leftPadding: 7
+                rightPadding: 7
+                ToolTip.visible: hovered
+                ToolTip.text: "保存"
+
+                background: Rectangle {
+                    anchors.fill: parent
+                    radius: Theme.radiusSmall
+                    color: parent.hovered
+                        ? Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.08)
+                        : "transparent"
+                }
+
                 onClicked: bridge.storyOutline.save(textArea.text)
             }
 
             Button {
-                Layout.preferredHeight: 34
-                text: "AI优化"
+                Layout.preferredWidth: 36
+                Layout.preferredHeight: 36
+                display: AbstractButton.IconOnly
+                icon.source: "qrc:/resources/icons/auto_awesome.svg"
+                icon.width: 20
+                icon.height: 20
+                icon.color: "white"
                 enabled: !bridge.storyOutline.isOptimizing
-                topPadding: 6
-                bottomPadding: 6
-                leftPadding: 12
-                rightPadding: 12
+                topPadding: 8
+                bottomPadding: 8
+                leftPadding: 8
+                rightPadding: 8
+                ToolTip.visible: hovered
+                ToolTip.text: "AI优化"
+
+                background: Rectangle {
+                    anchors.fill: parent
+                    radius: parent.width / 2
+                    color: parent.enabled ? (parent.pressed ? "#E65100" : (parent.hovered ? "#FB8C00" : "#FF9800")) : "#BDBDBD"
+                }
+
                 onClicked: {
                     aiOptimizeDialog.show("AI 优化大纲", "请输入优化要求...", "开始优化")
                 }
             }
 
             Button {
+                Layout.preferredWidth: 34
                 Layout.preferredHeight: 34
-                text: "→"
-                highlighted: true
+                display: AbstractButton.IconOnly
+                icon.source: "qrc:/resources/icons/arrow_forward.svg"
+                icon.width: 20
+                icon.height: 20
                 enabled: textArea.text.trim().length > 0
-                topPadding: 6
-                bottomPadding: 6
-                leftPadding: 12
-                rightPadding: 12
+                topPadding: 7
+                bottomPadding: 7
+                leftPadding: 7
+                rightPadding: 7
+                ToolTip.visible: hovered
+                ToolTip.text: "下一步"
+
+                background: Rectangle {
+                    anchors.fill: parent
+                    radius: Theme.radiusSmall
+                    color: parent.hovered
+                        ? Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.08)
+                        : "transparent"
+                }
+
                 onClicked: {
                     if (_dirty) {
                         confirmDialog.confirm(

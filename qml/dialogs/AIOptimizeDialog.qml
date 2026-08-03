@@ -10,10 +10,12 @@ Dialog {
     height: 320
     anchors.centerIn: parent
     padding: 0
+    closePolicy: Popup.NoAutoClose
 
     property string dialogTitle: "AI 优化"
     property string placeholderText: "请输入优化要求..."
     property string confirmButtonText: "开始优化"
+    property bool isOptimizing: false
 
     signal optimizeRequested(string userInput)
 
@@ -76,16 +78,22 @@ Dialog {
                     flat: true
                     Layout.preferredHeight: 40
                     Layout.preferredWidth: 80
-                    onClicked: aiOptimizeDialog.reject()
+                    enabled: !isOptimizing
+                    onClicked: aiOptimizeDialog.close()
                 }
 
                 Button {
-                    text: confirmButtonText
+                    text: isOptimizing ? "生成中..." : confirmButtonText
                     highlighted: true
                     Layout.preferredHeight: 40
                     Layout.preferredWidth: 100
-                    enabled: inputArea.text.trim().length > 0
-                    onClicked: aiOptimizeDialog.accept()
+                    enabled: inputArea.text.trim().length > 0 && !isOptimizing
+                    onClicked: {
+                        if (inputArea.text.trim().length > 0) {
+                            isOptimizing = true
+                            optimizeRequested(inputArea.text.trim())
+                        }
+                    }
                 }
             }
         }
@@ -107,17 +115,13 @@ Dialog {
             wrapMode: TextArea.Wrap
             font.pixelSize: Theme.fontSizeNormal
             selectByMouse: true
-        }
-    }
-
-    onAccepted: {
-        if (inputArea.text.trim().length > 0) {
-            optimizeRequested(inputArea.text.trim())
+            enabled: !isOptimizing
         }
     }
 
     onOpened: {
         inputArea.text = ""
+        isOptimizing = false
         inputArea.forceActiveFocus()
     }
 
@@ -126,5 +130,10 @@ Dialog {
         if (placeholder) placeholderText = placeholder
         if (confirmText) confirmButtonText = confirmText
         open()
+    }
+
+    function finishOptimizing() {
+        isOptimizing = false
+        close()
     }
 }

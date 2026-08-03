@@ -2,6 +2,7 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Controls.Material 2.15
 import QtQuick.Layouts 1.15
+import "." as Comp
 
 Pane {
     id: card
@@ -30,45 +31,16 @@ Pane {
         anchors.margins: 12
         spacing: 12
 
-        Rectangle {
+        Comp.ImagePreview {
             Layout.minimumWidth: Math.max(0, (card.width - 24 - 12) * 0.5)
             Layout.fillWidth: true
             Layout.fillHeight: true
-            radius: Theme.radiusMedium
-            clip: true
-            color: "transparent"
-
-            Image {
-                anchors.fill: parent
-                source: coverPath ? "file:///" + coverPath : ""
-                fillMode: Image.PreserveAspectFit
-                visible: source !== "" && !card.isGeneratingCover
-            }
-
-            Image {
-                anchors.centerIn: parent
-                source: "qrc:/resources/icons/movie.svg"
-                sourceSize.width: 32
-                sourceSize.height: 32
-                visible: !coverPath && !card.isGeneratingCover
-            }
-
-            BusyIndicator {
-                anchors.centerIn: parent
-                width: 40
-                height: 40
-                running: card.isGeneratingCover
-                visible: card.isGeneratingCover
-            }
-
-            Label {
-                anchors.centerIn: parent
-                anchors.verticalCenterOffset: 35
-                text: "生成中..."
-                font.pixelSize: Theme.fontSizeSmall
-                opacity: 0.7
-                visible: card.isGeneratingCover
-            }
+            imageSource: coverPath
+            fillMode: Image.PreserveAspectFit
+            placeholderIcon: "qrc:/resources/icons/movie.svg"
+            placeholderIconSize: 32
+            busy: card.isGeneratingCover
+            busyText: "生成中..."
         }
 
         ColumnLayout {

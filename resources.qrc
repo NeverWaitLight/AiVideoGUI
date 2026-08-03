@@ -2,6 +2,8 @@
     <qresource prefix="/">
         <file>resources/icons/add.svg</file>
         <file>resources/icons/arrow_back.svg</file>
+        <file>resources/icons/arrow_forward.svg</file>
+        <file>resources/icons/auto_awesome.svg</file>
         <file>resources/icons/article.svg</file>
         <file>resources/icons/delete.svg</file>
         <file>resources/icons/description.svg</file>
@@ -29,6 +31,8 @@
         <file>resources/icons/window_restore.svg</file>
         <file>resources/icons/info.svg</file>
         <file>resources/icons/chat.svg</file>
+        <file>resources/icons/checklist.svg</file>
+        <file>resources/icons/save.svg</file>
         <file>resources/logo.ico</file>
     </qresource>
 </RCC>
