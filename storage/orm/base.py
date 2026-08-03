@@ -16,7 +16,7 @@ def init_engine(database_url: str, echo: bool = False, **kwargs) -> Engine:
 
     engine = create_engine(
         database_url,
-        connect_args={"check_same_thread": False},
+        connect_args={"check_same_thread": False, "timeout": 30},
         pool_pre_ping=True,
         echo=echo,
         **kwargs,

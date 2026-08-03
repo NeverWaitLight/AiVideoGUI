@@ -39,10 +39,12 @@ Item {
         function onShot_saved() {
             alertDialog.info("成功", "分镜已保存")
             _showDetail = false
+            _editingShotId = -1
         }
         function onShot_deleted() {
             alertDialog.info("成功", "分镜已删除")
             _showDetail = false
+            _editingShotId = -1
         }
         function onStoryboard_generated(shotCount) {
             aiOptimizeDialog.finishOptimizing()
@@ -99,7 +101,10 @@ Item {
                         bottomPadding: 6
                         leftPadding: 12
                         rightPadding: 12
-                        onClicked: alertDialog.info("提示", "批量视频生成功能开发中")
+                        onClicked: confirmDialog.confirm(
+                            "确定要为选中的 " + _selectedIds.length + " 个分镜生成视频吗？",
+                            function() { bridge.storyboard.batch_generate_videos(page.projectId, JSON.stringify(_selectedIds)) }
+                        )
                     }
 
                     Button {
@@ -113,8 +118,8 @@ Item {
                         rightPadding: 12
                         onClicked: {
                             confirmDialog.confirm(
-                                "确定要为所有分镜生成设计图吗？这可能需要较长时间。",
-                                function() { bridge.storyboard.batch_generate_design_images(page.projectId) }
+                                "确定要为选中的 " + _selectedIds.length + " 个分镜生成设计图吗？",
+                                function() { bridge.storyboard.batch_generate_design_images(page.projectId, JSON.stringify(_selectedIds)) }
                             )
                         }
                     }
@@ -309,6 +314,7 @@ Item {
                     Layout.fillWidth: true
                     onBackClicked: {
                         _showDetail = false
+                        _editingShotId = -1
                         bridge.storyboard.load_for_project(page.projectId)
                     }
 
@@ -447,7 +453,7 @@ Item {
                                 Button {
                                     text: "AI 生成设计图"
                                     highlighted: true
-                                    onClicked: bridge.storyboard.generate_design_image(_editingShotId, page.projectId)
+                                    onClicked: bridge.storyboard.generate_design_image(bridge.storyboard.curShotId, page.projectId)
                                 }
                                 Button {
                                     text: "上传图片"

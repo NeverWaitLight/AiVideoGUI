@@ -369,23 +369,21 @@ class GeneralWorker(QObject):
             self.failed.emit(str(e))
 
 
-class BatchGenerationController(QObject):
+class BatchGenerationController(QThread):
     progress = Signal(int, int, str)
     all_done = Signal(int, int)
     terminated = Signal(int, int)
 
     def __init__(
-        self, shot_list: list[dict], container,
-        provider_name: str, model_name: str, project, provider_cfg,
+        self, shot_list: list[dict], video_service, signal_emitter: QObject,
+        provider_name: str, project, provider_cfg,
         parent: QObject | None = None,
     ):
         super().__init__(parent)
         self._shot_list = shot_list
-        self._container = container
-        self._service = container.video_service()
-        self._polling = container.task_polling_service()
+        self._service = video_service
+        self._signal_emitter = signal_emitter
         self._provider_name = provider_name
-        self._model_name = model_name
         self._project = project
         self._provider_cfg = provider_cfg
         self._success = 0
@@ -393,10 +391,10 @@ class BatchGenerationController(QObject):
         self._submitted_task_ids: set[str] = set()
         self._stopped = False
 
-    def start(self) -> None:
+    def run(self) -> None:
         self._stopped = False
-        self._polling.task_finished.connect(self._on_task_finished)
-        self._polling.task_failed.connect(self._on_task_failed)
+        self._signal_emitter.task_finished.connect(self._on_task_finished)
+        self._signal_emitter.task_failed.connect(self._on_task_failed)
 
         submitted = 0
         for i, shot in enumerate(self._shot_list):
@@ -407,18 +405,12 @@ class BatchGenerationController(QObject):
             shot_number = shot["shot_number"]
             prompt = shot["prompt"]
             project_id = shot["project_id"]
-            shot_id = shot.get("shot_id", "")
+            shot_id = shot.get("shot_id", 0)
             reference_image = shot.get("reference_image", "")
 
             self.progress.emit(submitted, len(self._shot_list), f"正在提交场{scene_number}镜{shot_number}...")
 
             try:
-                conv_title = f"分镜视频-场{scene_number}镜{shot_number}"
-                conv = self._service.create_conversation(
-                    self._provider_name, self._model_name, conv_title,
-                    project_id=project_id, is_hidden=True,
-                )
-
                 params = (self._provider_cfg.default_params if self._provider_cfg else {}).copy()
                 params["resolution"] = self._project.resolution
                 params["ratio"] = self._project.aspect_ratio
@@ -429,13 +421,15 @@ class BatchGenerationController(QObject):
                     str(project_id), f"{scene_number}-{shot_number}-{seq}.mp4",
                 )
 
-                msg = self._service.submit_task(
-                    conversation_id=conv.id, prompt=prompt,
-                    provider_name=self._provider_name, params=params,
-                    save_path=save_path, storyboard_id=shot_id,
+                provider_task_id = self._service.submit_task(
+                    prompt=prompt,
+                    provider_name=self._provider_name,
+                    params=params,
+                    save_path=save_path,
+                    storyboard_id=shot_id,
                     reference_image=reference_image,
                 )
-                self._submitted_task_ids.add(msg.task_id)
+                self._submitted_task_ids.add(provider_task_id)
                 submitted += 1
                 mode_info = "(r2v)" if reference_image else "(t2v)"
                 logger.info(f"批量生成 [{submitted}/{len(self._shot_list)}] 场{scene_number}镜{shot_number} 已提交 {mode_info}")
@@ -459,25 +453,22 @@ class BatchGenerationController(QObject):
 
     def _cleanup_and_terminate(self) -> None:
         try:
-            self._polling.task_finished.disconnect(self._on_task_finished)
-            self._polling.task_failed.disconnect(self._on_task_failed)
+            self._signal_emitter.task_finished.disconnect(self._on_task_finished)
+            self._signal_emitter.task_failed.disconnect(self._on_task_failed)
         except RuntimeError:
             pass
         self.terminated.emit(self._success, self._failed)
 
     def _cleanup_and_finish(self) -> None:
         try:
-            self._polling.task_finished.disconnect(self._on_task_finished)
-            self._polling.task_failed.disconnect(self._on_task_failed)
+            self._signal_emitter.task_finished.disconnect(self._on_task_finished)
+            self._signal_emitter.task_failed.disconnect(self._on_task_failed)
         except RuntimeError:
             pass
         self.all_done.emit(self._success, self._failed)
 
-    def _on_task_finished(self, message_id: str, local_path: str, storyboard_id: int = 0) -> None:
-        from storage.session_manager import SessionManager
-        msg_repo = self._container.session_manager().get_repo(MessageRepository)
-        msg = msg_repo.get_by_id(message_id)
-        if not msg or msg.task_id not in self._submitted_task_ids:
+    def _on_task_finished(self, provider_task_id: str, save_path: str, storyboard_id: int = 0) -> None:
+        if provider_task_id not in self._submitted_task_ids:
             return
 
         self._success += 1
@@ -488,10 +479,8 @@ class BatchGenerationController(QObject):
         if completed >= total_submitted:
             self._cleanup_and_finish()
 
-    def _on_task_failed(self, message_id: str, error: str) -> None:
-        msg_repo = self._container.session_manager().get_repo(MessageRepository)
-        msg = msg_repo.get_by_id(message_id)
-        if not msg or msg.task_id not in self._submitted_task_ids:
+    def _on_task_failed(self, provider_task_id: str, error: str) -> None:
+        if provider_task_id not in self._submitted_task_ids:
             return
 
         self._failed += 1

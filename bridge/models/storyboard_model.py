@@ -3,6 +3,7 @@ from __future__ import annotations
 from PySide6.QtCore import QAbstractListModel, QModelIndex, Property, Qt, Signal
 
 from models.storyboard import Storyboard
+from utils.path_converter import to_absolute_path
 
 
 class StoryboardListModel(QAbstractListModel):
@@ -36,9 +37,10 @@ class StoryboardListModel(QAbstractListModel):
 
     count_changed = Signal()
 
-    def __init__(self, parent=None):
+    def __init__(self, workspace_root: str = "", parent=None):
         super().__init__(parent)
         self._data: list[Storyboard] = []
+        self._workspace_root = workspace_root
 
     def roleNames(self):
         return self._ROLE_NAMES
@@ -71,7 +73,7 @@ class StoryboardListModel(QAbstractListModel):
         if role == self.DurationRole:
             return item.duration
         if role == self.DesignImageRole:
-            return item.design_image
+            return to_absolute_path(item.design_image, self._workspace_root) if item.design_image else ""
         if role == self.SoundEffectRole:
             return item.sound_effect
         if role == self.NotesRole:

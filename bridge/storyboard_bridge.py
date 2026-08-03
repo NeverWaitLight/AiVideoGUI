@@ -10,6 +10,7 @@ from bridge.workers import (
     DesignImageWorker, BatchDesignImageWorker, BatchGenerationController,
     StoryboardGenerateWorker, StoryboardOptimizeWorker,
 )
+from utils.prompt_builder import VideoPromptBuilder
 
 
 class StoryboardBridge(QObject):
@@ -40,7 +41,8 @@ class StoryboardBridge(QObject):
     def __init__(
         self, storyboard_service, screenplay_service,
         text_model_service, image_service, character_service,
-        media_service, story_outline_service, container, parent=None,
+        media_service, story_outline_service, project_service,
+        container, parent=None,
     ):
         super().__init__(parent)
         self._storyboard_service = storyboard_service
@@ -50,8 +52,11 @@ class StoryboardBridge(QObject):
         self._character_service = character_service
         self._media_service = media_service
         self._story_outline_service = story_outline_service
+        self._project_service = project_service
         self._container = container
-        self._model = StoryboardListModel(self)
+        self._model = StoryboardListModel(
+            workspace_root=container.config.workspace_root(), parent=self,
+        )
         self._workers = []
         self._optimizing = False
         self._optimize_worker = None
@@ -305,50 +310,68 @@ class StoryboardBridge(QObject):
 
     @Slot(int, int)
     def generate_design_image(self, storyboard_id: int, project_id: int) -> None:
-        shots = self._storyboard_service.list_storyboards(project_id)
-        storyboard = None
-        for s in shots:
-            if s.id == storyboard_id:
-                storyboard = s
-                break
-        if not storyboard:
-            return
+        try:
+            storyboard = self._storyboard_service.get_storyboard(storyboard_id)
+            if not storyboard:
+                self.error.emit(f"分镜不存在：{storyboard_id}")
+                return
 
-        characters = self._character_service.list_characters(project_id)
-        matched = [c for c in characters if c.name in storyboard.visual_content or c.ref_code in storyboard.visual_content]
-        char_info = ""
-        if matched:
-            parts = []
-            for c in matched:
-                traits = self._character_service.extract_fixed_traits(c.description)
-                if traits:
-                    parts.append(f"{c.name}（{c.ref_code}）：{traits}")
-            char_info = "\n".join(parts)
+            if not storyboard.visual_content or not storyboard.visual_content.strip():
+                self.error.emit("该分镜没有画面内容描述，无法生成设计图")
+                return
 
-        shot_size_map = {
-            "extreme_close_up": "特写", "close_up": "近景", "medium_shot": "中景",
-            "full_shot": "全景", "long_shot": "远景", "extreme_long_shot": "大远景",
-        }
-        shot_size_text = shot_size_map.get(storyboard.shot_size.value, "中景")
+            characters = self._character_service.list_characters(project_id)
+            matched = [c for c in characters if c.name in storyboard.visual_content or c.ref_code in storyboard.visual_content]
+            char_info = ""
+            if matched:
+                parts = []
+                for c in matched:
+                    traits = self._character_service.extract_fixed_traits(c.description)
+                    if traits:
+                        parts.append(f"{c.name}（{c.ref_code}）：{traits}")
+                char_info = "\n".join(parts)
 
-        worker = DesignImageWorker(
-            self._text_model_service, self._image_service,
-            self._storyboard_service, storyboard, shot_size_text,
-            char_info, project_id,
-        )
-        worker.finished.connect(lambda path: self._on_design_done(storyboard_id, path))
-        worker.failed.connect(self.design_image_failed.emit)
-        worker.progress_update.connect(self.design_image_progress.emit)
-        worker.start()
-        self._workers.append(worker)
+            shot_size_map = {
+                "extreme_close_up": "特写", "close_up": "近景", "medium_shot": "中景",
+                "full_shot": "全景", "long_shot": "远景", "extreme_long_shot": "大远景",
+            }
+            shot_size_text = shot_size_map.get(storyboard.shot_size.value, "中景")
 
-    @Slot(int)
-    def batch_generate_design_images(self, project_id: int) -> None:
+            worker = DesignImageWorker(
+                self._text_model_service, self._image_service,
+                self._storyboard_service, storyboard, shot_size_text,
+                char_info, project_id,
+            )
+            worker.finished.connect(lambda path: self._on_design_done(storyboard_id, path))
+            worker.failed.connect(self.design_image_failed.emit)
+            worker.progress_update.connect(self.design_image_progress.emit)
+            worker.start()
+            self._workers.append(worker)
+
+        except Exception as e:
+            logger.exception("启动设计图生成失败")
+            self.error.emit(str(e))
+
+    @Slot(int, str)
+    def batch_generate_design_images(self, project_id: int, shot_ids_json: str) -> None:
+        logger.info(f"batch_generate_design_images called: project_id={project_id}, shot_ids_json={shot_ids_json!r}")
         try:
             shots = self._storyboard_service.list_storyboards(project_id)
             if not shots:
                 self.error.emit("没有分镜可以生成设计图")
                 return
+
+            if shot_ids_json and shot_ids_json != "[]":
+                try:
+                    selected_ids = json.loads(shot_ids_json)
+                except (json.JSONDecodeError, TypeError) as e:
+                    logger.error(f"解析选中分镜 ID 失败：shot_ids_json={shot_ids_json!r}, error={e}")
+                    self.error.emit(f"参数解析失败：{shot_ids_json!r}")
+                    return
+                shots = [s for s in shots if s.id in selected_ids]
+                if not shots:
+                    self.error.emit("未找到选中的分镜")
+                    return
 
             shot_list = []
             for shot in shots:
@@ -388,6 +411,83 @@ class StoryboardBridge(QObject):
 
         except Exception as e:
             logger.exception("启动批量设计图生成失败")
+            msg = str(e) or f"{type(e).__name__}（无详细信息）"
+            self.error.emit(msg)
+
+    @Slot(int, str)
+    def batch_generate_videos(self, project_id: int, shot_ids_json: str) -> None:
+        try:
+            selected_ids = json.loads(shot_ids_json) if shot_ids_json else []
+            if not selected_ids:
+                self.error.emit("未选中任何分镜")
+                return
+
+            shots = self._storyboard_service.list_storyboards(project_id)
+            selected_shots = [s for s in shots if s.id in selected_ids]
+            if not selected_shots:
+                self.error.emit("未找到选中的分镜")
+                return
+
+            scenes = self._screenplay_service.list_scenes(project_id)
+            scene_map = {s.id: s for s in scenes}
+
+            shot_list_for_prompt = [s for s in shots]
+            shot_list = []
+            for i, shot in enumerate(selected_shots):
+                scene = scene_map.get(shot.scene_id)
+                idx = next((j for j, s in enumerate(shot_list_for_prompt) if s.id == shot.id), -1)
+                prev_shot = shot_list_for_prompt[idx - 1] if idx > 0 else None
+                next_shot = shot_list_for_prompt[idx + 1] if idx < len(shot_list_for_prompt) - 1 else None
+                prompt = VideoPromptBuilder.build_shot_prompt(shot, scene, prev_shot, next_shot)
+
+                shot_list.append({
+                    "scene_number": shot.scene_number,
+                    "shot_number": shot.shot_number,
+                    "prompt": prompt,
+                    "project_id": project_id,
+                    "shot_id": shot.id,
+                    "reference_image": shot.design_image,
+                })
+
+            config_mgr = self._container.config_manager()
+            settings = config_mgr.settings
+            provider_name = settings.default_provider
+            if not provider_name:
+                self.error.emit("未配置默认视频生成供应商")
+                return
+
+            provider_cfg = config_mgr.get_provider(provider_name)
+            project = self._project_service.get_project(project_id)
+            if not project:
+                self.error.emit("项目不存在")
+                return
+
+            signal_emitter = self._container.video_polling_task().signal_emitter
+            video_service = self._container.video_service()
+
+            controller = BatchGenerationController(
+                shot_list, video_service, signal_emitter,
+                provider_name, project, provider_cfg,
+            )
+
+            def on_progress(current: int, total: int, message: str) -> None:
+                self.batch_progress.emit(current, total, message)
+
+            def on_all_done(success: int, failed: int) -> None:
+                self.batch_done.emit(success, failed)
+                controller.deleteLater()
+
+            def on_terminated(success: int, failed: int) -> None:
+                self.batch_done.emit(success, failed)
+                controller.deleteLater()
+
+            controller.progress.connect(on_progress)
+            controller.all_done.connect(on_all_done)
+            controller.terminated.connect(on_terminated)
+            controller.start()
+
+        except Exception as e:
+            logger.exception("启动批量视频生成失败")
             self.error.emit(str(e))
 
     @Slot(int, str)

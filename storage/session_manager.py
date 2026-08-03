@@ -48,6 +48,12 @@ class SessionManager:
             session = self.get_session()
             session.commit()
             logger.debug(f"提交写操作：{threading.current_thread().name}")
+        except Exception:
+            try:
+                self.get_session().rollback()
+            except Exception:
+                pass
+            raise
         finally:
             self._write_lock.release()
 
