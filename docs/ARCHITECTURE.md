@@ -1,11 +1,11 @@
 ## 全局任务轮询服务
 
-任务轮询与前端 UI 完全解耦，由独立的 `TaskPollingService` 管理。应用启动时自动运行，根据 `active_tasks` 表状态自动启停。
+任务轮询与前端 UI 完全解耦，由独立的 `TaskPollingService` 管理。应用启动时自动运行，根据 `generate_tasks` 表状态自动启停。
 
 **核心类：**
 
 - **`TaskPollingService`** — 服务管理类，负责启动/停止轮询线程，提供信号接口（`status_changed`、`download_progress`、`task_finished`、`task_failed`），管理 Provider 实例池
-- **`_PollingWorker`** — 后台 QThread，周期性扫描 `active_tasks` 表，根据任务创建时间判断是否开始轮询（初始延迟 5 分钟）
+- **`_PollingWorker`** — 后台 QThread，周期性扫描 `generate_tasks` 表，根据任务创建时间判断是否开始轮询（初始延迟 5 分钟）
 
 **轮询策略：**
 

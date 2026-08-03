@@ -4,19 +4,19 @@ from typing import List, Optional
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from models.active_task import ActiveTask
+from models.generate_task import GenerateTask
 from models.enums import TaskStatus
-from storage.orm.project_entity import ActiveTaskEntity
+from storage.orm.project_entity import GenerateTaskEntity
 from storage.repositories.base_repository import BaseRepository
 
 
-class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
+class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
 
     def __init__(self, session: Session):
-        super().__init__(session, ActiveTaskEntity)
+        super().__init__(session, GenerateTaskEntity)
 
-    def _to_dto(self, entity: ActiveTaskEntity) -> ActiveTask:
-        return ActiveTask(
+    def _to_dto(self, entity: GenerateTaskEntity) -> GenerateTask:
+        return GenerateTask(
             id=entity.id,
             provider_task_id=entity.provider_task_id,
             provider_name=entity.provider_name,
@@ -32,8 +32,8 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
             updated_at=entity.updated_at,
         )
 
-    def _to_entity(self, dto: ActiveTask) -> ActiveTaskEntity:
-        return ActiveTaskEntity(
+    def _to_entity(self, dto: GenerateTask) -> GenerateTaskEntity:
+        return GenerateTaskEntity(
             id=dto.id,
             provider_task_id=dto.provider_task_id,
             provider_name=dto.provider_name,
@@ -58,7 +58,7 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
         request_params: str,
         storyboard_id: int = 0,
     ) -> int:
-        entity = ActiveTaskEntity(
+        entity = GenerateTaskEntity(
             provider_task_id=provider_task_id,
             provider_name=provider_name,
             model_name=model_name,
@@ -78,9 +78,9 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
 
     def list_active_tasks(self) -> List[dict]:
         stmt = (
-            select(ActiveTaskEntity)
-            .where(ActiveTaskEntity.completed == False)
-            .order_by(ActiveTaskEntity.created_at.asc())
+            select(GenerateTaskEntity)
+            .where(GenerateTaskEntity.completed == False)
+            .order_by(GenerateTaskEntity.created_at.asc())
         )
         entities = self.session.execute(stmt).scalars().all()
         return [
@@ -103,7 +103,7 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
         ]
 
     def get_by_id(self, task_id: int) -> Optional[dict]:
-        entity = self.session.get(ActiveTaskEntity, task_id)
+        entity = self.session.get(GenerateTaskEntity, task_id)
         if not entity:
             return None
         return {
@@ -123,8 +123,8 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
         }
 
     def get_by_provider_task_id(self, provider_task_id: str) -> Optional[dict]:
-        stmt = select(ActiveTaskEntity).where(
-            ActiveTaskEntity.provider_task_id == provider_task_id
+        stmt = select(GenerateTaskEntity).where(
+            GenerateTaskEntity.provider_task_id == provider_task_id
         )
         entity = self.session.execute(stmt).scalar_one_or_none()
         if not entity:
@@ -152,7 +152,7 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
         video_url: str = "",
         error_message: str = "",
     ) -> None:
-        entity = self.session.get(ActiveTaskEntity, task_id)
+        entity = self.session.get(GenerateTaskEntity, task_id)
         if not entity:
             return
 
@@ -165,7 +165,7 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
         self.session.commit()
 
     def mark_completed(self, task_id: int) -> None:
-        entity = self.session.get(ActiveTaskEntity, task_id)
+        entity = self.session.get(GenerateTaskEntity, task_id)
         if not entity:
             return
 
@@ -175,9 +175,9 @@ class ActiveTaskRepository(BaseRepository[ActiveTaskEntity, ActiveTask]):
 
     def list_completed_tasks(self, limit: int = 50, offset: int = 0) -> List[dict]:
         stmt = (
-            select(ActiveTaskEntity)
-            .where(ActiveTaskEntity.completed == True)
-            .order_by(ActiveTaskEntity.updated_at.desc())
+            select(GenerateTaskEntity)
+            .where(GenerateTaskEntity.completed == True)
+            .order_by(GenerateTaskEntity.updated_at.desc())
             .limit(limit)
             .offset(offset)
         )

@@ -12,7 +12,7 @@ from PySide6.QtCore import QObject, Signal
 from service.background.task_base import BackgroundTask, TaskType
 from models.enums import MessageStatus, TaskStatus
 from storage.session_manager import SessionManager
-from storage.repositories.active_task_repository import ActiveTaskRepository
+from storage.repositories.generate_task_repository import GenerateTaskRepository
 from storage.repositories.oss_cache_repository import OSSFileCacheRepository
 from utils import paths
 from utils.path_converter import to_relative_path
@@ -98,7 +98,7 @@ class VideoTaskPollingTask(BackgroundTask):
                 self._cleanup_expired_oss_caches()
                 self._last_cleanup_time = now
 
-            task_repo = self._sm.get_repo(ActiveTaskRepository)
+            task_repo = self._sm.get_repo(GenerateTaskRepository)
             tasks = task_repo.list_active_tasks()
 
             if not tasks:
@@ -147,7 +147,7 @@ class VideoTaskPollingTask(BackgroundTask):
             result = provider.check_status(provider_task_id)
             self._task_poll_count[internal_task_id] = poll_count + 1
 
-            task_repo = self._sm.get_repo(ActiveTaskRepository)
+            task_repo = self._sm.get_repo(GenerateTaskRepository)
             self._sm.begin_write()
             try:
                 task_repo.update_status(internal_task_id, result.status.value, video_url=result.video_url or "")
@@ -180,7 +180,7 @@ class VideoTaskPollingTask(BackgroundTask):
             self._task_poll_count[internal_task_id] = poll_count + 1
 
     def _mark_task_completed(self, internal_task_id: int) -> None:
-        task_repo = self._sm.get_repo(ActiveTaskRepository)
+        task_repo = self._sm.get_repo(GenerateTaskRepository)
         self._sm.begin_write()
         try:
             task_repo.mark_completed(internal_task_id)

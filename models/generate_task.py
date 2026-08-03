@@ -5,7 +5,7 @@ from datetime import datetime
 
 
 @dataclass
-class ActiveTask:
+class GenerateTask:
     id: int
     provider_task_id: str
     provider_name: str

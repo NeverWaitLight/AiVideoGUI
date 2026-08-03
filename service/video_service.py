@@ -14,7 +14,7 @@ from providers.video_base import VideoProvider
 from providers.dashscope_video import DashScopeVideoProvider
 from providers.seedance_video import SeedanceVideoProvider
 from storage.session_manager import SessionManager
-from storage.repositories.active_task_repository import ActiveTaskRepository
+from storage.repositories.generate_task_repository import GenerateTaskRepository
 
 _PROVIDER_REGISTRY: dict[str, type[VideoProvider]] = {
     "dashscope": DashScopeVideoProvider,
@@ -69,11 +69,11 @@ class VideoService(QObject):
             provider_task_id, request_params = provider.t2v(prompt, params)
             logger.info(f"使用文生视频 (t2v)")
 
-        task_repo = self._sm.get_repo(ActiveTaskRepository)
+        task_repo = self._sm.get_repo(GenerateTaskRepository)
 
         self._sm.begin_write()
         try:
-            active_task_id = task_repo.add(
+            generate_task_id = task_repo.add(
                 provider_task_id=provider_task_id,
                 provider_name=provider_name,
                 model_name=provider._config.default_model,
@@ -85,9 +85,9 @@ class VideoService(QObject):
             self._sm.commit_write()
 
             logger.info(
-                "任务已提交 provider_task=%s active_task=%s provider=%s save_path=%s storyboard_id=%s",
+                "任务已提交 provider_task=%s generate_task=%s provider=%s save_path=%s storyboard_id=%s",
                 provider_task_id,
-                active_task_id,
+                generate_task_id,
                 provider_name,
                 save_path,
                 storyboard_id,

@@ -29,8 +29,8 @@ class ProjectEntity(Base):
     )
 
 
-class ActiveTaskEntity(Base):
-    __tablename__ = "active_tasks"
+class GenerateTaskEntity(Base):
+    __tablename__ = "generate_tasks"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
@@ -53,6 +53,6 @@ class ActiveTaskEntity(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now, onupdate=datetime.now)
 
     __table_args__ = (
-        Index("idx_active_task_completed", "completed"),
-        Index("idx_active_task_provider_task_id", "provider_task_id"),
+        Index("idx_generate_task_completed", "completed"),
+        Index("idx_generate_task_provider_task_id", "provider_task_id"),
     )

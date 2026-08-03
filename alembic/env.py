@@ -13,7 +13,7 @@ from storage.orm.project_entity import (
     ProjectEntity,
     ConversationEntity,
     MessageEntity,
-    ActiveTaskEntity,
+    GenerateTaskEntity,
 )
 from storage.orm.media_entity import MediaFileEntity
 from storage.orm.story_outline_entity import StoryOutlineEntity, StoryOutlineHistoryEntity

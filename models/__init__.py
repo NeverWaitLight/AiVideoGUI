@@ -16,7 +16,7 @@ from models.story_outline import StoryOutline, StoryOutlineHistory
 from models.scene import Scene, ScreenplayHistory
 from models.storyboard import Storyboard, StoryboardHistory
 from models.character import Character, CharacterHistory
-from models.active_task import ActiveTask
+from models.generate_task import GenerateTask
 
 __all__ = [
     "TaskStatus",
@@ -25,7 +25,7 @@ __all__ = [
     "SceneLocation",
     "SceneTime",
     "ShotSize",
-    "ActiveTask",
+    "GenerateTask",
     "AppSettings",
     "Character",
     "CharacterHistory",
