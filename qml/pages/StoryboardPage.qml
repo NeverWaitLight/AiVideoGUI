@@ -84,14 +84,14 @@ Item {
                 spacing: 0
 
                 Comp.PageHeader {
-                    title: "分镜编辑"
+                    title: "分镜"
                     Layout.fillWidth: true
                     onBackClicked: page.backClicked()
 
                     Button {
                         visible: _multiSelect && _selectedIds.length > 0
                         Layout.preferredHeight: 34
-                        text: "批量生成视频"
+                        text: "虚拟拍摄"
                         highlighted: true
                         enabled: bridge.storyboard.model.count > 0
                         topPadding: 6
@@ -104,7 +104,7 @@ Item {
                     Button {
                         visible: _multiSelect && _selectedIds.length > 0
                         Layout.preferredHeight: 34
-                        text: "批量设计图"
+                        text: "设计场景"
                         enabled: bridge.storyboard.model.count > 0
                         topPadding: 6
                         bottomPadding: 6
@@ -215,7 +215,7 @@ Item {
                         leftPadding: 8
                         rightPadding: 8
                         ToolTip.visible: hovered
-                        ToolTip.text: "AI优化"
+                        ToolTip.text: "Ai"
 
                         background: Rectangle {
                             anchors.fill: parent
@@ -287,9 +287,6 @@ Item {
                                 _loadRelatedVideos()
                             }
                         }
-                        onGenerateVideoClicked: {
-                            alertDialog.info("提示", "单个视频生成功能开发中")
-                        }
                     }
 
                     Comp.EmptyState {
@@ -307,21 +304,11 @@ Item {
                 spacing: 0
 
                 Comp.PageHeader {
-                    title: "场" + bridge.storyboard.curSceneNumber + " 镜" + bridge.storyboard.curShotNumber
+                    title: bridge.storyboard.curSceneNumber + "场" + bridge.storyboard.curShotNumber + "镜"
                     Layout.fillWidth: true
                     onBackClicked: {
                         _showDetail = false
                         bridge.storyboard.load_for_project(page.projectId)
-                    }
-
-                    Button {
-                        Layout.preferredHeight: 34
-                        text: "查看提示词"
-                        topPadding: 6
-                        bottomPadding: 6
-                        leftPadding: 12
-                        rightPadding: 12
-                        onClicked: _showPromptPreview()
                     }
 
                     Button {
@@ -374,7 +361,7 @@ Item {
 
                                 Label { text: "场次/镜头："; font.pixelSize: Theme.fontSizeMedium }
                                 Label {
-                                    text: "第" + bridge.storyboard.curSceneNumber + "场 / 第" + bridge.storyboard.curShotNumber + "镜"
+                                    text: bridge.storyboard.curSceneNumber + "场" + bridge.storyboard.curShotNumber + "镜"
                                     font.pixelSize: Theme.fontSizeMedium; font.bold: true
                                 }
                                 Item { Layout.fillWidth: true }
@@ -578,29 +565,6 @@ Item {
         }
     }
 
-    Dialog {
-        id: promptDialog
-        modal: true
-        title: "视频生成提示词预览"
-        width: 560
-        height: 480
-        anchors.centerIn: parent
-        standardButtons: Dialog.Close
-
-        ScrollView {
-            anchors.fill: parent
-            clip: true
-            TextArea {
-                id: promptText
-                readOnly: true
-                wrapMode: TextArea.Wrap
-                font.pixelSize: Theme.fontSizeSmall
-                font.family: "Consolas, monospace"
-                padding: 12
-            }
-        }
-    }
-
     component VideoRowDelegate: Pane {
         property var videoData: ({})
         signal playClicked()
@@ -685,16 +649,6 @@ Item {
     function _loadRelatedVideos() {
         var json = bridge.storyboard.get_related_videos(_editingShotId)
         _relatedVideos = JSON.parse(json)
-    }
-
-    function _showPromptPreview() {
-        var prompt = bridge.storyboard.preview_prompt(_editingShotId, page.projectId)
-        if (prompt) {
-            promptText.text = prompt
-            promptDialog.open()
-        } else {
-            alertDialog.info("提示", "画面内容为空，无法生成提示词")
-        }
     }
 
     function _formatVideoMeta(v) {

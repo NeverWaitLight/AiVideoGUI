@@ -19,7 +19,6 @@ Pane {
     property bool selected: false
 
     signal clicked()
-    signal generateVideoClicked()
 
     background: Rectangle {
         radius: Theme.cardRadius
@@ -47,7 +46,7 @@ Pane {
             RowLayout {
                 spacing: 8
                 Label {
-                    text: "场" + sceneNumber + " 镜" + shotNumber
+                    text: sceneNumber + "场" + shotNumber + "镜"
                     font.pixelSize: Theme.fontSizeMedium
                     font.bold: true
                 }
@@ -75,14 +74,6 @@ Pane {
             }
         }
 
-        Button {
-            visible: !multiSelect
-            text: "生成视频"
-            highlighted: true
-            implicitWidth: 80
-            Layout.alignment: Qt.AlignVCenter
-            onClicked: generateVideoClicked()
-        }
     }
 
     CheckBox {

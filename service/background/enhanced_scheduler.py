@@ -241,6 +241,8 @@ class _TaskWorker(QThread):
             self.started_signal.emit()
             logger.debug(f"任务线程启动：{self._task.name} (Worker ID: {id(self)})")
 
+            self._task.set_sleep_checker(lambda: self._stopped)
+
             if self._task.task_type == TaskType.PERIODIC:
                 while not self._stopped and self._task.should_continue():
                     try:

@@ -7,7 +7,7 @@ from loguru import logger
 from PySide6.QtCore import QObject, Property, Signal, Slot
 
 from bridge.models.character_model import CharacterListModel
-from bridge.workers import CharacterDesignImageWorker, CharacterWorker
+from bridge.workers import CharacterDesignImageWorker, CharacterRefineWorker, CharacterWorker
 
 
 class CharacterBridge(QObject):
@@ -16,6 +16,8 @@ class CharacterBridge(QObject):
     design_image_ready = Signal(str, str)  # char_uuid, image_path
     design_image_progress = Signal(str)
     design_image_failed = Signal(str)
+    description_refined = Signal(str, str)  # char_uuid, new_description
+    description_refine_failed = Signal(str)
     characters_generated = Signal(int)  # count
     characters_optimized = Signal(int)  # count
     isOptimizingChanged = Signal()
@@ -68,21 +70,21 @@ class CharacterBridge(QObject):
         self.data_changed.emit()
         self.character_saved.emit()
 
-    @Slot(int, str, str, str)
-    def save_existing_character(self, char_id: int, name: str, ref_code: str, description: str) -> None:
+    @Slot(str, str, str, str)
+    def save_existing_character(self, char_uuid: str, name: str, ref_code: str, description: str) -> None:
         if not name.strip():
             self.error.emit("请输入角色名")
             return
         self._character_service.update_character(
-            character_id=char_id, name=name.strip(), ref_code=ref_code.strip(), description=description.strip(),
+            character_uuid=char_uuid, name=name.strip(), ref_code=ref_code.strip(), description=description.strip(),
         )
         self.data_changed.emit()
         self.character_saved.emit()
 
-    @Slot(int, str, str, str)
-    def update_character(self, char_id: int, name: str, ref_code: str, description: str) -> None:
+    @Slot(str, str, str, str)
+    def update_character(self, char_uuid: str, name: str, ref_code: str, description: str) -> None:
         self._character_service.update_character(
-            character_id=char_id, name=name, ref_code=ref_code, description=description,
+            character_uuid=char_uuid, name=name, ref_code=ref_code, description=description,
         )
         self.data_changed.emit()
 
@@ -91,8 +93,8 @@ class CharacterBridge(QObject):
         self._character_service.delete_character(char_uuid)
         self.data_changed.emit()
 
-    @Slot(str, int)
-    def generate_design_image(self, char_uuid: str, project_id: int) -> None:
+    @Slot(str, int, str)
+    def generate_design_image(self, char_uuid: str, project_id: int, user_requirement: str = "") -> None:
         chars = self._character_service.list_characters(project_id)
         character = None
         for c in chars:
@@ -105,6 +107,7 @@ class CharacterBridge(QObject):
         worker = CharacterDesignImageWorker(
             self._text_model_service, self._image_service,
             self._character_service, character, project_id,
+            user_requirement=user_requirement,
         )
         worker.finished.connect(lambda path: self._on_design_done(char_uuid, path))
         worker.failed.connect(self.design_image_failed.emit)
@@ -115,6 +118,29 @@ class CharacterBridge(QObject):
     def _on_design_done(self, char_uuid: str, path: str) -> None:
         self._model.update_design_image(char_uuid, path)
         self.design_image_ready.emit(char_uuid, path)
+
+    @Slot(str, str, str)
+    def refine_description(self, char_uuid: str, current_description: str, user_requirement: str) -> None:
+        character_name = ""
+        for c in self._model._data:
+            if c.uuid == char_uuid:
+                character_name = c.name
+                break
+
+        worker = CharacterRefineWorker(
+            self._text_model_service,
+            character_name=character_name,
+            current_description=current_description,
+            user_requirement=user_requirement,
+        )
+        worker.finished.connect(lambda desc: self._on_refine_done(char_uuid, desc))
+        worker.failed.connect(self.description_refine_failed.emit)
+        worker.finished.connect(worker.deleteLater)
+        worker.start()
+        self._workers.append(worker)
+
+    def _on_refine_done(self, char_uuid: str, new_description: str) -> None:
+        self.description_refined.emit(char_uuid, new_description)
 
     @Slot(str, result=str)
     def get_history(self, char_uuid: str) -> str:

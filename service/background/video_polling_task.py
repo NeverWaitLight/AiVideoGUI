@@ -102,7 +102,7 @@ class VideoTaskPollingTask(BackgroundTask):
             tasks = task_repo.list_active_tasks()
 
             if not tasks:
-                time.sleep(self._idle_check_interval)
+                self.interruptible_sleep(self._idle_check_interval)
                 return
 
             for task_info in tasks:

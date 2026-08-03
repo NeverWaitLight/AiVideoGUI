@@ -1,5 +1,5 @@
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 
 def to_relative_path(absolute_path: str, workspace_root: str) -> str:
@@ -11,7 +11,8 @@ def to_relative_path(absolute_path: str, workspace_root: str) -> str:
         root_path = Path(workspace_root).resolve()
 
         if abs_path.is_relative_to(root_path):
-            return str(abs_path.relative_to(root_path)).replace("\\", "/")
+            rel = abs_path.relative_to(root_path)
+            return str(PurePosixPath(*rel.parts))
         else:
             raise ValueError(f"路径不在工作区内：{absolute_path}，工作区根目录：{workspace_root}")
     except (ValueError, OSError) as e:
@@ -23,7 +24,13 @@ def to_absolute_path(relative_path: str, workspace_root: str) -> str:
         return ""
 
     if os.path.isabs(relative_path):
-        raise ValueError(f"数据库中存储了绝对路径，这是不允许的：{relative_path}。请删除数据库重新初始化。")
+        try:
+            return to_absolute_path(
+                to_relative_path(relative_path, workspace_root),
+                workspace_root,
+            )
+        except ValueError:
+            return relative_path
 
     return os.path.join(workspace_root, relative_path)
 

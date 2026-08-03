@@ -9,7 +9,6 @@ import "../dialogs" as Dialogs
 Item {
     id: page
     property int projectId: -1
-    property int _editingCharId: -1
     property string _editingCharUuid: ""
     property bool _isNewCharacter: false
     property var _selectedIds: []
@@ -50,10 +49,23 @@ Item {
             if (uuid === _editingCharUuid) {
                 _editingDesignImage = path
             }
+            characterAIDialog.finishWork()
             alertDialog.info("成功", "角色设计图已生成")
         }
         function onDesign_image_failed(error) {
+            characterAIDialog.finishWork()
             alertDialog.error("错误", "设计图生成失败：" + error)
+        }
+        function onDescription_refined(uuid, desc) {
+            if (uuid === _editingCharUuid) {
+                descInput.text = desc
+            }
+            characterAIDialog.finishWork()
+            alertDialog.info("成功", "形象描述已修改")
+        }
+        function onDescription_refine_failed(error) {
+            characterAIDialog.finishWork()
+            alertDialog.error("错误", "描述修改失败：" + error)
         }
         function onCharacters_generated(count) {
             aiOptimizeDialog.finishOptimizing()
@@ -80,7 +92,7 @@ Item {
                 spacing: 0
 
                 Comp.PageHeader {
-                    title: "角色管理"
+                    title: "角色"
                     Layout.fillWidth: true
                     onBackClicked: page.backClicked()
 
@@ -177,7 +189,7 @@ Item {
                         leftPadding: 8
                         rightPadding: 8
                         ToolTip.visible: hovered
-                        ToolTip.text: "AI优化"
+                        ToolTip.text: "Ai"
 
                         background: Rectangle {
                             anchors.fill: parent
@@ -309,7 +321,7 @@ Item {
                         leftPadding: 8
                         rightPadding: 8
                         ToolTip.visible: hovered
-                        ToolTip.text: "AI 生成设计图"
+                        ToolTip.text: "Ai"
 
                         background: Rectangle {
                             anchors.fill: parent
@@ -317,7 +329,7 @@ Item {
                             color: parent.pressed ? "#E65100" : (parent.hovered ? "#FB8C00" : "#FF9800")
                         }
 
-                        onClicked: bridge.characters.generate_design_image(_editingCharUuid, projectId)
+                        onClicked: characterAIDialog.open()
                     }
 
                     Button {
@@ -353,7 +365,7 @@ Item {
                                 _isNewCharacter = false
                             } else {
                                 bridge.characters.save_existing_character(
-                                    _editingCharId,
+                                    _editingCharUuid,
                                     nameInput.text.trim(),
                                     refCodeInput.text.trim(),
                                     descInput.text.trim()
@@ -402,103 +414,104 @@ Item {
                     Layout.fillHeight: true
                     clip: true
 
-                    RowLayout {
-                        width: parent.width
-                        spacing: 16
+                    Item {
+                        width: Math.min(parent.width, 960)
+                        height: contentCol.implicitHeight + 32
+                        anchors.horizontalCenter: parent.horizontalCenter
 
-                        Item { Layout.preferredWidth: 8 }
-
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
+                        RowLayout {
+                            id: contentCol
+                            anchors.fill: parent
+                            anchors.margins: 16
                             spacing: 16
 
-                            Item { width: 1; height: 8 }
-
-                            Pane {
-                                Layout.fillWidth: true
-                                padding: 16
-
-                                GridLayout {
-                                    anchors.fill: parent
-                                    columns: 4
-                                    columnSpacing: 16
-                                    rowSpacing: 12
-
-                                    Label {
-                                        text: "角色名："
-                                        font.pixelSize: Theme.fontSizeMedium
-                                    }
-                                    Comp.AppTextField {
-                                        id: nameInput
-                                        Layout.fillWidth: true
-                                        Layout.columnSpan: 3
-                                    }
-
-                                    Label {
-                                        text: "引用代号："
-                                        font.pixelSize: Theme.fontSizeMedium
-                                    }
-                                    Comp.AppTextField {
-                                        id: refCodeInput
-                                        visible: _isNewCharacter
-                                        placeholderText: "如 CHAR_A"
-                                        Layout.fillWidth: true
-                                        Layout.columnSpan: 3
-                                    }
-                                    Label {
-                                        visible: !_isNewCharacter
-                                        text: refCodeInput.text || "—"
-                                        font.pixelSize: Theme.fontSizeMedium
-                                        Layout.fillWidth: true
-                                        Layout.columnSpan: 3
-                                    }
-                                }
-                            }
-
-                            Pane {
+                            ColumnLayout {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
-                                padding: 16
+                                spacing: 16
 
-                                ColumnLayout {
-                                    anchors.fill: parent
-                                    spacing: 12
+                                Pane {
+                                    Layout.fillWidth: true
+                                    padding: 16
+                                    background: Item {}
 
-                                    Label {
-                                        text: "形象描述："
-                                        font.pixelSize: Theme.fontSizeMedium
-                                    }
+                                    GridLayout {
+                                        anchors.fill: parent
+                                        columns: 4
+                                        columnSpacing: 16
+                                        rowSpacing: 12
 
-                                    ScrollView {
-                                        Layout.fillWidth: true
-                                        Layout.fillHeight: true
-                                        clip: true
-                                        TextArea {
-                                            id: descInput
-                                            wrapMode: TextArea.Wrap
-                                            font.pixelSize: Theme.fontSizeSmall
-                                            padding: 12
+                                        Label {
+                                            text: "角色名："
+                                            font.pixelSize: Theme.fontSizeMedium
+                                        }
+                                        Comp.AppTextField {
+                                            id: nameInput
+                                            Layout.fillWidth: true
+                                            Layout.columnSpan: 3
+                                        }
+
+                                        Label {
+                                            text: "引用代号："
+                                            font.pixelSize: Theme.fontSizeMedium
+                                        }
+                                        Comp.AppTextField {
+                                            id: refCodeInput
+                                            visible: _isNewCharacter
+                                            placeholderText: "如 CHAR_A"
+                                            Layout.fillWidth: true
+                                            Layout.columnSpan: 3
+                                        }
+                                        Label {
+                                            visible: !_isNewCharacter
+                                            text: refCodeInput.text || "—"
+                                            font.pixelSize: Theme.fontSizeMedium
+                                            Layout.fillWidth: true
+                                            Layout.columnSpan: 3
                                         }
                                     }
+                                }
 
+                                Pane {
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                    padding: 16
+                                    background: Item {}
+
+                                    ColumnLayout {
+                                        anchors.fill: parent
+                                        spacing: 12
+
+                                        Label {
+                                            text: "形象描述："
+                                            font.pixelSize: Theme.fontSizeMedium
+                                        }
+
+                                        ScrollView {
+                                            Layout.fillWidth: true
+                                            Layout.fillHeight: true
+                                            clip: true
+                                            TextArea {
+                                                id: descInput
+                                                wrapMode: TextArea.Wrap
+                                                font.pixelSize: Theme.fontSizeSmall
+                                                padding: 12
+                                            }
+                                        }
+                                    }
                                 }
                             }
 
-                            Item { width: 1; height: 16 }
+                            Comp.ImageUploadPanel {
+                                Layout.preferredWidth: 320
+                                Layout.fillHeight: true
+                                visible: !_isNewCharacter
+                                imageSource: _editingDesignImage
+                                placeholderText: "暂无设计图"
+                                onUploadClicked: charDesignDialog.open()
+                                onClearClicked: _editingDesignImage = ""
+                            }
                         }
-
-                        Comp.ImageUploadPanel {
-                            Layout.preferredWidth: 320
-                            Layout.fillHeight: true
-                            visible: !_isNewCharacter
-                            imageSource: _editingDesignImage
-                            placeholderText: "暂无设计图"
-                            onUploadClicked: charDesignDialog.open()
-                            onClearClicked: _editingDesignImage = ""
-                        }
-
-                        Item { Layout.preferredWidth: 8 }
                     }
                 }
             }
@@ -552,9 +565,10 @@ Item {
                 clip: true
                 Image {
                     anchors.fill: parent
-                    source: designImage ? "file:///" + designImage : ""
+                    source: designImage ? "file:///" + designImage + "?t=" + Date.now() : ""
                     fillMode: Image.PreserveAspectCrop
-                    visible: source !== ""
+                    visible: designImage !== ""
+                    cache: false
                 }
                 Label {
                     anchors.centerIn: parent
@@ -617,7 +631,6 @@ Item {
 
     function _openNewDetail() {
         _isNewCharacter = true
-        _editingCharId = -1
         _editingCharUuid = ""
         _editingDesignImage = ""
         nameInput.text = ""
@@ -628,7 +641,6 @@ Item {
 
     function _openEditDetail(model) {
         _isNewCharacter = false
-        _editingCharId = model.characterId
         _editingCharUuid = model.characterUuid || ""
         _editingDesignImage = model.designImagePath || ""
         nameInput.text = model.name || ""
@@ -669,6 +681,16 @@ Item {
         id: aiOptimizeDialog
         onOptimizeRequested: function(userInput) {
             bridge.characters.optimize_with_ai(userInput, page.projectId)
+        }
+    }
+
+    Dialogs.CharacterAIDialog {
+        id: characterAIDialog
+        onRefineRequested: function(userInput) {
+            bridge.characters.refine_description(_editingCharUuid, descInput.text.trim(), userInput)
+        }
+        onGenerateDesignRequested: function(userInput) {
+            bridge.characters.generate_design_image(_editingCharUuid, projectId, userInput)
         }
     }
 }

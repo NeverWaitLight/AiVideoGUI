@@ -347,12 +347,15 @@ class TextModelService:
         self,
         character_name: str,
         description: str,
+        user_requirement: str = "",
         model: str | None = None,
     ) -> str:
         template = self._prompt_manager.get_template("character_image_prompt_generation")
+        req_text = f"\n【用户补充要求】\n{user_requirement}" if user_requirement else ""
         messages = template.build_messages(
             character_name=character_name,
             description=description,
+            user_requirement=req_text,
         )
 
         logger.info(f"调用文本模型生成角色设计图提示词，模型：{model or self.DEFAULT_MODEL}，角色：{character_name}")
@@ -456,3 +459,28 @@ class TextModelService:
         shots = ShotParser.parse(result)
         logger.info(f"分镜解析成功：共 {len(shots)} 个镜头")
         return shots
+
+    def refine_character_description(
+        self,
+        character_name: str,
+        current_description: str,
+        user_requirement: str,
+        model: str | None = None,
+    ) -> str:
+        """根据用户要求修改单个角色的形象描述，返回修改后的描述文本"""
+        system_prompt = (
+            "你是一个专业的角色形象描述编辑助手。请根据用户的要求，修改角色的形象描述。\n"
+            "要求：\n"
+            "- 只输出修改后的形象描述文字，不要包含任何解释、标题或额外说明\n"
+            "- 保持描述的具体性和可视化程度，适合用于AI图片生成\n"
+            "- 如果用户要求不够具体，在合理范围内补充细节"
+        )
+        user_msg = f"角色名：{character_name}\n当前形象描述：{current_description}\n修改要求：{user_requirement}"
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_msg},
+        ]
+
+        logger.info(f"调用文本模型修改角色描述，角色：{character_name}，模型：{model or self.DEFAULT_MODEL}")
+        result = self.chat(messages, model)
+        return result.strip()

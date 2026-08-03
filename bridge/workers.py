@@ -272,13 +272,14 @@ class CharacterDesignImageWorker(QThread):
     failed = Signal(str)
     progress_update = Signal(str)
 
-    def __init__(self, text_service, image_service, character_service, character, project_id: int, parent=None):
+    def __init__(self, text_service, image_service, character_service, character, project_id: int, user_requirement: str = "", parent=None):
         super().__init__(parent)
         self._text_service = text_service
         self._image_service = image_service
         self._character_service = character_service
         self._character = character
         self._project_id = project_id
+        self._user_requirement = user_requirement
 
     def run(self):
         try:
@@ -286,6 +287,7 @@ class CharacterDesignImageWorker(QThread):
             image_prompt = self._text_service.generate_character_design_image_prompt(
                 character_name=self._character.name,
                 description=self._character.description,
+                user_requirement=self._user_requirement,
             )
             logger.info(f"角色设计图提示词：{image_prompt}")
 
@@ -304,6 +306,31 @@ class CharacterDesignImageWorker(QThread):
             self.finished.emit(result_path)
         except Exception as e:
             logger.exception("生成角色设计图失败")
+            self.failed.emit(str(e))
+
+
+class CharacterRefineWorker(QThread):
+    finished = Signal(str)
+    failed = Signal(str)
+
+    def __init__(self, text_service, character_name: str, current_description: str,
+                 user_requirement: str, parent=None):
+        super().__init__(parent)
+        self._text_service = text_service
+        self._character_name = character_name
+        self._current_description = current_description
+        self._user_requirement = user_requirement
+
+    def run(self):
+        try:
+            result = self._text_service.refine_character_description(
+                character_name=self._character_name,
+                current_description=self._current_description,
+                user_requirement=self._user_requirement,
+            )
+            self.finished.emit(result)
+        except Exception as e:
+            logger.exception("修改角色描述失败")
             self.failed.emit(str(e))
 
 

@@ -194,7 +194,7 @@ Dialog {
                         leftPadding: 8
                         rightPadding: 8
                         ToolTip.visible: hovered
-                        ToolTip.text: isGeneratingCover ? "生成中..." : "AI 生成封面图"
+                        ToolTip.text: "Ai"
 
                         background: Rectangle {
                             anchors.fill: parent

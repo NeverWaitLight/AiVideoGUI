@@ -422,44 +422,6 @@ class StoryboardBridge(QObject):
             logger.exception("获取关联视频失败")
             return "[]"
 
-    @Slot(int, int, result=str)
-    def preview_prompt(self, shot_id: int, project_id: int) -> str:
-        from utils.prompt_builder import VideoPromptBuilder
-        try:
-            storyboard = self._storyboard_service.get_storyboard(shot_id)
-            if not storyboard:
-                return ""
-            if not storyboard.visual_content.strip():
-                return ""
-
-            # 获取场次上下文
-            scene = None
-            if storyboard.scene_id:
-                scene = self._screenplay_service.get_scene(storyboard.scene_id)
-
-            # 获取相邻分镜
-            all_shots = self._storyboard_service.list_storyboards(project_id=project_id)
-            prev_shot = None
-            next_shot = None
-            for i, shot in enumerate(all_shots):
-                if shot.id == shot_id:
-                    if i > 0:
-                        prev_shot = all_shots[i - 1]
-                    if i < len(all_shots) - 1:
-                        next_shot = all_shots[i + 1]
-                    break
-
-            prompt = VideoPromptBuilder.build_shot_prompt(
-                storyboard=storyboard, scene=scene,
-                prev_shot=prev_shot, next_shot=next_shot,
-            )
-            # 用角色形象描述增强
-            prompt = self._character_service.enrich_prompt_with_characters(prompt, project_id)
-            return prompt
-        except Exception as e:
-            logger.exception("预览提示词失败")
-            return f"错误: {e}"
-
     def _on_design_done(self, shot_id: int, path: str) -> None:
         self._model.update_design_image(shot_id, path)
         self.design_image_ready.emit(str(shot_id), path)

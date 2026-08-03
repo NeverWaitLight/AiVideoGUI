@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Any
@@ -18,6 +19,7 @@ class BackgroundTask(ABC):
         self._type = task_type
         self._name = name
         self._enabled = False
+        self._sleep_checker: Any = None
 
     @property
     def task_type(self) -> TaskType:
@@ -36,6 +38,21 @@ class BackgroundTask(ABC):
 
     def disable(self) -> None:
         self._enabled = False
+
+    def set_sleep_checker(self, checker: Any) -> None:
+        self._sleep_checker = checker
+
+    def interruptible_sleep(self, seconds: float) -> bool:
+        if self._sleep_checker is not None:
+            elapsed = 0.0
+            while elapsed < seconds:
+                if self._sleep_checker():
+                    return True
+                time.sleep(min(0.5, seconds - elapsed))
+                elapsed += 0.5
+            return False
+        time.sleep(seconds)
+        return False
 
     @abstractmethod
     def execute(self) -> None:

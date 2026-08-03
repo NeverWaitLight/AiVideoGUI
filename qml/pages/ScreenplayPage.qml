@@ -88,7 +88,7 @@ Item {
                 spacing: 0
 
                 Comp.PageHeader {
-                    title: "剧本编辑"
+                    title: "剧本"
                     Layout.fillWidth: true
                     onBackClicked: page.backClicked()
 
@@ -189,7 +189,7 @@ Item {
                         leftPadding: 8
                         rightPadding: 8
                         ToolTip.visible: hovered
-                        ToolTip.text: "AI优化"
+                        ToolTip.text: "Ai"
 
                         background: Rectangle {
                             anchors.fill: parent

@@ -101,7 +101,7 @@ Item {
                 leftPadding: 8
                 rightPadding: 8
                 ToolTip.visible: hovered
-                ToolTip.text: "AI优化"
+                ToolTip.text: "Ai"
 
                 background: Rectangle {
                     anchors.fill: parent

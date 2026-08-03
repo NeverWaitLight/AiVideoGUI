@@ -74,3 +74,4 @@ user_prompt_template: |
 
   【形象描述】
   {description}
+  {user_requirement}
