@@ -93,6 +93,7 @@ Item {
 
                 Comp.PageHeader {
                     title: "角色"
+                    subtitle: "共" + bridge.characters.model.count + "个角色"
                     Layout.fillWidth: true
                     onBackClicked: page.backClicked()
 

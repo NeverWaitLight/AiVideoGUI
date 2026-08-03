@@ -23,6 +23,7 @@ class StoryboardEntity(Base):
     sound_effect: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     duration: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    seed: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     created_at: Mapped[int] = mapped_column(Integer, nullable=False)
     updated_at: Mapped[int] = mapped_column(Integer, nullable=False)
 
@@ -57,6 +58,7 @@ class StoryboardHistoryEntity(Base):
     sound_effect: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     duration: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    seed: Mapped[str] = mapped_column(String(255), nullable=False, default="")
 
     created_at: Mapped[int] = mapped_column(Integer, nullable=False)
 

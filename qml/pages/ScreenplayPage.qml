@@ -89,6 +89,7 @@ Item {
 
                 Comp.PageHeader {
                     title: "剧本"
+                    subtitle: "共" + bridge.screenplay.sceneModel.count + "场"
                     Layout.fillWidth: true
                     onBackClicked: page.backClicked()
 

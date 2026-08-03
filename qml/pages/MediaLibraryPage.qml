@@ -34,6 +34,7 @@ Item {
 
         Comp.PageHeader {
             title: "素材库"
+            subtitle: "共" + bridge.media.model.count + "个文件"
             Layout.fillWidth: true
             onBackClicked: page.backClicked()
 

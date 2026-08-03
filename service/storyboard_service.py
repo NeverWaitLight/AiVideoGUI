@@ -43,6 +43,7 @@ class StoryboardService:
         duration: float = 0.0,
         notes: str = "",
         design_image: str = "",
+        seed: str = "",
     ) -> Storyboard:
         relative_design_image = to_relative_path(design_image, self._workspace_root) if design_image else ""
 
@@ -60,6 +61,7 @@ class StoryboardService:
             sound_effect=sound_effect,
             duration=duration,
             notes=notes,
+            seed=seed,
             created_at=now_ms,
             updated_at=now_ms,
         )
@@ -98,6 +100,7 @@ class StoryboardService:
         sound_effect: str | None = None,
         duration: float | None = None,
         notes: str | None = None,
+        seed: str | None = None,
     ) -> None:
         repo = self._session_mgr.get_repo(StoryboardRepository)
 
@@ -123,6 +126,8 @@ class StoryboardService:
                 storyboard.duration = duration
             if notes is not None:
                 storyboard.notes = notes
+            if seed is not None:
+                storyboard.seed = seed
 
             storyboard.updated_at = int(time.time() * 1000)
 

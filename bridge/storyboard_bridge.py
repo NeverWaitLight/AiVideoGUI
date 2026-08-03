@@ -68,6 +68,7 @@ class StoryboardBridge(QObject):
         self._cur_duration: float = 5.0
         self._cur_notes: str = ""
         self._cur_design_image: str = ""
+        self._cur_seed: str = ""
 
     @Property(QObject, constant=True)
     def model(self):
@@ -105,6 +106,9 @@ class StoryboardBridge(QObject):
 
     @Property(str, notify=shot_detail_changed)
     def curDesignImage(self): return self._cur_design_image
+
+    @Property(str, notify=shot_detail_changed)
+    def curSeed(self): return self._cur_seed
 
     @Property(bool, notify=isOptimizingChanged)
     def isOptimizing(self): return self._optimizing
@@ -232,16 +236,17 @@ class StoryboardBridge(QObject):
             self._cur_duration = shot.duration
             self._cur_notes = shot.notes
             self._cur_design_image = shot.design_image
+            self._cur_seed = shot.seed
             self.shot_detail_changed.emit()
         except Exception as e:
             logger.exception("加载分镜失败")
             self.error.emit(str(e))
 
-    @Slot(int, int, str, str, str, float, str, str, str)
+    @Slot(int, int, str, str, str, float, str, str, str, str)
     def save_shot(
         self, shot_id: int, shot_size_index: int, camera_movement: str,
         visual_content: str, duration: float, dialogue: str,
-        sound_effect: str, notes: str, design_image: str,
+        sound_effect: str, notes: str, design_image: str, seed: str,
     ) -> None:
         from models.enums import ShotSize
         shot_size_str = self._SHOT_SIZE_INDEX_MAP.get(shot_size_index, "medium_shot")
@@ -255,7 +260,7 @@ class StoryboardBridge(QObject):
                 camera_movement=camera_movement, visual_content=visual_content,
                 duration=duration, dialogue=dialogue,
                 sound_effect=sound_effect, notes=notes,
-                design_image=design_image,
+                design_image=design_image, seed=seed,
             )
             self.shot_saved.emit()
             if self._project_id >= 0:

@@ -85,6 +85,7 @@ Item {
 
                 Comp.PageHeader {
                     title: "分镜"
+                    subtitle: "共" + bridge.storyboard.model.count + "镜"
                     Layout.fillWidth: true
                     onBackClicked: page.backClicked()
 
@@ -398,6 +399,26 @@ Item {
                                 }
                                 Item { Layout.fillWidth: true }
                                 Item { Layout.fillWidth: true }
+
+                                Label { text: "Seed 值："; font.pixelSize: Theme.fontSizeMedium }
+                                RowLayout {
+                                    spacing: 8
+                                    Layout.columnSpan: 3
+
+                                    Comp.AppTextField {
+                                        id: seedInput
+                                        text: bridge.storyboard.curSeed
+                                        placeholderText: "留空自动生成"
+                                        Layout.fillWidth: true
+                                    }
+
+                                    Button {
+                                        text: "生成新 Seed"
+                                        onClicked: {
+                                            seedInput.text = String(Math.floor(Math.random() * 2147483647))
+                                        }
+                                    }
+                                }
                             }
                         }
 
@@ -642,7 +663,8 @@ Item {
             dialogueEdit.text,
             soundEffectInput.text,
             notesEdit.text,
-            bridge.storyboard.curDesignImage
+            bridge.storyboard.curDesignImage,
+            seedInput.text
         )
     }
 

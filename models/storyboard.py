@@ -19,6 +19,7 @@ class Storyboard:
     sound_effect: str = ""
     duration: float = 0.0
     notes: str = ""
+    seed: str = ""
     created_at: int = 0
     updated_at: int = 0
 
@@ -39,4 +40,5 @@ class StoryboardHistory:
     sound_effect: str = ""
     duration: float = 0.0
     notes: str = ""
+    seed: str = ""
     created_at: int = 0
