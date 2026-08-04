@@ -21,7 +21,7 @@ class TextPromptBuilder:
         user_requirement: str,
     ) -> list[dict[str, str]]:
         """构建大纲优化消息"""
-        template = self._template_manager.get_template("outline_optimization")
+        template = self._template_manager.get_template("outline_optimize")
         return template.build_messages(
             original_content=original_content if original_content.strip() else "（空大纲）",
             user_requirement=user_requirement,
@@ -32,7 +32,7 @@ class TextPromptBuilder:
         outline_content: str,
     ) -> list[dict[str, str]]:
         """构建剧本生成消息"""
-        template = self._template_manager.get_template("script_generation")
+        template = self._template_manager.get_template("script_generate")
         return template.build_messages(
             outline_content=outline_content if outline_content.strip() else "（空大纲，请根据常规视频创作流程生成一个简单的剧本示例）"
         )
@@ -43,7 +43,7 @@ class TextPromptBuilder:
         art_style: str = "",
     ) -> list[dict[str, str]]:
         """构建分镜生成消息"""
-        template = self._template_manager.get_template("storyboard_generation_with_characters")
+        template = self._template_manager.get_template("storyboard_generate")
         return template.build_messages(
             script_content=script_content if script_content.strip() else "（空剧本）",
             art_style=art_style if art_style.strip() else "通用电影感写实风格",
@@ -59,7 +59,7 @@ class TextPromptBuilder:
         character_info: str = "",
     ) -> list[dict[str, str]]:
         """构建分镜设计图提示词生成消息"""
-        template = self._template_manager.get_template("image_prompt_generation")
+        template = self._template_manager.get_template("image_prompt")
         return template.build_messages(
             visual_content=visual_content,
             shot_size=shot_size or "中景",
@@ -76,7 +76,7 @@ class TextPromptBuilder:
         user_requirement: str = "",
     ) -> list[dict[str, str]]:
         """构建角色设计图提示词生成消息"""
-        template = self._template_manager.get_template("character_image_prompt_generation")
+        template = self._template_manager.get_template("character_image_prompt")
         req_text = f"\n【用户补充要求】\n{user_requirement}" if user_requirement else ""
         return template.build_messages(
             character_name=character_name,
@@ -91,7 +91,7 @@ class TextPromptBuilder:
         user_requirement: str,
     ) -> list[dict[str, str]]:
         """构建剧本优化消息"""
-        template = self._template_manager.get_template("screenplay_optimization")
+        template = self._template_manager.get_template("screenplay_optimize")
         return template.build_messages(
             outline_content=outline_content,
             current_script=current_script,
@@ -105,7 +105,7 @@ class TextPromptBuilder:
         user_requirement: str,
     ) -> list[dict[str, str]]:
         """构建角色生成消息"""
-        template = self._template_manager.get_template("character_generation")
+        template = self._template_manager.get_template("character_generate")
         return template.build_messages(
             outline_content=outline_content,
             script_content=script_content,
@@ -120,7 +120,7 @@ class TextPromptBuilder:
         user_requirement: str,
     ) -> list[dict[str, str]]:
         """构建角色优化消息"""
-        template = self._template_manager.get_template("character_optimization")
+        template = self._template_manager.get_template("character_optimize")
         return template.build_messages(
             outline_content=outline_content,
             script_content=script_content,
@@ -137,7 +137,7 @@ class TextPromptBuilder:
         user_requirement: str,
     ) -> list[dict[str, str]]:
         """构建分镜优化消息"""
-        template = self._template_manager.get_template("storyboard_optimization")
+        template = self._template_manager.get_template("storyboard_optimize")
         return template.build_messages(
             outline_content=outline_content,
             script_content=script_content,
@@ -153,7 +153,7 @@ class TextPromptBuilder:
         user_requirement: str,
     ) -> list[dict[str, str]]:
         """构建角色描述优化消息"""
-        template = self._template_manager.get_template("character_description_refine")
+        template = self._template_manager.get_template("character_refine")
         return template.build_messages(
             character_name=character_name,
             current_description=current_description,
