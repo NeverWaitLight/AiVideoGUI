@@ -24,17 +24,34 @@ class ConfigManager:
             return
 
         _renamed = {"bailian": "dashscope", "bailian_image": "dashscope_image"}
+        migrated = False
 
         for item in data.get("providers", []):
             name = item.get("provider_name", "")
             name = _renamed.get(name, name)
+            model_mappings = item.get("model_mappings", {})
+
+            # 迁移旧配置：如果是视频 provider 且没有 model_mappings，从 default_model 推断
+            if name.endswith("_video") or name == "dashscope":
+                if not model_mappings and item.get("default_model"):
+                    default_model = item.get("default_model", "")
+                    # 根据 default_model 推断任务类型映射
+                    if "t2v" in default_model.lower():
+                        model_mappings = {
+                            "t2v": "wan2.7-t2v-2026-06-12",
+                            "i2v": "wan2.7-i2v-2026-04-25",
+                            "r2v": "wan2.7-r2v-2026-06-12"
+                        }
+                        logger.info(f"自动迁移 {name} 的旧配置到 model_mappings")
+                        migrated = True
+
             cfg = ProviderConfig(
                 provider_name=name,
                 api_key=item.get("api_key", ""),
                 base_url=item.get("base_url", ""),
                 default_model=item.get("default_model", ""),
                 default_params=item.get("default_params", {}),
-                model_mappings=item.get("model_mappings", {}),
+                model_mappings=model_mappings,
             )
             if cfg.provider_name and cfg.provider_name not in self._providers:
                 self._providers[cfg.provider_name] = cfg
@@ -49,6 +66,11 @@ class ConfigManager:
             enable_ai_request_logging=s.get("enable_ai_request_logging", False),
         )
         logger.info(f"配置已加载，providers={list(self._providers.keys())}")
+
+        # 如果发生了迁移，自动保存更新后的配置
+        if migrated:
+            self.save()
+            logger.info("已保存迁移后的配置")
 
     def save(self) -> None:
         data = {

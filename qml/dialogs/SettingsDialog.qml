@@ -869,14 +869,31 @@ Dialog {
                 videoApiKeyField.text = bridge.settings.get_api_key(settingsDialog.videoProvider, "video")
                 videoBaseUrlField.text = bridge.settings.get_base_url(settingsDialog.videoProvider, "video")
 
-                if (settingsDialog.videoModelT2V) {
-                    videoModelT2VCombo.editText = settingsDialog.videoModelT2V
+                // 如果配置为空，使用 ComboBox model 中的第一个选项作为默认值
+                var t2v = settingsDialog.videoModelT2V || videoModelT2VCombo.model[0]
+                var i2v = settingsDialog.videoModelI2V || videoModelI2VCombo.model[0]
+                var r2v = settingsDialog.videoModelR2V || videoModelR2VCombo.model[0]
+
+                // 尝试在 model 中查找匹配项，找不到则设置 editText（手动输入）
+                var t2vIndex = videoModelT2VCombo.find(t2v)
+                if (t2vIndex >= 0) {
+                    videoModelT2VCombo.currentIndex = t2vIndex
+                } else {
+                    videoModelT2VCombo.editText = t2v
                 }
-                if (settingsDialog.videoModelI2V) {
-                    videoModelI2VCombo.editText = settingsDialog.videoModelI2V
+
+                var i2vIndex = videoModelI2VCombo.find(i2v)
+                if (i2vIndex >= 0) {
+                    videoModelI2VCombo.currentIndex = i2vIndex
+                } else {
+                    videoModelI2VCombo.editText = i2v
                 }
-                if (settingsDialog.videoModelR2V) {
-                    videoModelR2VCombo.editText = settingsDialog.videoModelR2V
+
+                var r2vIndex = videoModelR2VCombo.find(r2v)
+                if (r2vIndex >= 0) {
+                    videoModelR2VCombo.currentIndex = r2vIndex
+                } else {
+                    videoModelR2VCombo.editText = r2v
                 }
             }
         }
