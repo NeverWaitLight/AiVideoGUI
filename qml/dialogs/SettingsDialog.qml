@@ -23,7 +23,9 @@ Dialog {
     }
 
     property string videoProvider: "dashscope"
-    property string videoModel: "wan2.7-t2v"
+    property string videoModelT2V: ""
+    property string videoModelI2V: ""
+    property string videoModelR2V: ""
     property string chatProvider: "dashscope"
     property string chatModel: ""
     property var chatModelList: []
@@ -177,7 +179,9 @@ Dialog {
     onAboutToShow: {
         // Read all settings (fast, synchronous)
         videoProvider = bridge.settings.get_default_video_provider()
-        videoModel = bridge.settings.get_default_model(videoProvider, "video")
+        videoModelT2V = bridge.settings.get_model_for_task_type(videoProvider, "video", "t2v")
+        videoModelI2V = bridge.settings.get_model_for_task_type(videoProvider, "video", "i2v")
+        videoModelR2V = bridge.settings.get_model_for_task_type(videoProvider, "video", "r2v")
 
         chatProvider = bridge.settings.get_default_chat_provider()
         chatModel = bridge.settings.get_default_model(chatProvider, "chat")
@@ -224,7 +228,7 @@ Dialog {
             var videoError = bridge.settings.validate_provider_config(
                 "video", vid.videoProviderCombo.currentText,
                 vid.videoApiKeyField.text, vid.videoBaseUrlField.text,
-                vid.videoModelCombo.currentText || vid.videoModelCombo.editText)
+                vid.videoModelT2VCombo.currentText || vid.videoModelT2VCombo.editText)
             if (videoError) {
                 alertDialog.warning("视频配置错误", videoError)
                 tabBar.currentIndex = 2
@@ -250,10 +254,16 @@ Dialog {
                 img.imageModelCombo.currentText || img.imageModelCombo.editText)
         }
         if (vid) {
+            var modelMappings = {
+                "t2v": vid.videoModelT2VCombo.currentText || vid.videoModelT2VCombo.editText,
+                "i2v": vid.videoModelI2VCombo.currentText || vid.videoModelI2VCombo.editText,
+                "r2v": vid.videoModelR2VCombo.currentText || vid.videoModelR2VCombo.editText
+            }
             bridge.settings.batch_save_provider("video",
                 vid.videoProviderCombo.currentText,
                 vid.videoApiKeyField.text, vid.videoBaseUrlField.text,
-                vid.videoModelCombo.currentText)
+                vid.videoModelT2VCombo.currentText || vid.videoModelT2VCombo.editText,
+                modelMappings)
         }
 
         // Workspace
@@ -705,7 +715,9 @@ Dialog {
             property alias videoProviderCombo: videoProviderCombo
             property alias videoApiKeyField: videoApiKeyField
             property alias videoBaseUrlField: videoBaseUrlField
-            property alias videoModelCombo: videoModelCombo
+            property alias videoModelT2VCombo: videoModelT2VCombo
+            property alias videoModelI2VCombo: videoModelI2VCombo
+            property alias videoModelR2VCombo: videoModelR2VCombo
 
             ColumnLayout {
                 width: parent.parent.width
@@ -803,17 +815,48 @@ Dialog {
                             }
 
                             Label {
-                                text: "默认模型"
+                                text: "文生视频模型"
                                 font.pixelSize: Theme.fontSizeNormal
                                 Layout.alignment: Qt.AlignTop
                                 topPadding: 6
                             }
                             ComboBox {
-                                id: videoModelCombo
-                                model: ["wan2.7-t2v"]
+                                id: videoModelT2VCombo
+                                model: ["wan2.7-t2v-2026-06-12"]
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 36
                                 Material.elevation: 0
+                                editable: true
+                            }
+
+                            Label {
+                                text: "图生视频模型"
+                                font.pixelSize: Theme.fontSizeNormal
+                                Layout.alignment: Qt.AlignTop
+                                topPadding: 6
+                            }
+                            ComboBox {
+                                id: videoModelI2VCombo
+                                model: ["wan2.7-i2v-2026-04-25"]
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 36
+                                Material.elevation: 0
+                                editable: true
+                            }
+
+                            Label {
+                                text: "依赖生视频模型"
+                                font.pixelSize: Theme.fontSizeNormal
+                                Layout.alignment: Qt.AlignTop
+                                topPadding: 6
+                            }
+                            ComboBox {
+                                id: videoModelR2VCombo
+                                model: ["wan2.7-r2v-2026-06-12"]
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 36
+                                Material.elevation: 0
+                                editable: true
                             }
                         }
                     }
@@ -825,6 +868,16 @@ Dialog {
             Component.onCompleted: {
                 videoApiKeyField.text = bridge.settings.get_api_key(settingsDialog.videoProvider, "video")
                 videoBaseUrlField.text = bridge.settings.get_base_url(settingsDialog.videoProvider, "video")
+
+                if (settingsDialog.videoModelT2V) {
+                    videoModelT2VCombo.editText = settingsDialog.videoModelT2V
+                }
+                if (settingsDialog.videoModelI2V) {
+                    videoModelI2VCombo.editText = settingsDialog.videoModelI2V
+                }
+                if (settingsDialog.videoModelR2V) {
+                    videoModelR2VCombo.editText = settingsDialog.videoModelR2V
+                }
             }
         }
     }

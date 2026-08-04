@@ -27,6 +27,7 @@ class DashScopeVideoProvider(VideoProvider):
         self._api_key = config.api_key
         self._base_url = config.base_url or self.BASE_URL
         self._model = config.default_model or self.DEFAULT_MODEL
+        self._model_mappings = config.model_mappings or {}
         self._oss_uploader = DashScopeOSSUploader(self._api_key)
         self._session_manager = None
 
@@ -85,7 +86,7 @@ class DashScopeVideoProvider(VideoProvider):
         headers["X-DashScope-OssResourceResolve"] = "enable"
         return headers
 
-    def build_payload(self, prompt: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+    def build_payload(self, prompt: str, params: dict[str, Any] | None = None, model: str | None = None) -> dict[str, Any]:
         api_params = params.copy() if params else {}
 
         input_obj = {"prompt": prompt}
@@ -97,7 +98,7 @@ class DashScopeVideoProvider(VideoProvider):
             input_obj["audio_url"] = api_params.pop("audio_url")
 
         return {
-            "model": self._model,
+            "model": model or self._model,
             "input": input_obj,
             "parameters": api_params,
         }
@@ -137,7 +138,8 @@ class DashScopeVideoProvider(VideoProvider):
         return task_id, {"url": self.SUBMIT_URL, "json": payload, "headers": headers}
 
     def t2v(self, prompt: str, params: dict[str, Any] | None = None) -> tuple[str, dict[str, Any]]:
-        payload = self.build_payload(prompt, params)
+        model = self._model_mappings.get("t2v") or self._model_mappings.get("default") or self._model
+        payload = self.build_payload(prompt, params, model=model)
         return self._submit_task(payload)
 
     def p2v(
@@ -153,7 +155,8 @@ class DashScopeVideoProvider(VideoProvider):
         if driving_audio_path:
             driving_audio_path = self._upload_file_if_needed(driving_audio_path)
 
-        payload = self.build_payload(prompt, api_params)
+        model = self._model_mappings.get("i2v") or self._model_mappings.get("default") or self._model
+        payload = self.build_payload(prompt, api_params, model=model)
 
         media = [{"type": "first_frame", "url": image_path}]
 
@@ -183,8 +186,8 @@ class DashScopeVideoProvider(VideoProvider):
         if main_reference_voice:
             main_reference_voice = self._upload_file_if_needed(main_reference_voice)
 
-        payload = self.build_payload(prompt, api_params)
-        payload["model"] = "wan2.7-r2v-2026-06-12"
+        model = self._model_mappings.get("r2v") or self._model_mappings.get("default") or "wan2.7-r2v-2026-06-12"
+        payload = self.build_payload(prompt, api_params, model=model)
 
         media = []
 
@@ -240,7 +243,8 @@ class DashScopeVideoProvider(VideoProvider):
         if last_frame_path:
             last_frame_path = self._upload_file_if_needed(last_frame_path)
 
-        payload = self.build_payload(prompt, api_params)
+        model = self._model_mappings.get("extend") or self._model_mappings.get("default") or self._model
+        payload = self.build_payload(prompt, api_params, model=model)
 
         media = [{"type": "first_clip", "url": video_path}]
 

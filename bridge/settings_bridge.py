@@ -32,6 +32,14 @@ class SettingsBridge(QObject):
         cfg = self._config.resolve_config_for_type(provider_name, provider_type) if provider_type else self._config.get_provider(provider_name)
         return cfg.default_model if cfg else ""
 
+    @Slot(str, str, str, result=str)
+    def get_model_for_task_type(self, provider_name: str, provider_type: str, task_type: str) -> str:
+        """获取特定任务类型的模型配置（如 t2v/i2v/r2v）"""
+        cfg = self._config.resolve_config_for_type(provider_name, provider_type) if provider_type else self._config.get_provider(provider_name)
+        if not cfg:
+            return ""
+        return cfg.model_mappings.get(task_type, cfg.default_model or "")
+
     @Slot(str, str, str, result=list)
     def list_chat_models(self, api_key: str, base_url: str, provider_name: str) -> list:
         if not api_key:
@@ -82,14 +90,15 @@ class SettingsBridge(QObject):
         self._config.save()
         self.settings_saved.emit()
 
-    @Slot(str, str, str, str, str)
+    @Slot(str, str, str, str, str, "QVariantMap")
     def batch_save_provider(self, provider_type: str, provider_name: str, api_key: str,
-                            base_url: str, default_model: str) -> None:
+                            base_url: str, default_model: str, model_mappings: dict = None) -> None:
         cfg = ProviderConfig(
             provider_name=provider_name,
             api_key=api_key,
             base_url=base_url,
             default_model=default_model,
+            model_mappings=model_mappings or {},
         )
         self._config.save_provider_typed(cfg, provider_type, auto_save=False)
 

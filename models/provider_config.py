@@ -10,3 +10,4 @@ class ProviderConfig:
     base_url: str = ""
     default_model: str = ""
     default_params: dict = field(default_factory=dict)
+    model_mappings: dict[str, str] = field(default_factory=dict)  # 任务类型 -> 模型名称映射（如 {"t2v": "wan2.7-t2v-2026-06-12"}）

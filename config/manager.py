@@ -34,6 +34,7 @@ class ConfigManager:
                 base_url=item.get("base_url", ""),
                 default_model=item.get("default_model", ""),
                 default_params=item.get("default_params", {}),
+                model_mappings=item.get("model_mappings", {}),
             )
             if cfg.provider_name and cfg.provider_name not in self._providers:
                 self._providers[cfg.provider_name] = cfg
@@ -58,6 +59,7 @@ class ConfigManager:
                     "base_url": p.base_url,
                     "default_model": p.default_model,
                     "default_params": p.default_params,
+                    "model_mappings": p.model_mappings,
                 }
                 for p in self._providers.values()
             ],
@@ -122,6 +124,7 @@ class ConfigManager:
                     base_url=cfg.base_url or base.base_url,
                     default_model=cfg.default_model,
                     default_params=cfg.default_params,
+                    model_mappings=cfg.model_mappings,
                 )
         return cfg
 
@@ -148,6 +151,7 @@ class ConfigManager:
                     base_url=cfg.base_url or base.base_url,
                     default_model=cfg.default_model,
                     default_params=cfg.default_params,
+                    model_mappings=cfg.model_mappings,
                 )
             else:
                 cfg = ProviderConfig(
@@ -156,6 +160,7 @@ class ConfigManager:
                     base_url=cfg.base_url,
                     default_model=cfg.default_model,
                     default_params=cfg.default_params,
+                    model_mappings=cfg.model_mappings,
                 )
         elif typed_name != cfg.provider_name:
             cfg = ProviderConfig(
@@ -164,6 +169,7 @@ class ConfigManager:
                 base_url=cfg.base_url,
                 default_model=cfg.default_model,
                 default_params=cfg.default_params,
+                model_mappings=cfg.model_mappings,
             )
 
         self._providers[cfg.provider_name] = cfg
