@@ -245,13 +245,13 @@ Dialog {
             bridge.settings.batch_save_provider("chat",
                 chat.chatProviderCombo.currentText,
                 chat.chatApiKeyField.text, chat.chatBaseUrlField.text,
-                chat.chatModelCombo.currentText)
+                chat.chatModelCombo.currentText, {})
         }
         if (img) {
             bridge.settings.batch_save_provider("image",
                 img.imageProviderCombo.currentText,
                 img.imageApiKeyField.text, img.imageBaseUrlField.text,
-                img.imageModelCombo.currentText || img.imageModelCombo.editText)
+                img.imageModelCombo.currentText || img.imageModelCombo.editText, {})
         }
         if (vid) {
             var modelMappings = {
