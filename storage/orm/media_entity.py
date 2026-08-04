@@ -1,6 +1,4 @@
-from datetime import datetime
-
-from sqlalchemy import Boolean, DateTime, Float, Index, Integer, String
+from sqlalchemy import Boolean, Float, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import Base
@@ -17,7 +15,7 @@ class MediaFileEntity(Base):
     source: Mapped[str] = mapped_column(String(50), nullable=False, default="task")
     conversation_id: Mapped[str] = mapped_column(String(36), nullable=False, default="")
     message_id: Mapped[str] = mapped_column(String(36), nullable=False, default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[int] = mapped_column(Integer, nullable=False)
 
     thumbnail_path: Mapped[str] = mapped_column(String(500), nullable=False, default="")
     duration: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)

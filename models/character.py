@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from datetime import datetime
+from dataclasses import dataclass
 
 
 @dataclass
@@ -13,8 +12,8 @@ class Character:
     ref_code: str
     design_image: str = ""
     description: str = ""
-    created_at: datetime = field(default_factory=datetime.now)
-    updated_at: datetime = field(default_factory=datetime.now)
+    created_at: int = 0
+    updated_at: int = 0
 
 
 @dataclass

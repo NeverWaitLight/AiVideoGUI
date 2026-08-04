@@ -65,8 +65,8 @@ class TestCharacterHistoryAutoSave(unittest.TestCase):
             ref_code=ref_code,
             design_image=design_image,
             description=description,
-            created_at=now,
-            updated_at=now,
+            created_at=now_ms,
+            updated_at=now_ms,
         )
         character_repo.create(character)
         session.commit()

@@ -1,7 +1,7 @@
 import hashlib
 from loguru import logger
 import os
-from datetime import datetime, timedelta
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -37,7 +37,7 @@ class OSSFileCacheRepository:
             .filter(
                 OSSFileCacheEntity.file_hash == file_hash,
                 OSSFileCacheEntity.model_name == model_name,
-                OSSFileCacheEntity.expire_at > datetime.now(),
+                OSSFileCacheEntity.expire_at > int(time.time() * 1000),
             )
             .first()
         )
@@ -57,8 +57,8 @@ class OSSFileCacheRepository:
 
     def save_cache(self, file_path: str, model_name: str, oss_url: str) -> OSSFileCache:
         file_hash = self._compute_file_hash(file_path)
-        now = datetime.now()
-        expire_at = now + timedelta(hours=48)
+        now = int(time.time() * 1000)
+        expire_at = now + 48 * 60 * 60 * 1000
 
         entity = OSSFileCacheEntity(
             local_path=str(Path(file_path).resolve()),
@@ -87,7 +87,7 @@ class OSSFileCacheRepository:
     def delete_expired_caches(self) -> int:
         count = (
             self.session.query(OSSFileCacheEntity)
-            .filter(OSSFileCacheEntity.expire_at <= datetime.now())
+            .filter(OSSFileCacheEntity.expire_at <= int(time.time() * 1000))
             .delete()
         )
         self.session.commit()

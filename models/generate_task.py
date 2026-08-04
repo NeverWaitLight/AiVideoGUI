@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
 
 
 @dataclass
@@ -17,5 +16,5 @@ class GenerateTask:
     save_path: str
     error_message: str
     storyboard_id: int
-    created_at: datetime
-    updated_at: datetime
+    created_at: int = 0
+    updated_at: int = 0

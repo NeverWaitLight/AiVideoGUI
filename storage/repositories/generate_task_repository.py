@@ -1,4 +1,4 @@
-from datetime import datetime
+import time
 from typing import List, Optional
 
 from sqlalchemy import select
@@ -69,8 +69,8 @@ class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
             save_path=save_path,
             error_message="",
             storyboard_id=storyboard_id,
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
+            created_at=int(time.time() * 1000),
+            updated_at=int(time.time() * 1000),
         )
         self.session.add(entity)
         self.session.flush()
@@ -161,7 +161,7 @@ class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
             entity.video_url = video_url
         if error_message:
             entity.error_message = error_message
-        entity.updated_at = datetime.now()
+        entity.updated_at = int(time.time() * 1000)
 
     def mark_completed(self, task_id: int) -> None:
         entity = self.session.get(GenerateTaskEntity, task_id)
@@ -169,7 +169,7 @@ class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
             return
 
         entity.completed = True
-        entity.updated_at = datetime.now()
+        entity.updated_at = int(time.time() * 1000)
 
     def list_completed_tasks(self, limit: int = 50, offset: int = 0) -> List[dict]:
         stmt = (

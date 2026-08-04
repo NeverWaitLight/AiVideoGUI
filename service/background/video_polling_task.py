@@ -220,10 +220,9 @@ class VideoTaskPollingTask(BackgroundTask):
             if save_path:
                 save_path = os.path.join(workspace, save_path)
             else:
-                from datetime import datetime
-                target_dir = paths.chat_dir(self._workspace_root)
-                now = datetime.now()
-                stamp = now.strftime("%Y%m%d_%H%M%S")
+                import time
+                target_dir = paths.workspace_dir(self._workspace_root)
+                stamp = time.strftime("%Y%m%d_%H%M%S")
                 filename = f"{stamp}_{model_name}_video.mp4"
                 save_path = os.path.join(target_dir, filename)
 

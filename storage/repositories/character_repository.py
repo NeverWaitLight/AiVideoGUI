@@ -1,4 +1,4 @@
-from datetime import datetime
+import time
 from typing import List, Optional
 
 from sqlalchemy import select
@@ -77,7 +77,7 @@ class CharacterRepository(BaseRepository[CharacterEntity, Character]):
             entity.ref_code = dto.ref_code
             entity.design_image = dto.design_image
             entity.description = dto.description
-            entity.updated_at = datetime.now()
+            entity.updated_at = int(time.time() * 1000)
 
     def delete(self, id: str) -> bool:
         stmt = select(CharacterEntity).where(CharacterEntity.uuid == id)

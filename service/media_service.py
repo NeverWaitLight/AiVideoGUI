@@ -1,9 +1,9 @@
 from loguru import logger
 import os
 import shutil
+import time
 import uuid
 import subprocess
-from datetime import datetime
 from pathlib import Path
 from imageio_ffmpeg import get_ffmpeg_exe
 
@@ -39,8 +39,6 @@ class MediaService:
     def __init__(self, session_manager: SessionManager, workspace_root: str) -> None:
         self._sm = session_manager
         self._root = workspace_root
-        self._chat_dir = paths.chat_dir(workspace_root)
-        os.makedirs(self._chat_dir, exist_ok=True)
 
     def register_task_result(
         self,
@@ -99,7 +97,7 @@ class MediaService:
             source="task",
             conversation_id="",
             message_id=task_id,
-            created_at=datetime.now(),
+            created_at=int(time.time() * 1000),
             thumbnail_path=relative_thumbnail_path,
             duration=duration,
             width=width,
@@ -118,7 +116,7 @@ class MediaService:
             raise
 
     def import_files(self, file_paths: list[str], project_id: int = "") -> list[MediaFile]:
-        target_dir = paths.project_dir(self._root, project_id) if project_id else self._chat_dir
+        target_dir = paths.project_dir(self._root, project_id) if project_id else paths.workspace_dir(self._root)
         os.makedirs(target_dir, exist_ok=True)
         imported: list[MediaFile] = []
 
@@ -176,7 +174,7 @@ class MediaService:
                 local_path=relative_dest_path,
                 file_size=file_size,
                 source="import",
-                created_at=datetime.now(),
+                created_at=int(time.time() * 1000),
                 thumbnail_path=relative_thumbnail_path,
                 duration=duration,
                 width=width,

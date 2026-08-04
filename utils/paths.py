@@ -22,10 +22,6 @@ def workspace_dir(root: str) -> str:
     return root
 
 
-def chat_dir(root: str) -> str:
-    return os.path.join(root, "chat")
-
-
 def projects_dir(root: str) -> str:
     return os.path.join(root, "projects")
 

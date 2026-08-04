@@ -1,6 +1,7 @@
-from loguru import logger
+import time
 import uuid
-from datetime import datetime
+
+from loguru import logger
 
 from models.character import Character, CharacterHistory
 from storage.session_manager import SessionManager
@@ -39,8 +40,8 @@ class CharacterService:
             ref_code=ref_code,
             description=description,
             design_image=relative_design_image,
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
+            created_at=int(time.time() * 1000),
+            updated_at=int(time.time() * 1000),
         )
 
         character_repo = self._sm.get_repo(CharacterRepository)
@@ -83,7 +84,7 @@ class CharacterService:
             description=description if description is not None else character.description,
             design_image=final_design_image,
             created_at=character.created_at,
-            updated_at=datetime.now(),
+            updated_at=int(time.time() * 1000),
         )
 
         self._sm.begin_write()
@@ -143,7 +144,7 @@ class CharacterService:
             ref_code=character.ref_code,
             design_image=character.design_image,
             description=character.description,
-            created_at=datetime.now(),
+            created_at=int(time.time() * 1000),
         )
 
         self._sm.begin_write()

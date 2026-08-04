@@ -69,8 +69,7 @@ def main():
     data_dir = paths.data_dir(root)
     cache_dir = paths.cache_dir(root)
     ws_dir = paths.workspace_dir(root)
-    chat_dir = paths.chat_dir(root)
-    for d in (data_dir, cache_dir, ws_dir, chat_dir):
+    for d in (data_dir, cache_dir, ws_dir):
         os.makedirs(d, exist_ok=True)
 
     container = ApplicationContainer()

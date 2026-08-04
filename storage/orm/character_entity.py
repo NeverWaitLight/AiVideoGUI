@@ -1,7 +1,6 @@
-from datetime import datetime
 from typing import List, Optional
 
-from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -19,8 +18,8 @@ class CharacterEntity(Base):
     ref_code: Mapped[str] = mapped_column(String(100), nullable=False)
     design_image: Mapped[str] = mapped_column(String(500), nullable=False, default="")
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[int] = mapped_column(Integer, nullable=False)
+    updated_at: Mapped[int] = mapped_column(Integer, nullable=False)
 
     project: Mapped["ProjectEntity"] = relationship(back_populates="characters")
     history: Mapped[List["CharacterHistoryEntity"]] = relationship(
