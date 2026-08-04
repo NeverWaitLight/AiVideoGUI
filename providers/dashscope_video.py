@@ -184,6 +184,7 @@ class DashScopeVideoProvider(VideoProvider):
             main_reference_voice = self._upload_file_if_needed(main_reference_voice)
 
         payload = self.build_payload(prompt, api_params)
+        payload["model"] = "wan2.7-r2v-2026-06-12"
 
         media = []
 

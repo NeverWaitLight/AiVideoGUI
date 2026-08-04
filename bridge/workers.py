@@ -491,7 +491,7 @@ class BatchGenerationController(QThread):
             prompt = shot["prompt"]
             project_id = shot["project_id"]
             shot_id = shot.get("shot_id", 0)
-            reference_image = shot.get("reference_image", "")
+            reference_images = shot.get("reference_images", [])
 
             self.progress.emit(submitted, len(self._shot_list), f"正在提交场{scene_number}镜{shot_number}...")
 
@@ -513,13 +513,13 @@ class BatchGenerationController(QThread):
                     params=params,
                     save_path=save_path,
                     storyboard_id=shot_id,
-                    reference_image=reference_image,
+                    reference_images=reference_images,
                     project_id=self._project.id,
                     project_name=self._project.name,
                 )
                 self._submitted_task_ids.add(provider_task_id)
                 submitted += 1
-                mode_info = "(r2v)" if reference_image else "(t2v)"
+                mode_info = f"(r2v, {len(reference_images)}张)" if reference_images else "(t2v)"
                 logger.info(f"批量生成 [{submitted}/{len(self._shot_list)}] 场{scene_number}镜{shot_number} 已提交 {mode_info}")
 
             except Exception as e:

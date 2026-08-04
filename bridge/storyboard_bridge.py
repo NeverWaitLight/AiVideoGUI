@@ -453,6 +453,9 @@ class StoryboardBridge(QObject):
             scenes = self._screenplay_service.list_scenes(project_id)
             scene_map = {s.id: s for s in scenes}
 
+            characters = self._character_service.list_characters(project_id)
+            workspace_root = self._container.config.workspace_root()
+
             shot_list_for_prompt = [s for s in shots]
             shot_list = []
             for i, shot in enumerate(selected_shots):
@@ -462,8 +465,20 @@ class StoryboardBridge(QObject):
                 next_shot = shot_list_for_prompt[idx + 1] if idx < len(shot_list_for_prompt) - 1 else None
                 prompt = VideoPromptBuilder.build_shot_prompt(shot, scene, prev_shot, next_shot)
 
-                workspace_root = self._container.config.workspace_root()
-                reference_image = to_absolute_path(shot.design_image, workspace_root) if shot.design_image else ""
+                reference_images = []
+                if shot.design_image:
+                    abs_path = to_absolute_path(shot.design_image, workspace_root)
+                    if abs_path:
+                        reference_images.append(abs_path)
+
+                visual_content = shot.visual_content or ""
+                for c in characters:
+                    if len(reference_images) >= 5:
+                        break
+                    if c.design_image and (c.name in visual_content or c.ref_code in visual_content):
+                        abs_path = to_absolute_path(c.design_image, workspace_root)
+                        if abs_path:
+                            reference_images.append(abs_path)
 
                 shot_list.append({
                     "scene_number": shot.scene_number,
@@ -471,7 +486,7 @@ class StoryboardBridge(QObject):
                     "prompt": prompt,
                     "project_id": project_id,
                     "shot_id": shot.id,
-                    "reference_image": reference_image,
+                    "reference_images": reference_images,
                 })
 
             config_mgr = self._container.config_manager()

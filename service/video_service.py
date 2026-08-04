@@ -62,12 +62,25 @@ class VideoService(QObject):
         save_path: str = "",
         storyboard_id: int = 0,
         reference_image: str = "",
+        reference_images: list[str] | None = None,
         project_id: int | None = None,
         project_name: str | None = None,
     ) -> str:
         provider = self.get_provider(provider_name)
 
-        if reference_image:
+        if reference_images:
+            main_ref = reference_images[0]
+            if len(reference_images) > 1:
+                params = (params or {}).copy()
+                params["reference_media"] = [
+                    {"path": p, "type": "reference_image"}
+                    for p in reference_images[1:]
+                ]
+            provider_task_id, request_details = provider.r2v(prompt, main_ref, params)
+            logger.info(f"使用参考生视频 (r2v)：{len(reference_images)} 张参考图")
+            request_type = "video_generation_r2v"
+            context = f"参考图生成视频 (r2v, {len(reference_images)}张)"
+        elif reference_image:
             provider_task_id, request_details = provider.r2v(prompt, reference_image, params)
             logger.info(f"使用参考生视频 (r2v)：reference_image={reference_image}")
             request_type = "video_generation_r2v"
