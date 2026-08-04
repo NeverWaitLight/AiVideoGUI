@@ -34,7 +34,7 @@ Item {
 
         Comp.PageHeader {
             title: "素材库"
-            subtitle: "共" + bridge.media.model.count + "个文件"
+            titleSuffix: bridge.media.model.count + " 个文件"
             Layout.fillWidth: true
             onBackClicked: page.backClicked()
 
@@ -222,16 +222,19 @@ Item {
                     }
                 }
 
-                Button {
+                Rectangle {
                     anchors.centerIn: parent
-                    icon.source: "qrc:/resources/icons/play_arrow.svg"
-                    icon.width: 48
-                    icon.height: 48
-                    icon.color: "white"
-                    opacity: 0.5
-                    visible: fileType === "video"
-                    background: Item {}
-                    onClicked: playRequested()
+                    width: 48; height: 48; radius: 24
+                    color: "black"
+                    opacity: playArea.containsMouse ? 0.6 : 0.4
+                    visible: fileType === "video" || fileType === "audio"
+
+                    Image {
+                        anchors.centerIn: parent
+                        source: "qrc:/resources/icons/play_arrow.svg"
+                        width: 32
+                        height: 32
+                    }
                 }
 
                 Rectangle {
@@ -241,6 +244,18 @@ Item {
                     Label {
                         id: durationLabel; anchors.centerIn: parent
                         text: _formatDuration(duration)
+                    }
+                }
+
+                MouseArea {
+                    id: playArea
+                    anchors.fill: parent
+                    hoverEnabled: fileType === "video" || fileType === "audio"
+                    cursorShape: (fileType === "video" || fileType === "audio") ? Qt.PointingHandCursor : Qt.ArrowCursor
+                    onClicked: {
+                        if (fileType === "video" || fileType === "audio") {
+                            playRequested()
+                        }
                     }
                 }
             }

@@ -8,7 +8,7 @@ system_prompt: |
      - 采用角色三视图构图（character turnaround sheet, three-view orthographic projection）
      - 必须包含三个视角：正面视图（front view）、侧面视图（side view）、背面视图（back view）
      - 三个视图水平排列在同一画面中，角色等高，姿态统一（站立或 T-pose）
-     - 纯色或简洁渐变背景，突出角色主体
+     - 统一使用浅灰色纯色背景（solid light gray background），突出角色主体
      - 采用角色设定图风格（character concept art sheet）
 
   2. **人物表现**
@@ -46,7 +46,7 @@ few_shot_examples:
       [鞋袜] 黑色皮鞋，深色商务袜
       [帽子] 无
     assistant: |
-      Character turnaround sheet, three-view orthographic projection, cinematic concept art. An Asian male character, 25 years old, 178cm tall, athletic build. Square face, thick eyebrows, thin lips. Short black hair with side part (30/70). Deep brown eyes. Wearing dark gray suit jacket, white dress shirt, black dress pants, black leather shoes, dark business socks. Front view, side view, back view horizontally aligned, same height, standing pose. Clean gradient background. Photorealistic with painterly quality, highly detailed, film character design reference.
+      Character turnaround sheet, three-view orthographic projection, cinematic concept art. An Asian male character, 25 years old, 178cm tall, athletic build. Square face, thick eyebrows, thin lips. Short black hair with side part (30/70). Deep brown eyes. Wearing dark gray suit jacket, white dress shirt, black dress pants, black leather shoes, dark business socks. Front view, side view, back view horizontally aligned, same height, standing pose. Solid light gray background. Photorealistic with painterly quality, highly detailed, film character design reference.
 
   - user: |
       请根据以下角色信息生成设计图提示词：
@@ -65,7 +65,7 @@ few_shot_examples:
       [鞋袜] 白色运动鞋，粉色短袜
       [帽子] 无（兔耳作为特征）
     assistant: |
-      Character turnaround sheet, three-view orthographic projection, cinematic concept art. An anthropomorphic white rabbit character, cute style, standing upright, 120cm tall, petite and adorable. Big blue eyes, pink nose, long white rabbit ears. Wearing pink hoodie with carrot print on chest, light blue denim shorts, white sneakers, pink short socks. Front view, side view, back view horizontally aligned, same height, standing pose. Clean pastel gradient background. Semi-realistic animation style with detailed fur texture, character design reference for animation production.
+      Character turnaround sheet, three-view orthographic projection, cinematic concept art. An anthropomorphic white rabbit character, cute style, standing upright, 120cm tall, petite and adorable. Big blue eyes, pink nose, long white rabbit ears. Wearing pink hoodie with carrot print on chest, light blue denim shorts, white sneakers, pink short socks. Front view, side view, back view horizontally aligned, same height, standing pose. Solid light gray background. Semi-realistic animation style with detailed fur texture, character design reference for animation production.
 
 user_prompt_template: |
   请根据以下角色信息生成设计图提示词：

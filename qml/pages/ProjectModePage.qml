@@ -67,7 +67,6 @@ Item {
             }
             onProjectSaved: function(pid) {
                 projectMode.currentProjectId = pid
-                projectMode.currentPage = "detail"
             }
         }
 

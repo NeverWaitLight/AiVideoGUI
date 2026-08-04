@@ -43,7 +43,6 @@ Item {
         }
         function onCharacter_saved() {
             alertDialog.info("成功", "角色已保存")
-            _showDetail = false
         }
         function onDesign_image_ready(uuid, path) {
             if (uuid === _editingCharUuid) {

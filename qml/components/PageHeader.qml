@@ -8,6 +8,7 @@ Item {
     implicitHeight: Theme.headerHeight
 
     property string title: ""
+    property string titleSuffix: ""
     property string subtitle: ""
     property bool showBack: true
 
@@ -49,10 +50,19 @@ Item {
 
         ColumnLayout {
             spacing: 2
-            Label {
-                text: header.title
-                font.pixelSize: Theme.fontSizeMedium
-                font.bold: true
+            RowLayout {
+                spacing: 8
+                Label {
+                    text: header.title
+                    font.pixelSize: Theme.fontSizeMedium
+                    font.bold: true
+                }
+                Label {
+                    visible: header.titleSuffix !== ""
+                    text: header.titleSuffix
+                    font.pixelSize: Theme.fontSizeSmall
+                    opacity: 0.7
+                }
             }
             Label {
                 visible: header.subtitle !== ""

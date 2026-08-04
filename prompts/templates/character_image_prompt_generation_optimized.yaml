@@ -40,7 +40,7 @@ system_prompt: |
   Front view, side view, back view horizontally aligned, same height, [姿态].
 
   【场景背景】
-  Clean [背景类型] background.
+  Solid light gray background.
 
   【风格定义】
   [艺术风格] with [质感描述], highly detailed, [用途说明].
@@ -64,7 +64,7 @@ system_prompt: |
 
   ======
 
-  Character turnaround sheet, three-view orthographic projection, [艺术风格]. [主体描述：物种+年龄+性别+体型]. [面部特征]. [发型和瞳色]. [服装描述]. Front view, side view, back view horizontally aligned, same height, [姿态]. [背景]. [质感和技术要求].
+  Character turnaround sheet, three-view orthographic projection, [艺术风格]. [主体描述：物种+年龄+性别+体型]. [面部特征]. [发型和瞳色]. [服装描述]. Front view, side view, back view horizontally aligned, same height, [姿态]. Solid light gray background. [质感和技术要求].
 
   ======
 
@@ -76,7 +76,7 @@ system_prompt: |
   5. 严格按照用户提供的形象描述，不要擅自增删特征
   6. 服装描述要完整（上装→裤子→鞋袜→配饰），不要遗漏
   7. 姿态通常使用"standing pose"或"T-pose"，确保三视图统一
-  8. 背景使用"clean gradient background"或"solid color background"，避免复杂背景干扰
+  8. 背景统一使用"Solid light gray background"（浅灰色纯色背景），确保角色主体突出
   9. 质感描述使用"photorealistic with painterly quality"（写实+绘画感）
   10. 对于拟人化动物/幻想生物，明确物种特征（如"anthropomorphic rabbit"）
 
@@ -129,7 +129,7 @@ few_shot_examples:
       [鞋袜] 黑色皮鞋，深色商务袜
       [帽子] 无
     assistant: |
-      Character turnaround sheet, three-view orthographic projection, cinematic concept art. An Asian male character, 25 years old, 178cm tall, athletic build. Square face with thick eyebrows and thin lips. Short natural black hair with side part (30/70 ratio). Deep brown eyes. Wearing dark gray suit jacket over white dress shirt, black dress pants, black leather shoes with dark business socks. Front view, side view, back view horizontally aligned, same height, standing pose with arms naturally at sides. Clean gradient background from light gray to white. Photorealistic with painterly quality, highly detailed fabric texture and facial features, professional character design reference for film production.
+      Character turnaround sheet, three-view orthographic projection, cinematic concept art. An Asian male character, 25 years old, 178cm tall, athletic build. Square face with thick eyebrows and thin lips. Short natural black hair with side part (30/70 ratio). Deep brown eyes. Wearing dark gray suit jacket over white dress shirt, black dress pants, black leather shoes with dark business socks. Front view, side view, back view horizontally aligned, same height, standing pose with arms naturally at sides. Solid light gray background. Photorealistic with painterly quality, highly detailed fabric texture and facial features, professional character design reference for film production.
 
   - user: |
       请根据以下角色信息生成设计图提示词：
@@ -148,7 +148,7 @@ few_shot_examples:
       [鞋袜] 白色运动鞋，粉色短袜
       [帽子] 无（兔耳作为特征）
     assistant: |
-      Character turnaround sheet, three-view orthographic projection, semi-realistic animation style. An anthropomorphic white rabbit character, cute and adorable, standing upright, 120cm tall, petite build. Large expressive blue eyes, small pink nose, long white rabbit ears standing upright. White fluffy fur covering entire body. Wearing pink hoodie with carrot print on chest, light blue denim shorts, white sneakers with pink short socks visible. Front view, side view, back view horizontally aligned, same height, standing pose with arms at sides. Clean pastel gradient background from light pink to light blue. Semi-realistic with detailed fur texture, character design reference for animation production, kawaii style influence.
+      Character turnaround sheet, three-view orthographic projection, semi-realistic animation style. An anthropomorphic white rabbit character, cute and adorable, standing upright, 120cm tall, petite build. Large expressive blue eyes, small pink nose, long white rabbit ears standing upright. White fluffy fur covering entire body. Wearing pink hoodie with carrot print on chest, light blue denim shorts, white sneakers with pink short socks visible. Front view, side view, back view horizontally aligned, same height, standing pose with arms at sides. Solid light gray background. Semi-realistic with detailed fur texture, character design reference for animation production, kawaii style influence.
 
   - user: |
       请根据以下角色信息生成设计图提示词：
@@ -167,7 +167,7 @@ few_shot_examples:
       [鞋袜] 棕色皮革长靴
       [帽子] 无
     assistant: |
-      Character turnaround sheet, three-view orthographic projection, cinematic fantasy concept art. An elf female character, appears 20 years old, 165cm tall, slim and elegant build. Delicate facial features with pointed ears, graceful posture. Long straight silver-white hair with small braids, magical crystal ornaments at hair tips. Emerald green eyes with ethereal glow. Wearing dark green elven robe with golden vine embroidery patterns, white cape draped over shoulders, forest green tight pants, brown leather high boots. Front view, side view, back view horizontally aligned, same height, standing pose with one hand slightly raised in greeting gesture. Clean gradient background from misty blue to soft lavender. Photorealistic with painterly quality, highly detailed fabric patterns and jewelry, character design reference for fantasy film production, inspired by Lord of the Rings aesthetic.
+      Character turnaround sheet, three-view orthographic projection, cinematic fantasy concept art. An elf female character, appears 20 years old, 165cm tall, slim and elegant build. Delicate facial features with pointed ears, graceful posture. Long straight silver-white hair with small braids, magical crystal ornaments at hair tips. Emerald green eyes with ethereal glow. Wearing dark green elven robe with golden vine embroidery patterns, white cape draped over shoulders, forest green tight pants, brown leather high boots. Front view, side view, back view horizontally aligned, same height, standing pose with one hand slightly raised in greeting gesture. Solid light gray background. Photorealistic with painterly quality, highly detailed fabric patterns and jewelry, character design reference for fantasy film production, inspired by Lord of the Rings aesthetic.
 
 user_prompt_template: |
   请根据以下角色信息生成设计图提示词：

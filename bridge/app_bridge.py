@@ -77,16 +77,17 @@ class AppBridge(QObject):
             self._container, self,
         )
         self._story_outline = StoryOutlineBridge(
-            self._story_outline_service, self._text_model_service, self,
+            self._story_outline_service, self._text_model_service,
+            self._project_service, self,
         )
         self._screenplay = ScreenplayBridge(
             self._screenplay_service, self._text_model_service,
-            self._story_outline_service, self,
+            self._story_outline_service, self._project_service, self,
         )
         self._characters = CharacterBridge(
             self._character_service, self._text_model_service,
             self._image_service, self._story_outline_service,
-            self._screenplay_service, self,
+            self._screenplay_service, self._project_service, self,
         )
         self._settings_bridge = SettingsBridge(self._config, self)
         self._video_player = VideoPlayerBridge(self._session_manager, self)

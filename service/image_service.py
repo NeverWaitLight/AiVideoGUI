@@ -3,6 +3,7 @@ from loguru import logger
 from config.manager import ConfigManager
 from providers.dashscope_image import DashScopeImageProvider
 from providers.image_base import ImageProvider
+from utils.ai_request_logger import AIRequestLogger
 
 _PROVIDER_REGISTRY: dict[str, type[ImageProvider]] = {
     "dashscope_image": DashScopeImageProvider,
@@ -10,9 +11,14 @@ _PROVIDER_REGISTRY: dict[str, type[ImageProvider]] = {
 
 class ImageService:
 
-    def __init__(self, config_manager: ConfigManager) -> None:
+    def __init__(
+        self,
+        config_manager: ConfigManager,
+        ai_request_logger: AIRequestLogger | None = None,
+    ) -> None:
         self._config = config_manager
         self._providers: dict[str, ImageProvider] = {}
+        self._ai_logger = ai_request_logger
 
     def _get_provider(self) -> ImageProvider:
         provider_name = self._config.settings.default_image_provider or "dashscope_image"
@@ -42,11 +48,25 @@ class ImageService:
         size: str = "1696*960",
         negative_prompt: str = "",
         n: int = 1,
+        project_id: int | None = None,
+        project_name: str | None = None,
+        module: str = "storyboard",
+        context: str | None = None,
     ) -> str:
         provider = self._get_provider()
 
         logger.info(f"提交图片生成任务，尺寸：{size}，数量：{n}")
         logger.debug(f"Prompt: {prompt}")
+
+        # 构建请求参数（用于日志记录）
+        request_payload = {
+            "prompt": prompt,
+            "size": size,
+            "negative_prompt": negative_prompt,
+            "n": n,
+            "prompt_extend": True,
+            "watermark": False,
+        }
 
         image_url = provider.generate(
             prompt=prompt,
@@ -56,5 +76,17 @@ class ImageService:
             prompt_extend=True,
             watermark=False,
         )
+
+        # 记录 AI 请求（响应包含图片 URL）
+        if self._ai_logger:
+            self._ai_logger.log_request(
+                request_type="image_generation",
+                module=module,
+                payload=request_payload,
+                response={"image_url": image_url, "save_path": save_path},
+                project_id=project_id,
+                project_name=project_name,
+                context=context or "图片生成",
+            )
 
         return provider.download(image_url, save_path)

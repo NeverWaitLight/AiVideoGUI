@@ -15,6 +15,7 @@ from providers.dashscope_video import DashScopeVideoProvider
 from providers.seedance_video import SeedanceVideoProvider
 from storage.session_manager import SessionManager
 from storage.repositories.generate_task_repository import GenerateTaskRepository
+from utils.ai_request_logger import AIRequestLogger
 
 _PROVIDER_REGISTRY: dict[str, type[VideoProvider]] = {
     "dashscope": DashScopeVideoProvider,
@@ -28,11 +29,13 @@ class VideoService(QObject):
         session_manager: SessionManager,
         config: ConfigManager,
         parent: QObject | None = None,
+        ai_request_logger: AIRequestLogger | None = None,
     ) -> None:
         super().__init__(parent)
         self._sm = session_manager
         self._config = config
         self._providers: dict[str, VideoProvider] = {}
+        self._ai_logger = ai_request_logger
 
     def get_provider(self, name: str) -> VideoProvider:
         if name in self._providers:
@@ -59,15 +62,39 @@ class VideoService(QObject):
         save_path: str = "",
         storyboard_id: int = 0,
         reference_image: str = "",
+        project_id: int | None = None,
+        project_name: str | None = None,
     ) -> str:
         provider = self.get_provider(provider_name)
 
         if reference_image:
             provider_task_id, request_params = provider.r2v(prompt, reference_image, params)
             logger.info(f"使用参考生视频 (r2v)：reference_image={reference_image}")
+            request_type = "video_generation_r2v"
+            context = "参考图生成视频 (r2v)"
         else:
             provider_task_id, request_params = provider.t2v(prompt, params)
             logger.info(f"使用文生视频 (t2v)")
+            request_type = "video_generation_t2v"
+            context = "文生视频 (t2v)"
+
+        # 记录 AI 请求日志
+        if self._ai_logger:
+            self._ai_logger.log_request(
+                request_type=request_type,
+                module="storyboard",
+                payload={
+                    "prompt": prompt,
+                    "provider": provider_name,
+                    "params": params or {},
+                    "reference_image": reference_image,
+                    "request_params": request_params,
+                },
+                response={"provider_task_id": provider_task_id},
+                project_id=project_id,
+                project_name=project_name,
+                context=context,
+            )
 
         task_repo = self._sm.get_repo(GenerateTaskRepository)
 

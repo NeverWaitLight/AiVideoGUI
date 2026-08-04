@@ -4,22 +4,37 @@ import requests
 
 from config.manager import ConfigManager
 from prompts.manager import PromptTemplateManager
+from utils.ai_request_logger import AIRequestLogger
 
 class TextModelService:
 
     DASHSCOPE_TEXT_URL = "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation"
     DEFAULT_MODEL = "qwen-max"
 
-    def __init__(self, config_manager: ConfigManager, prompt_manager: PromptTemplateManager) -> None:
+    def __init__(
+        self,
+        config_manager: ConfigManager,
+        prompt_manager: PromptTemplateManager,
+        ai_request_logger: AIRequestLogger | None = None,
+    ) -> None:
         self._config = config_manager
         self._prompt_manager = prompt_manager
+        self._ai_logger = ai_request_logger
 
-    def chat(self, messages: list[dict], model: str | None = None) -> str:
+    def chat(
+        self,
+        messages: list[dict],
+        model: str | None = None,
+        project_id: int | None = None,
+        project_name: str | None = None,
+        module: str = "storyboard",
+        context: str | None = None,
+    ) -> str:
         provider_config = self._config.get_provider("dashscope")
         if not provider_config or not provider_config.api_key:
             raise RuntimeError("未配置 DashScope API Key，请在设置中配置")
 
-        model = model or self.DEFAULT_MODEL
+        model = model or provider_config.default_model or self.DEFAULT_MODEL
         payload = {
             "model": model,
             "input": {"messages": messages},
@@ -35,6 +50,17 @@ class TextModelService:
         resp.raise_for_status()
         data = resp.json()
 
+        if self._ai_logger:
+            self._ai_logger.log_request(
+                request_type="text_generation",
+                module=module,
+                payload={"url": self.DASHSCOPE_TEXT_URL, "json": payload, "headers": headers},
+                response=data,
+                project_id=project_id,
+                project_name=project_name,
+                context=context or "文本生成",
+            )
+
         output = data.get("output", {})
         choices = output.get("choices", [])
         if not choices:
@@ -49,6 +75,8 @@ class TextModelService:
         original_content: str,
         user_requirement: str,
         model: str | None = None,
+        project_id: int | None = None,
+        project_name: str | None = None,
     ) -> str:
         template = self._prompt_manager.get_template("outline_optimization")
         messages = template.build_messages(
@@ -57,18 +85,27 @@ class TextModelService:
         )
 
         logger.info(f"调用文本模型优化大纲，模型：{model or self.DEFAULT_MODEL}")
-        return self.chat(messages, model)
+        return self.chat(
+            messages,
+            model,
+            project_id=project_id,
+            project_name=project_name,
+            module="outline",
+            context="大纲优化",
+        )
 
     def generate_script(
         self,
         outline_content: str,
         model: str | None = None,
+        project_id: int | None = None,
+        project_name: str | None = None,
     ) -> tuple[str, list[dict]]:
         provider_config = self._config.get_provider("dashscope")
         if not provider_config or not provider_config.api_key:
             raise RuntimeError("未配置 DashScope API Key，请在设置中配置")
 
-        model = model or self.DEFAULT_MODEL
+        model = model or provider_config.default_model or self.DEFAULT_MODEL
 
         system_prompt = """你是一位经验丰富的影视编剧，精通剧本格式规范。请将以下故事内容，按照标准影视剧本格式转换为剧本。
 
@@ -150,6 +187,17 @@ class TextModelService:
             data = resp.json()
             logger.debug(f"响应：{data}")
 
+            if self._ai_logger:
+                self._ai_logger.log_request(
+                    request_type="text_generation",
+                    module="script",
+                    payload={"url": self.DASHSCOPE_TEXT_URL, "json": payload, "headers": headers},
+                    response=data,
+                    project_id=project_id,
+                    project_name=project_name,
+                    context="剧本生成",
+                )
+
             output = data.get("output", {})
             choices = output.get("choices", [])
             if not choices:
@@ -182,12 +230,14 @@ class TextModelService:
         script_content: str,
         art_style: str = "",
         model: str | None = None,
+        project_id: int | None = None,
+        project_name: str | None = None,
     ) -> dict:
         provider_config = self._config.get_provider("dashscope")
         if not provider_config or not provider_config.api_key:
             raise RuntimeError("未配置 DashScope API Key，请在设置中配置")
 
-        model = model or self.DEFAULT_MODEL
+        model = model or provider_config.default_model or self.DEFAULT_MODEL
 
         system_prompt = """你是一位专业的电影导演兼分镜师。请严格遵循以下步骤与规范，将用户提供的剧本转化为详细的分镜头脚本。
 
@@ -292,6 +342,17 @@ class TextModelService:
             data = resp.json()
             logger.debug(f"响应：{data}")
 
+            if self._ai_logger:
+                self._ai_logger.log_request(
+                    request_type="text_generation",
+                    module="storyboard",
+                    payload={"url": self.DASHSCOPE_TEXT_URL, "json": payload, "headers": headers},
+                    response=data,
+                    project_id=project_id,
+                    project_name=project_name,
+                    context="分镜生成",
+                )
+
             output = data.get("output", {})
             choices = output.get("choices", [])
             if not choices:
@@ -329,6 +390,8 @@ class TextModelService:
         notes: str = "",
         character_info: str = "",
         model: str | None = None,
+        project_id: int | None = None,
+        project_name: str | None = None,
     ) -> str:
         template = self._prompt_manager.get_template("image_prompt_generation")
         messages = template.build_messages(
@@ -341,7 +404,14 @@ class TextModelService:
         )
 
         logger.info(f"调用文本模型生成设计图提示词，模型：{model or self.DEFAULT_MODEL}")
-        return self.chat(messages, model)
+        return self.chat(
+            messages,
+            model,
+            project_id=project_id,
+            project_name=project_name,
+            module="storyboard",
+            context="分镜设计图提示词生成",
+        )
 
     def generate_character_design_image_prompt(
         self,
@@ -349,6 +419,8 @@ class TextModelService:
         description: str,
         user_requirement: str = "",
         model: str | None = None,
+        project_id: int | None = None,
+        project_name: str | None = None,
     ) -> str:
         template = self._prompt_manager.get_template("character_image_prompt_generation")
         req_text = f"\n【用户补充要求】\n{user_requirement}" if user_requirement else ""
@@ -359,14 +431,23 @@ class TextModelService:
         )
 
         logger.info(f"调用文本模型生成角色设计图提示词，模型：{model or self.DEFAULT_MODEL}，角色：{character_name}")
-        return self.chat(messages, model)
+        return self.chat(
+            messages,
+            model,
+            project_id=project_id,
+            project_name=project_name,
+            module="character",
+            context=f"角色设计图提示词生成 - {character_name}",
+        )
 
     def optimize_screenplay(
         self,
         outline_content: str,
         current_script: str,
         user_requirement: str,
-        model: str | None = None
+        model: str | None = None,
+        project_id: int | None = None,
+        project_name: str | None = None,
     ) -> tuple[str, list[dict]]:
         """优化剧本：返回 (title, scenes)"""
         template = self._prompt_manager.get_template("screenplay_optimization")
@@ -377,7 +458,14 @@ class TextModelService:
         )
 
         logger.info(f"调用文本模型优化剧本，模型：{model or self.DEFAULT_MODEL}")
-        result = self.chat(messages, model)
+        result = self.chat(
+            messages,
+            model,
+            project_id=project_id,
+            project_name=project_name,
+            module="script",
+            context="剧本优化",
+        )
 
         from utils.script_parser import ScriptParser
         title, scenes = ScriptParser.parse(result)
@@ -391,6 +479,8 @@ class TextModelService:
         script_content: str,
         user_requirement: str,
         model: str | None = None,
+        project_id: int | None = None,
+        project_name: str | None = None,
     ) -> list[dict]:
         """生成角色：返回角色列表"""
         template = self._prompt_manager.get_template("character_generation")
@@ -401,7 +491,14 @@ class TextModelService:
         )
 
         logger.info(f"调用文本模型生成角色，模型：{model or self.DEFAULT_MODEL}")
-        result = self.chat(messages, model)
+        result = self.chat(
+            messages,
+            model,
+            project_id=project_id,
+            project_name=project_name,
+            module="character",
+            context="角色生成",
+        )
 
         from utils.character_parser import CharacterParser
         characters = CharacterParser.parse(result)
@@ -415,6 +512,8 @@ class TextModelService:
         current_characters: str,
         user_requirement: str,
         model: str | None = None,
+        project_id: int | None = None,
+        project_name: str | None = None,
     ) -> list[dict]:
         """优化角色：返回角色列表"""
         template = self._prompt_manager.get_template("character_optimization")
@@ -426,7 +525,14 @@ class TextModelService:
         )
 
         logger.info(f"调用文本模型优化角色，模型：{model or self.DEFAULT_MODEL}")
-        result = self.chat(messages, model)
+        result = self.chat(
+            messages,
+            model,
+            project_id=project_id,
+            project_name=project_name,
+            module="character",
+            context="角色优化",
+        )
 
         from utils.character_parser import CharacterParser
         characters = CharacterParser.parse(result)
@@ -441,6 +547,8 @@ class TextModelService:
         current_storyboard: str,
         user_requirement: str,
         model: str | None = None,
+        project_id: int | None = None,
+        project_name: str | None = None,
     ) -> list[dict]:
         """优化分镜：返回分镜列表"""
         template = self._prompt_manager.get_template("storyboard_optimization")
@@ -453,7 +561,14 @@ class TextModelService:
         )
 
         logger.info(f"调用文本模型优化分镜，模型：{model or self.DEFAULT_MODEL}")
-        result = self.chat(messages, model)
+        result = self.chat(
+            messages,
+            model,
+            project_id=project_id,
+            project_name=project_name,
+            module="storyboard",
+            context="分镜优化",
+        )
 
         from utils.shot_parser import ShotParser
         shots = ShotParser.parse(result)
@@ -466,6 +581,8 @@ class TextModelService:
         current_description: str,
         user_requirement: str,
         model: str | None = None,
+        project_id: int | None = None,
+        project_name: str | None = None,
     ) -> str:
         """根据用户要求修改单个角色的形象描述，返回修改后的描述文本"""
         system_prompt = (
@@ -482,5 +599,12 @@ class TextModelService:
         ]
 
         logger.info(f"调用文本模型修改角色描述，角色：{character_name}，模型：{model or self.DEFAULT_MODEL}")
-        result = self.chat(messages, model)
+        result = self.chat(
+            messages,
+            model,
+            project_id=project_id,
+            project_name=project_name,
+            module="character",
+            context=f"角色描述优化 - {character_name}",
+        )
         return result.strip()

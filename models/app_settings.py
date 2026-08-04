@@ -10,3 +10,4 @@ class AppSettings:
     default_image_provider: str = ""
     workspace_dir: str = ""
     color_scheme: str = "System"
+    enable_ai_request_logging: bool = False

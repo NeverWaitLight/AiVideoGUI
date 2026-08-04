@@ -17,6 +17,7 @@ from service.text_model_service import TextModelService
 from service.video_service import VideoService, _PROVIDER_REGISTRY
 from storage.session_manager import SessionManager
 from utils.prompt_builder import VideoPromptBuilder
+from utils.ai_request_logger import AIRequestLogger
 
 
 def _get_project_root() -> Path:
@@ -42,10 +43,17 @@ class ApplicationContainer(containers.DeclarativeContainer):
         templates_dir=_get_project_root() / "prompts" / "templates",
     )
 
+    ai_request_logger = providers.Singleton(
+        AIRequestLogger,
+        config_manager=config_manager,
+        workspace_root=config.workspace_root,
+    )
+
     video_service = providers.Singleton(
         VideoService,
         session_manager=session_manager,
         config=config_manager,
+        ai_request_logger=ai_request_logger,
     )
 
     media_service = providers.Singleton(
@@ -86,11 +94,13 @@ class ApplicationContainer(containers.DeclarativeContainer):
         TextModelService,
         config_manager=config_manager,
         prompt_manager=prompt_template_manager,
+        ai_request_logger=ai_request_logger,
     )
 
     image_service = providers.Singleton(
         ImageService,
         config_manager=config_manager,
+        ai_request_logger=ai_request_logger,
     )
 
     background_scheduler = providers.Singleton(

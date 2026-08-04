@@ -156,6 +156,10 @@ class ProjectBridge(QObject):
                 size=size,
                 negative_prompt="低质量，模糊，噪点，水印，文字",
                 n=1,
+                project_id=project_id,
+                project_name=project_name,
+                module="project",
+                context="封面图生成",
             )
 
             workspace = paths.workspace_dir(self._workspace_root)

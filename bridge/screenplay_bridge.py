@@ -41,11 +41,13 @@ class ScreenplayBridge(QObject):
     }
     _TIME_TYPE_REVERSE = {v: k for k, v in _TIME_TYPE_MAP.items()}
 
-    def __init__(self, screenplay_service, text_model_service, story_outline_service, parent=None):
+    def __init__(self, screenplay_service, text_model_service, story_outline_service,
+                 project_service=None, parent=None):
         super().__init__(parent)
         self._service = screenplay_service
         self._text_service = text_model_service
         self._story_outline_service = story_outline_service
+        self._project_service = project_service
         self._scene_model = SceneListModel(self)
         self._history_model = ScreenplayHistoryListModel(self)
         self._project_id: int = -1
@@ -59,6 +61,12 @@ class ScreenplayBridge(QObject):
         self._cur_time_type_index: int = 0
         self._cur_time_detail: str = ""
         self._cur_content: str = ""
+
+    def _get_project_name(self) -> str | None:
+        if self._project_service and self._project_id >= 0:
+            project = self._project_service.get_project(self._project_id)
+            return project.name if project else None
+        return None
 
     @Property(QObject, constant=True)
     def sceneModel(self):
@@ -283,7 +291,11 @@ class ScreenplayBridge(QObject):
             self.error.emit("大纲内容为空，无法生成剧本")
             return
 
-        self._worker = ScriptGenerateWorker(self._text_service, outline_content)
+        self._worker = ScriptGenerateWorker(
+            self._text_service, outline_content,
+            project_id=self._project_id if self._project_id >= 0 else None,
+            project_name=self._get_project_name(),
+        )
 
         def on_finished(title: str, scenes: list) -> None:
             try:
@@ -340,6 +352,8 @@ class ScreenplayBridge(QObject):
             outline_content,
             current_script,
             user_input,
+            project_id=self._project_id if self._project_id >= 0 else None,
+            project_name=self._get_project_name(),
         )
 
         def on_finished(title: str, new_scenes: list) -> None:

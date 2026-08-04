@@ -41,7 +41,6 @@ Item {
 
         function onScene_saved() {
             alertDialog.info("成功", "场次已保存")
-            _showDetail = false
         }
 
         function onHistory_saved() {

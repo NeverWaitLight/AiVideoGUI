@@ -75,6 +75,13 @@ class StoryboardBridge(QObject):
         self._cur_design_image: str = ""
         self._cur_seed: str = ""
 
+    def _get_project_name(self, project_id: int | None = None) -> str | None:
+        pid = project_id if project_id is not None else self._project_id
+        if self._project_service and pid >= 0:
+            project = self._project_service.get_project(pid)
+            return project.name if project else None
+        return None
+
     @Property(QObject, constant=True)
     def model(self):
         return self._model
@@ -157,7 +164,11 @@ class StoryboardBridge(QObject):
 
             script_content = "\n".join(script_lines)
 
-            worker = StoryboardGenerateWorker(self._text_model_service, script_content)
+            worker = StoryboardGenerateWorker(
+                self._text_model_service, script_content,
+                project_id=project_id,
+                project_name=self._get_project_name(project_id),
+            )
 
             def on_finished(result: dict) -> None:
                 try:
@@ -341,6 +352,7 @@ class StoryboardBridge(QObject):
                 self._text_model_service, self._image_service,
                 self._storyboard_service, storyboard, shot_size_text,
                 char_info, project_id,
+                project_name=self._get_project_name(project_id),
             )
             worker.finished.connect(lambda path: self._on_design_done(storyboard_id, path))
             worker.failed.connect(self.design_image_failed.emit)
@@ -393,6 +405,7 @@ class StoryboardBridge(QObject):
                 self._storyboard_service,
                 self._character_service,
                 shot_list,
+                project_name=self._get_project_name(project_id),
             )
 
             def on_progress(current: int, message: str, count_info: str) -> None:
@@ -402,7 +415,15 @@ class StoryboardBridge(QObject):
                 self.batch_done.emit(success_count, total)
                 self.load_for_project(project_id)
 
+            def on_shot_design_done(shot_id: int, path: str) -> None:
+                self._model.update_design_image(shot_id, path)
+                if self._cur_shot_id == shot_id:
+                    self._cur_design_image = path
+                    self.shot_detail_changed.emit()
+                self.design_image_ready.emit(str(shot_id), path)
+
             worker.progress_update.connect(on_progress)
+            worker.shot_design_done.connect(on_shot_design_done)
             worker.finished.connect(on_finished)
             worker.failed.connect(self.design_image_failed.emit)
             worker.finished.connect(worker.deleteLater)
@@ -506,6 +527,21 @@ class StoryboardBridge(QObject):
             logger.exception("上传设计图失败")
             self.error.emit(str(e))
 
+    @Slot(int)
+    def delete_design_image(self, shot_id: int) -> None:
+        """删除分镜的设计图。"""
+        try:
+            self._storyboard_service.update_storyboard(
+                storyboard_id=shot_id, design_image="",
+            )
+            self._model.update_design_image(shot_id, "")
+            if self._cur_shot_id == shot_id:
+                self._cur_design_image = ""
+                self.shot_detail_changed.emit()
+        except Exception as e:
+            logger.exception("删除设计图失败")
+            self.error.emit(str(e))
+
     @Slot(int, result=str)
     def get_related_videos(self, shot_id: int) -> str:
         try:
@@ -529,6 +565,9 @@ class StoryboardBridge(QObject):
 
     def _on_design_done(self, shot_id: int, path: str) -> None:
         self._model.update_design_image(shot_id, path)
+        if self._cur_shot_id == shot_id:
+            self._cur_design_image = path
+            self.shot_detail_changed.emit()
         self.design_image_ready.emit(str(shot_id), path)
 
     @Slot(str, int)
@@ -568,7 +607,11 @@ class StoryboardBridge(QObject):
 
         combined_requirement = f"用户要求：{user_input}\n\n大纲参考：{outline_content}"
 
-        self._generate_worker = StoryboardGenerateWorker(self._text_model_service, script_content, combined_requirement)
+        self._generate_worker = StoryboardGenerateWorker(
+            self._text_model_service, script_content, combined_requirement,
+            project_id=project_id,
+            project_name=self._get_project_name(project_id),
+        )
 
         def on_finished(result: dict) -> None:
             try:
@@ -645,6 +688,8 @@ class StoryboardBridge(QObject):
             character_content,
             current_storyboard,
             user_input,
+            project_id=project_id,
+            project_name=self._get_project_name(project_id),
         )
 
         def on_finished(new_shots: list) -> None:

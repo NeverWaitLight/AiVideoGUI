@@ -19,19 +19,19 @@ def logs_dir(root: str) -> str:
 
 
 def workspace_dir(root: str) -> str:
-    return os.path.join(root, "workspace")
+    return root
 
 
 def chat_dir(root: str) -> str:
-    return os.path.join(root, "workspace", "chat")
+    return os.path.join(root, "chat")
 
 
 def projects_dir(root: str) -> str:
-    return os.path.join(root, "workspace", "projects")
+    return os.path.join(root, "projects")
 
 
 def project_dir(root: str, project_id: int) -> str:
-    return os.path.join(root, "workspace", "projects", str(project_id))
+    return os.path.join(root, "projects", str(project_id))
 
 
 def thumbnail_dir(base_dir: str) -> str:

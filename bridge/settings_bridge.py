@@ -6,6 +6,7 @@ import os
 from PySide6.QtCore import QObject, Signal, Slot
 
 from models.provider_config import ProviderConfig
+from providers.dashscope_chat import DashScopeChatProvider
 from utils import paths
 
 
@@ -31,6 +32,23 @@ class SettingsBridge(QObject):
         cfg = self._config.get_provider(provider_name)
         return cfg.default_model if cfg else ""
 
+    @Slot(str, str, str, result=list)
+    def list_chat_models(self, api_key: str, base_url: str, provider_name: str) -> list:
+        if not api_key:
+            return []
+        try:
+            cfg = ProviderConfig(
+                provider_name=provider_name or "dashscope",
+                api_key=api_key,
+                base_url=base_url,
+                default_model="",
+            )
+            provider = DashScopeChatProvider(cfg)
+            return provider.list_available_models()
+        except Exception as e:
+            logger.warning(f"获取模型列表失败：{e}")
+            return []
+
     @Slot(result=str)
     def get_default_video_provider(self) -> str:
         return self._config.settings.default_provider or "dashscope"
@@ -52,15 +70,43 @@ class SettingsBridge(QObject):
             base_url=base_url,
             default_model=default_model,
         )
-        self._config.upsert_provider(cfg)
-        
+        self._config.upsert_provider(cfg, auto_save=False)
+
         if provider_type == "video":
-            self._config.update_settings(default_provider=provider_name)
+            self._config.update_settings(auto_save=False, default_provider=provider_name)
         elif provider_type == "chat":
-            self._config.update_settings(default_chat_provider=provider_name)
+            self._config.update_settings(auto_save=False, default_chat_provider=provider_name)
         elif provider_type == "image":
-            self._config.update_settings(default_image_provider=provider_name)
-        
+            self._config.update_settings(auto_save=False, default_image_provider=provider_name)
+
+        self._config.save()
+        self.settings_saved.emit()
+
+    @Slot(str, str, str, str, str)
+    def batch_save_provider(self, provider_type: str, provider_name: str, api_key: str,
+                            base_url: str, default_model: str) -> None:
+        cfg = ProviderConfig(
+            provider_name=provider_name,
+            api_key=api_key,
+            base_url=base_url,
+            default_model=default_model,
+        )
+        self._config.upsert_provider(cfg, auto_save=False)
+
+        if provider_type == "video":
+            self._config.update_settings(auto_save=False, default_provider=provider_name)
+        elif provider_type == "chat":
+            self._config.update_settings(auto_save=False, default_chat_provider=provider_name)
+        elif provider_type == "image":
+            self._config.update_settings(auto_save=False, default_image_provider=provider_name)
+
+    @Slot(str, str)
+    def batch_set(self, key: str, value: str) -> None:
+        self._config.update_settings(auto_save=False, **{key: value})
+
+    @Slot()
+    def commit_batch(self) -> None:
+        self._config.save()
         self.settings_saved.emit()
 
     @Slot(str, str)

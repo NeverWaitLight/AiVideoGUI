@@ -12,20 +12,28 @@ if TYPE_CHECKING:
     from di import ApplicationContainer
 
 from utils import paths
+from utils.image_processor import to_black_and_white
 
 
 class ScriptGenerateWorker(QThread):
     finished = Signal(str, list)
     failed = Signal(str)
 
-    def __init__(self, text_service, outline_content: str, parent=None):
+    def __init__(self, text_service, outline_content: str,
+                 project_id: int | None = None, project_name: str | None = None, parent=None):
         super().__init__(parent)
         self._text_service = text_service
         self._outline_content = outline_content
+        self._project_id = project_id
+        self._project_name = project_name
 
     def run(self):
         try:
-            title, scenes = self._text_service.generate_script(self._outline_content)
+            title, scenes = self._text_service.generate_script(
+                self._outline_content,
+                project_id=self._project_id,
+                project_name=self._project_name,
+            )
             self.finished.emit(title, scenes)
         except Exception as e:
             logger.exception("生成剧本失败")
@@ -36,15 +44,22 @@ class StoryboardGenerateWorker(QThread):
     finished = Signal(dict)
     failed = Signal(str)
 
-    def __init__(self, text_service, script_content: str, art_style: str = "", parent=None):
+    def __init__(self, text_service, script_content: str, art_style: str = "",
+                 project_id: int | None = None, project_name: str | None = None, parent=None):
         super().__init__(parent)
         self._text_service = text_service
         self._script_content = script_content
         self._art_style = art_style
+        self._project_id = project_id
+        self._project_name = project_name
 
     def run(self):
         try:
-            result = self._text_service.generate_storyboard(self._script_content, self._art_style)
+            result = self._text_service.generate_storyboard(
+                self._script_content, self._art_style,
+                project_id=self._project_id,
+                project_name=self._project_name,
+            )
             self.finished.emit(result)
         except Exception as e:
             logger.exception("生成分镜失败")
@@ -55,10 +70,13 @@ class CharacterWorker(QThread):
     finished = Signal(list)
     failed = Signal(str)
 
-    def __init__(self, text_service, mode: str, **kwargs):
+    def __init__(self, text_service, mode: str,
+                 project_id: int | None = None, project_name: str | None = None, **kwargs):
         super().__init__()
         self._text_service = text_service
         self._mode = mode
+        self._project_id = project_id
+        self._project_name = project_name
         self._kwargs = kwargs
 
     def run(self):
@@ -68,6 +86,8 @@ class CharacterWorker(QThread):
                     outline_content=self._kwargs['outline_content'],
                     script_content=self._kwargs['script_content'],
                     user_requirement=self._kwargs['user_requirement'],
+                    project_id=self._project_id,
+                    project_name=self._project_name,
                 )
             else:
                 characters = self._text_service.optimize_characters(
@@ -75,6 +95,8 @@ class CharacterWorker(QThread):
                     script_content=self._kwargs['script_content'],
                     current_characters=self._kwargs['current_characters'],
                     user_requirement=self._kwargs['user_requirement'],
+                    project_id=self._project_id,
+                    project_name=self._project_name,
                 )
             self.finished.emit(characters)
         except Exception as e:
@@ -86,12 +108,15 @@ class ScreenplayOptimizeWorker(QThread):
     finished = Signal(str, list)
     failed = Signal(str)
 
-    def __init__(self, text_service, outline_content: str, current_script: str, user_requirement: str, parent=None):
+    def __init__(self, text_service, outline_content: str, current_script: str, user_requirement: str,
+                 project_id: int | None = None, project_name: str | None = None, parent=None):
         super().__init__(parent)
         self._text_service = text_service
         self._outline_content = outline_content
         self._current_script = current_script
         self._user_requirement = user_requirement
+        self._project_id = project_id
+        self._project_name = project_name
 
     def run(self):
         try:
@@ -99,6 +124,8 @@ class ScreenplayOptimizeWorker(QThread):
                 self._outline_content,
                 self._current_script,
                 self._user_requirement,
+                project_id=self._project_id,
+                project_name=self._project_name,
             )
             self.finished.emit(title, scenes)
         except Exception as e:
@@ -111,7 +138,8 @@ class StoryboardOptimizeWorker(QThread):
     failed = Signal(str)
 
     def __init__(self, text_service, outline_content: str, script_content: str,
-                 character_content: str, current_storyboard: str, user_requirement: str, parent=None):
+                 character_content: str, current_storyboard: str, user_requirement: str,
+                 project_id: int | None = None, project_name: str | None = None, parent=None):
         super().__init__(parent)
         self._text_service = text_service
         self._outline_content = outline_content
@@ -119,6 +147,8 @@ class StoryboardOptimizeWorker(QThread):
         self._character_content = character_content
         self._current_storyboard = current_storyboard
         self._user_requirement = user_requirement
+        self._project_id = project_id
+        self._project_name = project_name
 
     def run(self):
         try:
@@ -128,6 +158,8 @@ class StoryboardOptimizeWorker(QThread):
                 self._character_content,
                 self._current_storyboard,
                 self._user_requirement,
+                project_id=self._project_id,
+                project_name=self._project_name,
             )
             self.finished.emit(shots)
         except Exception as e:
@@ -143,7 +175,7 @@ class DesignImageWorker(QThread):
     def __init__(
         self, text_service, image_service, storyboard_service,
         storyboard, shot_size_text: str, character_info: str, project_id: int,
-        parent=None,
+        project_name: str | None = None, parent=None,
     ):
         super().__init__(parent)
         self._text_service = text_service
@@ -153,6 +185,7 @@ class DesignImageWorker(QThread):
         self._shot_size_text = shot_size_text
         self._character_info = character_info
         self._project_id = project_id
+        self._project_name = project_name
 
     def run(self):
         try:
@@ -164,6 +197,8 @@ class DesignImageWorker(QThread):
                 dialogue=self._storyboard.dialogue,
                 notes=self._storyboard.notes,
                 character_info=self._character_info,
+                project_id=self._project_id,
+                project_name=self._project_name,
             )
             logger.info(f"设计图提示词：{image_prompt}")
 
@@ -173,7 +208,14 @@ class DesignImageWorker(QThread):
                 str(self._project_id),
                 f"design-{self._storyboard.scene_number}-{self._storyboard.shot_number}.png",
             )
-            result_path = self._image_service.generate(prompt=image_prompt, save_path=save_path)
+            result_path = self._image_service.generate(
+                prompt=image_prompt, save_path=save_path,
+                project_id=self._project_id,
+                project_name=self._project_name,
+                module="storyboard",
+                context="分镜设计图生成",
+            )
+            to_black_and_white(result_path)
 
             self._storyboard_service.update_storyboard(
                 storyboard_id=self._storyboard.id, design_image=result_path,
@@ -187,12 +229,13 @@ class DesignImageWorker(QThread):
 
 class BatchDesignImageWorker(QThread):
     progress_update = Signal(int, str, str)
+    shot_design_done = Signal(int, str)
     finished = Signal(int, int)
     failed = Signal(str)
 
     def __init__(
         self, text_service, image_service, storyboard_service, character_service,
-        shot_list: list[dict], parent=None,
+        shot_list: list[dict], project_name: str | None = None, parent=None,
     ):
         super().__init__(parent)
         self._text_service = text_service
@@ -200,6 +243,7 @@ class BatchDesignImageWorker(QThread):
         self._storyboard_service = storyboard_service
         self._character_service = character_service
         self._shot_list = shot_list
+        self._project_name = project_name
 
     def run(self):
         success_count = 0
@@ -247,6 +291,8 @@ class BatchDesignImageWorker(QThread):
                     dialogue=shot_data.get("dialogue", ""),
                     notes=shot_data.get("notes", ""),
                     character_info=character_info,
+                    project_id=project_id,
+                    project_name=self._project_name,
                 )
 
                 save_path = os.path.join(
@@ -254,12 +300,20 @@ class BatchDesignImageWorker(QThread):
                     str(project_id),
                     f"design-{scene_number}-{shot_number}.png",
                 )
-                result_path = self._image_service.generate(prompt=image_prompt, save_path=save_path)
+                result_path = self._image_service.generate(
+                    prompt=image_prompt, save_path=save_path,
+                    project_id=project_id,
+                    project_name=self._project_name,
+                    module="storyboard",
+                    context="分镜设计图批量生成",
+                )
+                to_black_and_white(result_path)
 
                 self._storyboard_service.update_storyboard(
                     storyboard_id=storyboard_id, design_image=result_path,
                 )
                 success_count += 1
+                self.shot_design_done.emit(storyboard_id, result_path)
                 self.progress_update.emit(idx, f"完成 {scene_number}-{shot_number}", f"({idx}/{total})")
 
             except Exception as e:
@@ -274,13 +328,15 @@ class CharacterDesignImageWorker(QThread):
     failed = Signal(str)
     progress_update = Signal(str)
 
-    def __init__(self, text_service, image_service, character_service, character, project_id: int, user_requirement: str = "", parent=None):
+    def __init__(self, text_service, image_service, character_service, character, project_id: int,
+                 user_requirement: str = "", project_name: str | None = None, parent=None):
         super().__init__(parent)
         self._text_service = text_service
         self._image_service = image_service
         self._character_service = character_service
         self._character = character
         self._project_id = project_id
+        self._project_name = project_name
         self._user_requirement = user_requirement
 
     def run(self):
@@ -290,6 +346,8 @@ class CharacterDesignImageWorker(QThread):
                 character_name=self._character.name,
                 description=self._character.description,
                 user_requirement=self._user_requirement,
+                project_id=self._project_id,
+                project_name=self._project_name,
             )
             logger.info(f"角色设计图提示词：{image_prompt}")
 
@@ -299,7 +357,13 @@ class CharacterDesignImageWorker(QThread):
                 str(self._project_id),
                 f"char-{self._character.uuid}.png",
             )
-            result_path = self._image_service.generate(prompt=image_prompt, save_path=save_path)
+            result_path = self._image_service.generate(
+                prompt=image_prompt, save_path=save_path,
+                project_id=self._project_id,
+                project_name=self._project_name,
+                module="character",
+                context=f"角色设计图生成 - {self._character.name}",
+            )
 
             self._character_service.update_character(
                 character_uuid=self._character.uuid, design_image=result_path,
@@ -316,12 +380,15 @@ class CharacterRefineWorker(QThread):
     failed = Signal(str)
 
     def __init__(self, text_service, character_name: str, current_description: str,
-                 user_requirement: str, parent=None):
+                 user_requirement: str, project_id: int | None = None,
+                 project_name: str | None = None, parent=None):
         super().__init__(parent)
         self._text_service = text_service
         self._character_name = character_name
         self._current_description = current_description
         self._user_requirement = user_requirement
+        self._project_id = project_id
+        self._project_name = project_name
 
     def run(self):
         try:
@@ -329,6 +396,8 @@ class CharacterRefineWorker(QThread):
                 character_name=self._character_name,
                 current_description=self._current_description,
                 user_requirement=self._user_requirement,
+                project_id=self._project_id,
+                project_name=self._project_name,
             )
             self.finished.emit(result)
         except Exception as e:
@@ -340,14 +409,26 @@ class OptimizeWorker(QThread):
     finished = Signal(str)
     failed = Signal(str)
 
-    def __init__(self, text_service, messages: list[dict], parent=None):
+    def __init__(self, text_service, messages: list[dict],
+                 project_id: int | None = None, project_name: str | None = None,
+                 module: str = "outline", context: str | None = None, parent=None):
         super().__init__(parent)
         self._text_service = text_service
         self._messages = messages
+        self._project_id = project_id
+        self._project_name = project_name
+        self._module = module
+        self._context = context
 
     def run(self):
         try:
-            reply = self._text_service.chat(self._messages)
+            reply = self._text_service.chat(
+                self._messages,
+                project_id=self._project_id,
+                project_name=self._project_name,
+                module=self._module,
+                context=self._context,
+            )
             self.finished.emit(reply)
         except Exception as e:
             logger.exception("AI 优化失败")
@@ -433,6 +514,8 @@ class BatchGenerationController(QThread):
                     save_path=save_path,
                     storyboard_id=shot_id,
                     reference_image=reference_image,
+                    project_id=self._project.id,
+                    project_name=self._project.name,
                 )
                 self._submitted_task_ids.add(provider_task_id)
                 submitted += 1

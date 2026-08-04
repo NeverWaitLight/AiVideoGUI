@@ -24,17 +24,26 @@ class CharacterBridge(QObject):
     error = Signal(str)
 
     def __init__(self, character_service, text_model_service, image_service,
-                 story_outline_service, screenplay_service, parent=None):
+                 story_outline_service, screenplay_service, project_service=None, parent=None):
         super().__init__(parent)
         self._character_service = character_service
         self._text_model_service = text_model_service
         self._image_service = image_service
         self._story_outline_service = story_outline_service
         self._screenplay_service = screenplay_service
+        self._project_service = project_service
         self._model = CharacterListModel(self)
         self._workers = []
         self._optimizing = False
         self._character_worker = None
+        self._project_id: int = -1
+
+    def _get_project_name(self, project_id: int | None = None) -> str | None:
+        pid = project_id if project_id is not None else self._project_id
+        if self._project_service and pid >= 0:
+            project = self._project_service.get_project(pid)
+            return project.name if project else None
+        return None
 
     @Property(QObject, constant=True)
     def model(self):
@@ -46,6 +55,7 @@ class CharacterBridge(QObject):
 
     @Slot(int)
     def load_for_project(self, project_id: int) -> None:
+        self._project_id = project_id
         chars = self._character_service.list_characters(project_id)
         self._model.reset(chars)
 
@@ -108,6 +118,7 @@ class CharacterBridge(QObject):
             self._text_model_service, self._image_service,
             self._character_service, character, project_id,
             user_requirement=user_requirement,
+            project_name=self._get_project_name(project_id),
         )
         worker.finished.connect(lambda path: self._on_design_done(char_uuid, path))
         worker.failed.connect(self.design_image_failed.emit)
@@ -132,6 +143,8 @@ class CharacterBridge(QObject):
             character_name=character_name,
             current_description=current_description,
             user_requirement=user_requirement,
+            project_id=self._project_id if self._project_id >= 0 else None,
+            project_name=self._get_project_name(),
         )
         worker.finished.connect(lambda desc: self._on_refine_done(char_uuid, desc))
         worker.failed.connect(self.description_refine_failed.emit)
@@ -223,6 +236,8 @@ class CharacterBridge(QObject):
         self._character_worker = CharacterWorker(
             self._text_model_service,
             'generate',
+            project_id=project_id,
+            project_name=self._get_project_name(project_id),
             outline_content=outline_content,
             script_content=script_content,
             user_requirement=user_input,
@@ -267,6 +282,8 @@ class CharacterBridge(QObject):
         self._character_worker = CharacterWorker(
             self._text_model_service,
             'optimize',
+            project_id=project_id,
+            project_name=self._get_project_name(project_id),
             outline_content=outline_content,
             script_content=script_content,
             current_characters=current_characters,

@@ -31,6 +31,8 @@ Dialog {
     property string chatApiKey: ""
     property string chatBaseUrl: ""
     property string chatModel: ""
+    property var chatModelList: []
+    property bool chatModelsLoading: false
 
     property string imageProvider: "dashscope_image"
     property string imageApiKey: ""
@@ -78,19 +80,19 @@ Dialog {
             Material.elevation: 0
 
             TabButton {
-                text: "视频模型"
-                implicitWidth: 144
-                font.pixelSize: Theme.fontSizeNormal
-            }
-
-            TabButton {
-                text: "对话模型"
+                text: "文本模型"
                 implicitWidth: 144
                 font.pixelSize: Theme.fontSizeNormal
             }
 
             TabButton {
                 text: "图片模型"
+                implicitWidth: 144
+                font.pixelSize: Theme.fontSizeNormal
+            }
+
+            TabButton {
+                text: "视频模型"
                 implicitWidth: 144
                 font.pixelSize: Theme.fontSizeNormal
             }
@@ -146,128 +148,7 @@ Dialog {
                                 Layout.fillWidth: true
 
                                 Label {
-                                    text: "视频生成模型"
-                                    font.pixelSize: Theme.fontSizeLarge
-                                    font.bold: true
-                                }
-
-                                Label {
-                                    text: "配置用于生成 AI 视频的模型和凭证"
-                                    font.pixelSize: Theme.fontSizeSmall
-                                    color: Material.hintTextColor
-                                }
-                            }
-
-                            Rectangle {
-                                Layout.fillWidth: true
-                                height: 1
-                                color: Material.frameColor
-                            }
-
-                            GridLayout {
-                                columns: 2
-                                columnSpacing: 16
-                                rowSpacing: 16
-                                Layout.fillWidth: true
-
-                                Label {
-                                    text: "Provider"
-                                    font.pixelSize: Theme.fontSizeNormal
-                                    Layout.preferredWidth: 100
-                                    Layout.alignment: Qt.AlignTop
-                                    topPadding: 6
-                                }
-                                ComboBox {
-                                    id: videoProviderCombo
-                                    model: ["dashscope", "seedance"]
-                                    Layout.fillWidth: true
-                                    Layout.preferredHeight: 36
-                                    Material.elevation: 0
-                                }
-
-                                Label {
-                                    text: "API Key"
-                                    font.pixelSize: Theme.fontSizeNormal
-                                    Layout.alignment: Qt.AlignTop
-                                    topPadding: 6
-                                }
-                                Comp.AppTextField {
-                                    id: videoApiKeyField
-                                    echoMode: TextInput.Password
-                                    Layout.fillWidth: true
-                                    Layout.preferredHeight: 36
-                                    placeholderText: "输入 API Key"
-                                }
-
-                                Label {
-                                    text: "Base URL"
-                                    font.pixelSize: Theme.fontSizeNormal
-                                    color: Material.hintTextColor
-                                    Layout.alignment: Qt.AlignTop
-                                    topPadding: 6
-                                }
-                                Comp.AppTextField {
-                                    id: videoBaseUrlField
-                                    Layout.fillWidth: true
-                                    Layout.preferredHeight: 36
-                                    placeholderText: "API 基础地址（可选）"
-                                }
-
-                                Label {
-                                    text: "默认模型"
-                                    font.pixelSize: Theme.fontSizeNormal
-                                    Layout.alignment: Qt.AlignTop
-                                    topPadding: 6
-                                }
-                                ComboBox {
-                                    id: videoModelCombo
-                                    model: ["wan2.7-t2v"]
-                                    Layout.fillWidth: true
-                                    Layout.preferredHeight: 36
-                                    Material.elevation: 0
-                                }
-                            }
-                        }
-                    }
-
-                    Item { Layout.fillHeight: true }
-                }
-            }
-
-            ScrollView {
-                ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-                clip: true
-                contentWidth: availableWidth
-
-                ColumnLayout {
-                    width: parent.parent.width
-                    spacing: 20
-
-                    Item { Layout.preferredHeight: 8 }
-
-                    Pane {
-                        Layout.fillWidth: true
-                        Layout.leftMargin: 0
-                        Layout.rightMargin: 0
-                        Material.elevation: 2
-                        padding: 24
-
-                        background: Rectangle {
-                            color: Material.dialogColor
-                            radius: 8
-                            border.width: 0
-                        }
-
-                        ColumnLayout {
-                            anchors.fill: parent
-                            spacing: 16
-
-                            ColumnLayout {
-                                spacing: 4
-                                Layout.fillWidth: true
-
-                                Label {
-                                    text: "对话模型"
+                                    text: "文本模型"
                                     font.pixelSize: Theme.fontSizeLarge
                                     font.bold: true
                                 }
@@ -337,15 +218,46 @@ Dialog {
                                 Label {
                                     text: "默认模型"
                                     font.pixelSize: Theme.fontSizeNormal
-                                    color: Material.hintTextColor
                                     Layout.alignment: Qt.AlignTop
                                     topPadding: 6
                                 }
-                                Comp.AppTextField {
-                                    id: chatModelField
+                                RowLayout {
                                     Layout.fillWidth: true
-                                    Layout.preferredHeight: 36
-                                    placeholderText: "模型名称（可选）"
+                                    spacing: 8
+
+                                    ComboBox {
+                                        id: chatModelCombo
+                                        Layout.fillWidth: true
+                                        Layout.preferredHeight: 36
+                                        editable: true
+                                        enabled: !chatModelsLoading
+                                        model: chatModelList
+                                        Material.elevation: 0
+                                    }
+
+                                    Button {
+                                        implicitHeight: 36
+                                        implicitWidth: 36
+                                        enabled: chatApiKeyField.text.length > 0 && !chatModelsLoading
+                                        Material.elevation: 0
+                                        padding: 6
+                                        onClicked: fetchChatModels()
+
+                                        Image {
+                                            anchors.centerIn: parent
+                                            width: 20; height: 20
+                                            source: "qrc:/resources/icons/autorenew.svg"
+                                            sourceSize: Qt.size(20, 20)
+                                            fillMode: Image.PreserveAspectFit
+
+                                            RotationAnimation on rotation {
+                                                running: chatModelsLoading
+                                                from: 0; to: 360
+                                                duration: 1000
+                                                loops: Animation.Infinite
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -475,6 +387,127 @@ Dialog {
                     Item { Layout.fillHeight: true }
                 }
             }
+            ScrollView {
+                ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                clip: true
+                contentWidth: availableWidth
+
+                ColumnLayout {
+                    width: parent.parent.width
+                    spacing: 20
+
+                    Item { Layout.preferredHeight: 8 }
+
+                    Pane {
+                        Layout.fillWidth: true
+                        Layout.leftMargin: 0
+                        Layout.rightMargin: 0
+                        Material.elevation: 2
+                        padding: 24
+
+                        background: Rectangle {
+                            color: Material.dialogColor
+                            radius: 8
+                            border.width: 0
+                        }
+
+                        ColumnLayout {
+                            anchors.fill: parent
+                            spacing: 16
+
+                            ColumnLayout {
+                                spacing: 4
+                                Layout.fillWidth: true
+
+                                Label {
+                                    text: "视频生成模型"
+                                    font.pixelSize: Theme.fontSizeLarge
+                                    font.bold: true
+                                }
+
+                                Label {
+                                    text: "配置用于生成 AI 视频的模型和凭证"
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    color: Material.hintTextColor
+                                }
+                            }
+
+                            Rectangle {
+                                Layout.fillWidth: true
+                                height: 1
+                                color: Material.frameColor
+                            }
+
+                            GridLayout {
+                                columns: 2
+                                columnSpacing: 16
+                                rowSpacing: 16
+                                Layout.fillWidth: true
+
+                                Label {
+                                    text: "Provider"
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    Layout.preferredWidth: 100
+                                    Layout.alignment: Qt.AlignTop
+                                    topPadding: 6
+                                }
+                                ComboBox {
+                                    id: videoProviderCombo
+                                    model: ["dashscope", "seedance"]
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 36
+                                    Material.elevation: 0
+                                }
+
+                                Label {
+                                    text: "API Key"
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    Layout.alignment: Qt.AlignTop
+                                    topPadding: 6
+                                }
+                                Comp.AppTextField {
+                                    id: videoApiKeyField
+                                    echoMode: TextInput.Password
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 36
+                                    placeholderText: "输入 API Key"
+                                }
+
+                                Label {
+                                    text: "Base URL"
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    color: Material.hintTextColor
+                                    Layout.alignment: Qt.AlignTop
+                                    topPadding: 6
+                                }
+                                Comp.AppTextField {
+                                    id: videoBaseUrlField
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 36
+                                    placeholderText: "API 基础地址（可选）"
+                                }
+
+                                Label {
+                                    text: "默认模型"
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    Layout.alignment: Qt.AlignTop
+                                    topPadding: 6
+                                }
+                                ComboBox {
+                                    id: videoModelCombo
+                                    model: ["wan2.7-t2v"]
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 36
+                                    Material.elevation: 0
+                                }
+                            }
+                        }
+                    }
+
+                    Item { Layout.fillHeight: true }
+                }
+            }
+
 
             ScrollView {
                 ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
@@ -850,7 +883,15 @@ Dialog {
         chatProvider = bridge.settings.get_default_chat_provider()
         chatApiKeyField.text = bridge.settings.get_api_key(chatProvider)
         chatBaseUrlField.text = bridge.settings.get_base_url(chatProvider)
-        chatModelField.text = bridge.settings.get_default_model(chatProvider)
+        chatModel = bridge.settings.get_default_model(chatProvider)
+        if (chatApiKeyField.text.length > 0) {
+            fetchChatModels()
+        } else {
+            chatModelCombo.currentIndex = chatModelCombo.find(chatModel)
+            if (chatModelCombo.currentIndex === -1) {
+                chatModelCombo.editText = chatModel
+            }
+        }
 
         imageProvider = bridge.settings.get_default_image_provider()
         imageApiKeyField.text = bridge.settings.get_api_key(imageProvider)
@@ -871,17 +912,17 @@ Dialog {
     }
 
     function saveAll() {
-        bridge.settings.save_provider("video", videoProviderCombo.currentText,
+        bridge.settings.batch_save_provider("video", videoProviderCombo.currentText,
             videoApiKeyField.text, videoBaseUrlField.text, videoModelCombo.currentText)
 
-        bridge.settings.save_provider("chat", chatProviderCombo.currentText,
-            chatApiKeyField.text, chatBaseUrlField.text, chatModelField.text)
+        bridge.settings.batch_save_provider("chat", chatProviderCombo.currentText,
+            chatApiKeyField.text, chatBaseUrlField.text, chatModelCombo.currentText)
 
-        bridge.settings.save_provider("image", imageProviderCombo.currentText,
+        bridge.settings.batch_save_provider("image", imageProviderCombo.currentText,
             imageApiKeyField.text, imageBaseUrlField.text, imageModelField.text)
 
         if (workspacePath !== bridge.settings.get_workspace_dir()) {
-            bridge.settings.set_workspace_dir(workspacePath)
+            bridge.settings.batch_set("workspace_dir", workspacePath)
         }
 
         var oldColorScheme = bridge.settings.get_color_scheme()
@@ -890,14 +931,44 @@ Dialog {
         var needRestart = false
 
         if (oldColorScheme !== newColorScheme) {
-            bridge.settings.set_color_scheme(newColorScheme)
+            bridge.settings.batch_set("color_scheme", newColorScheme)
             needRestart = true
         }
+
+        bridge.settings.commit_batch()
 
         if (needRestart) {
             Qt.callLater(function() {
                 alertDialog.info("设置已保存", "颜色方案的更改需要重启应用才能生效。")
             })
         }
+    }
+
+    Timer {
+        id: fetchModelsTimer
+        interval: 50
+        repeat: false
+        onTriggered: {
+            var models = bridge.settings.list_chat_models(
+                chatApiKeyField.text, chatBaseUrlField.text, chatProviderCombo.currentText)
+            chatModelList = models
+            chatModelsLoading = false
+            if (chatModel) {
+                var idx = chatModelCombo.find(chatModel)
+                if (idx >= 0) {
+                    chatModelCombo.currentIndex = idx
+                } else {
+                    chatModelCombo.editText = chatModel
+                }
+                chatModel = ""
+            }
+        }
+    }
+
+    function fetchChatModels() {
+        var apiKey = chatApiKeyField.text
+        if (!apiKey) return
+        chatModelsLoading = true
+        fetchModelsTimer.start()
     }
 }

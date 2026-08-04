@@ -9,6 +9,7 @@ dependencies = [
     "dependency-injector>=4.49,<5",
     "ffmpeg-python>=0.2,<1",
     "loguru>=0.7,<1",
+    "pillow>=12.3.0",
     "pyside6>=6.11,<7",
     "pyyaml>=6,<7",
     "requests>=2.32,<3",

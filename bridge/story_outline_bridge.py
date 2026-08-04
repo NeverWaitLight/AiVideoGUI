@@ -16,10 +16,11 @@ class StoryOutlineBridge(QObject):
     isOptimizingChanged = Signal()
     error = Signal(str)
 
-    def __init__(self, story_outline_service, text_model_service, parent=None):
+    def __init__(self, story_outline_service, text_model_service, project_service=None, parent=None):
         super().__init__(parent)
         self._service = story_outline_service
         self._text_service = text_model_service
+        self._project_service = project_service
         self._history_model = HistoryListModel(self)
         self._outline_id: int = -1
         self._project_id: int = -1
@@ -27,6 +28,12 @@ class StoryOutlineBridge(QObject):
         self._loading: bool = False
         self._optimizing: bool = False
         self._worker: OptimizeWorker | None = None
+
+    def _get_project_name(self) -> str | None:
+        if self._project_service and self._project_id >= 0:
+            project = self._project_service.get_project(self._project_id)
+            return project.name if project else None
+        return None
 
     @Property(QObject, constant=True)
     def historyModel(self):
@@ -127,7 +134,13 @@ class StoryOutlineBridge(QObject):
 
         self._optimizing = True
         self.isOptimizingChanged.emit()
-        self._worker = OptimizeWorker(self._text_service, messages)
+        self._worker = OptimizeWorker(
+            self._text_service, messages,
+            project_id=self._project_id if self._project_id >= 0 else None,
+            project_name=self._get_project_name(),
+            module="outline",
+            context="大纲优化",
+        )
 
         def on_finished(result: str) -> None:
             self._optimizing = False

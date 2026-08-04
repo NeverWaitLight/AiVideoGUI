@@ -18,7 +18,6 @@ Item {
         target: bridge
 
         function onCover_generation_started(projectId) {
-            console.log("封面生成开始：项目 ID =", projectId)
             var ids = projectGridPage.generatingCoverIds.slice()
             if (ids.indexOf(projectId) === -1) {
                 ids.push(projectId)
@@ -27,7 +26,6 @@ Item {
         }
 
         function onCover_generation_finished(projectId) {
-            console.log("封面生成完成：项目 ID =", projectId)
             var ids = projectGridPage.generatingCoverIds.slice()
             var index = ids.indexOf(projectId)
             if (index !== -1) {
@@ -38,7 +36,6 @@ Item {
         }
 
         function onCover_generation_failed(projectId, errorMessage) {
-            console.log("封面生成失败：项目 ID =", projectId, "错误：", errorMessage)
             var ids = projectGridPage.generatingCoverIds.slice()
             var index = ids.indexOf(projectId)
             if (index !== -1) {

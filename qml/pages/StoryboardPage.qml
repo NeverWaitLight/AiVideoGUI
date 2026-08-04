@@ -14,6 +14,7 @@ Item {
     property var _relatedVideos: []
     property bool _multiSelect: false
     property var _selectedIds: []
+    property int _designImageVersion: 0
 
     signal backClicked()
     signal navigateToMediaLibrary(int projectId)
@@ -38,8 +39,6 @@ Item {
         target: bridge.storyboard
         function onShot_saved() {
             alertDialog.info("成功", "分镜已保存")
-            _showDetail = false
-            _editingShotId = -1
         }
         function onShot_deleted() {
             alertDialog.info("成功", "分镜已删除")
@@ -60,13 +59,13 @@ Item {
         }
         function onDesign_image_ready(shotId, path) {
             alertDialog.info("成功", "设计图已生成")
+            _designImageVersion++
             if (_showDetail) _loadRelatedVideos()
         }
         function onDesign_image_failed(error) {
             alertDialog.error("错误", "设计图生成失败：" + error)
         }
         function onBatch_progress(current, total, message) {
-            console.log("批量进度：", message)
         }
         function onBatch_done(successCount, total) {
             alertDialog.info("完成", "批量设计图生成完成：成功 " + successCount + " / 总共 " + total)
@@ -319,30 +318,6 @@ Item {
                     }
 
                     Button {
-                        Layout.preferredHeight: 34
-                        text: "保存"
-                        highlighted: true
-                        topPadding: 6
-                        bottomPadding: 6
-                        leftPadding: 12
-                        rightPadding: 12
-                        onClicked: _saveCurrentShot()
-                    }
-
-                    Button {
-                        Layout.preferredHeight: 34
-                        text: "删除"
-                        topPadding: 6
-                        bottomPadding: 6
-                        leftPadding: 12
-                        rightPadding: 12
-                        onClicked: confirmDialog.confirm(
-                            "确定要删除此分镜吗？",
-                            function() { bridge.storyboard.delete_shot(_editingShotId) }
-                        )
-                    }
-
-                    Button {
                         Layout.preferredWidth: 36
                         Layout.preferredHeight: 36
                         display: AbstractButton.IconOnly
@@ -368,217 +343,279 @@ Item {
                             function() { bridge.storyboard.batch_generate_videos(page.projectId, JSON.stringify([bridge.storyboard.curShotId])) }
                         )
                     }
+
+                    Button {
+                        Layout.preferredWidth: 34
+                        Layout.preferredHeight: 34
+                        display: AbstractButton.IconOnly
+                        icon.source: "qrc:/resources/icons/save.svg"
+                        icon.width: 20
+                        icon.height: 20
+                        topPadding: 7
+                        bottomPadding: 7
+                        leftPadding: 7
+                        rightPadding: 7
+                        ToolTip.visible: hovered
+                        ToolTip.text: "保存"
+
+                        background: Rectangle {
+                            anchors.fill: parent
+                            radius: Theme.radiusSmall
+                            color: parent.hovered
+                                ? Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.08)
+                                : "transparent"
+                        }
+
+                        onClicked: _saveCurrentShot()
+                    }
                 }
 
-                ScrollView {
+                RowLayout {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    clip: true
+                    spacing: 0
 
-                    ColumnLayout {
-                        width: parent.width
-                        spacing: 16
+                    ScrollView {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        Layout.preferredWidth: 2
+                        clip: true
 
-                        Item { width: 1; height: 8 }
+                        ColumnLayout {
+                            width: parent.width
+                            spacing: 0
 
-                        Pane {
-                            Layout.fillWidth: true
-                            Layout.leftMargin: 24
-                            Layout.rightMargin: 24
-                            padding: 16
+                            Item { width: 1; height: 8 }
 
-                            GridLayout {
-                                anchors.fill: parent
-                                columns: 4
-                                columnSpacing: 16
-                                rowSpacing: 12
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Layout.leftMargin: 20
+                                Layout.rightMargin: 20
+                                spacing: 16
+                                Layout.preferredHeight: childrenRect.height
 
-                                Label { text: "场次/镜头："; font.pixelSize: Theme.fontSizeMedium }
-                                Label {
-                                    text: bridge.storyboard.curSceneNumber + "场" + bridge.storyboard.curShotNumber + "镜"
-                                    font.pixelSize: Theme.fontSizeMedium; font.bold: true
-                                }
-                                Item { Layout.fillWidth: true }
-                                Item { Layout.fillWidth: true }
-
-                                Label { text: "景别："; font.pixelSize: Theme.fontSizeMedium }
-                                ComboBox {
-                                    id: shotSizeCombo
-                                    model: ["特写", "近景", "中景", "全景", "远景", "大远景"]
-                                    currentIndex: bridge.storyboard.curShotSizeIndex
-                                    Layout.preferredWidth: 160
-                                }
-                                Item { Layout.fillWidth: true }
-                                Item { Layout.fillWidth: true }
-
-                                Label { text: "运镜方式："; font.pixelSize: Theme.fontSizeMedium }
-                                Comp.AppTextField {
-                                    id: cameraInput
-                                    text: bridge.storyboard.curCameraMovement
-                                    placeholderText: "如：固定、慢推、跟拍、摇镜"
+                                GridLayout {
                                     Layout.fillWidth: true
-                                    Layout.columnSpan: 3
-                                }
+                                    columns: 2
+                                    columnSpacing: 10
+                                    rowSpacing: 6
 
-                                Label { text: "时长（秒）："; font.pixelSize: Theme.fontSizeMedium }
-                                SpinBox {
-                                    id: durationSpin
-                                    from: 0; to: 600; stepSize: 5
-                                    value: Math.round(bridge.storyboard.curDuration * 10)
-                                    property real realValue: value / 10.0
-                                    textFromValue: function(v, l) { return (v / 10.0).toFixed(1) }
-                                    valueFromText: function(t, l) { return parseFloat(t) * 10 }
-                                    Layout.preferredWidth: 160
-                                }
-                                Item { Layout.fillWidth: true }
-                                Item { Layout.fillWidth: true }
-
-                                Label { text: "Seed 值："; font.pixelSize: Theme.fontSizeMedium }
-                                RowLayout {
-                                    spacing: 8
-                                    Layout.columnSpan: 3
-
-                                    Comp.AppTextField {
-                                        id: seedInput
-                                        text: bridge.storyboard.curSeed
-                                        placeholderText: "留空自动生成"
-                                        Layout.fillWidth: true
+                                    Label { text: "场次/镜头："; font.pixelSize: Theme.fontSizeSmall }
+                                    Label {
+                                        text: bridge.storyboard.curSceneNumber + "场" + bridge.storyboard.curShotNumber + "镜"
+                                        font.pixelSize: Theme.fontSizeSmall; font.bold: true
                                     }
 
-                                    Button {
-                                        text: "生成新 Seed"
-                                        onClicked: {
-                                            seedInput.text = String(Math.floor(Math.random() * 2147483647))
+                                    Label { text: "景别："; font.pixelSize: Theme.fontSizeSmall }
+                                    ComboBox {
+                                        id: shotSizeCombo
+                                        model: ["特写", "近景", "中景", "全景", "远景", "大远景"]
+                                        currentIndex: bridge.storyboard.curShotSizeIndex
+                                        Layout.fillWidth: true
+                                        Layout.preferredHeight: 32
+                                        font.pixelSize: Theme.fontSizeSmall
+                                    }
+
+                                    Label { text: "运镜："; font.pixelSize: Theme.fontSizeSmall }
+                                    Comp.AppTextField {
+                                        id: cameraInput
+                                        text: bridge.storyboard.curCameraMovement
+                                        placeholderText: "固定、慢推、跟拍"
+                                        Layout.fillWidth: true
+                                        Layout.preferredHeight: 32
+                                    }
+
+                                    Label { text: "时长（秒）："; font.pixelSize: Theme.fontSizeSmall }
+                                    SpinBox {
+                                        id: durationSpin
+                                        from: 0; to: 600; stepSize: 5
+                                        value: Math.round(bridge.storyboard.curDuration * 10)
+                                        property real realValue: value / 10.0
+                                        textFromValue: function(v, l) { return (v / 10.0).toFixed(1) }
+                                        valueFromText: function(t, l) { return parseFloat(t) * 10 }
+                                        Layout.fillWidth: true
+                                        Layout.preferredHeight: 32
+                                    }
+
+                                    Label { text: "Seed："; font.pixelSize: Theme.fontSizeSmall }
+                                    RowLayout {
+                                        spacing: 6
+                                        Layout.fillWidth: true
+                                        Comp.AppTextField {
+                                            id: seedInput
+                                            text: bridge.storyboard.curSeed
+                                            placeholderText: "留空自动生成"
+                                            Layout.fillWidth: true
+                                            Layout.preferredHeight: 32
+                                        }
+                                        Button {
+                                            text: "随机"
+                                            Layout.preferredHeight: 32
+                                            onClicked: seedInput.text = String(Math.floor(Math.random() * 2147483647))
+                                        }
+                                    }
+                                }
+
+                                RowLayout {
+                                    spacing: 8
+                                    Layout.alignment: Qt.AlignTop
+
+                                    Rectangle {
+                                        width: 160; height: 90; radius: Theme.radiusMedium
+                                        color: "transparent"
+                                        border.color: Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.15)
+                                        Image {
+                                            anchors.fill: parent
+                                            source: bridge.storyboard.curDesignImage
+                                                ? "file:///" + bridge.storyboard.curDesignImage + "?v=" + _designImageVersion
+                                                : ""
+                                            fillMode: Image.PreserveAspectCrop
+                                            visible: source !== ""
+                                        }
+                                        Label {
+                                            anchors.centerIn: parent
+                                            text: "暂无设计图"
+                                            font.pixelSize: Theme.fontSizeSmall
+                                            visible: !bridge.storyboard.curDesignImage
+                                            opacity: 0.5
+                                        }
+                                    }
+
+                                    ColumnLayout {
+                                        spacing: 6
+                                        Button {
+                                            text: "AI 生成"
+                                            highlighted: true
+                                            Layout.preferredHeight: 30
+                                            onClicked: bridge.storyboard.generate_design_image(bridge.storyboard.curShotId, page.projectId)
+                                        }
+                                        Button {
+                                            text: "上传"
+                                            Layout.preferredHeight: 30
+                                            onClicked: designImageDialog.open()
+                                        }
+                                        Button {
+                                            text: "删除"
+                                            flat: true
+                                            Layout.preferredHeight: 30
+                                            visible: !!bridge.storyboard.curDesignImage
+                                            onClicked: confirmDialog.confirm(
+                                                "确定要删除设计图吗？",
+                                                function() { bridge.storyboard.delete_design_image(bridge.storyboard.curShotId) }
+                                            )
                                         }
                                     }
                                 }
                             }
-                        }
 
-                        RowLayout {
-                            Layout.leftMargin: 24
-                            Layout.rightMargin: 24
-                            spacing: 16
+                            Item { width: 1; height: 12 }
 
-                            Rectangle {
-                                width: 200; height: 112; radius: Theme.radiusMedium
-                                Image {
-                                    anchors.fill: parent
-                                    source: bridge.storyboard.curDesignImage ? "file:///" + bridge.storyboard.curDesignImage : ""
-                                    fillMode: Image.PreserveAspectCrop
-                                    visible: source !== ""
-                                }
-                                Label {
-                                    anchors.centerIn: parent
-                                    text: "暂无设计图"
-                                    visible: !bridge.storyboard.curDesignImage
+                            Label {
+                                text: "画面内容描述"
+                                font.pixelSize: Theme.fontSizeSmall; font.bold: true
+                                Layout.leftMargin: 20
+                            }
+                            ScrollView {
+                                Layout.fillWidth: true; Layout.preferredHeight: 100
+                                Layout.leftMargin: 20; Layout.rightMargin: 20; clip: true
+                                TextArea {
+                                    id: visualEdit
+                                    text: bridge.storyboard.curVisualContent
+                                    placeholderText: "描述镜头中的人物、动作、环境细节..."
+                                    wrapMode: TextArea.Wrap; font.pixelSize: Theme.fontSizeSmall
                                 }
                             }
 
-                            ColumnLayout {
-                                spacing: 8
-                                Button {
-                                    text: "AI 生成设计图"
-                                    highlighted: true
-                                    onClicked: bridge.storyboard.generate_design_image(bridge.storyboard.curShotId, page.projectId)
+                            Label {
+                                text: "台词/对白"
+                                font.pixelSize: Theme.fontSizeSmall; font.bold: true
+                                Layout.leftMargin: 20
+                            }
+                            ScrollView {
+                                Layout.fillWidth: true; Layout.preferredHeight: 64
+                                Layout.leftMargin: 20; Layout.rightMargin: 20; clip: true
+                                TextArea {
+                                    id: dialogueEdit
+                                    text: bridge.storyboard.curDialogue
+                                    placeholderText: "角色对话内容..."
+                                    wrapMode: TextArea.Wrap; font.pixelSize: Theme.fontSizeSmall
                                 }
-                                Button {
-                                    text: "上传图片"
-                                    onClicked: designImageDialog.open()
+                            }
+
+                            Label {
+                                text: "音效"
+                                font.pixelSize: Theme.fontSizeSmall; font.bold: true
+                                Layout.leftMargin: 20
+                            }
+                            Comp.AppTextField {
+                                id: soundEffectInput
+                                text: bridge.storyboard.curSoundEffect
+                                placeholderText: "环境音、特效音、背景音乐提示..."
+                                Layout.fillWidth: true; Layout.leftMargin: 20; Layout.rightMargin: 20
+                                Layout.preferredHeight: 32
+                            }
+
+                            Label {
+                                text: "备注"
+                                font.pixelSize: Theme.fontSizeSmall; font.bold: true
+                                Layout.leftMargin: 20
+                            }
+                            ScrollView {
+                                Layout.fillWidth: true; Layout.preferredHeight: 48
+                                Layout.leftMargin: 20; Layout.rightMargin: 20; clip: true
+                                TextArea {
+                                    id: notesEdit
+                                    text: bridge.storyboard.curNotes
+                                    placeholderText: "其他说明..."
+                                    wrapMode: TextArea.Wrap; font.pixelSize: Theme.fontSizeSmall
                                 }
-                                Label {
-                                    text: "根据画面描述自动生成，或手动上传"
-                                    font.pixelSize: Theme.fontSizeSmall
-                                }
                             }
-                            Item { Layout.fillWidth: true }
-                        }
 
-                        Label {
-                            text: "画面内容描述"
-                            font.pixelSize: Theme.fontSizeMedium; font.bold: true
+                            Item { Layout.fillHeight: true }
                         }
-                        ScrollView {
-                            Layout.fillWidth: true; Layout.preferredHeight: 120
-                            Layout.leftMargin: 24; Layout.rightMargin: 24; clip: true
-                            TextArea {
-                                id: visualEdit
-                                text: bridge.storyboard.curVisualContent
-                                placeholderText: "描述镜头中的人物、动作、环境细节..."
-                                wrapMode: TextArea.Wrap; font.pixelSize: Theme.fontSizeMedium
-                            }
-                        }
+                    }
 
-                        Label {
-                            text: "台词/对白"
-                            font.pixelSize: Theme.fontSizeMedium; font.bold: true
-                        }
-                        ScrollView {
-                            Layout.fillWidth: true; Layout.preferredHeight: 80
-                            Layout.leftMargin: 24; Layout.rightMargin: 24; clip: true
-                            TextArea {
-                                id: dialogueEdit
-                                text: bridge.storyboard.curDialogue
-                                placeholderText: "角色对话内容..."
-                                wrapMode: TextArea.Wrap; font.pixelSize: Theme.fontSizeMedium
-                            }
-                        }
+                    Rectangle {
+                        width: 1
+                        Layout.fillHeight: true
+                        color: Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.08)
+                    }
 
-                        Label {
-                            text: "音效"
-                            font.pixelSize: Theme.fontSizeMedium; font.bold: true
-                        }
-                        Comp.AppTextField {
-                            id: soundEffectInput
-                            text: bridge.storyboard.curSoundEffect
-                            placeholderText: "环境音、特效音、背景音乐提示..."
-                            Layout.fillWidth: true; Layout.leftMargin: 24; Layout.rightMargin: 24
-                        }
-
-                        Label {
-                            text: "备注"
-                            font.pixelSize: Theme.fontSizeMedium; font.bold: true
-                        }
-                        ScrollView {
-                            Layout.fillWidth: true; Layout.preferredHeight: 60
-                            Layout.leftMargin: 24; Layout.rightMargin: 24; clip: true
-                            TextArea {
-                                id: notesEdit
-                                text: bridge.storyboard.curNotes
-                                placeholderText: "其他说明..."
-                                wrapMode: TextArea.Wrap; font.pixelSize: Theme.fontSizeMedium
-                            }
-                        }
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        Layout.preferredWidth: 1
+                        spacing: 0
 
                         Label {
                             text: "关联视频"
-                            font.pixelSize: Theme.fontSizeMedium; font.bold: true
+                            font.pixelSize: Theme.fontSizeSmall; font.bold: true
+                            Layout.leftMargin: 16
                             Layout.topMargin: 8
+                            Layout.bottomMargin: 4
                         }
 
-                        ColumnLayout {
-                            Layout.leftMargin: 24; Layout.rightMargin: 24
-                            spacing: 8
+                        ListView {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            Layout.leftMargin: 12
+                            Layout.rightMargin: 12
+                            model: _relatedVideos
+                            spacing: 6
+                            clip: true
 
-                            Repeater {
-                                model: _relatedVideos
-                                delegate: VideoRowDelegate {
-                                    Layout.fillWidth: true
-                                    videoData: modelData
-                                    onPlayClicked: bridge.play_video(modelData.filePath)
-                                    onSetFeaturedClicked: {
-                                        bridge.media.set_featured(modelData.fileId, _editingShotId)
-                                        _loadRelatedVideos()
-                                    }
-                                    onDeleteClicked: {
-                                        confirmDialog.confirm(
-                                            "确定要删除此视频吗？",
-                                            function() {
-                                                bridge.media.delete_file(modelData.fileId)
-                                                _loadRelatedVideos()
-                                            }
-                                        )
-                                    }
+                            delegate: VideoRowDelegate {
+                                width: ListView.view.width
+                                videoData: modelData
+                                onPlayClicked: bridge.play_video(modelData.filePath)
+                                onDeleteClicked: {
+                                    confirmDialog.confirm(
+                                        "确定要删除此视频吗？",
+                                        function() {
+                                            bridge.media.delete_file(modelData.fileId)
+                                            _loadRelatedVideos()
+                                        }
+                                    )
                                 }
                             }
 
@@ -586,12 +623,10 @@ Item {
                                 visible: _relatedVideos.length === 0
                                 text: "暂无关联视频"
                                 font.pixelSize: Theme.fontSizeSmall
-                                Layout.alignment: Qt.AlignHCenter
-                                Layout.topMargin: 8; Layout.bottomMargin: 8
+                                anchors.centerIn: parent
+                                opacity: 0.5
                             }
                         }
-
-                        Item { width: 1; height: 16 }
                     }
                 }
             }
@@ -619,24 +654,37 @@ Item {
         }
     }
 
-    component VideoRowDelegate: Pane {
+    component VideoRowDelegate: Item {
         property var videoData: ({})
         signal playClicked()
-        signal setFeaturedClicked()
         signal deleteClicked()
 
-        padding: 8
+        implicitHeight: 60
+
+        Rectangle {
+            anchors.fill: parent
+            anchors.leftMargin: 6
+            anchors.rightMargin: 6
+            anchors.topMargin: 3
+            anchors.bottomMargin: 3
+            radius: Theme.radiusSmall
+            color: mouseArea.containsMouse ? Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.05) : "transparent"
+        }
+
+        MouseArea {
+            id: mouseArea
+            anchors.fill: parent
+            hoverEnabled: true
+            onClicked: playClicked()
+        }
 
         RowLayout {
             anchors.fill: parent
+            anchors.leftMargin: 12
+            anchors.rightMargin: 12
+            anchors.topMargin: 6
+            anchors.bottomMargin: 6
             spacing: 10
-
-            Image {
-                source: "qrc:/resources/icons/star.svg"
-                sourceSize.width: 20
-                sourceSize.height: 20
-                visible: videoData.featured
-            }
 
             Rectangle {
                 width: 64; height: 48; radius: 4
@@ -661,26 +709,22 @@ Item {
                 spacing: 2
                 Label {
                     text: videoData.fileName || ""
-                    font.pixelSize: Theme.fontSizeLarge
+                    font.pixelSize: Theme.fontSizeSmall
                     font.bold: true
+                    elide: Text.ElideRight
+                    Layout.fillWidth: true
                 }
                 Label {
                     text: _formatVideoMeta(videoData)
                     font.pixelSize: Theme.fontSizeSmall
+                    opacity: 0.7
                 }
             }
 
             Button {
-                text: "播放"; flat: true
-                onClicked: playClicked()
-            }
-            Button {
-                text: "设为封面"
-                visible: !videoData.featured
-                onClicked: setFeaturedClicked()
-            }
-            Button {
                 text: "删除"; flat: true
+                Layout.preferredHeight: 30
+                z: 1
                 onClicked: deleteClicked()
             }
         }

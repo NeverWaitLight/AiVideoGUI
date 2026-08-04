@@ -32,7 +32,7 @@ class ProjectEntity(Base):
 class GenerateTaskEntity(Base):
     __tablename__ = "generate_tasks"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[Optional[int]] = mapped_column(Integer, primary_key=True, autoincrement=True, nullable=False)
 
     provider_task_id: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
 

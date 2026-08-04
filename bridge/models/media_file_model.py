@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QAbstractListModel, QModelIndex, Qt
+from PySide6.QtCore import QAbstractListModel, QModelIndex, Property, Signal, Qt
 
 from models.media_file import MediaFile
 
@@ -30,9 +30,15 @@ class MediaFileListModel(QAbstractListModel):
         StoryboardIdRole: b"storyboardId",
     }
 
+    countChanged = Signal()
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self._data: list[MediaFile] = []
+
+    @Property(int, notify=countChanged)
+    def count(self):
+        return len(self._data)
 
     def roleNames(self):
         return self._ROLE_NAMES
@@ -70,6 +76,7 @@ class MediaFileListModel(QAbstractListModel):
         self.beginResetModel()
         self._data = list(files)
         self.endResetModel()
+        self.countChanged.emit()
 
     def remove_by_id(self, file_id: str) -> None:
         for i, f in enumerate(self._data):
@@ -77,4 +84,5 @@ class MediaFileListModel(QAbstractListModel):
                 self.beginRemoveRows(QModelIndex(), i, i)
                 self._data.pop(i)
                 self.endRemoveRows()
+                self.countChanged.emit()
                 return

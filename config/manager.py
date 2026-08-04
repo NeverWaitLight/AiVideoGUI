@@ -45,6 +45,7 @@ class ConfigManager:
             default_image_provider=_renamed.get(s.get("default_image_provider", ""), s.get("default_image_provider", "")),
             workspace_dir=s.get("workspace_dir", ""),
             color_scheme=s.get("color_scheme", "System"),
+            enable_ai_request_logging=s.get("enable_ai_request_logging", False),
         )
         logger.info(f"配置已加载，providers={list(self._providers.keys())}")
 
@@ -66,6 +67,7 @@ class ConfigManager:
                 "default_image_provider": self._settings.default_image_provider,
                 "workspace_dir": self._settings.workspace_dir,
                 "color_scheme": self._settings.color_scheme,
+                "enable_ai_request_logging": self._settings.enable_ai_request_logging,
             },
         }
         os.makedirs(os.path.dirname(self._path), exist_ok=True)
@@ -79,22 +81,25 @@ class ConfigManager:
     def list_providers(self) -> list[ProviderConfig]:
         return list(self._providers.values())
 
-    def upsert_provider(self, cfg: ProviderConfig) -> None:
+    def upsert_provider(self, cfg: ProviderConfig, auto_save: bool = True) -> None:
         self._providers[cfg.provider_name] = cfg
-        self.save()
+        if auto_save:
+            self.save()
 
-    def delete_provider(self, name: str) -> None:
+    def delete_provider(self, name: str, auto_save: bool = True) -> None:
         self._providers.pop(name, None)
         if self._settings.default_provider == name:
             self._settings.default_provider = ""
-        self.save()
+        if auto_save:
+            self.save()
 
     @property
     def settings(self) -> AppSettings:
         return self._settings
 
-    def update_settings(self, **kwargs) -> None:
+    def update_settings(self, auto_save: bool = True, **kwargs) -> None:
         for k, v in kwargs.items():
             if hasattr(self._settings, k):
                 setattr(self._settings, k, v)
-        self.save()
+        if auto_save:
+            self.save()
