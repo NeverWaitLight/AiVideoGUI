@@ -2,13 +2,16 @@ from loguru import logger
 import os
 import shutil
 import uuid
+import subprocess
 from datetime import datetime
 from pathlib import Path
+from imageio_ffmpeg import get_ffmpeg_exe
 
 from models.enums import MediaType
 from models.media_file import MediaFile
 from storage.session_manager import SessionManager
 from storage.repositories.media_repository import MediaRepository
+from storage.repositories.project_repository import ProjectRepository
 from utils import paths
 from utils.video_metadata import VideoMetadataExtractor
 from utils.path_converter import to_relative_path
@@ -260,6 +263,80 @@ class MediaService:
             self._sm.rollback_write()
             logger.error(f"设置封面失败: {e}")
             raise
+
+    def export_project_video(self, project_id: int, output_path: str, progress_callback=None) -> str:
+        media_repo = self._sm.get_repo(MediaRepository)
+        project_repo = self._sm.get_repo(ProjectRepository)
+
+        project = project_repo.get_by_id(project_id)
+        if not project:
+            raise ValueError(f"项目不存在: {project_id}")
+
+        videos = media_repo.list_featured_by_project(project_id)
+        if not videos:
+            raise ValueError("该项目没有可导出的视频")
+
+        logger.info(f"开始导出项目视频，共 {len(videos)} 个分镜")
+
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+        temp_list_file = os.path.join(os.path.dirname(output_path), f".concat_list_{uuid.uuid4().hex}.txt")
+
+        try:
+            with open(temp_list_file, "w", encoding="utf-8") as f:
+                for video in videos:
+                    video_path = video.local_path.replace("\\", "/")
+                    f.write(f"file '{video_path}'\n")
+
+            logger.info(f"拼接列表文件已创建: {temp_list_file}")
+
+            if progress_callback:
+                progress_callback(10, f"开始拼接 {len(videos)} 个视频...")
+
+            ffmpeg_exe = get_ffmpeg_exe()
+            cmd = [
+                ffmpeg_exe,
+                "-f", "concat",
+                "-safe", "0",
+                "-i", temp_list_file,
+                "-c", "copy",
+                "-y",
+                output_path
+            ]
+
+            logger.info(f"执行 ffmpeg 命令: {' '.join(cmd)}")
+
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace"
+            )
+
+            if result.returncode != 0:
+                logger.error(f"ffmpeg 拼接失败: {result.stderr}")
+                raise RuntimeError(f"视频拼接失败: {result.stderr}")
+
+            if progress_callback:
+                progress_callback(90, "视频拼接完成，正在收尾...")
+
+            logger.info(f"视频导出成功: {output_path}")
+
+            if progress_callback:
+                progress_callback(100, "导出完成")
+
+            return output_path
+
+        except Exception as e:
+            logger.error(f"视频导出失败: {e}")
+            raise
+        finally:
+            if os.path.exists(temp_list_file):
+                try:
+                    os.remove(temp_list_file)
+                except OSError:
+                    pass
 
     def _resolve_dest_path(self, filename: str, target_dir: str) -> str:
         dest = os.path.join(target_dir, filename)

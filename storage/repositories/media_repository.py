@@ -127,3 +127,52 @@ class MediaRepository(BaseRepository[MediaFileEntity, MediaFile]):
 
         entities = self.session.execute(stmt).scalars().all()
         return [self._to_dto(e) for e in entities]
+
+    def list_featured_by_project(self, project_id: int) -> List[MediaFile]:
+        from storage.orm.storyboard_entity import StoryboardEntity
+        from storage.orm.screenplay_entity import ScreenplayEntity
+        from sqlalchemy import func
+
+        stmt = (
+            select(MediaFileEntity)
+            .join(StoryboardEntity, MediaFileEntity.storyboard_id == StoryboardEntity.id)
+            .join(ScreenplayEntity, StoryboardEntity.scene_id == ScreenplayEntity.id)
+            .where(
+                ScreenplayEntity.project_id == project_id,
+                MediaFileEntity.featured == True,
+                MediaFileEntity.media_type == MediaType.VIDEO.value,
+            )
+            .order_by(StoryboardEntity.scene_number, StoryboardEntity.shot_number)
+        )
+        entities = self.session.execute(stmt).scalars().all()
+
+        if entities:
+            return [self._to_dto(e) for e in entities]
+
+        subquery = (
+            select(
+                MediaFileEntity.storyboard_id,
+                func.max(MediaFileEntity.created_at).label('max_created_at')
+            )
+            .where(MediaFileEntity.media_type == MediaType.VIDEO.value)
+            .group_by(MediaFileEntity.storyboard_id)
+            .subquery()
+        )
+
+        stmt = (
+            select(MediaFileEntity)
+            .join(StoryboardEntity, MediaFileEntity.storyboard_id == StoryboardEntity.id)
+            .join(ScreenplayEntity, StoryboardEntity.scene_id == ScreenplayEntity.id)
+            .join(
+                subquery,
+                (MediaFileEntity.storyboard_id == subquery.c.storyboard_id) &
+                (MediaFileEntity.created_at == subquery.c.max_created_at)
+            )
+            .where(
+                ScreenplayEntity.project_id == project_id,
+                MediaFileEntity.media_type == MediaType.VIDEO.value,
+            )
+            .order_by(StoryboardEntity.scene_number, StoryboardEntity.shot_number)
+        )
+        entities = self.session.execute(stmt).scalars().all()
+        return [self._to_dto(e) for e in entities]

@@ -452,6 +452,33 @@ class GeneralWorker(QObject):
             self.failed.emit(str(e))
 
 
+class VideoExportWorker(QThread):
+    finished = Signal(str)
+    failed = Signal(str)
+    progress = Signal(int, str)
+
+    def __init__(self, media_service, project_id: int, output_path: str, parent=None):
+        super().__init__(parent)
+        self._media_service = media_service
+        self._project_id = project_id
+        self._output_path = output_path
+
+    def run(self):
+        try:
+            output_path = self._media_service.export_project_video(
+                self._project_id,
+                self._output_path,
+                progress_callback=lambda percent, msg: self.progress.emit(percent, msg)
+            )
+            self.finished.emit(output_path)
+        except Exception as e:
+            logger.exception("视频导出失败")
+            self.failed.emit(str(e))
+        except Exception as e:
+            logger.exception("任务执行失败")
+            self.failed.emit(str(e))
+
+
 class BatchGenerationController(QThread):
     progress = Signal(int, int, str)
     all_done = Signal(int, int)

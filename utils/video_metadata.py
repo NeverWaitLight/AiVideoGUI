@@ -1,8 +1,10 @@
 from loguru import logger
 import os
+import json
+import subprocess
 from pathlib import Path
 
-import ffmpeg
+from imageio_ffmpeg import get_ffmpeg_exe
 
 class VideoMetadataExtractor:
     @staticmethod
@@ -11,7 +13,30 @@ class VideoMetadataExtractor:
             raise FileNotFoundError(f"视频文件不存在: {video_path}")
 
         try:
-            probe = ffmpeg.probe(video_path)
+            ffmpeg_exe = get_ffmpeg_exe()
+            ffprobe_exe = ffmpeg_exe.replace("ffmpeg", "ffprobe")
+
+            cmd = [
+                ffprobe_exe,
+                "-v", "quiet",
+                "-print_format", "json",
+                "-show_format",
+                "-show_streams",
+                video_path
+            ]
+
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace"
+            )
+
+            if result.returncode != 0:
+                raise RuntimeError(f"ffprobe 失败: {result.stderr}")
+
+            probe = json.loads(result.stdout)
             video_stream = next(
                 (s for s in probe["streams"] if s["codec_type"] == "video"), None
             )
@@ -33,10 +58,9 @@ class VideoMetadataExtractor:
                 "height": height,
                 "file_size": file_size,
             }
-        except ffmpeg.Error as e:
-            error_msg = e.stderr.decode() if e.stderr else str(e)
-            logger.error(f"ffmpeg probe 失败: {error_msg}")
-            raise RuntimeError(f"无法提取视频元数据: {error_msg}") from e
+        except Exception as e:
+            logger.error(f"提取视频元数据失败: {e}")
+            raise RuntimeError(f"无法提取视频元数据: {e}") from e
 
     @staticmethod
     def generate_thumbnail(video_path: str, output_path: str, time_offset: float = 1.0) -> str:
@@ -46,20 +70,35 @@ class VideoMetadataExtractor:
         Path(output_path).parent.mkdir(parents=True, exist_ok=True)
 
         try:
-            (
-                ffmpeg.input(video_path, ss=time_offset)
-                .filter("scale", 320, -1)
-                .output(output_path, vframes=1, format="image2", vcodec="mjpeg")
-                .overwrite_output()
-                .run(capture_stdout=True, capture_stderr=True, quiet=True)
+            ffmpeg_exe = get_ffmpeg_exe()
+            cmd = [
+                ffmpeg_exe,
+                "-ss", str(time_offset),
+                "-i", video_path,
+                "-vf", "scale=320:-1",
+                "-vframes", "1",
+                "-f", "image2",
+                "-c:v", "mjpeg",
+                "-y",
+                output_path
+            ]
+
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace"
             )
+
+            if result.returncode != 0:
+                raise RuntimeError(f"ffmpeg 失败: {result.stderr}")
 
             logger.info(f"生成视频缩略图: {video_path} -> {output_path}")
             return output_path
-        except ffmpeg.Error as e:
-            error_msg = e.stderr.decode() if e.stderr else str(e)
-            logger.error(f"ffmpeg 生成缩略图失败: {error_msg}")
-            raise RuntimeError(f"无法生成缩略图: {error_msg}") from e
+        except Exception as e:
+            logger.error(f"生成缩略图失败: {e}")
+            raise RuntimeError(f"无法生成缩略图: {e}") from e
 
     @staticmethod
     def extract_all(video_path: str, thumbnail_dir: str) -> dict:
