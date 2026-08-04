@@ -18,7 +18,11 @@ class DashScopeImageProvider(ImageProvider):
         self._api_key = config.api_key
         self._model = config.default_model or self.DEFAULT_MODEL
 
-    def _headers(self) -> dict[str, str]:
+    @property
+    def submit_url(self) -> str:
+        return self.SUBMIT_URL
+
+    def build_headers(self) -> dict[str, str]:
         return {
             "Authorization": f"Bearer {self._api_key}",
             "Content-Type": "application/json",
@@ -33,7 +37,7 @@ class DashScopeImageProvider(ImageProvider):
         prompt_extend: bool = True,
         watermark: bool = False,
         seed: int | None = None,
-    ) -> str:
+    ) -> tuple[str, dict[str, Any]]:
         payload = {
             "model": self._model,
             "input": {
@@ -63,15 +67,26 @@ class DashScopeImageProvider(ImageProvider):
             resp = requests.post(
                 self.SUBMIT_URL,
                 json=payload,
-                headers=self._headers(),
+                headers=self.build_headers(),
                 timeout=120,
             )
-            resp.raise_for_status()
-            data = resp.json()
-            logger.debug(f"响应：{data}")
         except requests.exceptions.RequestException as e:
-            logger.exception("提交图片生成任务失败")
+            logger.exception("提交图片生成任务网络请求失败")
             raise RuntimeError(f"网络请求失败：{e}")
+
+        if not resp.ok:
+            try:
+                error_data = resp.json()
+                code = error_data.get("code", "")
+                message = error_data.get("message", "")
+                error_detail = f"[{code}] {message}" if code else (message or resp.text)
+            except Exception:
+                error_detail = resp.text
+            logger.error(f"DashScope 图片 API 返回 {resp.status_code}: {error_detail}")
+            raise RuntimeError(f"DashScope 图片 API 错误 ({resp.status_code}): {error_detail}")
+
+        data = resp.json()
+        logger.debug(f"响应：{data}")
 
         output = data.get("output", {})
         choices = output.get("choices", [])
@@ -95,7 +110,7 @@ class DashScopeImageProvider(ImageProvider):
             raise RuntimeError("API 未返回图片 URL")
 
         logger.info(f"图片生成成功：{image_url}")
-        return image_url
+        return image_url, payload
 
     def download(self, image_url: str, save_path: str) -> str:
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
@@ -113,3 +128,7 @@ class DashScopeImageProvider(ImageProvider):
 
         logger.info(f"图片下载完成：{save_path}")
         return save_path
+
+    def list_available_models(self) -> list[str]:
+        """返回 DashScope 支持的图片模型列表"""
+        return ["wan2.6-t2i"]

@@ -75,7 +75,7 @@ class VideoTaskPollingTask(BackgroundTask):
         if self._config_manager is None:
             raise RuntimeError("ConfigManager 未注入")
 
-        cfg = self._config_manager.get_provider(name)
+        cfg = self._config_manager.get_provider_config(name, "video")
         if cfg is None:
             raise KeyError(f"未配置的 Provider：{name}")
 

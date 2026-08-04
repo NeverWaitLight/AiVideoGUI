@@ -10,6 +10,7 @@ from bridge.workers import (
     DesignImageWorker, BatchDesignImageWorker, BatchGenerationController,
     StoryboardGenerateWorker, StoryboardOptimizeWorker,
 )
+from utils.path_converter import to_absolute_path
 from utils.prompt_builder import VideoPromptBuilder
 
 
@@ -461,13 +462,16 @@ class StoryboardBridge(QObject):
                 next_shot = shot_list_for_prompt[idx + 1] if idx < len(shot_list_for_prompt) - 1 else None
                 prompt = VideoPromptBuilder.build_shot_prompt(shot, scene, prev_shot, next_shot)
 
+                workspace_root = self._container.config.workspace_root()
+                reference_image = to_absolute_path(shot.design_image, workspace_root) if shot.design_image else ""
+
                 shot_list.append({
                     "scene_number": shot.scene_number,
                     "shot_number": shot.shot_number,
                     "prompt": prompt,
                     "project_id": project_id,
                     "shot_id": shot.id,
-                    "reference_image": shot.design_image,
+                    "reference_image": reference_image,
                 })
 
             config_mgr = self._container.config_manager()
@@ -477,7 +481,7 @@ class StoryboardBridge(QObject):
                 self.error.emit("未配置默认视频生成供应商")
                 return
 
-            provider_cfg = config_mgr.get_provider(provider_name)
+            provider_cfg = config_mgr.get_provider_config(provider_name, "video")
             project = self._project_service.get_project(project_id)
             if not project:
                 self.error.emit("项目不存在")

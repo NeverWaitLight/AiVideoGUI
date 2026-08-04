@@ -30,7 +30,7 @@ class ImageService:
         if provider_name in self._providers:
             return self._providers[provider_name]
 
-        provider_cfg = self._config.get_provider(provider_name)
+        provider_cfg = self._config.resolve_config_for_type(provider_name, "image")
         if not provider_cfg or not provider_cfg.api_key:
             raise RuntimeError(f"未配置图片生成供应商 {provider_name} 的 API Key，请在设置中配置")
 
@@ -58,17 +58,7 @@ class ImageService:
         logger.info(f"提交图片生成任务，尺寸：{size}，数量：{n}")
         logger.debug(f"Prompt: {prompt}")
 
-        # 构建请求参数（用于日志记录）
-        request_payload = {
-            "prompt": prompt,
-            "size": size,
-            "negative_prompt": negative_prompt,
-            "n": n,
-            "prompt_extend": True,
-            "watermark": False,
-        }
-
-        image_url = provider.generate(
+        image_url, request_payload = provider.generate(
             prompt=prompt,
             size=size,
             negative_prompt=negative_prompt,
@@ -77,12 +67,16 @@ class ImageService:
             watermark=False,
         )
 
-        # 记录 AI 请求（响应包含图片 URL）
+        # 记录 AI 请求（与文本模型日志格式一致，包含完整 HTTP 请求信息）
         if self._ai_logger:
             self._ai_logger.log_request(
                 request_type="image_generation",
                 module=module,
-                payload=request_payload,
+                payload={
+                    "url": provider.submit_url,
+                    "json": request_payload,
+                    "headers": provider.build_headers(),
+                },
                 response={"image_url": image_url, "save_path": save_path},
                 project_id=project_id,
                 project_name=project_name,

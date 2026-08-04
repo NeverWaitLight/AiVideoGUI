@@ -30,7 +30,7 @@ class TextModelService:
         module: str = "storyboard",
         context: str | None = None,
     ) -> str:
-        provider_config = self._config.get_provider("dashscope")
+        provider_config = self._config.get_provider_config("dashscope", "chat")
         if not provider_config or not provider_config.api_key:
             raise RuntimeError("未配置 DashScope API Key，请在设置中配置")
 
@@ -101,7 +101,7 @@ class TextModelService:
         project_id: int | None = None,
         project_name: str | None = None,
     ) -> tuple[str, list[dict]]:
-        provider_config = self._config.get_provider("dashscope")
+        provider_config = self._config.get_provider_config("dashscope", "chat")
         if not provider_config or not provider_config.api_key:
             raise RuntimeError("未配置 DashScope API Key，请在设置中配置")
 
@@ -233,7 +233,7 @@ class TextModelService:
         project_id: int | None = None,
         project_name: str | None = None,
     ) -> dict:
-        provider_config = self._config.get_provider("dashscope")
+        provider_config = self._config.get_provider_config("dashscope", "chat")
         if not provider_config or not provider_config.api_key:
             raise RuntimeError("未配置 DashScope API Key，请在设置中配置")
 

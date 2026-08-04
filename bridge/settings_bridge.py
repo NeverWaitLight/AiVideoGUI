@@ -17,19 +17,19 @@ class SettingsBridge(QObject):
         super().__init__(parent)
         self._config = config_manager
 
-    @Slot(str, result=str)
-    def get_api_key(self, provider_name: str) -> str:
-        cfg = self._config.get_provider(provider_name)
+    @Slot(str, str, result=str)
+    def get_api_key(self, provider_name: str, provider_type: str = "") -> str:
+        cfg = self._config.resolve_config_for_type(provider_name, provider_type) if provider_type else self._config.get_provider(provider_name)
         return cfg.api_key if cfg else ""
 
-    @Slot(str, result=str)
-    def get_base_url(self, provider_name: str) -> str:
-        cfg = self._config.get_provider(provider_name)
+    @Slot(str, str, result=str)
+    def get_base_url(self, provider_name: str, provider_type: str = "") -> str:
+        cfg = self._config.resolve_config_for_type(provider_name, provider_type) if provider_type else self._config.get_provider(provider_name)
         return cfg.base_url if cfg else ""
 
-    @Slot(str, result=str)
-    def get_default_model(self, provider_name: str) -> str:
-        cfg = self._config.get_provider(provider_name)
+    @Slot(str, str, result=str)
+    def get_default_model(self, provider_name: str, provider_type: str = "") -> str:
+        cfg = self._config.resolve_config_for_type(provider_name, provider_type) if provider_type else self._config.get_provider(provider_name)
         return cfg.default_model if cfg else ""
 
     @Slot(str, str, str, result=list)
@@ -70,7 +70,7 @@ class SettingsBridge(QObject):
             base_url=base_url,
             default_model=default_model,
         )
-        self._config.upsert_provider(cfg, auto_save=False)
+        self._config.save_provider_typed(cfg, provider_type, auto_save=False)
 
         if provider_type == "video":
             self._config.update_settings(auto_save=False, default_provider=provider_name)
@@ -91,7 +91,7 @@ class SettingsBridge(QObject):
             base_url=base_url,
             default_model=default_model,
         )
-        self._config.upsert_provider(cfg, auto_save=False)
+        self._config.save_provider_typed(cfg, provider_type, auto_save=False)
 
         if provider_type == "video":
             self._config.update_settings(auto_save=False, default_provider=provider_name)
@@ -143,4 +143,44 @@ class SettingsBridge(QObject):
         if scheme in ("Light", "Dark", "System"):
             self._config.update_settings(color_scheme=scheme)
             self.settings_saved.emit()
+
+    @Slot(str, str, str, str, str, result=str)
+    def validate_provider_config(
+        self, provider_type: str, provider_name: str,
+        api_key: str, base_url: str, default_model: str
+    ) -> str:
+        """验证配置，返回错误消息（空字符串表示无错误）"""
+        cfg = ProviderConfig(
+            provider_name=provider_name,
+            api_key=api_key,
+            base_url=base_url,
+            default_model=default_model,
+        )
+        errors = self._config.validate_provider_config(cfg, provider_type)
+        return "\n".join(errors) if errors else ""
+
+    @Slot(str, str, str, result=list)
+    def list_image_models(self, api_key: str, base_url: str, provider_name: str) -> list:
+        """获取图片模型列表"""
+        if not provider_name:
+            return []
+        try:
+            cfg = ProviderConfig(
+                provider_name=provider_name,
+                api_key=api_key or "dummy",
+                base_url=base_url,
+                default_model="",
+            )
+
+            if provider_name == "dashscope_image" or provider_name == "dashscope":
+                from providers.dashscope_image import DashScopeImageProvider
+                provider = DashScopeImageProvider(cfg)
+            else:
+                logger.warning(f"未知的图片供应商：{provider_name}")
+                return []
+
+            return provider.list_available_models()
+        except Exception as e:
+            logger.warning(f"获取图片模型列表失败：{e}")
+            return []
 

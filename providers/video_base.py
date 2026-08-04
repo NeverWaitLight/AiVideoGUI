@@ -21,24 +21,28 @@ class VideoProvider(ABC):
 
     @abstractmethod
     def t2v(self, prompt: str, params: dict[str, Any] | None = None) -> tuple[str, dict[str, Any]]:
+        """文生视频，返回 (task_id, request_details)，其中 request_details 包含 url/json/headers"""
         pass
 
     @abstractmethod
     def p2v(
         self, prompt: str, image_path: str, params: dict[str, Any] | None = None
     ) -> tuple[str, dict[str, Any]]:
+        """图生视频，返回 (task_id, request_details)"""
         pass
 
     @abstractmethod
     def r2v(
         self, prompt: str, reference_path: str, params: dict[str, Any] | None = None
     ) -> tuple[str, dict[str, Any]]:
+        """参考生视频，返回 (task_id, request_details)"""
         pass
 
     @abstractmethod
     def extend(
         self, prompt: str, video_path: str, params: dict[str, Any] | None = None
     ) -> tuple[str, dict[str, Any]]:
+        """视频续写，返回 (task_id, request_details)"""
         pass
 
     @abstractmethod

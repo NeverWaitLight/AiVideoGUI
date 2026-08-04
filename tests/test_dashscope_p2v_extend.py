@@ -26,14 +26,18 @@ class TestDashScopeP2VExtend(unittest.TestCase):
         }
         mock_post.return_value = mock_response
 
-        task_id, payload = self.provider.p2v(
+        task_id, request_details = self.provider.p2v(
             prompt="一只小猫在草地上奔跑",
             image_path="https://example.com/first_frame.jpg",
             params={"resolution": "720P", "duration": 10},
         )
 
         self.assertEqual(task_id, "test-task-123")
+        self.assertIn("url", request_details)
+        self.assertIn("json", request_details)
+        self.assertIn("headers", request_details)
 
+        payload = request_details["json"]
         self.assertEqual(payload["model"], "wan2.7-i2v-2026-04-25")
         self.assertEqual(payload["input"]["prompt"], "一只小猫在草地上奔跑")
         self.assertEqual(len(payload["input"]["media"]), 1)
@@ -52,7 +56,7 @@ class TestDashScopeP2VExtend(unittest.TestCase):
         }
         mock_post.return_value = mock_response
 
-        task_id, payload = self.provider.p2v(
+        task_id, request_details = self.provider.p2v(
             prompt="一只小猫从坐姿变为站立",
             image_path="https://example.com/first_frame.jpg",
             params={
@@ -64,6 +68,7 @@ class TestDashScopeP2VExtend(unittest.TestCase):
 
         self.assertEqual(task_id, "test-task-456")
 
+        payload = request_details["json"]
         self.assertEqual(len(payload["input"]["media"]), 2)
         self.assertEqual(payload["input"]["media"][0]["type"], "first_frame")
         self.assertEqual(payload["input"]["media"][0]["url"], "https://example.com/first_frame.jpg")
@@ -82,7 +87,7 @@ class TestDashScopeP2VExtend(unittest.TestCase):
         }
         mock_post.return_value = mock_response
 
-        task_id, payload = self.provider.p2v(
+        task_id, request_details = self.provider.p2v(
             prompt="一个说唱歌手在表演",
             image_path="https://example.com/first_frame.jpg",
             params={
@@ -94,6 +99,7 @@ class TestDashScopeP2VExtend(unittest.TestCase):
 
         self.assertEqual(task_id, "test-task-789")
 
+        payload = request_details["json"]
         self.assertEqual(len(payload["input"]["media"]), 2)
         self.assertEqual(payload["input"]["media"][0]["type"], "first_frame")
         self.assertEqual(payload["input"]["media"][1]["type"], "driving_audio")
@@ -111,7 +117,7 @@ class TestDashScopeP2VExtend(unittest.TestCase):
         }
         mock_post.return_value = mock_response
 
-        task_id, payload = self.provider.extend(
+        task_id, request_details = self.provider.extend(
             prompt="女孩背着书包出门",
             video_path="https://example.com/first_clip.mp4",
             params={"resolution": "720P", "duration": 15},
@@ -119,6 +125,7 @@ class TestDashScopeP2VExtend(unittest.TestCase):
 
         self.assertEqual(task_id, "test-task-ext-123")
 
+        payload = request_details["json"]
         self.assertEqual(payload["model"], "wan2.7-i2v-2026-04-25")
         self.assertEqual(payload["input"]["prompt"], "女孩背着书包出门")
         self.assertEqual(len(payload["input"]["media"]), 1)
@@ -137,7 +144,7 @@ class TestDashScopeP2VExtend(unittest.TestCase):
         }
         mock_post.return_value = mock_response
 
-        task_id, payload = self.provider.extend(
+        task_id, request_details = self.provider.extend(
             prompt="女孩走到门外",
             video_path="https://example.com/first_clip.mp4",
             params={
@@ -149,6 +156,7 @@ class TestDashScopeP2VExtend(unittest.TestCase):
 
         self.assertEqual(task_id, "test-task-ext-456")
 
+        payload = request_details["json"]
         self.assertEqual(len(payload["input"]["media"]), 2)
         self.assertEqual(payload["input"]["media"][0]["type"], "first_clip")
         self.assertEqual(payload["input"]["media"][0]["url"], "https://example.com/first_clip.mp4")
@@ -167,7 +175,7 @@ class TestDashScopeP2VExtend(unittest.TestCase):
         }
         mock_post.return_value = mock_response
 
-        task_id, payload = self.provider.p2v(
+        task_id, request_details = self.provider.p2v(
             prompt="完整的视频场景",
             image_path="https://example.com/first_frame.jpg",
             params={
@@ -180,6 +188,7 @@ class TestDashScopeP2VExtend(unittest.TestCase):
 
         self.assertEqual(task_id, "test-task-all")
 
+        payload = request_details["json"]
         self.assertEqual(len(payload["input"]["media"]), 3)
         self.assertEqual(payload["input"]["media"][0]["type"], "first_frame")
         self.assertEqual(payload["input"]["media"][1]["type"], "last_frame")

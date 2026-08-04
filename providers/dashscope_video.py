@@ -42,6 +42,12 @@ class DashScopeVideoProvider(VideoProvider):
         return Path(path).exists()
 
     def _upload_file_if_needed(self, file_path: str) -> str:
+        if not file_path:
+            return file_path
+
+        if not file_path.startswith(("http://", "https://", "oss://")) and not Path(file_path).exists():
+            raise RuntimeError(f"本地文件不存在：{file_path}")
+
         if not self._is_local_file(file_path):
             return file_path
 
@@ -100,13 +106,26 @@ class DashScopeVideoProvider(VideoProvider):
         logger.info(f"提交 DashScope 任务，模型：{self._model}")
         logger.debug(f"请求体：{payload}")
 
+        headers = self._headers(async_mode=True)
+
         resp = requests.post(
             self.SUBMIT_URL,
             json=payload,
-            headers=self._headers(async_mode=True),
+            headers=headers,
             timeout=30,
         )
-        resp.raise_for_status()
+
+        if not resp.ok:
+            try:
+                error_data = resp.json()
+                code = error_data.get("code", "")
+                message = error_data.get("message", "")
+                error_detail = f"[{code}] {message}" if code else (message or resp.text)
+            except Exception:
+                error_detail = resp.text
+            logger.error(f"DashScope API 返回 {resp.status_code}: {error_detail}")
+            raise RuntimeError(f"DashScope API 错误 ({resp.status_code}): {error_detail}")
+
         data = resp.json()
         logger.debug(f"提交响应：{data}")
 
@@ -115,7 +134,7 @@ class DashScopeVideoProvider(VideoProvider):
         if not task_id:
             raise RuntimeError(f"DashScope 未返回 task_id: {data}")
         logger.info(f"任务已提交，task_id={task_id}")
-        return task_id, payload
+        return task_id, {"url": self.SUBMIT_URL, "json": payload, "headers": headers}
 
     def t2v(self, prompt: str, params: dict[str, Any] | None = None) -> tuple[str, dict[str, Any]]:
         payload = self.build_payload(prompt, params)
@@ -234,7 +253,16 @@ class DashScopeVideoProvider(VideoProvider):
     def check_status(self, task_id: str) -> TaskResult:
         url = f"{self.TASK_URL}/{task_id}"
         resp = requests.get(url, headers=self._headers(), timeout=30)
-        resp.raise_for_status()
+
+        if not resp.ok:
+            try:
+                error_data = resp.json()
+                error_detail = error_data.get("message", "") or resp.text
+            except Exception:
+                error_detail = resp.text
+            logger.error(f"DashScope 状态查询失败 ({resp.status_code}): {error_detail}")
+            raise RuntimeError(f"DashScope 状态查询错误 ({resp.status_code}): {error_detail}")
+
         data = resp.json()
         logger.debug(f"状态查询响应：{data}")
 

@@ -38,6 +38,8 @@ Dialog {
     property string imageApiKey: ""
     property string imageBaseUrl: ""
     property string imageModel: ""
+    property var imageModelList: []
+    property bool imageModelsLoading: false
 
     property string workspacePath: ""
 
@@ -370,15 +372,48 @@ Dialog {
                                 Label {
                                     text: "默认模型"
                                     font.pixelSize: Theme.fontSizeNormal
-                                    color: Material.hintTextColor
                                     Layout.alignment: Qt.AlignTop
                                     topPadding: 6
                                 }
-                                Comp.AppTextField {
-                                    id: imageModelField
+                                RowLayout {
                                     Layout.fillWidth: true
-                                    Layout.preferredHeight: 36
-                                    placeholderText: "模型名称（可选）"
+                                    spacing: 8
+
+                                    ComboBox {
+                                        id: imageModelCombo
+                                        Layout.fillWidth: true
+                                        Layout.preferredHeight: 36
+                                        editable: true
+                                        enabled: !imageModelsLoading
+                                        model: imageModelList
+                                        Material.elevation: 0
+                                    }
+
+                                    Button {
+                                        implicitHeight: 36
+                                        implicitWidth: 36
+                                        enabled: imageProviderCombo.currentText.length > 0 && !imageModelsLoading
+                                        Material.elevation: 0
+                                        padding: 6
+                                        onClicked: fetchImageModels()
+
+                                        contentItem: Image {
+                                            anchors.centerIn: parent
+                                            width: 20
+                                            height: 20
+                                            source: "qrc:/resources/icons/autorenew.svg"
+                                            sourceSize: Qt.size(20, 20)
+                                            fillMode: Image.PreserveAspectFit
+
+                                            RotationAnimation on rotation {
+                                                running: imageModelsLoading
+                                                from: 0
+                                                to: 360
+                                                duration: 1000
+                                                loops: Animation.Infinite
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -876,14 +911,14 @@ Dialog {
 
     onAboutToShow: {
         videoProvider = bridge.settings.get_default_video_provider()
-        videoApiKeyField.text = bridge.settings.get_api_key(videoProvider)
-        videoBaseUrlField.text = bridge.settings.get_base_url(videoProvider)
-        videoModel = bridge.settings.get_default_model(videoProvider)
+        videoApiKeyField.text = bridge.settings.get_api_key(videoProvider, "video")
+        videoBaseUrlField.text = bridge.settings.get_base_url(videoProvider, "video")
+        videoModel = bridge.settings.get_default_model(videoProvider, "video")
 
         chatProvider = bridge.settings.get_default_chat_provider()
-        chatApiKeyField.text = bridge.settings.get_api_key(chatProvider)
-        chatBaseUrlField.text = bridge.settings.get_base_url(chatProvider)
-        chatModel = bridge.settings.get_default_model(chatProvider)
+        chatApiKeyField.text = bridge.settings.get_api_key(chatProvider, "chat")
+        chatBaseUrlField.text = bridge.settings.get_base_url(chatProvider, "chat")
+        chatModel = bridge.settings.get_default_model(chatProvider, "chat")
         if (chatApiKeyField.text.length > 0) {
             fetchChatModels()
         } else {
@@ -894,9 +929,10 @@ Dialog {
         }
 
         imageProvider = bridge.settings.get_default_image_provider()
-        imageApiKeyField.text = bridge.settings.get_api_key(imageProvider)
-        imageBaseUrlField.text = bridge.settings.get_base_url(imageProvider)
-        imageModelField.text = bridge.settings.get_default_model(imageProvider)
+        imageApiKeyField.text = bridge.settings.get_api_key(imageProvider, "image")
+        imageBaseUrlField.text = bridge.settings.get_base_url(imageProvider, "image")
+        imageModel = bridge.settings.get_default_model(imageProvider, "image")
+        fetchImageModels()
 
         workspacePath = bridge.settings.get_workspace_dir()
         workspaceDirField.text = workspacePath
@@ -912,6 +948,51 @@ Dialog {
     }
 
     function saveAll() {
+        // 验证视频配置
+        var videoError = bridge.settings.validate_provider_config(
+            "video",
+            videoProviderCombo.currentText,
+            videoApiKeyField.text,
+            videoBaseUrlField.text,
+            videoModelCombo.currentText || videoModelCombo.editText
+        )
+
+        if (videoError) {
+            alertDialog.warning("视频配置错误", videoError)
+            tabBar.currentIndex = 2
+            return
+        }
+
+        // 验证文本配置
+        var chatError = bridge.settings.validate_provider_config(
+            "chat",
+            chatProviderCombo.currentText,
+            chatApiKeyField.text,
+            chatBaseUrlField.text,
+            chatModelCombo.currentText || chatModelCombo.editText
+        )
+
+        if (chatError) {
+            alertDialog.warning("文本配置错误", chatError)
+            tabBar.currentIndex = 0
+            return
+        }
+
+        // 验证图片配置
+        var imageError = bridge.settings.validate_provider_config(
+            "image",
+            imageProviderCombo.currentText,
+            imageApiKeyField.text,
+            imageBaseUrlField.text,
+            imageModelCombo.currentText || imageModelCombo.editText
+        )
+
+        if (imageError) {
+            alertDialog.warning("图片配置错误", imageError)
+            tabBar.currentIndex = 1
+            return
+        }
+
         bridge.settings.batch_save_provider("video", videoProviderCombo.currentText,
             videoApiKeyField.text, videoBaseUrlField.text, videoModelCombo.currentText)
 
@@ -919,7 +1000,8 @@ Dialog {
             chatApiKeyField.text, chatBaseUrlField.text, chatModelCombo.currentText)
 
         bridge.settings.batch_save_provider("image", imageProviderCombo.currentText,
-            imageApiKeyField.text, imageBaseUrlField.text, imageModelField.text)
+            imageApiKeyField.text, imageBaseUrlField.text,
+            imageModelCombo.currentText || imageModelCombo.editText)
 
         if (workspacePath !== bridge.settings.get_workspace_dir()) {
             bridge.settings.batch_set("workspace_dir", workspacePath)
@@ -970,5 +1052,37 @@ Dialog {
         if (!apiKey) return
         chatModelsLoading = true
         fetchModelsTimer.start()
+    }
+
+    Timer {
+        id: fetchImageModelsTimer
+        interval: 50
+        repeat: false
+        onTriggered: {
+            var models = bridge.settings.list_image_models(
+                imageApiKeyField.text,
+                imageBaseUrlField.text,
+                imageProviderCombo.currentText
+            )
+            imageModelList = models
+            imageModelsLoading = false
+
+            if (imageModel) {
+                var idx = imageModelCombo.find(imageModel)
+                if (idx >= 0) {
+                    imageModelCombo.currentIndex = idx
+                } else {
+                    imageModelCombo.editText = imageModel
+                }
+                imageModel = ""
+            }
+        }
+    }
+
+    function fetchImageModels() {
+        var provider = imageProviderCombo.currentText
+        if (!provider) return
+        imageModelsLoading = true
+        fetchImageModelsTimer.start()
     }
 }

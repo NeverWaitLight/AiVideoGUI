@@ -40,7 +40,7 @@ class VideoService(QObject):
     def get_provider(self, name: str) -> VideoProvider:
         if name in self._providers:
             return self._providers[name]
-        cfg = self._config.get_provider(name)
+        cfg = self._config.get_provider_config(name, "video")
         if cfg is None:
             raise KeyError(f"未配置的 Provider：{name}")
         cls = _PROVIDER_REGISTRY.get(name)
@@ -68,28 +68,22 @@ class VideoService(QObject):
         provider = self.get_provider(provider_name)
 
         if reference_image:
-            provider_task_id, request_params = provider.r2v(prompt, reference_image, params)
+            provider_task_id, request_details = provider.r2v(prompt, reference_image, params)
             logger.info(f"使用参考生视频 (r2v)：reference_image={reference_image}")
             request_type = "video_generation_r2v"
             context = "参考图生成视频 (r2v)"
         else:
-            provider_task_id, request_params = provider.t2v(prompt, params)
+            provider_task_id, request_details = provider.t2v(prompt, params)
             logger.info(f"使用文生视频 (t2v)")
             request_type = "video_generation_t2v"
             context = "文生视频 (t2v)"
 
-        # 记录 AI 请求日志
+        # 记录 AI 请求（与文本/图片模型日志格式一致，包含完整 HTTP 请求信息）
         if self._ai_logger:
             self._ai_logger.log_request(
                 request_type=request_type,
                 module="storyboard",
-                payload={
-                    "prompt": prompt,
-                    "provider": provider_name,
-                    "params": params or {},
-                    "reference_image": reference_image,
-                    "request_params": request_params,
-                },
+                payload=request_details,
                 response={"provider_task_id": provider_task_id},
                 project_id=project_id,
                 project_name=project_name,
@@ -105,7 +99,7 @@ class VideoService(QObject):
                 provider_name=provider_name,
                 model_name=provider._config.default_model,
                 save_path=save_path,
-                request_params=json.dumps(request_params, ensure_ascii=False),
+                request_params=json.dumps(request_details["json"], ensure_ascii=False),
                 storyboard_id=storyboard_id,
             )
 

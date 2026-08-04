@@ -57,13 +57,24 @@ class SeedanceVideoProvider(VideoProvider):
         logger.info(f"提交 Seedance 任务，模型：{self._model}")
         logger.debug(f"请求体：{payload}")
 
+        headers = self._headers()
+
         resp = requests.post(
             self.SUBMIT_URL,
             json=payload,
-            headers=self._headers(),
+            headers=headers,
             timeout=30,
         )
-        resp.raise_for_status()
+
+        if not resp.ok:
+            try:
+                error_data = resp.json()
+                error_detail = error_data.get("error", {}).get("message", "") or error_data.get("message", "") or resp.text
+            except Exception:
+                error_detail = resp.text
+            logger.error(f"Seedance API 返回 {resp.status_code}: {error_detail}")
+            raise RuntimeError(f"Seedance API 错误 ({resp.status_code}): {error_detail}")
+
         data = resp.json()
         logger.debug(f"提交响应：{data}")
 
@@ -71,7 +82,7 @@ class SeedanceVideoProvider(VideoProvider):
         if not task_id:
             raise RuntimeError(f"Seedance 未返回 task_id: {data}")
         logger.info(f"任务已提交，task_id={task_id}")
-        return task_id, payload
+        return task_id, {"url": self.SUBMIT_URL, "json": payload, "headers": headers}
 
     def t2v(self, prompt: str, params: dict[str, Any] | None = None) -> tuple[str, dict[str, Any]]:
         payload = self.build_payload(prompt, params)
@@ -95,7 +106,16 @@ class SeedanceVideoProvider(VideoProvider):
     def check_status(self, task_id: str) -> TaskResult:
         url = f"{self.TASK_URL}/{task_id}"
         resp = requests.get(url, headers=self._headers(), timeout=30)
-        resp.raise_for_status()
+
+        if not resp.ok:
+            try:
+                error_data = resp.json()
+                error_detail = error_data.get("error", {}).get("message", "") or error_data.get("message", "") or resp.text
+            except Exception:
+                error_detail = resp.text
+            logger.error(f"Seedance 状态查询失败 ({resp.status_code}): {error_detail}")
+            raise RuntimeError(f"Seedance 状态查询错误 ({resp.status_code}): {error_detail}")
+
         data = resp.json()
         logger.debug(f"状态查询响应：{data}")
 
