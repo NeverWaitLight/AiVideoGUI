@@ -9,11 +9,9 @@ import "../dialogs" as Dialogs
 Item {
     id: page
     property int projectId: -1
-    property string _filterType: ""
     property string _searchText: ""
 
     signal backClicked()
-    signal playClicked()
 
     onProjectIdChanged: {
         if (projectId > 0) {
@@ -54,12 +52,16 @@ Item {
                 Layout.preferredHeight: 34
                 flat: true
                 display: AbstractButton.IconOnly
-                icon.source: "qrc:/resources/icons/download.svg"
-                icon.width: 22
-                icon.height: 22
+                icon.source: "qrc:/resources/icons/movie_creation.svg"
+                icon.width: 20
+                icon.height: 20
                 visible: page.projectId > 0
+                topPadding: 7
+                bottomPadding: 7
+                leftPadding: 7
+                rightPadding: 7
                 ToolTip.visible: hovered
-                ToolTip.text: "导出完整视频"
+                ToolTip.text: "导出样片"
                 onClicked: {
                     var projectInfo = JSON.parse(bridge.projects.get_project_info(page.projectId))
                     if (projectInfo && projectInfo.name) {
@@ -74,42 +76,6 @@ Item {
                     color: parent.hovered
                         ? Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.08)
                         : "transparent"
-                }
-            }
-
-            Button {
-                Layout.preferredWidth: 34
-                Layout.preferredHeight: 34
-                flat: true
-                display: AbstractButton.IconOnly
-                icon.source: "qrc:/resources/icons/play_circle.svg"
-                icon.width: 22
-                icon.height: 22
-                visible: page.projectId > 0
-                ToolTip.visible: hovered
-                ToolTip.text: "粗剪播放"
-                onClicked: page.playClicked()
-
-                background: Rectangle {
-                    anchors.fill: parent
-                    radius: Theme.radiusSmall
-                    color: parent.hovered
-                        ? Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.08)
-                        : "transparent"
-                }
-            }
-
-            ComboBox {
-                id: typeFilter
-                Layout.preferredHeight: 34
-                model: ["全部", "视频", "图片", "音频"]
-                topPadding: 6
-                bottomPadding: 6
-                leftPadding: 12
-                rightPadding: 12
-                onCurrentTextChanged: {
-                    _filterType = currentText === "全部" ? "" : currentText
-                    _reloadFiles()
                 }
             }
 
@@ -132,6 +98,7 @@ Item {
                 bottomPadding: 6
                 leftPadding: 12
                 rightPadding: 12
+                visible: page.projectId <= 0
                 onClicked: fileDialog.open()
             }
         }
@@ -182,8 +149,10 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
             text: "素材库为空"
-            buttonText: "导入文件"
-            onButtonClicked: fileDialog.open()
+            buttonText: page.projectId > 0 ? "" : "导入文件"
+            onButtonClicked: {
+                if (page.projectId <= 0) fileDialog.open()
+            }
         }
     }
 
@@ -262,7 +231,7 @@ Item {
     }
 
     function _reloadFiles() {
-        bridge.media.load_files_filtered(_filterType, _searchText, projectId)
+        bridge.media.load_files_filtered("", _searchText, projectId)
     }
 
     component MediaCardDelegate: Pane {

@@ -18,7 +18,6 @@ from bridge.story_outline_bridge import StoryOutlineBridge
 from bridge.screenplay_bridge import ScreenplayBridge
 from bridge.character_bridge import CharacterBridge
 from bridge.settings_bridge import SettingsBridge
-from bridge.video_player_bridge import VideoPlayerBridge
 
 
 class AppBridge(QObject):
@@ -90,7 +89,6 @@ class AppBridge(QObject):
             self._screenplay_service, self._project_service, self,
         )
         self._settings_bridge = SettingsBridge(self._config, self)
-        self._video_player = VideoPlayerBridge(self._session_manager, self)
         self._video_polling_task = container.video_polling_task()
         signal_emitter = self._video_polling_task.signal_emitter
         signal_emitter.status_changed.connect(self.task_status_changed.emit)
@@ -128,10 +126,6 @@ class AppBridge(QObject):
     @Property(QObject, constant=True)
     def settings(self):
         return self._settings_bridge
-
-    @Property(QObject, constant=True)
-    def videoPlayer(self):
-        return self._video_player
 
     @Slot(str)
     def play_video(self, path: str) -> None:
