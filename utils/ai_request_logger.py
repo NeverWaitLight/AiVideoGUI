@@ -105,14 +105,17 @@ class AIRequestLogger:
         return filename
 
     def _sanitize_payload(self, payload: dict[str, Any]) -> dict[str, Any]:
-        """移除请求体中的敏感信息（如 Authorization header）"""
+        """
+        清理请求体中的敏感信息
+
+        注意：headers 字段会在 _format_log_entry() 中被移除，不会记录到日志文件。
+        此方法保留作为防御性处理，以防其他代码路径使用。
+        """
         sanitized = payload.copy()
 
+        # 防御性处理：如果仍有 headers，移除它
         if "headers" in sanitized:
-            headers = sanitized["headers"].copy()
-            if "Authorization" in headers:
-                headers["Authorization"] = "Bearer [REDACTED]"
-            sanitized["headers"] = headers
+            del sanitized["headers"]
 
         return sanitized
 
@@ -159,6 +162,9 @@ class AIRequestLogger:
         """格式化日志条目为 Markdown"""
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+        # 移除 headers 字段（不记录到日志文件）
+        payload_without_headers = {k: v for k, v in payload.items() if k != "headers"}
+
         lines = [
             f"## {timestamp} - {context}",
             "",
@@ -166,7 +172,7 @@ class AIRequestLogger:
             "",
             "**请求详情**:",
             "```json",
-            json.dumps(payload, ensure_ascii=False, indent=2),
+            json.dumps(payload_without_headers, ensure_ascii=False, indent=2),
             "```",
             "",
         ]
