@@ -9,6 +9,7 @@ class VideoPromptBuilder:
         scene: Scene | None = None,
         prev_shot: Storyboard | None = None,
         next_shot: Storyboard | None = None,
+        reference_images: list[dict[str, str]] | None = None,
     ) -> str:
         sections = []
 
@@ -16,6 +17,11 @@ class VideoPromptBuilder:
             scene_context = VideoPromptBuilder._build_scene_context(scene)
             if scene_context:
                 sections.append(f"【场景上下文】\n{scene_context}")
+
+        if reference_images:
+            ref_desc = VideoPromptBuilder._build_reference_images_desc(reference_images)
+            if ref_desc:
+                sections.append(f"【参考图片说明】\n{ref_desc}")
 
         sections.append(f"【镜头画面】\n{storyboard.visual_content.strip()}")
 
@@ -67,6 +73,26 @@ class VideoPromptBuilder:
             sections.append(f"【备注】\n{storyboard.notes.strip()}")
 
         return "\n\n".join(sections)
+
+    @staticmethod
+    def _build_reference_images_desc(reference_images: list[dict[str, str]]) -> str:
+        if not reference_images:
+            return ""
+
+        lines = []
+        for i, ref in enumerate(reference_images, 1):
+            ref_type = ref.get("type", "unknown")
+            description = ref.get("description", "")
+
+            if ref_type == "design":
+                lines.append(f"图{i}：本镜头的分镜设计图，请参考其构图、机位、光线、色调和整体氛围。{description}")
+            elif ref_type == "character":
+                char_name = ref.get("character_name", "角色")
+                lines.append(f"图{i}：{char_name}的角色设计图，请严格参考其外观、服装、神态等视觉特征。{description}")
+            else:
+                lines.append(f"图{i}：参考图片。{description}")
+
+        return "\n".join(lines)
 
     @staticmethod
     def _build_scene_context(scene: Scene) -> str:
