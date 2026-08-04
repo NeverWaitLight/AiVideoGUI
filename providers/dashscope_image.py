@@ -5,6 +5,7 @@ from typing import Any
 import requests
 
 from models.provider_config import ProviderConfig
+from prompts.image_prompt_builder import ImagePromptBuilder
 from providers.image_base import ImageProvider
 
 class DashScopeImageProvider(ImageProvider):
@@ -38,27 +39,16 @@ class DashScopeImageProvider(ImageProvider):
         watermark: bool = False,
         seed: int | None = None,
     ) -> tuple[str, dict[str, Any]]:
-        payload = {
-            "model": self._model,
-            "input": {
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": [{"text": prompt}],
-                    }
-                ]
-            },
-            "parameters": {
-                "size": size,
-                "n": n,
-                "negative_prompt": negative_prompt,
-                "prompt_extend": prompt_extend,
-                "watermark": watermark,
-            },
-        }
-
-        if seed is not None:
-            payload["parameters"]["seed"] = seed
+        payload = ImagePromptBuilder.build_bailian_image_payload(
+            prompt=prompt,
+            size=size,
+            negative_prompt=negative_prompt,
+            n=n,
+            prompt_extend=prompt_extend,
+            watermark=watermark,
+            seed=seed,
+            model=self._model,
+        )
 
         logger.info(f"提交图片生成任务，模型：{self._model}，尺寸：{size}，数量：{n}")
         logger.debug(f"请求体：{payload}")

@@ -11,7 +11,7 @@ from bridge.workers import (
     StoryboardGenerateWorker, StoryboardOptimizeWorker,
 )
 from utils.path_converter import to_absolute_path
-from utils.prompt_builder import VideoPromptBuilder
+from prompts.video_prompt_builder import VideoPromptBuilder
 
 
 class StoryboardBridge(QObject):

@@ -2,7 +2,7 @@ import unittest
 from models.enums import SceneLocation, SceneTime, ShotSize
 from models.scene import Scene
 from models.storyboard import Storyboard
-from utils.prompt_builder import VideoPromptBuilder
+from prompts.video_prompt_builder import VideoPromptBuilder
 
 
 class TestVideoPromptBuilder(unittest.TestCase):

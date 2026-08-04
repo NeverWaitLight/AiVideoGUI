@@ -1,7 +1,7 @@
 import unittest
 from models.storyboard import Storyboard
 from models.enums import ShotSize
-from utils.prompt_builder import VideoPromptBuilder
+from prompts.video_prompt_builder import VideoPromptBuilder
 
 
 class TestReferenceImagesDesc(unittest.TestCase):

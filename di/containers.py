@@ -4,6 +4,7 @@ import os
 
 from config.manager import ConfigManager
 from prompts.manager import PromptTemplateManager
+from prompts.text_prompt_builder import TextPromptBuilder
 from service.background.enhanced_scheduler import BackgroundTaskScheduler
 from service.background.video_polling_task import VideoTaskPollingTask
 from service.character_service import CharacterService
@@ -16,7 +17,7 @@ from service.storyboard_service import StoryboardService
 from service.text_model_service import TextModelService
 from service.video_service import VideoService, _PROVIDER_REGISTRY
 from storage.session_manager import SessionManager
-from utils.prompt_builder import VideoPromptBuilder
+from prompts.video_prompt_builder import VideoPromptBuilder
 from utils.ai_request_logger import AIRequestLogger
 
 
@@ -36,11 +37,16 @@ class ApplicationContainer(containers.DeclarativeContainer):
         config_path=config.config_path,
     )
 
-    prompt_builder = providers.Singleton(VideoPromptBuilder)
+    video_prompt_builder = providers.Singleton(VideoPromptBuilder)
 
     prompt_template_manager = providers.Singleton(
         PromptTemplateManager,
         templates_dir=_get_project_root() / "prompts" / "templates",
+    )
+
+    text_prompt_builder = providers.Singleton(
+        TextPromptBuilder,
+        template_manager=prompt_template_manager,
     )
 
     ai_request_logger = providers.Singleton(
@@ -93,7 +99,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
     text_model_service = providers.Singleton(
         TextModelService,
         config_manager=config_manager,
-        prompt_manager=prompt_template_manager,
+        text_prompt_builder=text_prompt_builder,
         ai_request_logger=ai_request_logger,
     )
 
