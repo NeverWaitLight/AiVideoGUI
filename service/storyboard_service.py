@@ -131,7 +131,7 @@ class StoryboardService:
 
             storyboard.updated_at = int(time.time() * 1000)
 
-            repo.update(storyboard=storyboard)
+            repo.update(dto=storyboard)
             self._session_mgr.commit_write()
             logger.info(f"更新分镜：storyboard_id={storyboard_id}")
         except Exception:

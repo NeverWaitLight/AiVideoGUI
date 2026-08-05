@@ -78,7 +78,7 @@ class SettingsBridge(QObject):
             base_url=base_url,
             default_model=default_model,
         )
-        self._config.save_provider_typed(provider_config=cfg, provider_type=provider_type, auto_save=False)
+        self._config.save_provider_typed(cfg=cfg, provider_type=provider_type, auto_save=False)
 
         if provider_type == "video":
             self._config.update_settings(auto_save=False, default_provider=provider_name)
@@ -100,7 +100,7 @@ class SettingsBridge(QObject):
             default_model=default_model,
             model_mappings=model_mappings or {},
         )
-        self._config.save_provider_typed(provider_config=cfg, provider_type=provider_type, auto_save=False)
+        self._config.save_provider_typed(cfg=cfg, provider_type=provider_type, auto_save=False)
 
         if provider_type == "video":
             self._config.update_settings(auto_save=False, default_provider=provider_name)
@@ -178,7 +178,7 @@ class SettingsBridge(QObject):
             base_url=base_url,
             default_model=default_model,
         )
-        errors = self._config.validate_provider_config(provider_config=cfg, provider_type=provider_type)
+        errors = self._config.validate_provider_config(cfg=cfg, provider_type=provider_type)
         return "\n".join(errors) if errors else ""
 
     @Slot(str, str, str, result=list)

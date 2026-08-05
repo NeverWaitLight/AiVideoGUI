@@ -83,4 +83,4 @@ class ImageService:
                 context=context or "图片生成",
             )
 
-        return provider.download(url=image_url, save_path=save_path)
+        return provider.download(image_url=image_url, save_path=save_path)
