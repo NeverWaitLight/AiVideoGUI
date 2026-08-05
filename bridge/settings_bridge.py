@@ -113,6 +113,10 @@ class SettingsBridge(QObject):
     def batch_set(self, key: str, value: str) -> None:
         self._config.update_settings(auto_save=False, **{key: value})
 
+    @Slot(str, bool)
+    def batch_set_bool(self, key: str, value: bool) -> None:
+        self._config.update_settings(auto_save=False, **{key: value})
+
     @Slot()
     def commit_batch(self) -> None:
         self._config.save()
@@ -152,6 +156,15 @@ class SettingsBridge(QObject):
         if scheme in ("Light", "Dark", "System"):
             self._config.update_settings(color_scheme=scheme)
             self.settings_saved.emit()
+
+    @Slot(result=bool)
+    def get_enable_ai_request_logging(self) -> bool:
+        return self._config.settings.enable_ai_request_logging
+
+    @Slot(bool)
+    def set_enable_ai_request_logging(self, enabled: bool) -> None:
+        self._config.update_settings(enable_ai_request_logging=enabled)
+        self.settings_saved.emit()
 
     @Slot(str, str, str, str, str, result=str)
     def validate_provider_config(

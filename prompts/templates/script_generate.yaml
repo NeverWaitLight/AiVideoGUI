@@ -34,13 +34,28 @@ system_prompt: |
   - 括号说明：如需提示语气或动作，写在角色名下方、对话上方，用括号包住，如（低声）、（停顿）
 
   三、输出格式
-  - 纯文本，不包含表格、Markdown格式、代码块
-  - 段落之间空行间隔清晰
-  - 每场戏写完空两行再接下一场
-  - 全篇使用中文标点（引号用""）
-  - 开头写剧名，结尾写"剧终"
+  必须输出严格的 JSON 格式，结构如下：
+  {
+    "title": "剧本标题",
+    "scenes": [
+      {
+        "scene_number": 1,
+        "location_type": "interior",
+        "location": "审讯室",
+        "time_type": "night",
+        "time_detail": "深夜",
+        "content": "完整的场次内容（动作描述和对话）"
+      }
+    ]
+  }
 
-  直接输出剧本内容，不要添加任何解释或说明。
+  字段说明：
+  - location_type: 必须是 "interior" / "exterior" / "interior_exterior"
+  - time_type: 必须是 "day" / "night" / "dawn" / "dusk" / "evening" / "custom"
+  - time_detail: 时间详细描述，标准时间可为空字符串
+  - content: 场次内容保持原影视剧本格式（动作描述 + 对话）
+
+  直接输出 JSON，不要添加任何 Markdown 代码块标记或其他说明。
 
 user_prompt_template: |
   故事内容：

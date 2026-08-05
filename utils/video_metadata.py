@@ -2,6 +2,7 @@ from loguru import logger
 import os
 import json
 import subprocess
+import shutil
 from pathlib import Path
 
 from imageio_ffmpeg import get_ffmpeg_exe
@@ -15,6 +16,11 @@ class VideoMetadataExtractor:
         try:
             ffmpeg_exe = get_ffmpeg_exe()
             ffprobe_exe = ffmpeg_exe.replace("ffmpeg", "ffprobe")
+
+            if not os.path.exists(ffprobe_exe):
+                ffprobe_exe = shutil.which("ffprobe")
+                if not ffprobe_exe:
+                    raise RuntimeError("找不到 ffprobe 可执行文件，请安装 ffmpeg 到系统 PATH")
 
             cmd = [
                 ffprobe_exe,
@@ -71,6 +77,11 @@ class VideoMetadataExtractor:
 
         try:
             ffmpeg_exe = get_ffmpeg_exe()
+
+            if not os.path.exists(ffmpeg_exe):
+                ffmpeg_exe = shutil.which("ffmpeg")
+                if not ffmpeg_exe:
+                    raise RuntimeError("找不到 ffmpeg 可执行文件，请安装 ffmpeg 到系统 PATH")
             cmd = [
                 ffmpeg_exe,
                 "-ss", str(time_offset),

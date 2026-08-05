@@ -10,17 +10,10 @@ class CharacterParser:
 
     @staticmethod
     def parse(response_text: str) -> list[dict]:
-        """解析角色数据
-
-        支持两种格式：
-        1. JSON 数组: [{"name": "...", "ref_code": "...", "description": "..."}]
-        2. Markdown 表格:
-           | 角色名 | 引用代号 | 形象描述 |
-           | --- | --- | --- |
-           | 张三 | CHAR_A | ... |
+        """解析 JSON 格式的角色列表
 
         Args:
-            response_text: LLM 返回的原始文本
+            response_text: LLM 返回的原始文本（JSON 数组或 {"characters": [...]} 对象）
 
         Returns:
             角色列表，每个角色包含 name, ref_code, description 字段
@@ -30,113 +23,57 @@ class CharacterParser:
         """
         response_text = response_text.strip()
 
-        # 尝试解析 JSON 格式
-        try:
-            characters = CharacterParser._parse_json(response_text)
-            if characters:
-                logger.info(f"成功解析 JSON 格式角色数据，共 {len(characters)} 个角色")
-                return characters
-        except Exception as e:
-            logger.debug(f"JSON 解析失败: {e}")
+        # 清洗 Markdown 代码块标记
+        if response_text.startswith("```json"):
+            response_text = response_text[7:]
+        if response_text.startswith("```"):
+            response_text = response_text[3:]
+        if response_text.endswith("```"):
+            response_text = response_text[:-3]
+        response_text = response_text.strip()
 
-        # 尝试解析 Markdown 表格格式
-        try:
-            characters = CharacterParser._parse_markdown_table(response_text)
-            if characters:
-                logger.info(f"成功解析 Markdown 表格格式角色数据，共 {len(characters)} 个角色")
-                return characters
-        except Exception as e:
-            logger.debug(f"Markdown 表格解析失败: {e}")
+        # 尝试直接解析 JSON
+        characters = CharacterParser._try_parse_json(response_text)
+        if characters is not None:
+            logger.info(f"解析角色完成：共 {len(characters)} 个角色")
+            return characters
 
-        # 所有格式都失败
+        # 尝试从文本中提取 JSON 块
+        json_match = re.search(r'```json\s*([\s\S]*?)\s*```', response_text)
+        if json_match:
+            characters = CharacterParser._try_parse_json(json_match.group(1))
+            if characters is not None:
+                logger.info(f"从代码块中提取角色完成：共 {len(characters)} 个角色")
+                return characters
+
+        # 尝试查找 JSON 数组或对象
+        json_match = re.search(r'[\[{][\s\S]*[\]}]', response_text)
+        if json_match:
+            characters = CharacterParser._try_parse_json(json_match.group(0))
+            if characters is not None:
+                logger.info(f"从文本中提取角色完成：共 {len(characters)} 个角色")
+                return characters
+
         logger.error(f"无法解析角色数据，原始文本:\n{response_text[:500]}")
         raise ValueError("无法解析角色数据，格式不正确")
 
     @staticmethod
-    def _parse_json(text: str) -> list[dict] | None:
-        """解析 JSON 格式"""
-        # 尝试直接解析
+    def _try_parse_json(text: str) -> list[dict] | None:
+        """尝试解析 JSON，返回角色列表或 None"""
         try:
-            data = json.loads(text)
-            if isinstance(data, list):
-                return CharacterParser._validate_characters(data)
-            elif isinstance(data, dict) and "characters" in data:
-                return CharacterParser._validate_characters(data["characters"])
+            decoder = json.JSONDecoder(strict=False)
+            data = decoder.decode(text)
         except json.JSONDecodeError:
-            pass
-
-        # 尝试提取 JSON 代码块
-        json_match = re.search(r'```json\s*(\[.*?\])\s*```', text, re.DOTALL)
-        if json_match:
-            try:
-                data = json.loads(json_match.group(1))
-                return CharacterParser._validate_characters(data)
-            except json.JSONDecodeError:
-                pass
-
-        # 尝试查找 JSON 数组
-        json_match = re.search(r'\[[\s\S]*\]', text)
-        if json_match:
-            try:
-                data = json.loads(json_match.group(0))
-                return CharacterParser._validate_characters(data)
-            except json.JSONDecodeError:
-                pass
-
-        return None
-
-    @staticmethod
-    def _parse_markdown_table(text: str) -> list[dict] | None:
-        """解析 Markdown 表格格式"""
-        lines = text.split('\n')
-
-        # 查找表格开始（包含 | 的行）
-        table_lines = [line for line in lines if '|' in line]
-        if len(table_lines) < 3:  # 至少需要：表头 + 分隔线 + 1行数据
             return None
 
-        # 解析表头
-        header_line = table_lines[0]
-        headers = [h.strip() for h in header_line.split('|') if h.strip()]
-
-        # 查找列索引（支持不同的列名）
-        name_idx = CharacterParser._find_column_index(headers, ['角色名', '姓名', 'name', '名称'])
-        ref_code_idx = CharacterParser._find_column_index(headers, ['引用代号', '代号', 'ref_code', '引用'])
-        desc_idx = CharacterParser._find_column_index(headers, ['形象描述', '描述', 'description', '外貌'])
-
-        if name_idx is None or ref_code_idx is None or desc_idx is None:
-            logger.warning(f"表格列名不匹配: {headers}")
+        if isinstance(data, list):
+            items = data
+        elif isinstance(data, dict) and "characters" in data:
+            items = data["characters"]
+        else:
             return None
 
-        # 解析数据行（跳过表头和分隔线）
-        characters = []
-        for line in table_lines[2:]:
-            if not line.strip() or line.strip().startswith('|---'):
-                continue
-
-            cells = [c.strip() for c in line.split('|') if c.strip()]
-            if len(cells) < max(name_idx, ref_code_idx, desc_idx) + 1:
-                continue
-
-            character = {
-                "name": cells[name_idx].strip(),
-                "ref_code": cells[ref_code_idx].strip(),
-                "description": cells[desc_idx].strip(),
-            }
-
-            if character["name"] and character["ref_code"]:
-                characters.append(character)
-
-        return characters if characters else None
-
-    @staticmethod
-    def _find_column_index(headers: list[str], possible_names: list[str]) -> int | None:
-        """查找列索引"""
-        for name in possible_names:
-            for i, header in enumerate(headers):
-                if name.lower() in header.lower():
-                    return i
-        return None
+        return CharacterParser._validate_characters(items)
 
     @staticmethod
     def _validate_characters(data: list[dict]) -> list[dict]:
@@ -146,19 +83,18 @@ class CharacterParser:
             if not isinstance(item, dict):
                 continue
 
-            # 提取必需字段
-            name = item.get("name") or item.get("角色名") or item.get("姓名") or ""
-            ref_code = item.get("ref_code") or item.get("引用代号") or item.get("代号") or ""
-            description = item.get("description") or item.get("形象描述") or item.get("描述") or ""
+            name = (item.get("name") or item.get("角色名") or "").strip()
+            ref_code = (item.get("ref_code") or item.get("引用代号") or "").strip()
+            description = (item.get("description") or item.get("形象描述") or "").strip()
 
             if not name or not ref_code:
                 logger.warning(f"跳过无效角色数据: {item}")
                 continue
 
             validated.append({
-                "name": name.strip(),
-                "ref_code": ref_code.strip(),
-                "description": description.strip(),
+                "name": name,
+                "ref_code": ref_code,
+                "description": description,
             })
 
-        return validated
+        return validated if validated else None

@@ -41,7 +41,7 @@ class ScriptGenerateWorker(QThread):
 
 
 class StoryboardGenerateWorker(QThread):
-    finished = Signal(dict)
+    finished = Signal(list)
     failed = Signal(str)
 
     def __init__(self, text_service, script_content: str, art_style: str = "",

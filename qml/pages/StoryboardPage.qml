@@ -100,10 +100,17 @@ Item {
                         bottomPadding: 6
                         leftPadding: 12
                         rightPadding: 12
-                        onClicked: confirmDialog.confirm(
-                            "确定要为选中的 " + _selectedIds.length + " 个分镜生成视频吗？",
-                            function() { bridge.storyboard.batch_generate_videos(page.projectId, JSON.stringify(_selectedIds)) }
-                        )
+                        onClicked: {
+                            var selectedIdsCopy = _selectedIds.slice()
+                            console.log("虚拟拍摄按钮点击，选中ID:", JSON.stringify(selectedIdsCopy))
+                            confirmDialog.confirm(
+                                "确定要为选中的 " + selectedIdsCopy.length + " 个分镜生成视频吗？",
+                                function() {
+                                    console.log("确认对话框回调执行，ID:", JSON.stringify(selectedIdsCopy))
+                                    bridge.storyboard.batch_generate_videos(page.projectId, JSON.stringify(selectedIdsCopy))
+                                }
+                            )
+                        }
                     }
 
                     Button {
@@ -116,9 +123,14 @@ Item {
                         leftPadding: 12
                         rightPadding: 12
                         onClicked: {
+                            var selectedIdsCopy = _selectedIds.slice()
+                            console.log("设计场景按钮点击，选中ID:", JSON.stringify(selectedIdsCopy))
                             confirmDialog.confirm(
-                                "确定要为选中的 " + _selectedIds.length + " 个分镜生成设计图吗？",
-                                function() { bridge.storyboard.batch_generate_design_images(page.projectId, JSON.stringify(_selectedIds)) }
+                                "确定要为选中的 " + selectedIdsCopy.length + " 个分镜生成设计图吗？",
+                                function() {
+                                    console.log("确认对话框回调执行，ID:", JSON.stringify(selectedIdsCopy))
+                                    bridge.storyboard.batch_generate_design_images(page.projectId, JSON.stringify(selectedIdsCopy))
+                                }
                             )
                         }
                     }

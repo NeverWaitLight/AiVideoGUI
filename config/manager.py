@@ -63,7 +63,7 @@ class ConfigManager:
             default_image_provider=_renamed.get(s.get("default_image_provider", ""), s.get("default_image_provider", "")),
             workspace_dir=s.get("workspace_dir", ""),
             color_scheme=s.get("color_scheme", "System"),
-            enable_ai_request_logging=s.get("enable_ai_request_logging", False),
+            enable_ai_request_logging=s.get("enable_ai_request_logging", True),
         )
         logger.info(f"配置已加载，providers={list(self._providers.keys())}")
 

@@ -1,125 +1,72 @@
-import re
+"""分镜数据解析器"""
+
+import json
+from loguru import logger
+from typing import Any
 
 from models.enums import ShotSize
 
 
 class ShotParser:
     SHOT_SIZE_MAP = {
-        "特写": ShotSize.EXTREME_CLOSE_UP,
-        "极近特写": ShotSize.EXTREME_CLOSE_UP,
-        "近景": ShotSize.CLOSE_UP,
-        "中景": ShotSize.MEDIUM_SHOT,
-        "全景": ShotSize.FULL_SHOT,
-        "远景": ShotSize.LONG_SHOT,
-        "大远景": ShotSize.EXTREME_LONG_SHOT,
+        "extreme_close_up": ShotSize.EXTREME_CLOSE_UP,
+        "close_up": ShotSize.CLOSE_UP,
+        "medium_shot": ShotSize.MEDIUM_SHOT,
+        "full_shot": ShotSize.FULL_SHOT,
+        "long_shot": ShotSize.LONG_SHOT,
+        "extreme_long_shot": ShotSize.EXTREME_LONG_SHOT,
     }
 
     @classmethod
-    def parse(cls, markdown_text: str) -> list[dict]:
-        shots = []
-        lines = markdown_text.strip().split("\n")
+    def parse(cls, storyboard_json: str) -> list[dict[str, Any]]:
+        """解析 JSON 格式的分镜数据
 
-        has_scene_column = False
-        for line in lines:
-            stripped = line.strip()
-            if "镜头序号" in stripped and "场次" in stripped:
-                has_scene_column = True
-                break
-            if "镜头序号" in stripped:
-                break
+        Returns:
+            分镜列表
+        """
+        # 清洗 Markdown 代码块标记
+        storyboard_json = storyboard_json.strip()
+        if storyboard_json.startswith("```json"):
+            storyboard_json = storyboard_json[7:]
+        if storyboard_json.startswith("```"):
+            storyboard_json = storyboard_json[3:]
+        if storyboard_json.endswith("```"):
+            storyboard_json = storyboard_json[:-3]
+        storyboard_json = storyboard_json.strip()
 
-        for line in lines:
-            line = line.strip()
+        try:
+            # strict=False 允许字符串值中包含未转义的控制字符（如换行符），
+            # 部分 LLM 会在 JSON 字符串中输出真实换行符而非 \n 转义序列
+            decoder = json.JSONDecoder(strict=False)
+            data = decoder.decode(storyboard_json)
+        except json.JSONDecodeError as e:
+            logger.error(f"分镜 JSON 解析失败: {e}")
+            logger.error(f"原始文本:\n{storyboard_json[:500]}")
+            raise ValueError(f"无效的 JSON 格式: {e}")
 
-            if not line or line.startswith("#") or "镜头序号" in line or ":---" in line:
-                continue
+        shots = cls._parse_shots(data.get("storyboard", []))
 
-            if line.startswith("|") and line.endswith("|"):
-                cells = [cell.strip() for cell in line.split("|")[1:-1]]
-
-                if has_scene_column:
-                    if len(cells) < 8:
-                        continue
-                    try:
-                        scene_number = int(re.search(r"\d+", cells[0]).group())
-                        shot_number = int(re.search(r"\d+", cells[1]).group())
-                        shot_size_str = cells[2]
-                        visual_content = cells[3]
-                        camera_movement = cells[4]
-                        sound_dialogue = cells[5]
-                        duration_str = cells[6]
-                        color_lighting = cells[7]
-                    except (ValueError, AttributeError, IndexError):
-                        continue
-                else:
-                    if len(cells) < 7:
-                        continue
-                    try:
-                        scene_number = 1
-                        shot_number = int(re.search(r"\d+", cells[0]).group())
-                        shot_size_str = cells[1]
-                        visual_content = cells[2]
-                        camera_movement = cells[3]
-                        sound_dialogue = cells[4]
-                        duration_str = cells[5]
-                        color_lighting = cells[6]
-                    except (ValueError, AttributeError, IndexError):
-                        continue
-
-                shot_size_key = shot_size_str.split("（")[0].split("(")[0].strip()
-                shot_size = cls.SHOT_SIZE_MAP.get(shot_size_key, ShotSize.MEDIUM_SHOT)
-
-                duration_match = re.search(r"[\d.]+", duration_str)
-                duration = float(duration_match.group()) if duration_match else 0.0
-
-                shots.append({
-                    "scene_number": scene_number,
-                    "shot_number": shot_number,
-                    "shot_size": shot_size.value,
-                    "visual_content": visual_content,
-                    "camera_movement": camera_movement,
-                    "sound_dialogue": sound_dialogue,
-                    "duration": duration,
-                    "color_lighting": color_lighting,
-                })
-
+        logger.info(f"解析分镜完成：共 {len(shots)} 个镜头")
         return shots
 
     @classmethod
-    def parse_characters(cls, markdown_text: str) -> list[dict]:
-        characters = []
-        lines = markdown_text.strip().split("\n")
+    def _parse_shots(cls, shots_raw: list[dict]) -> list[dict[str, Any]]:
+        shots = []
+        for shot in shots_raw:
+            shot_size_str = shot.get("shot_size", "medium_shot")
+            shot_size_enum = cls.SHOT_SIZE_MAP.get(shot_size_str, ShotSize.MEDIUM_SHOT)
+            if shot_size_str not in cls.SHOT_SIZE_MAP:
+                logger.warning(f"未识别的景别值 '{shot_size_str}'，使用默认值 medium_shot")
 
-        in_char_table = False
-        header_found = False
-
-        for line in lines:
-            line = line.strip()
-
-            if not line:
-                continue
-
-            if "角色名" in line and "引用代号" in line:
-                header_found = True
-                in_char_table = True
-                continue
-
-            if in_char_table and ":---" in line:
-                continue
-
-            if in_char_table and line.startswith("|") and line.endswith("|"):
-                cells = [cell.strip() for cell in line.split("|")[1:-1]]
-                if len(cells) >= 3:
-                    name = cells[0]
-                    ref_code = cells[1]
-                    description = cells[2]
-                    if name and ref_code:
-                        characters.append({
-                            "name": name,
-                            "ref_code": ref_code,
-                            "description": description,
-                        })
-            elif in_char_table and not line.startswith("|"):
-                in_char_table = False
-
-        return characters
+            shots.append({
+                "scene_number": shot.get("scene_number", 0),
+                "shot_number": shot.get("shot_number", 0),
+                "shot_size": shot_size_enum.value,
+                "camera_movement": shot.get("camera_movement", ""),
+                "visual_content": shot.get("visual_content", ""),
+                "dialogue": shot.get("dialogue", ""),
+                "sound_effect": shot.get("sound_effect", ""),
+                "duration": float(shot.get("duration", 0.0)),
+                "notes": shot.get("notes", ""),
+            })
+        return shots

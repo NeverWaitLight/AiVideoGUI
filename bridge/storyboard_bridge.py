@@ -370,6 +370,7 @@ class StoryboardBridge(QObject):
         logger.info(f"batch_generate_design_images called: project_id={project_id}, shot_ids_json={shot_ids_json!r}")
         try:
             shots = self._storyboard_service.list_storyboards(project_id)
+            logger.info(f"加载了 {len(shots)} 个分镜，ID列表：{[s.id for s in shots]}")
             if not shots:
                 self.error.emit("没有分镜可以生成设计图")
                 return
@@ -377,12 +378,17 @@ class StoryboardBridge(QObject):
             if shot_ids_json and shot_ids_json != "[]":
                 try:
                     selected_ids = json.loads(shot_ids_json)
+                    logger.info(f"解析选中 ID：{selected_ids}，类型：{[type(x).__name__ for x in selected_ids]}")
                 except (json.JSONDecodeError, TypeError) as e:
                     logger.error(f"解析选中分镜 ID 失败：shot_ids_json={shot_ids_json!r}, error={e}")
                     self.error.emit(f"参数解析失败：{shot_ids_json!r}")
                     return
+
+                logger.info(f"过滤前分镜数：{len(shots)}")
                 shots = [s for s in shots if s.id in selected_ids]
+                logger.info(f"过滤后分镜数：{len(shots)}，选中的分镜 ID：{[s.id for s in shots]}")
                 if not shots:
+                    logger.error(f"未找到选中的分镜！selected_ids={selected_ids}, 可用ID={[s.id for s in self._storyboard_service.list_storyboards(project_id)]}")
                     self.error.emit("未找到选中的分镜")
                     return
 
@@ -410,7 +416,7 @@ class StoryboardBridge(QObject):
             )
 
             def on_progress(current: int, message: str, count_info: str) -> None:
-                self.batch_progress.emit(current, len(shot_list), f"{message} {count_info}")
+                self.batch_progress.emit(current, len(shot_list), message)
 
             def on_finished(success_count: int, total: int) -> None:
                 self.batch_done.emit(success_count, total)

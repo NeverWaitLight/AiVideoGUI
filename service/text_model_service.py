@@ -113,6 +113,7 @@ class TextModelService:
             "input": {"messages": messages},
             "parameters": {
                 "result_format": "message",
+                "max_tokens": 16384,
             },
         }
 
@@ -180,7 +181,7 @@ class TextModelService:
         model: str | None = None,
         project_id: int | None = None,
         project_name: str | None = None,
-    ) -> dict:
+    ) -> list[dict]:
         provider_config = self._config.get_provider_config("dashscope", "chat")
         if not provider_config or not provider_config.api_key:
             raise RuntimeError("未配置 DashScope API Key，请在设置中配置")
@@ -197,6 +198,7 @@ class TextModelService:
             "input": {"messages": messages},
             "parameters": {
                 "result_format": "message",
+                "max_tokens": 16384,
             },
         }
 
@@ -246,10 +248,9 @@ class TextModelService:
             from utils.shot_parser import ShotParser
 
             shots = ShotParser.parse(storyboard_content)
-            characters = ShotParser.parse_characters(storyboard_content)
-            logger.info(f"分镜解析成功：共 {len(shots)} 个镜头，{len(characters)} 个角色")
+            logger.info(f"分镜解析成功：共 {len(shots)} 个镜头")
 
-            return {"shots": shots, "characters": characters}
+            return shots
 
         except requests.exceptions.RequestException as e:
             logger.exception("调用文本模型 API 失败")
@@ -441,6 +442,7 @@ class TextModelService:
         )
 
         from utils.shot_parser import ShotParser
+
         shots = ShotParser.parse(result)
         logger.info(f"分镜解析成功：共 {len(shots)} 个镜头")
         return shots

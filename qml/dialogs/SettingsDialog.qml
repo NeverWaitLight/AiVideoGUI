@@ -271,7 +271,7 @@ Dialog {
             bridge.settings.batch_set("workspace_dir", workspacePath)
         }
 
-        // Color scheme
+        // Color scheme & AI logging
         if (appearanceLoader.item) {
             var oldColorScheme = bridge.settings.get_color_scheme()
             var newColorScheme = appearanceLoader.item.colorSchemeLight.checked ? "Light"
@@ -281,6 +281,11 @@ Dialog {
                 Qt.callLater(function() {
                     alertDialog.info("设置已保存", "颜色方案的更改需要重启应用才能生效。")
                 })
+            }
+
+            var newAiLogging = appearanceLoader.item.aiLoggingSwitch.checked
+            if (bridge.settings.get_enable_ai_request_logging() !== newAiLogging) {
+                bridge.settings.batch_set_bool("enable_ai_request_logging", newAiLogging)
             }
         }
 
@@ -1021,6 +1026,7 @@ Dialog {
             property alias colorSchemeLight: colorSchemeLight
             property alias colorSchemeDark: colorSchemeDark
             property alias colorSchemeSystem: colorSchemeSystem
+            property alias aiLoggingSwitch: aiLoggingSwitch
 
             ColumnLayout {
                 width: parent.parent.width
@@ -1240,6 +1246,79 @@ Dialog {
                     }
                 }
 
+                Pane {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 0
+                    Layout.rightMargin: 0
+                    Material.elevation: 2
+                    padding: 24
+
+                    background: Rectangle {
+                        color: Material.dialogColor
+                        radius: 8
+                        border.width: 0
+                    }
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        spacing: 16
+
+                        ColumnLayout {
+                            spacing: 4
+                            Layout.fillWidth: true
+
+                            Label {
+                                text: "AI 请求日志"
+                                font.pixelSize: Theme.fontSizeLarge
+                                font.bold: true
+                            }
+
+                            Label {
+                                text: "记录 AI 调用的请求参数和响应到 Markdown 日志文件"
+                                font.pixelSize: Theme.fontSizeSmall
+                                color: Material.hintTextColor
+                                wrapMode: Text.Wrap
+                                Layout.fillWidth: true
+                            }
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            height: 1
+                            color: Material.frameColor
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 12
+
+                            ColumnLayout {
+                                spacing: 2
+                                Layout.fillWidth: true
+
+                                Label {
+                                    text: "启用 AI 请求日志"
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    font.bold: true
+                                }
+
+                                Label {
+                                    text: "自动保存每次 AI 调用的请求参数到项目日志目录下的 .md 文件"
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    color: Material.hintTextColor
+                                    wrapMode: Text.Wrap
+                                    Layout.fillWidth: true
+                                }
+                            }
+
+                            Switch {
+                                id: aiLoggingSwitch
+                                Layout.alignment: Qt.AlignVCenter
+                            }
+                        }
+                    }
+                }
+
                 Item { Layout.fillHeight: true }
             }
 
@@ -1252,6 +1331,7 @@ Dialog {
                 } else {
                     colorSchemeSystem.checked = true
                 }
+                aiLoggingSwitch.checked = bridge.settings.get_enable_ai_request_logging()
             }
         }
     }
