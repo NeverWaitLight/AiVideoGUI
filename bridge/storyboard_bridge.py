@@ -369,7 +369,7 @@ class StoryboardBridge(QObject):
     def batch_generate_design_images(self, project_id: int, shot_ids_json: str) -> None:
         logger.info(f"batch_generate_design_images called: project_id={project_id}, shot_ids_json={shot_ids_json!r}")
         try:
-            shots = self._storyboard_service.list_storyboards(project_id)
+            shots = self._storyboard_service.list_storyboards(project_id=project_id)  # 使用关键字参数
             logger.info(f"加载了 {len(shots)} 个分镜，ID列表：{[s.id for s in shots]}")
             if not shots:
                 self.error.emit("没有分镜可以生成设计图")

@@ -12,8 +12,6 @@ TRepo = TypeVar("TRepo")
 class SessionManager:
     def __init__(self, workspace_root: str = ""):
         self._write_lock = threading.RLock()
-        self._repo_cache: Dict[Type, object] = {}
-        self._cache_lock = threading.Lock()
         self._workspace_root = workspace_root
         logger.debug("SessionManager 初始化完成")
 
@@ -21,23 +19,21 @@ class SessionManager:
         return get_session()
 
     def get_repo(self, repo_class: Type[TRepo]) -> TRepo:
-        with self._cache_lock:
-            if repo_class not in self._repo_cache:
-                session = self.get_session()
+        # 不缓存 Repository，每次都创建新实例
+        # 因为 scoped_session 会自动为每个线程返回独立的 Session
+        session = self.get_session()
 
-                from storage.repositories.media_repository import MediaRepository
-                from storage.repositories.character_repository import CharacterRepository
-                from storage.repositories.storyboard_repository import StoryboardRepository
+        from storage.repositories.media_repository import MediaRepository
+        from storage.repositories.character_repository import CharacterRepository
+        from storage.repositories.storyboard_repository import StoryboardRepository
 
-                if repo_class in (MediaRepository, CharacterRepository, StoryboardRepository):
-                    repo_instance = repo_class(session, self._workspace_root)
-                else:
-                    repo_instance = repo_class(session)
+        if repo_class in (MediaRepository, CharacterRepository, StoryboardRepository):
+            repo_instance = repo_class(session, self._workspace_root)
+        else:
+            repo_instance = repo_class(session)
 
-                self._repo_cache[repo_class] = repo_instance
-                logger.debug(f"创建并缓存 Repository 实例：{repo_class.__name__}")
-
-            return cast(TRepo, self._repo_cache[repo_class])
+        logger.debug(f"创建 Repository 实例：{repo_class.__name__}（线程：{threading.current_thread().name}）")
+        return cast(TRepo, repo_instance)
 
     def begin_write(self) -> None:
         self._write_lock.acquire()
@@ -64,8 +60,3 @@ class SessionManager:
             logger.warning(f"回滚写操作：{threading.current_thread().name}")
         finally:
             self._write_lock.release()
-
-    def clear_cache(self) -> None:
-        with self._cache_lock:
-            self._repo_cache.clear()
-            logger.debug("Repository 缓存已清空")
