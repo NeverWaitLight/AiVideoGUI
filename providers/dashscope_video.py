@@ -56,19 +56,19 @@ class DashScopeVideoProvider(VideoProvider):
 
         if self._session_manager:
             oss_cache_repo = self._session_manager.get_repo(OSSFileCacheRepository)
-            cache = oss_cache_repo.get_valid_cache(file_path, self._model)
+            cache = oss_cache_repo.get_valid_cache(file_path=file_path, model_name=self._model)
             if cache:
                 logger.info(f"命中 OSS 缓存: {file_path} -> {cache.oss_url}")
                 return cache.oss_url
 
         logger.info(f"上传文件到 OSS: {file_path}")
-        oss_url, expire_time = self._oss_uploader.upload(file_path, self._model)
+        oss_url, expire_time = self._oss_uploader.upload(file_path=file_path, model_name=self._model)
 
         if self._session_manager:
             try:
                 self._session_manager.begin_write()
                 oss_cache_repo = self._session_manager.get_repo(OSSFileCacheRepository)
-                oss_cache_repo.save_cache(file_path, self._model, oss_url)
+                oss_cache_repo.save_cache(file_path=file_path, model_name=self._model, oss_url=oss_url)
                 self._session_manager.commit_write()
             except Exception as e:
                 self._session_manager.rollback_write()
@@ -139,8 +139,8 @@ class DashScopeVideoProvider(VideoProvider):
 
     def t2v(self, prompt: str, params: dict[str, Any] | None = None) -> tuple[str, dict[str, Any]]:
         model = self._model_mappings.get("t2v") or self._model_mappings.get("default") or self._model
-        payload = self.build_payload(prompt, params, model=model)
-        return self._submit_task(payload)
+        payload = self.build_payload(prompt=prompt, params=params, model=model)
+        return self._submit_task(payload=payload)
 
     def p2v(
         self, prompt: str, image_path: str, params: dict[str, Any] | None = None
@@ -156,7 +156,7 @@ class DashScopeVideoProvider(VideoProvider):
             driving_audio_path = self._upload_file_if_needed(driving_audio_path)
 
         model = self._model_mappings.get("i2v") or self._model_mappings.get("default") or self._model
-        payload = self.build_payload(prompt, api_params, model=model)
+        payload = self.build_payload(prompt=prompt, params=api_params, model=model)
 
         media = [{"type": "first_frame", "url": image_path}]
 
@@ -187,7 +187,7 @@ class DashScopeVideoProvider(VideoProvider):
             main_reference_voice = self._upload_file_if_needed(main_reference_voice)
 
         model = self._model_mappings.get("r2v") or self._model_mappings.get("default") or "wan2.7-r2v-2026-06-12"
-        payload = self.build_payload(prompt, api_params, model=model)
+        payload = self.build_payload(prompt=prompt, params=api_params, model=model)
 
         media = []
 
@@ -244,7 +244,7 @@ class DashScopeVideoProvider(VideoProvider):
             last_frame_path = self._upload_file_if_needed(last_frame_path)
 
         model = self._model_mappings.get("extend") or self._model_mappings.get("default") or self._model
-        payload = self.build_payload(prompt, api_params, model=model)
+        payload = self.build_payload(prompt=prompt, params=api_params, model=model)
 
         media = [{"type": "first_clip", "url": video_path}]
 
@@ -315,7 +315,7 @@ class DashScopeVideoProvider(VideoProvider):
                     f.write(chunk)
                     downloaded += len(chunk)
                     if progress_callback:
-                        progress_callback(downloaded, total)
+                        progress_callback(downloaded=downloaded, total=total)
 
         logger.info(f"下载完成：{save_path}")
         return save_path

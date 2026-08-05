@@ -19,23 +19,23 @@ class SettingsBridge(QObject):
 
     @Slot(str, str, result=str)
     def get_api_key(self, provider_name: str, provider_type: str = "") -> str:
-        cfg = self._config.resolve_config_for_type(provider_name, provider_type) if provider_type else self._config.get_provider(provider_name)
+        cfg = self._config.resolve_config_for_type(name=provider_name, provider_type=provider_type) if provider_type else self._config.get_provider(name=provider_name)
         return cfg.api_key if cfg else ""
 
     @Slot(str, str, result=str)
     def get_base_url(self, provider_name: str, provider_type: str = "") -> str:
-        cfg = self._config.resolve_config_for_type(provider_name, provider_type) if provider_type else self._config.get_provider(provider_name)
+        cfg = self._config.resolve_config_for_type(name=provider_name, provider_type=provider_type) if provider_type else self._config.get_provider(name=provider_name)
         return cfg.base_url if cfg else ""
 
     @Slot(str, str, result=str)
     def get_default_model(self, provider_name: str, provider_type: str = "") -> str:
-        cfg = self._config.resolve_config_for_type(provider_name, provider_type) if provider_type else self._config.get_provider(provider_name)
+        cfg = self._config.resolve_config_for_type(name=provider_name, provider_type=provider_type) if provider_type else self._config.get_provider(name=provider_name)
         return cfg.default_model if cfg else ""
 
     @Slot(str, str, str, result=str)
     def get_model_for_task_type(self, provider_name: str, provider_type: str, task_type: str) -> str:
         """获取特定任务类型的模型配置（如 t2v/i2v/r2v）"""
-        cfg = self._config.resolve_config_for_type(provider_name, provider_type) if provider_type else self._config.get_provider(provider_name)
+        cfg = self._config.resolve_config_for_type(name=provider_name, provider_type=provider_type) if provider_type else self._config.get_provider(name=provider_name)
         if not cfg:
             return ""
         return cfg.model_mappings.get(task_type, cfg.default_model or "")
@@ -51,7 +51,7 @@ class SettingsBridge(QObject):
                 base_url=base_url,
                 default_model="",
             )
-            provider = DashScopeChatProvider(cfg)
+            provider = DashScopeChatProvider(config=cfg)
             return provider.list_available_models()
         except Exception as e:
             logger.warning(f"获取模型列表失败：{e}")
@@ -78,7 +78,7 @@ class SettingsBridge(QObject):
             base_url=base_url,
             default_model=default_model,
         )
-        self._config.save_provider_typed(cfg, provider_type, auto_save=False)
+        self._config.save_provider_typed(provider_config=cfg, provider_type=provider_type, auto_save=False)
 
         if provider_type == "video":
             self._config.update_settings(auto_save=False, default_provider=provider_name)
@@ -100,7 +100,7 @@ class SettingsBridge(QObject):
             default_model=default_model,
             model_mappings=model_mappings or {},
         )
-        self._config.save_provider_typed(cfg, provider_type, auto_save=False)
+        self._config.save_provider_typed(provider_config=cfg, provider_type=provider_type, auto_save=False)
 
         if provider_type == "video":
             self._config.update_settings(auto_save=False, default_provider=provider_name)
@@ -178,7 +178,7 @@ class SettingsBridge(QObject):
             base_url=base_url,
             default_model=default_model,
         )
-        errors = self._config.validate_provider_config(cfg, provider_type)
+        errors = self._config.validate_provider_config(provider_config=cfg, provider_type=provider_type)
         return "\n".join(errors) if errors else ""
 
     @Slot(str, str, str, result=list)
@@ -196,7 +196,7 @@ class SettingsBridge(QObject):
 
             if provider_name == "dashscope_image" or provider_name == "dashscope":
                 from providers.dashscope_image import DashScopeImageProvider
-                provider = DashScopeImageProvider(cfg)
+                provider = DashScopeImageProvider(config=cfg)
             else:
                 logger.warning(f"未知的图片供应商：{provider_name}")
                 return []

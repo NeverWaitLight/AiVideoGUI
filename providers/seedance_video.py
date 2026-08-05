@@ -85,8 +85,8 @@ class SeedanceVideoProvider(VideoProvider):
         return task_id, {"url": self.SUBMIT_URL, "json": payload, "headers": headers}
 
     def t2v(self, prompt: str, params: dict[str, Any] | None = None) -> tuple[str, dict[str, Any]]:
-        payload = self.build_payload(prompt, params)
-        return self._submit_task(payload)
+        payload = self.build_payload(prompt=prompt, params=params)
+        return self._submit_task(payload=payload)
 
     def p2v(
         self, prompt: str, image_path: str, params: dict[str, Any] | None = None
@@ -156,7 +156,7 @@ class SeedanceVideoProvider(VideoProvider):
                     f.write(chunk)
                     downloaded += len(chunk)
                     if progress_callback:
-                        progress_callback(downloaded, total)
+                        progress_callback(downloaded=downloaded, total=total)
 
         logger.info(f"下载完成：{save_path}")
         return save_path

@@ -30,7 +30,7 @@ class ImageService:
         if provider_name in self._providers:
             return self._providers[provider_name]
 
-        provider_cfg = self._config.resolve_config_for_type(provider_name, "image")
+        provider_cfg = self._config.resolve_config_for_type(name=provider_name, provider_type="image")
         if not provider_cfg or not provider_cfg.api_key:
             raise RuntimeError(f"未配置图片生成供应商 {provider_name} 的 API Key，请在设置中配置")
 
@@ -83,4 +83,4 @@ class ImageService:
                 context=context or "图片生成",
             )
 
-        return provider.download(image_url, save_path)
+        return provider.download(url=image_url, save_path=save_path)

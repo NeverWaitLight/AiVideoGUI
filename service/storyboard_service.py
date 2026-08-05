@@ -14,7 +14,7 @@ class StoryboardService:
         self._workspace_root = workspace_root
 
     def list_storyboards(self, scene_id: int | None = None, project_id: int | None = None, scene_number: int | None = None) -> list[Storyboard]:
-        repo = self._session_mgr.get_repo(StoryboardRepository)
+        repo = self._session_mgr.get_repo(repo_class=StoryboardRepository)
 
         if scene_id is not None:
             return repo.list_by_scene(scene_id)
@@ -27,7 +27,7 @@ class StoryboardService:
             return []
 
     def get_storyboard(self, storyboard_id: int) -> Storyboard | None:
-        repo = self._session_mgr.get_repo(StoryboardRepository)
+        repo = self._session_mgr.get_repo(repo_class=StoryboardRepository)
         return repo.get_by_id(storyboard_id)
 
     def create_storyboard(
@@ -66,10 +66,10 @@ class StoryboardService:
             updated_at=now_ms,
         )
 
-        repo = self._session_mgr.get_repo(StoryboardRepository)
+        repo = self._session_mgr.get_repo(repo_class=StoryboardRepository)
         self._session_mgr.begin_write()
         try:
-            created = repo.create(storyboard)
+            created = repo.create(storyboard=storyboard)
             self._session_mgr.commit_write()
             logger.info(f"创建分镜：ID {created.id}，场次 {scene_number}-{shot_number}")
             return created
@@ -78,7 +78,7 @@ class StoryboardService:
             raise
 
     def batch_create_storyboards(self, storyboards: list[Storyboard]) -> None:
-        repo = self._session_mgr.get_repo(StoryboardRepository)
+        repo = self._session_mgr.get_repo(repo_class=StoryboardRepository)
         self._session_mgr.begin_write()
         try:
             for storyboard in storyboards:
@@ -102,7 +102,7 @@ class StoryboardService:
         notes: str | None = None,
         seed: str | None = None,
     ) -> None:
-        repo = self._session_mgr.get_repo(StoryboardRepository)
+        repo = self._session_mgr.get_repo(repo_class=StoryboardRepository)
 
         self._session_mgr.begin_write()
         try:
@@ -131,7 +131,7 @@ class StoryboardService:
 
             storyboard.updated_at = int(time.time() * 1000)
 
-            repo.update(storyboard)
+            repo.update(storyboard=storyboard)
             self._session_mgr.commit_write()
             logger.info(f"更新分镜：storyboard_id={storyboard_id}")
         except Exception:
@@ -139,10 +139,10 @@ class StoryboardService:
             raise
 
     def delete_storyboard(self, storyboard_id: int) -> None:
-        repo = self._session_mgr.get_repo(StoryboardRepository)
+        repo = self._session_mgr.get_repo(repo_class=StoryboardRepository)
         self._session_mgr.begin_write()
         try:
-            repo.delete(storyboard_id)
+            repo.delete(storyboard_id=storyboard_id)
             self._session_mgr.commit_write()
             logger.info(f"删除分镜：storyboard_id={storyboard_id}")
         except Exception:
@@ -150,11 +150,11 @@ class StoryboardService:
             raise
 
     def list_history_timestamps(self, project_id: int) -> list[int]:
-        repo = self._session_mgr.get_repo(StoryboardHistoryRepository)
+        repo = self._session_mgr.get_repo(repo_class=StoryboardHistoryRepository)
         return repo.distinct_timestamps_by_project(project_id)
 
     def list_history_by_timestamp(self, project_id: int, created_at: int) -> list[StoryboardHistory]:
-        repo = self._session_mgr.get_repo(StoryboardHistoryRepository)
+        repo = self._session_mgr.get_repo(repo_class=StoryboardHistoryRepository)
         return repo.list_by_project_and_timestamp(project_id, created_at)
 
     def restore_from_history(self, project_id: int, created_at: int) -> None:
@@ -163,12 +163,12 @@ class StoryboardService:
 
         self._session_mgr.begin_write()
         try:
-            history_items = history_repo.list_by_project_and_timestamp(project_id, created_at)
+            history_items = history_repo.list_by_project_and_timestamp(project_id=project_id, created_at=created_at)
             if not history_items:
                 self._session_mgr.rollback_write()
                 return
 
-            storyboard_repo.delete_by_project(project_id)
+            storyboard_repo.delete_by_project(project_id=project_id)
 
             now_ms = int(time.time() * 1000)
             for h in history_items:

@@ -40,7 +40,7 @@ class VideoService(QObject):
     def get_provider(self, name: str) -> VideoProvider:
         if name in self._providers:
             return self._providers[name]
-        cfg = self._config.get_provider_config(name, "video")
+        cfg = self._config.get_provider_config(name=name, provider_type="video")
         if cfg is None:
             raise KeyError(f"未配置的 Provider：{name}")
         cls = _PROVIDER_REGISTRY.get(name)
@@ -76,17 +76,17 @@ class VideoService(QObject):
                     {"path": p, "type": "reference_image"}
                     for p in reference_images[1:]
                 ]
-            provider_task_id, request_details = provider.r2v(prompt, main_ref, params)
+            provider_task_id, request_details = provider.r2v(prompt=prompt, reference_image=main_ref, params=params)
             logger.info(f"使用参考生视频 (r2v)：{len(reference_images)} 张参考图")
             request_type = "video_generation_r2v"
             context = f"参考图生成视频 (r2v, {len(reference_images)}张)"
         elif reference_image:
-            provider_task_id, request_details = provider.r2v(prompt, reference_image, params)
+            provider_task_id, request_details = provider.r2v(prompt=prompt, reference_image=reference_image, params=params)
             logger.info(f"使用参考生视频 (r2v)：reference_image={reference_image}")
             request_type = "video_generation_r2v"
             context = "参考图生成视频 (r2v)"
         else:
-            provider_task_id, request_details = provider.t2v(prompt, params)
+            provider_task_id, request_details = provider.t2v(prompt=prompt, params=params)
             logger.info(f"使用文生视频 (t2v)")
             request_type = "video_generation_t2v"
             context = "文生视频 (t2v)"

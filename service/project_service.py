@@ -18,7 +18,7 @@ class ProjectService:
         self._root = workspace_root
 
     def create_project(self, name: str, resolution: str = "720P", aspect_ratio: str = "16:9", cover_image: str = "") -> Project | None:
-        project_repo = self._sm.get_repo(ProjectRepository)
+        project_repo = self._sm.get_repo(repo_class=ProjectRepository)
 
         if project_repo.exists_by_name(name):
             logger.warning(f"项目名称已存在：{name}")
@@ -37,7 +37,7 @@ class ProjectService:
 
         self._sm.begin_write()
         try:
-            saved_project = project_repo.save(project)
+            saved_project = project_repo.save(project=project)
             self._sm.commit_write()
 
             proj_dir = paths.project_dir(self._root, saved_project.id)
@@ -50,23 +50,23 @@ class ProjectService:
             raise
 
     def list_projects(self) -> list[Project]:
-        project_repo = self._sm.get_repo(ProjectRepository)
+        project_repo = self._sm.get_repo(repo_class=ProjectRepository)
         return project_repo.list_all()
 
     def get_project(self, project_id: int) -> Project | None:
-        project_repo = self._sm.get_repo(ProjectRepository)
+        project_repo = self._sm.get_repo(repo_class=ProjectRepository)
         return project_repo.get_by_id(project_id)
 
     def update_project(self, project_id: int, name: str, resolution: str, aspect_ratio: str, cover_image: str = "") -> bool:
-        project_repo = self._sm.get_repo(ProjectRepository)
+        project_repo = self._sm.get_repo(repo_class=ProjectRepository)
 
-        if project_repo.exists_by_name(name, exclude_id=project_id):
+        if project_repo.exists_by_name(name=name, exclude_id=project_id):
             logger.warning(f"项目名称已存在：{name}")
             return False
 
         self._sm.begin_write()
         try:
-            project_repo.update_project(project_id, name, resolution, aspect_ratio, cover_image)
+            project_repo.update_project(project_id=project_id, name=name, resolution=resolution, aspect_ratio=aspect_ratio, cover_image=cover_image)
             self._sm.commit_write()
             return True
         except Exception as e:
@@ -77,11 +77,11 @@ class ProjectService:
     def delete_project(self, project_id: int) -> None:
         logger.info(f"开始删除项目：project_id={project_id}")
 
-        project_repo = self._sm.get_repo(ProjectRepository)
+        project_repo = self._sm.get_repo(repo_class=ProjectRepository)
 
         self._sm.begin_write()
         try:
-            project_repo.delete(project_id)
+            project_repo.delete(project_id=project_id)
             self._sm.commit_write()
         except Exception as e:
             self._sm.rollback_write()
@@ -99,7 +99,7 @@ class ProjectService:
         logger.info(f"项目删除完成：project_id={project_id}")
 
     def update_cover_image(self, project_id: int, cover_image: str) -> bool:
-        project_repo = self._sm.get_repo(ProjectRepository)
+        project_repo = self._sm.get_repo(repo_class=ProjectRepository)
 
         self._sm.begin_write()
         try:
@@ -109,8 +109,8 @@ class ProjectService:
                 return False
 
             project_repo.update_project(
-                project_id, project.name, project.resolution,
-                project.aspect_ratio, cover_image
+                project_id=project_id, name=project.name, resolution=project.resolution,
+                aspect_ratio=project.aspect_ratio, cover_image=cover_image
             )
             self._sm.commit_write()
             return True

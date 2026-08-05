@@ -79,7 +79,7 @@ class StoryboardBridge(QObject):
     def _get_project_name(self, project_id: int | None = None) -> str | None:
         pid = project_id if project_id is not None else self._project_id
         if self._project_service and pid >= 0:
-            project = self._project_service.get_project(pid)
+            project = self._project_service.get_project(project_id=pid)
             return project.name if project else None
         return None
 
@@ -137,7 +137,7 @@ class StoryboardBridge(QObject):
         self._project_id = project_id
 
         try:
-            scenes = self._screenplay_service.list_scenes(project_id)
+            scenes = self._screenplay_service.list_scenes(project_id=project_id)
             if not scenes:
                 self.error.emit("该项目还没有剧本场次，请先生成剧本")
                 return
@@ -166,7 +166,7 @@ class StoryboardBridge(QObject):
             script_content = "\n".join(script_lines)
 
             worker = StoryboardGenerateWorker(
-                self._text_model_service, script_content,
+                text_service=self._text_model_service, script_content=script_content,
                 project_id=project_id,
                 project_name=self._get_project_name(project_id),
             )
@@ -289,7 +289,7 @@ class StoryboardBridge(QObject):
     @Slot(int)
     def delete_shot(self, shot_id: int) -> None:
         try:
-            self._storyboard_service.delete_storyboard(shot_id)
+            self._storyboard_service.delete_storyboard(storyboard_id=shot_id)
             self.shot_deleted.emit()
             if self._project_id >= 0:
                 self.load_for_project(self._project_id)
@@ -323,7 +323,7 @@ class StoryboardBridge(QObject):
     @Slot(int, int)
     def generate_design_image(self, storyboard_id: int, project_id: int) -> None:
         try:
-            storyboard = self._storyboard_service.get_storyboard(storyboard_id)
+            storyboard = self._storyboard_service.get_storyboard(storyboard_id=storyboard_id)
             if not storyboard:
                 self.error.emit(f"分镜不存在：{storyboard_id}")
                 return
@@ -332,7 +332,7 @@ class StoryboardBridge(QObject):
                 self.error.emit("该分镜没有画面内容描述，无法生成设计图")
                 return
 
-            characters = self._character_service.list_characters(project_id)
+            characters = self._character_service.list_characters(project_id=project_id)
             matched = [c for c in characters if c.name in storyboard.visual_content or c.ref_code in storyboard.visual_content]
             char_info = ""
             if matched:
@@ -350,9 +350,9 @@ class StoryboardBridge(QObject):
             shot_size_text = shot_size_map.get(storyboard.shot_size.value, "中景")
 
             worker = DesignImageWorker(
-                self._text_model_service, self._image_service,
-                self._storyboard_service, storyboard, shot_size_text,
-                char_info, project_id,
+                text_service=self._text_model_service, image_service=self._image_service,
+                storyboard_service=self._storyboard_service, storyboard=storyboard, shot_size_text=shot_size_text,
+                character_info=char_info, project_id=project_id,
                 project_name=self._get_project_name(project_id),
             )
             worker.finished.connect(lambda path: self._on_design_done(storyboard_id, path))
@@ -401,11 +401,11 @@ class StoryboardBridge(QObject):
                 })
 
             worker = BatchDesignImageWorker(
-                self._text_model_service,
-                self._image_service,
-                self._storyboard_service,
-                self._character_service,
-                shot_list,
+                text_service=self._text_model_service,
+                image_service=self._image_service,
+                storyboard_service=self._storyboard_service,
+                character_service=self._character_service,
+                shot_list=shot_list,
                 project_name=self._get_project_name(project_id),
             )
 
@@ -450,10 +450,10 @@ class StoryboardBridge(QObject):
                 self.error.emit("未找到选中的分镜")
                 return
 
-            scenes = self._screenplay_service.list_scenes(project_id)
+            scenes = self._screenplay_service.list_scenes(project_id=project_id)
             scene_map = {s.id: s for s in scenes}
 
-            characters = self._character_service.list_characters(project_id)
+            characters = self._character_service.list_characters(project_id=project_id)
             workspace_root = self._container.config.workspace_root()
 
             shot_list_for_prompt = [s for s in shots]
@@ -510,8 +510,8 @@ class StoryboardBridge(QObject):
                 self.error.emit("未配置默认视频生成供应商")
                 return
 
-            provider_cfg = config_mgr.get_provider_config(provider_name, "video")
-            project = self._project_service.get_project(project_id)
+            provider_cfg = config_mgr.get_provider_config(name=provider_name, provider_type="video")
+            project = self._project_service.get_project(project_id=project_id)
             if not project:
                 self.error.emit("项目不存在")
                 return
@@ -520,8 +520,8 @@ class StoryboardBridge(QObject):
             video_service = self._container.video_service()
 
             controller = BatchGenerationController(
-                shot_list, video_service, signal_emitter,
-                provider_name, project, provider_cfg,
+                shot_list=shot_list, video_service=video_service, signal_emitter=signal_emitter,
+                provider_name=provider_name, project=project, provider_cfg=provider_cfg,
             )
 
             def on_progress(current: int, total: int, message: str) -> None:
@@ -578,7 +578,7 @@ class StoryboardBridge(QObject):
     @Slot(int, result=str)
     def get_related_videos(self, shot_id: int) -> str:
         try:
-            videos = self._media_service.list_by_storyboard(shot_id)
+            videos = self._media_service.list_by_storyboard(storyboard_id=shot_id)
             result = []
             for v in videos:
                 result.append({
@@ -611,9 +611,9 @@ class StoryboardBridge(QObject):
 
         try:
             # 1. 获取大纲、剧本、角色
-            outline = self._story_outline_service.get_or_create_story_outline(project_id)
-            scenes = self._screenplay_service.list_scenes(project_id)
-            characters = self._character_service.list_characters(project_id)
+            outline = self._story_outline_service.get_or_create_story_outline(project_id=project_id)
+            scenes = self._screenplay_service.list_scenes(project_id=project_id)
+            characters = self._character_service.list_characters(project_id=project_id)
 
             if not outline.content.strip() or not scenes:
                 self.error.emit("必须先完成大纲和剧本")
@@ -641,7 +641,7 @@ class StoryboardBridge(QObject):
         combined_requirement = f"用户要求：{user_input}\n\n大纲参考：{outline_content}"
 
         self._generate_worker = StoryboardGenerateWorker(
-            self._text_model_service, script_content, combined_requirement,
+            text_service=self._text_model_service, script_content=script_content, art_style=combined_requirement,
             project_id=project_id,
             project_name=self._get_project_name(project_id),
         )
@@ -689,7 +689,7 @@ class StoryboardBridge(QObject):
                     )
                     storyboards.append(storyboard)
 
-                self._storyboard_service.batch_create_storyboards(storyboards)
+                self._storyboard_service.batch_create_storyboards(storyboards=storyboards)
 
                 self.load_for_project(project_id)
                 self.storyboard_generated.emit(len(storyboards))
@@ -715,12 +715,12 @@ class StoryboardBridge(QObject):
         current_storyboard = self._format_storyboards_as_text(storyboards)
 
         self._optimize_worker = StoryboardOptimizeWorker(
-            self._text_model_service,
-            outline_content,
-            script_content,
-            character_content,
-            current_storyboard,
-            user_input,
+            text_service=self._text_model_service,
+            outline_content=outline_content,
+            script_content=script_content,
+            character_content=character_content,
+            current_storyboard=current_storyboard,
+            user_requirement=user_input,
             project_id=project_id,
             project_name=self._get_project_name(project_id),
         )
@@ -730,7 +730,7 @@ class StoryboardBridge(QObject):
             self.isOptimizingChanged.emit()
             try:
                 for shot in storyboards:
-                    self._storyboard_service.delete_storyboard(shot.id)
+                    self._storyboard_service.delete_storyboard(storyboard_id=shot.id)
 
                 scene_map = {s.scene_number: s.id for s in scenes}
 
@@ -767,7 +767,7 @@ class StoryboardBridge(QObject):
                     )
                     storyboards_to_create.append(storyboard)
 
-                self._storyboard_service.batch_create_storyboards(storyboards_to_create)
+                self._storyboard_service.batch_create_storyboards(storyboards=storyboards_to_create)
 
                 self.load_for_project(project_id)
                 self.storyboard_optimized.emit(len(storyboards_to_create))

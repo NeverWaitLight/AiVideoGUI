@@ -47,7 +47,7 @@ class MediaService:
         conversation_id: str = "",
         storyboard_id: int = 0,
     ) -> None:
-        media_repo = self._sm.get_repo(MediaRepository)
+        media_repo = self._sm.get_repo(repo_class=MediaRepository)
 
         if media_repo.get_by_message_id(task_id):
             logger.debug(f"素材已入库，跳过 task_id={task_id}")
@@ -107,7 +107,7 @@ class MediaService:
 
         self._sm.begin_write()
         try:
-            media_repo.create(media)
+            media_repo.create(media=media)
             self._sm.commit_write()
             logger.info(f"素材自动入库：{filename}")
         except Exception as e:
@@ -183,8 +183,8 @@ class MediaService:
 
             self._sm.begin_write()
             try:
-                media_repo = self._sm.get_repo(MediaRepository)
-                media_repo.create(media)
+                media_repo = self._sm.get_repo(repo_class=MediaRepository)
+                media_repo.create(media=media)
                 self._sm.commit_write()
                 imported.append(media)
                 logger.info(f"导入素材：{media.filename}")
@@ -204,7 +204,7 @@ class MediaService:
         keyword: str | None = None,
         project_id: int | None = None,
     ) -> list[MediaFile]:
-        media_repo = self._sm.get_repo(MediaRepository)
+        media_repo = self._sm.get_repo(repo_class=MediaRepository)
 
         media_type_enum = None
         if media_type:
@@ -217,7 +217,7 @@ class MediaService:
         )
 
     def delete_file(self, media_id: str) -> bool:
-        media_repo = self._sm.get_repo(MediaRepository)
+        media_repo = self._sm.get_repo(repo_class=MediaRepository)
 
         media = media_repo.get_by_id(media_id)
         if not media:
@@ -225,7 +225,7 @@ class MediaService:
 
         self._sm.begin_write()
         try:
-            media_repo.delete(media_id)
+            media_repo.delete(media_id=media_id)
             self._sm.commit_write()
         except Exception as e:
             self._sm.rollback_write()
@@ -247,15 +247,15 @@ class MediaService:
         return count
 
     def list_by_storyboard(self, storyboard_id: int) -> list[MediaFile]:
-        media_repo = self._sm.get_repo(MediaRepository)
+        media_repo = self._sm.get_repo(repo_class=MediaRepository)
         return media_repo.list_by_storyboard(storyboard_id)
 
     def set_featured(self, file_id: str, storyboard_id: int) -> None:
-        media_repo = self._sm.get_repo(MediaRepository)
+        media_repo = self._sm.get_repo(repo_class=MediaRepository)
 
         self._sm.begin_write()
         try:
-            media_repo.set_featured(file_id, storyboard_id)
+            media_repo.set_featured(file_id=file_id, storyboard_id=storyboard_id)
             self._sm.commit_write()
         except Exception as e:
             self._sm.rollback_write()
@@ -263,8 +263,8 @@ class MediaService:
             raise
 
     def export_project_video(self, project_id: int, output_path: str, progress_callback=None) -> str:
-        media_repo = self._sm.get_repo(MediaRepository)
-        project_repo = self._sm.get_repo(ProjectRepository)
+        media_repo = self._sm.get_repo(repo_class=MediaRepository)
+        project_repo = self._sm.get_repo(repo_class=ProjectRepository)
 
         project = project_repo.get_by_id(project_id)
         if not project:

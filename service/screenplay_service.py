@@ -14,11 +14,11 @@ class ScreenplayService:
         self._sm = session_manager
 
     def list_scenes(self, project_id: int) -> list[Scene]:
-        screenplay_repo = self._sm.get_repo(ScreenplayRepository)
+        screenplay_repo = self._sm.get_repo(repo_class=ScreenplayRepository)
         return screenplay_repo.list_by_project(project_id)
 
     def get_scene(self, scene_id: int) -> Scene | None:
-        screenplay_repo = self._sm.get_repo(ScreenplayRepository)
+        screenplay_repo = self._sm.get_repo(repo_class=ScreenplayRepository)
         return screenplay_repo.get_by_id(scene_id)
 
     def create_scene(
@@ -45,10 +45,10 @@ class ScreenplayService:
             updated_at=now_ms,
         )
 
-        screenplay_repo = self._sm.get_repo(ScreenplayRepository)
+        screenplay_repo = self._sm.get_repo(repo_class=ScreenplayRepository)
         self._sm.begin_write()
         try:
-            created_scene = screenplay_repo.save(scene)
+            created_scene = screenplay_repo.save(scene=scene)
             self._sm.commit_write()
             logger.info(f"创建场次：ID {created_scene.id}，场次号：{scene_number}")
             return created_scene
@@ -66,7 +66,7 @@ class ScreenplayService:
         time_detail: str | None = None,
         content: str | None = None,
     ) -> None:
-        screenplay_repo = self._sm.get_repo(ScreenplayRepository)
+        screenplay_repo = self._sm.get_repo(repo_class=ScreenplayRepository)
 
         scene = screenplay_repo.get_by_id(scene_id)
         if not scene:
@@ -97,11 +97,11 @@ class ScreenplayService:
             raise
 
     def delete_scene(self, scene_id: int) -> None:
-        screenplay_repo = self._sm.get_repo(ScreenplayRepository)
+        screenplay_repo = self._sm.get_repo(repo_class=ScreenplayRepository)
 
         self._sm.begin_write()
         try:
-            screenplay_repo.delete(scene_id)
+            screenplay_repo.delete(scene_id=scene_id)
             self._sm.commit_write()
             logger.info(f"删除场次：{scene_id}")
         except Exception as e:
@@ -110,8 +110,8 @@ class ScreenplayService:
             raise
 
     def save_history(self, project_id: int) -> None:
-        screenplay_repo = self._sm.get_repo(ScreenplayRepository)
-        history_repo = self._sm.get_repo(ScreenplayHistoryRepository)
+        screenplay_repo = self._sm.get_repo(repo_class=ScreenplayRepository)
+        history_repo = self._sm.get_repo(repo_class=ScreenplayHistoryRepository)
 
         scenes = screenplay_repo.list_by_project(project_id)
 
@@ -131,7 +131,7 @@ class ScreenplayService:
                     content=scene.content,
                     created_at=now_ms,
                 )
-                history_repo.save(history)
+                history_repo.save(history=history)
 
             self._sm.commit_write()
             logger.info(f"保存剧本历史：项目 {project_id}，共 {len(scenes)} 场")
@@ -141,12 +141,12 @@ class ScreenplayService:
             raise
 
     def list_history_timestamps(self, project_id: int) -> list[int]:
-        history_repo = self._sm.get_repo(ScreenplayHistoryRepository)
+        history_repo = self._sm.get_repo(repo_class=ScreenplayHistoryRepository)
         return history_repo.distinct_timestamps_by_project(project_id)
 
     def list_history_by_timestamp(self, project_id: int, created_at: int) -> list[Scene]:
-        history_repo = self._sm.get_repo(ScreenplayHistoryRepository)
-        history_list = history_repo.list_by_project_and_timestamp(project_id, created_at)
+        history_repo = self._sm.get_repo(repo_class=ScreenplayHistoryRepository)
+        history_list = history_repo.list_by_project_and_timestamp(project_id=project_id, created_at=created_at)
 
         return [
             Scene(
@@ -165,14 +165,14 @@ class ScreenplayService:
         ]
 
     def restore_from_history(self, project_id: int, created_at: int) -> None:
-        screenplay_repo = self._sm.get_repo(ScreenplayRepository)
-        history_repo = self._sm.get_repo(ScreenplayHistoryRepository)
+        screenplay_repo = self._sm.get_repo(repo_class=ScreenplayRepository)
+        history_repo = self._sm.get_repo(repo_class=ScreenplayHistoryRepository)
 
-        history_list = history_repo.list_by_project_and_timestamp(project_id, created_at)
+        history_list = history_repo.list_by_project_and_timestamp(project_id=project_id, created_at=created_at)
 
         self._sm.begin_write()
         try:
-            screenplay_repo.delete_by_project(project_id)
+            screenplay_repo.delete_by_project(project_id=project_id)
 
             now_ms = int(time.time() * 1000)
             for h in history_list:
@@ -198,7 +198,7 @@ class ScreenplayService:
             raise
 
     def batch_create_scenes(self, project_id: int, scenes_data: list[dict]) -> list[Scene]:
-        screenplay_repo = self._sm.get_repo(ScreenplayRepository)
+        screenplay_repo = self._sm.get_repo(repo_class=ScreenplayRepository)
         now_ms = int(time.time() * 1000)
 
         created_scenes = []
@@ -225,7 +225,7 @@ class ScreenplayService:
                     created_at=now_ms,
                     updated_at=now_ms,
                 )
-                created_scene = screenplay_repo.save(scene)
+                created_scene = screenplay_repo.save(scene=scene)
                 created_scenes.append(created_scene)
 
             self._sm.commit_write()

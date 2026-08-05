@@ -107,9 +107,9 @@ class DashScopeOSSUploader:
         return oss_url
 
     def upload(self, file_path: str, model_name: str) -> tuple[str, datetime]:
-        policy = self.get_upload_policy(model_name)
+        policy = self.get_upload_policy(model_name=model_name)
 
-        oss_url = self.upload_file_to_oss(policy, file_path)
+        oss_url = self.upload_file_to_oss(policy=policy, file_path=file_path)
 
         expire_time = datetime.now() + timedelta(hours=48)
 
@@ -120,4 +120,4 @@ def upload_file(
     api_key: str, model_name: str, file_path: str
 ) -> tuple[str, datetime]:
     uploader = DashScopeOSSUploader(api_key)
-    return uploader.upload(file_path, model_name)
+    return uploader.upload(file_path=file_path, model_name=model_name)

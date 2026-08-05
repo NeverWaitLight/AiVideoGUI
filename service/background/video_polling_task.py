@@ -75,7 +75,7 @@ class VideoTaskPollingTask(BackgroundTask):
         if self._config_manager is None:
             raise RuntimeError("ConfigManager 未注入")
 
-        cfg = self._config_manager.get_provider_config(name, "video")
+        cfg = self._config_manager.get_provider_config(name=name, provider_type="video")
         if cfg is None:
             raise KeyError(f"未配置的 Provider：{name}")
 
@@ -98,7 +98,7 @@ class VideoTaskPollingTask(BackgroundTask):
                 self._cleanup_expired_oss_caches()
                 self._last_cleanup_time = now
 
-            task_repo = self._sm.get_repo(GenerateTaskRepository)
+            task_repo = self._sm.get_repo(repo_class=GenerateTaskRepository)
             tasks = task_repo.list_active_tasks()
 
             if not tasks:
@@ -115,7 +115,7 @@ class VideoTaskPollingTask(BackgroundTask):
 
     def _cleanup_expired_oss_caches(self) -> None:
         try:
-            oss_cache_repo = self._sm.get_repo(OSSFileCacheRepository)
+            oss_cache_repo = self._sm.get_repo(repo_class=OSSFileCacheRepository)
             self._sm.begin_write()
             try:
                 count = oss_cache_repo.delete_expired_caches()
@@ -146,10 +146,10 @@ class VideoTaskPollingTask(BackgroundTask):
 
         try:
             provider = self.get_provider(provider_name)
-            result = provider.check_status(provider_task_id)
+            result = provider.check_status(task_id=provider_task_id)
             self._task_poll_count[internal_task_id] = poll_count + 1
 
-            task_repo = self._sm.get_repo(GenerateTaskRepository)
+            task_repo = self._sm.get_repo(repo_class=GenerateTaskRepository)
             self._sm.begin_write()
             write_lock_acquired = True
             try:
@@ -191,10 +191,10 @@ class VideoTaskPollingTask(BackgroundTask):
             self._task_poll_count[internal_task_id] = poll_count + 1
 
     def _mark_task_completed(self, internal_task_id: int) -> None:
-        task_repo = self._sm.get_repo(GenerateTaskRepository)
+        task_repo = self._sm.get_repo(repo_class=GenerateTaskRepository)
         self._sm.begin_write()
         try:
-            task_repo.mark_completed(internal_task_id)
+            task_repo.mark_completed(internal_task_id=internal_task_id)
             self._sm.commit_write()
         except Exception:
             self._sm.rollback_write()
@@ -229,10 +229,10 @@ class VideoTaskPollingTask(BackgroundTask):
             os.makedirs(self._cache_dir, exist_ok=True)
             tmp_path = os.path.join(self._cache_dir, f"{uuid.uuid4().hex}.mp4.part")
 
-            provider.download(video_url, tmp_path, progress_callback=None)
+            provider.download(url=video_url, save_path=tmp_path, progress_callback=None)
 
             os.makedirs(os.path.dirname(save_path), exist_ok=True)
-            shutil.move(tmp_path, save_path)
+            shutil.move(src=tmp_path, dst=save_path)
 
             relative_save_path = to_relative_path(save_path, self._workspace_root)
 

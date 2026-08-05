@@ -11,7 +11,7 @@ class StoryOutlineService:
         self._sm = session_manager
 
     def get_or_create_story_outline(self, project_id: int) -> StoryOutline:
-        outline_repo = self._sm.get_repo(StoryOutlineRepository)
+        outline_repo = self._sm.get_repo(repo_class=StoryOutlineRepository)
 
         story_outline = outline_repo.get_by_project(project_id)
         if story_outline:
@@ -28,7 +28,7 @@ class StoryOutlineService:
 
         self._sm.begin_write()
         try:
-            created = outline_repo.create(story_outline)
+            created = outline_repo.create(story_outline=story_outline)
             self._sm.commit_write()
             logger.info(f"为项目 {project_id} 创建新故事大纲，ID: {created.id}")
             return created
@@ -38,12 +38,12 @@ class StoryOutlineService:
             raise
 
     def update_story_outline(self, story_outline_id: int, content: str) -> None:
-        outline_repo = self._sm.get_repo(StoryOutlineRepository)
+        outline_repo = self._sm.get_repo(repo_class=StoryOutlineRepository)
         now_ms = int(time.time() * 1000)
 
         self._sm.begin_write()
         try:
-            outline_repo.update_content(story_outline_id, content, now_ms)
+            outline_repo.update_content(story_outline_id=story_outline_id, content=content, updated_at=now_ms)
             self._sm.commit_write()
             logger.info(f"更新故事大纲 {story_outline_id}")
         except Exception as e:
@@ -52,12 +52,12 @@ class StoryOutlineService:
             raise
 
     def list_history(self, story_outline_id: int) -> list[StoryOutlineHistory]:
-        history_repo = self._sm.get_repo(StoryOutlineHistoryRepository)
+        history_repo = self._sm.get_repo(repo_class=StoryOutlineHistoryRepository)
         return history_repo.list_by_story_outline(story_outline_id)
 
     def restore_from_history(self, story_outline_id: int, history_id: int) -> None:
-        outline_repo = self._sm.get_repo(StoryOutlineRepository)
-        history_repo = self._sm.get_repo(StoryOutlineHistoryRepository)
+        outline_repo = self._sm.get_repo(repo_class=StoryOutlineRepository)
+        history_repo = self._sm.get_repo(repo_class=StoryOutlineHistoryRepository)
 
         self._sm.begin_write()
         try:
@@ -66,7 +66,7 @@ class StoryOutlineService:
                 raise ValueError(f"历史版本不存在：{history_id}")
 
             now_ms = int(time.time() * 1000)
-            outline_repo.update_content(story_outline_id, history.content, now_ms)
+            outline_repo.update_content(story_outline_id=story_outline_id, content=history.content, updated_at=now_ms)
 
             self._sm.commit_write()
             logger.info(f"从历史版本 {history_id} 恢复故事大纲 {story_outline_id}")

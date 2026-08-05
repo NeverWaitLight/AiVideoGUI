@@ -15,11 +15,11 @@ class CharacterService:
         self._workspace_root = workspace_root
 
     def list_characters(self, project_id: int) -> list[Character]:
-        character_repo = self._sm.get_repo(CharacterRepository)
+        character_repo = self._sm.get_repo(repo_class=CharacterRepository)
         return character_repo.list_by_project(project_id)
 
     def get_character(self, character_uuid: str) -> Character | None:
-        character_repo = self._sm.get_repo(CharacterRepository)
+        character_repo = self._sm.get_repo(repo_class=CharacterRepository)
         return character_repo.get_by_id(character_uuid)
 
     def create_character(
@@ -44,10 +44,10 @@ class CharacterService:
             updated_at=int(time.time() * 1000),
         )
 
-        character_repo = self._sm.get_repo(CharacterRepository)
+        character_repo = self._sm.get_repo(repo_class=CharacterRepository)
         self._sm.begin_write()
         try:
-            created = character_repo.save(character)
+            created = character_repo.save(character=character)
             self._sm.commit_write()
             logger.info(f"创建角色：name={name}, ref_code={ref_code}")
             return created
@@ -64,7 +64,7 @@ class CharacterService:
         description: str | None = None,
         design_image: str | None = None,
     ) -> None:
-        character_repo = self._sm.get_repo(CharacterRepository)
+        character_repo = self._sm.get_repo(repo_class=CharacterRepository)
 
         character = character_repo.get_by_id(character_uuid)
         if not character:
@@ -89,7 +89,7 @@ class CharacterService:
 
         self._sm.begin_write()
         try:
-            character_repo.update(updated_character)
+            character_repo.update(character=updated_character)
             self._sm.commit_write()
             logger.info(f"更新角色：uuid={character_uuid}")
         except Exception as e:
@@ -98,11 +98,11 @@ class CharacterService:
             raise
 
     def delete_character(self, character_uuid: str) -> None:
-        character_repo = self._sm.get_repo(CharacterRepository)
+        character_repo = self._sm.get_repo(repo_class=CharacterRepository)
 
         self._sm.begin_write()
         try:
-            character_repo.delete(character_uuid)
+            character_repo.delete(character_uuid=character_uuid)
             self._sm.commit_write()
             logger.info(f"删除角色：uuid={character_uuid}")
         except Exception as e:
@@ -111,11 +111,11 @@ class CharacterService:
             raise
 
     def batch_create_characters(self, characters: list[Character]) -> None:
-        character_repo = self._sm.get_repo(CharacterRepository)
+        character_repo = self._sm.get_repo(repo_class=CharacterRepository)
 
         self._sm.begin_write()
         try:
-            character_repo.batch_create(characters)
+            character_repo.batch_create(characters=characters)
             self._sm.commit_write()
             logger.info(f"批量创建 {len(characters)} 个角色")
         except Exception as e:
@@ -124,12 +124,12 @@ class CharacterService:
             raise
 
     def get_by_ref_code(self, project_id: int, ref_code: str) -> Character | None:
-        character_repo = self._sm.get_repo(CharacterRepository)
-        return character_repo.get_by_ref_code(project_id, ref_code)
+        character_repo = self._sm.get_repo(repo_class=CharacterRepository)
+        return character_repo.get_by_ref_code(project_id=project_id, ref_code=ref_code)
 
     def save_history(self, character_uuid: str) -> None:
-        character_repo = self._sm.get_repo(CharacterRepository)
-        history_repo = self._sm.get_repo(CharacterHistoryRepository)
+        character_repo = self._sm.get_repo(repo_class=CharacterRepository)
+        history_repo = self._sm.get_repo(repo_class=CharacterHistoryRepository)
 
         character = character_repo.get_by_id(character_uuid)
         if not character:
@@ -149,7 +149,7 @@ class CharacterService:
 
         self._sm.begin_write()
         try:
-            history_repo.save(history)
+            history_repo.save(history=history)
             self._sm.commit_write()
             logger.info(f"保存角色历史：uuid={character_uuid}")
         except Exception as e:
@@ -158,7 +158,7 @@ class CharacterService:
             raise
 
     def list_history(self, character_uuid: str) -> list[CharacterHistory]:
-        history_repo = self._sm.get_repo(CharacterHistoryRepository)
+        history_repo = self._sm.get_repo(repo_class=CharacterHistoryRepository)
         return history_repo.list_by_character(character_uuid)
 
     _FIXED_TAGS = ("物种", "外貌", "发型", "发色", "瞳色", "体型")
@@ -192,7 +192,7 @@ class CharacterService:
     def enrich_prompt_with_characters(
         self, visual_content: str, project_id: int
     ) -> str:
-        character_repo = self._sm.get_repo(CharacterRepository)
+        character_repo = self._sm.get_repo(repo_class=CharacterRepository)
         characters = character_repo.list_by_project(project_id)
         if not characters:
             return visual_content

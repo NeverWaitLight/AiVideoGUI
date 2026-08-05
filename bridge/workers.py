@@ -466,8 +466,8 @@ class VideoExportWorker(QThread):
     def run(self):
         try:
             output_path = self._media_service.export_project_video(
-                self._project_id,
-                self._output_path,
+                project_id=self._project_id,
+                output_path=self._output_path,
                 progress_callback=lambda percent, msg: self.progress.emit(percent, msg)
             )
             self.finished.emit(output_path)

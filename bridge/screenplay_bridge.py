@@ -64,7 +64,7 @@ class ScreenplayBridge(QObject):
 
     def _get_project_name(self) -> str | None:
         if self._project_service and self._project_id >= 0:
-            project = self._project_service.get_project(self._project_id)
+            project = self._project_service.get_project(project_id=self._project_id)
             return project.name if project else None
         return None
 
@@ -118,7 +118,7 @@ class ScreenplayBridge(QObject):
         if self._project_id < 0:
             return
         try:
-            scenes = self._service.list_scenes(self._project_id)
+            scenes = self._service.list_scenes(project_id=self._project_id)
             self._scene_model.reset(scenes)
             self.scenes_loaded.emit()
         except Exception as e:
@@ -129,10 +129,10 @@ class ScreenplayBridge(QObject):
         if self._project_id < 0:
             return
         try:
-            timestamps = self._service.list_history_timestamps(self._project_id)
+            timestamps = self._service.list_history_timestamps(project_id=self._project_id)
             items = []
             for ts in timestamps:
-                scenes = self._service.list_history_by_timestamp(self._project_id, ts)
+                scenes = self._service.list_history_by_timestamp(project_id=self._project_id, created_at=ts)
                 items.append((ts, len(scenes)))
             self._history_model.reset(items)
         except Exception as e:
@@ -142,7 +142,7 @@ class ScreenplayBridge(QObject):
     @Slot(int)
     def load_scene(self, scene_id: int) -> None:
         try:
-            scene = self._service.get_scene(scene_id)
+            scene = self._service.get_scene(scene_id=scene_id)
             if not scene:
                 self.error.emit("场次不存在")
                 return
@@ -181,7 +181,7 @@ class ScreenplayBridge(QObject):
 
         try:
             self._service.update_scene(
-                scene_id,
+                scene_id=scene_id,
                 location_type=location_type,
                 location=location.strip(),
                 time_type=time_type,
@@ -198,7 +198,7 @@ class ScreenplayBridge(QObject):
     @Slot(int)
     def delete_scene(self, scene_id: int) -> None:
         try:
-            self._service.delete_scene(scene_id)
+            self._service.delete_scene(scene_id=scene_id)
             self.scene_deleted.emit()
             self._load_scenes()
         except Exception as e:
@@ -208,7 +208,7 @@ class ScreenplayBridge(QObject):
     @Slot(int)
     def prepare_new_scene(self, project_id: int) -> None:
         try:
-            scenes = self._service.list_scenes(project_id)
+            scenes = self._service.list_scenes(project_id=project_id)
             max_num = max((s.scene_number for s in scenes), default=0)
             self._cur_scene_id = -1
             self._cur_scene_number = max_num + 1
@@ -265,7 +265,7 @@ class ScreenplayBridge(QObject):
         if self._project_id < 0:
             return
         try:
-            self._service.save_history(self._project_id)
+            self._service.save_history(project_id=self._project_id)
             self._load_history()
             self.history_saved.emit()
         except Exception as e:
@@ -277,7 +277,7 @@ class ScreenplayBridge(QObject):
         if self._project_id < 0:
             return
         try:
-            self._service.restore_from_history(self._project_id, created_at)
+            self._service.restore_from_history(project_id=self._project_id, created_at=created_at)
             self._load_scenes()
             self._load_history()
             self.history_restored.emit()
@@ -292,7 +292,7 @@ class ScreenplayBridge(QObject):
             return
 
         self._worker = ScriptGenerateWorker(
-            self._text_service, outline_content,
+            text_service=self._text_service, outline_content=outline_content,
             project_id=self._project_id if self._project_id >= 0 else None,
             project_name=self._get_project_name(),
         )
@@ -300,7 +300,7 @@ class ScreenplayBridge(QObject):
         def on_finished(title: str, scenes: list) -> None:
             try:
                 if self._project_id >= 0 and scenes:
-                    self._service.batch_create_scenes(self._project_id, scenes)
+                    self._service.batch_create_scenes(project_id=self._project_id, scenes=scenes)
                 self._load_scenes()
                 self._load_history()
                 self.script_generated.emit(title, len(scenes))
@@ -321,12 +321,12 @@ class ScreenplayBridge(QObject):
             return
 
         try:
-            outline = self._story_outline_service.get_or_create_story_outline(project_id)
+            outline = self._story_outline_service.get_or_create_story_outline(project_id=project_id)
             if not outline.content.strip():
                 self.error.emit("大纲内容为空，无法生成剧本")
                 return
 
-            scenes = self._service.list_scenes(project_id)
+            scenes = self._service.list_scenes(project_id=project_id)
 
             if not scenes:
                 self._generate_from_outline(outline.content, user_input)
@@ -348,10 +348,10 @@ class ScreenplayBridge(QObject):
         current_script = self._format_scenes_as_text(scenes)
 
         self._optimize_worker = ScreenplayOptimizeWorker(
-            self._text_service,
-            outline_content,
-            current_script,
-            user_input,
+            text_service=self._text_service,
+            outline_content=outline_content,
+            current_script=current_script,
+            user_requirement=user_input,
             project_id=self._project_id if self._project_id >= 0 else None,
             project_name=self._get_project_name(),
         )
@@ -361,10 +361,10 @@ class ScreenplayBridge(QObject):
             self.isOptimizingChanged.emit()
             try:
                 for scene in scenes:
-                    self._service.delete_scene(scene.id)
+                    self._service.delete_scene(scene_id=scene.id)
 
                 if self._project_id >= 0 and new_scenes:
-                    self._service.batch_create_scenes(self._project_id, new_scenes)
+                    self._service.batch_create_scenes(project_id=self._project_id, scenes=new_scenes)
 
                 self._load_scenes()
                 self._load_history()

@@ -30,7 +30,7 @@ class TextModelService:
         module: str = "storyboard",
         context: str | None = None,
     ) -> str:
-        provider_config = self._config.get_provider_config("dashscope", "chat")
+        provider_config = self._config.get_provider_config(name="dashscope", provider_type="chat")
         if not provider_config or not provider_config.api_key:
             raise RuntimeError("未配置 DashScope API Key，请在设置中配置")
 
@@ -46,7 +46,7 @@ class TextModelService:
         }
 
         logger.info(f"调用文本模型 chat，模型：{model}")
-        resp = requests.post(self.DASHSCOPE_TEXT_URL, json=payload, headers=headers, timeout=120)
+        resp = requests.post(url=self.DASHSCOPE_TEXT_URL, json=payload, headers=headers, timeout=120)
         resp.raise_for_status()
         data = resp.json()
 
@@ -85,8 +85,8 @@ class TextModelService:
 
         logger.info(f"调用文本模型优化大纲，模型：{model or self.DEFAULT_MODEL}")
         return self.chat(
-            messages,
-            model,
+            messages=messages,
+            model=model,
             project_id=project_id,
             project_name=project_name,
             module="outline",
@@ -100,7 +100,7 @@ class TextModelService:
         project_id: int | None = None,
         project_name: str | None = None,
     ) -> tuple[str, list[dict]]:
-        provider_config = self._config.get_provider_config("dashscope", "chat")
+        provider_config = self._config.get_provider_config(name="dashscope", provider_type="chat")
         if not provider_config or not provider_config.api_key:
             raise RuntimeError("未配置 DashScope API Key，请在设置中配置")
 
@@ -182,7 +182,7 @@ class TextModelService:
         project_id: int | None = None,
         project_name: str | None = None,
     ) -> list[dict]:
-        provider_config = self._config.get_provider_config("dashscope", "chat")
+        provider_config = self._config.get_provider_config(name="dashscope", provider_type="chat")
         if not provider_config or not provider_config.api_key:
             raise RuntimeError("未配置 DashScope API Key，请在设置中配置")
 
@@ -282,8 +282,8 @@ class TextModelService:
 
         logger.info(f"调用文本模型生成设计图提示词，模型：{model or self.DEFAULT_MODEL}")
         return self.chat(
-            messages,
-            model,
+            messages=messages,
+            model=model,
             project_id=project_id,
             project_name=project_name,
             module="storyboard",
@@ -307,8 +307,8 @@ class TextModelService:
 
         logger.info(f"调用文本模型生成角色设计图提示词，模型：{model or self.DEFAULT_MODEL}，角色：{character_name}")
         return self.chat(
-            messages,
-            model,
+            messages=messages,
+            model=model,
             project_id=project_id,
             project_name=project_name,
             module="character",
@@ -333,8 +333,8 @@ class TextModelService:
 
         logger.info(f"调用文本模型优化剧本，模型：{model or self.DEFAULT_MODEL}")
         result = self.chat(
-            messages,
-            model,
+            messages=messages,
+            model=model,
             project_id=project_id,
             project_name=project_name,
             module="script",
@@ -365,8 +365,8 @@ class TextModelService:
 
         logger.info(f"调用文本模型生成角色，模型：{model or self.DEFAULT_MODEL}")
         result = self.chat(
-            messages,
-            model,
+            messages=messages,
+            model=model,
             project_id=project_id,
             project_name=project_name,
             module="character",
@@ -398,8 +398,8 @@ class TextModelService:
 
         logger.info(f"调用文本模型优化角色，模型：{model or self.DEFAULT_MODEL}")
         result = self.chat(
-            messages,
-            model,
+            messages=messages,
+            model=model,
             project_id=project_id,
             project_name=project_name,
             module="character",
@@ -433,8 +433,8 @@ class TextModelService:
 
         logger.info(f"调用文本模型优化分镜，模型：{model or self.DEFAULT_MODEL}")
         result = self.chat(
-            messages,
-            model,
+            messages=messages,
+            model=model,
             project_id=project_id,
             project_name=project_name,
             module="storyboard",
@@ -465,8 +465,8 @@ class TextModelService:
 
         logger.info(f"调用文本模型修改角色描述，角色：{character_name}，模型：{model or self.DEFAULT_MODEL}")
         result = self.chat(
-            messages,
-            model,
+            messages=messages,
+            model=model,
             project_id=project_id,
             project_name=project_name,
             module="character",

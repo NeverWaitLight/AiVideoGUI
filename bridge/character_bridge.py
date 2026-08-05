@@ -41,7 +41,7 @@ class CharacterBridge(QObject):
     def _get_project_name(self, project_id: int | None = None) -> str | None:
         pid = project_id if project_id is not None else self._project_id
         if self._project_service and pid >= 0:
-            project = self._project_service.get_project(pid)
+            project = self._project_service.get_project(project_id=pid)
             return project.name if project else None
         return None
 
@@ -56,7 +56,7 @@ class CharacterBridge(QObject):
     @Slot(int)
     def load_for_project(self, project_id: int) -> None:
         self._project_id = project_id
-        chars = self._character_service.list_characters(project_id)
+        chars = self._character_service.list_characters(project_id=project_id)
         self._model.reset(chars)
 
     @Slot(int, str, str, str)
@@ -100,12 +100,12 @@ class CharacterBridge(QObject):
 
     @Slot(str)
     def delete_character(self, char_uuid: str) -> None:
-        self._character_service.delete_character(char_uuid)
+        self._character_service.delete_character(character_uuid=char_uuid)
         self.data_changed.emit()
 
     @Slot(str, int, str)
     def generate_design_image(self, char_uuid: str, project_id: int, user_requirement: str = "") -> None:
-        chars = self._character_service.list_characters(project_id)
+        chars = self._character_service.list_characters(project_id=project_id)
         character = None
         for c in chars:
             if c.uuid == char_uuid:
@@ -115,8 +115,8 @@ class CharacterBridge(QObject):
             return
 
         worker = CharacterDesignImageWorker(
-            self._text_model_service, self._image_service,
-            self._character_service, character, project_id,
+            text_service=self._text_model_service, image_service=self._image_service,
+            character_service=self._character_service, character=character, project_id=project_id,
             user_requirement=user_requirement,
             project_name=self._get_project_name(project_id),
         )
@@ -139,7 +139,7 @@ class CharacterBridge(QObject):
                 break
 
         worker = CharacterRefineWorker(
-            self._text_model_service,
+            text_service=self._text_model_service,
             character_name=character_name,
             current_description=current_description,
             user_requirement=user_requirement,
@@ -158,7 +158,7 @@ class CharacterBridge(QObject):
     @Slot(str, result=str)
     def get_history(self, char_uuid: str) -> str:
         try:
-            history = self._character_service.list_history(char_uuid)
+            history = self._character_service.list_history(character_uuid=char_uuid)
             result = []
             for h in history:
                 result.append({
@@ -189,7 +189,7 @@ class CharacterBridge(QObject):
     def batch_delete(self, char_ids: list) -> None:
         for cid in char_ids:
             try:
-                self._character_service.delete_character(cid)
+                self._character_service.delete_character(character_uuid=cid)
             except Exception as e:
                 logger.error(f"删除角色 {cid} 失败: {e}")
         self.data_changed.emit()
@@ -207,15 +207,15 @@ class CharacterBridge(QObject):
 
         try:
             # 1. 获取大纲和剧本
-            outline = self._story_outline_service.get_or_create_story_outline(project_id)
-            scenes = self._screenplay_service.list_scenes(project_id)
+            outline = self._story_outline_service.get_or_create_story_outline(project_id=project_id)
+            scenes = self._screenplay_service.list_scenes(project_id=project_id)
 
             if not outline.content.strip() or not scenes:
                 self.error.emit("必须先完成大纲和剧本")
                 return
 
             # 2. 查询现有角色
-            characters = self._character_service.list_characters(project_id)
+            characters = self._character_service.list_characters(project_id=project_id)
 
             # 3. 判断分支
             if not characters:
@@ -234,8 +234,8 @@ class CharacterBridge(QObject):
         script_content = self._format_script_as_text(scenes)
 
         self._character_worker = CharacterWorker(
-            self._text_model_service,
-            'generate',
+            text_service=self._text_model_service,
+            mode='generate',
             project_id=project_id,
             project_name=self._get_project_name(project_id),
             outline_content=outline_content,
@@ -280,8 +280,8 @@ class CharacterBridge(QObject):
         current_characters = self._format_characters_as_text(characters)
 
         self._character_worker = CharacterWorker(
-            self._text_model_service,
-            'optimize',
+            text_service=self._text_model_service,
+            mode='optimize',
             project_id=project_id,
             project_name=self._get_project_name(project_id),
             outline_content=outline_content,
@@ -295,7 +295,7 @@ class CharacterBridge(QObject):
             self.isOptimizingChanged.emit()
             try:
                 for char in characters:
-                    self._character_service.delete_character(char.id)
+                    self._character_service.delete_character(character_uuid=char.id)
 
                 for char_data in new_characters:
                     self._character_service.create_character(

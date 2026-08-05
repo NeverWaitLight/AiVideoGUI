@@ -57,19 +57,19 @@ class MediaBridge(QObject):
 
     @Slot(list)
     def import_files(self, file_paths: list) -> None:
-        self._media_service.import_files(file_paths)
+        self._media_service.import_files(file_paths=file_paths)
         self.load_files()
         self.files_changed.emit()
 
     @Slot(str)
     def delete_file(self, file_id: str) -> None:
-        self._media_service.delete_file(file_id)
+        self._media_service.delete_file(file_id=file_id)
         self._model.remove_by_id(file_id)
         self.files_changed.emit()
 
     @Slot(str, int)
     def set_featured(self, file_id: str, storyboard_id: int) -> None:
-        self._media_service.set_featured(file_id, storyboard_id)
+        self._media_service.set_featured(file_id=file_id, storyboard_id=storyboard_id)
 
     @Slot(int, str)
     def export_project_video(self, project_id: int, output_path: str) -> None:
@@ -77,7 +77,7 @@ class MediaBridge(QObject):
             logger.warning("已有导出任务正在进行")
             return
 
-        self._export_worker = VideoExportWorker(self._media_service, project_id, output_path, self)
+        self._export_worker = VideoExportWorker(media_service=self._media_service, project_id=project_id, output_path=output_path, parent=self)
         self._export_worker.progress.connect(self._on_export_progress)
         self._export_worker.finished.connect(self._on_export_finished)
         self._export_worker.failed.connect(self._on_export_failed)

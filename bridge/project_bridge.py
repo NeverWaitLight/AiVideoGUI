@@ -79,7 +79,7 @@ class ProjectBridge(QObject):
 
     @Slot(int)
     def delete_project(self, project_id: int) -> None:
-        self._project_service.delete_project(project_id)
+        self._project_service.delete_project(project_id=project_id)
         project_dir = paths.projects_dir(paths.workspace_root())
         target = f"{project_dir}/{project_id}"
         if os.path.isdir(target):
@@ -89,7 +89,7 @@ class ProjectBridge(QObject):
 
     @Slot(int, result=str)
     def get_project_info(self, project_id: int) -> str:
-        project = self._project_service.get_project(project_id)
+        project = self._project_service.get_project(project_id=project_id)
         if not project:
             return "{}"
         has_videos = self._has_storyboard_videos(project_id)
@@ -108,7 +108,7 @@ class ProjectBridge(QObject):
         })
 
     def _has_storyboard_videos(self, project_id: int) -> bool:
-        media_repo = self._session_manager.get_repo(MediaRepository)
+        media_repo = self._session_manager.get_repo(repo_class=MediaRepository)
         media_files = media_repo.list_with_filters(
             media_type=MediaType.VIDEO, conversation_ids=None,
         )
@@ -165,7 +165,7 @@ class ProjectBridge(QObject):
             workspace = paths.workspace_dir(self._workspace_root)
             relative_path = os.path.relpath(local_path, workspace)
 
-            self._project_service.update_cover_image(project_id, relative_path)
+            self._project_service.update_cover_image(project_id=project_id, cover_image=relative_path)
             return relative_path
 
         def on_success(relative_path):
@@ -177,7 +177,7 @@ class ProjectBridge(QObject):
             logger.error(f"项目 {project_id} 封面图生成失败: {error_msg}")
             self.cover_generation_failed.emit(error_msg)
 
-        worker = GeneralWorker(task)
+        worker = GeneralWorker(task_func=task)
         worker.finished.connect(on_success)
         worker.failed.connect(on_error)
 
