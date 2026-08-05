@@ -14,24 +14,14 @@ class StoryboardService:
         self._workspace_root = workspace_root
 
     def list_storyboards(self, scene_id: int | None = None, project_id: int | None = None, scene_number: int | None = None) -> list[Storyboard]:
-        # 清除 Session 缓存，确保获取最新数据
-        session = self._session_mgr.get_session()
-        session.expire_all()
-
         repo = self._session_mgr.get_repo(StoryboardRepository)
 
         if scene_id is not None:
-            result = repo.list_by_scene(scene_id)
-            logger.info(f"StoryboardService.list_storyboards by scene_id={scene_id} 返回 {len(result)} 个分镜")
-            return result
+            return repo.list_by_scene(scene_id)
         elif project_id is not None:
             storyboards = repo.list_by_project(project_id)
-            logger.info(f"StoryboardService.list_storyboards by project_id={project_id} 从 repo 获取 {len(storyboards)} 个分镜，ID={[s.id for s in storyboards]}")
             if scene_number is not None:
-                filtered = [s for s in storyboards if s.scene_number == scene_number]
-                logger.info(f"按 scene_number={scene_number} 过滤后剩余 {len(filtered)} 个分镜")
-                return filtered
-            logger.info(f"返回 {len(storyboards)} 个分镜给调用者")
+                return [s for s in storyboards if s.scene_number == scene_number]
             return storyboards
         else:
             return []

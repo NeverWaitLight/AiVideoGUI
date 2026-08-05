@@ -32,7 +32,6 @@ class SessionManager:
         else:
             repo_instance = repo_class(session)
 
-        logger.debug(f"创建 Repository 实例：{repo_class.__name__}（线程：{threading.current_thread().name}）")
         return cast(TRepo, repo_instance)
 
     def begin_write(self) -> None:

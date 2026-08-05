@@ -104,11 +104,9 @@ Item {
                         rightPadding: 12
                         onClicked: {
                             var selectedIdsCopy = _selectedIds.slice()
-                            console.log("虚拟拍摄按钮点击，选中ID:", JSON.stringify(selectedIdsCopy))
                             confirmDialog.confirm(
                                 "确定要为选中的 " + selectedIdsCopy.length + " 个分镜生成视频吗？",
                                 function() {
-                                    console.log("确认对话框回调执行，ID:", JSON.stringify(selectedIdsCopy))
                                     bridge.storyboard.batch_generate_videos(page.projectId, JSON.stringify(selectedIdsCopy))
                                 }
                             )
@@ -126,11 +124,9 @@ Item {
                         rightPadding: 12
                         onClicked: {
                             var selectedIdsCopy = _selectedIds.slice()
-                            console.log("设计场景按钮点击，选中ID:", JSON.stringify(selectedIdsCopy))
                             confirmDialog.confirm(
                                 "确定要为选中的 " + selectedIdsCopy.length + " 个分镜生成设计图吗？",
                                 function() {
-                                    console.log("确认对话框回调执行，ID:", JSON.stringify(selectedIdsCopy))
                                     bridge.storyboard.batch_generate_design_images(page.projectId, JSON.stringify(selectedIdsCopy))
                                 }
                             )
@@ -180,26 +176,11 @@ Item {
                         leftPadding: 12
                         rightPadding: 12
                         onClicked: {
+                            var ids = []
                             var m = bridge.storyboard.model
-                            console.log("全选按钮点击 - 模型行数:", m.count, "当前选中数:", _selectedIds.length)
-
-                            // 如果当前选中数等于总数，则取消全选；否则全选
-                            if (_selectedIds.length === m.count) {
-                                console.log("取消全选")
-                                _selectedIds = []
-                            } else {
-                                console.log("执行全选")
-                                var ids = []
-                                for (var i = 0; i < m.count; i++) {
-                                    var idx = m.index(i, 0)
-                                    var id = m.data(idx, 257)  // IdRole = Qt.UserRole + 1 = 257
-                                    console.log("  行", i, "- shotId:", id, "类型:", typeof id)
-                                    ids.push(id)
-                                }
-                                console.log("全选结果:", JSON.stringify(ids))
-                                _selectedIds = ids
-                            }
-                            console.log("最终选中列表:", JSON.stringify(_selectedIds))
+                            for (var i = 0; i < m.count; i++)
+                                ids.push(m.data(m.index(i, 0), 257))
+                            _selectedIds = _selectedIds.length === ids.length ? [] : ids
                         }
                     }
 
@@ -309,18 +290,11 @@ Item {
                         selected: _selectedIds.indexOf(model.shotId) >= 0
                         onClicked: {
                             if (_multiSelect) {
-                                console.log("卡片点击 - shotId:", model.shotId, "类型:", typeof model.shotId)
                                 var ids = _selectedIds.slice()
                                 var idx = ids.indexOf(model.shotId)
-                                if (idx >= 0) {
-                                    console.log("取消选中 shotId:", model.shotId)
-                                    ids.splice(idx, 1)
-                                } else {
-                                    console.log("选中 shotId:", model.shotId)
-                                    ids.push(model.shotId)
-                                }
+                                if (idx >= 0) ids.splice(idx, 1)
+                                else ids.push(model.shotId)
                                 _selectedIds = ids
-                                console.log("当前选中列表:", JSON.stringify(_selectedIds))
                             } else {
                                 _editingShotId = model.shotId
                                 bridge.storyboard.load_shot(model.shotId)

@@ -65,16 +65,12 @@ class StoryboardRepository(BaseRepository[StoryboardEntity, Storyboard]):
         return [self._to_dto(e) for e in entities]
 
     def list_by_project(self, project_id: int) -> List[Storyboard]:
-        from loguru import logger
-
         # 清除 Session 缓存，确保获取最新数据
         self.session.expire_all()
 
         # 先获取该项目的所有有效场次 ID
         valid_scene_ids_stmt = select(ScreenplayEntity.id).where(ScreenplayEntity.project_id == project_id)
         valid_scene_ids = set(self.session.execute(valid_scene_ids_stmt).scalars().all())
-
-        logger.debug(f"项目 {project_id} 的有效场次 ID：{valid_scene_ids}")
 
         # 查询所有分镜（不使用 JOIN）
         all_storyboards_stmt = select(StoryboardEntity).order_by(
@@ -83,20 +79,8 @@ class StoryboardRepository(BaseRepository[StoryboardEntity, Storyboard]):
         )
         all_entities = self.session.execute(all_storyboards_stmt).scalars().all()
 
-        logger.debug(f"数据库中所有分镜总数：{len(all_entities)}，ID列表：{[e.id for e in all_entities]}")
-
         # 在 Python 层过滤：只保留 scene_id 在有效场次列表中的分镜
         entities = [e for e in all_entities if e.scene_id in valid_scene_ids]
-
-        logger.info(f"项目 {project_id} 的分镜数：{len(entities)}，ID列表：{[e.id for e in entities]}")
-
-        # 检查是否有孤立分镜
-        orphaned = [e for e in all_entities if e.scene_id not in valid_scene_ids]
-        if orphaned:
-            logger.warning(
-                f"发现 {len(orphaned)} 个孤立分镜（scene_id 对应的场次不存在），"
-                f"ID={[e.id for e in orphaned]}，scene_id={[e.scene_id for e in orphaned]}"
-            )
 
         return [self._to_dto(e) for e in entities]
 
