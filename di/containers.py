@@ -16,6 +16,7 @@ from service.story_outline_service import StoryOutlineService
 from service.storyboard_service import StoryboardService
 from service.text_model_service import TextModelService
 from service.video_service import VideoService, _PROVIDER_REGISTRY
+from service.visual_style_service import VisualStyleService
 from storage.session_manager import SessionManager
 from prompts.video_prompt_builder import VideoPromptBuilder
 from utils.ai_request_logger import AIRequestLogger
@@ -107,6 +108,11 @@ class ApplicationContainer(containers.DeclarativeContainer):
         ImageService,
         config_manager=config_manager,
         ai_request_logger=ai_request_logger,
+    )
+
+    visual_style_service = providers.Singleton(
+        VisualStyleService,
+        session_manager=session_manager,
     )
 
     background_scheduler = providers.Singleton(

@@ -15,7 +15,12 @@ Control {
     }
 
     contentItem: StackLayout {
-        currentIndex: mainPanel.currentPage === "project" ? 0 : 1
+        currentIndex: {
+            if (mainPanel.currentPage === "project") return 0
+            if (mainPanel.currentPage === "library") return 1
+            if (mainPanel.currentPage === "visualStyles") return 2
+            return 0
+        }
 
         Pages.ProjectModePage {
             id: projectModePage
@@ -27,8 +32,16 @@ Control {
                 mainPanel.currentPage = "project"
             }
         }
+
+        Pages.VisualStyleListPage {
+            id: visualStylePage
+            onBackClicked: {
+                mainPanel.currentPage = "project"
+            }
+        }
     }
 
     readonly property alias projectModePage: projectModePage
     readonly property alias mediaLibraryPage: globalMediaPage
+    readonly property alias visualStylePage: visualStylePage
 }

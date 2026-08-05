@@ -19,6 +19,7 @@ Item {
     property string _ratioText: "16:9"
     property string _resText: "720P"
     property string _nameText: ""
+    property int _visualStyleId: 0
 
     signal backClicked()
     signal projectSaved(int projectId)
@@ -27,6 +28,10 @@ Item {
         if (projectId > 0) {
             _loadProjectData()
         }
+    }
+
+    Component.onCompleted: {
+        bridge.visualStyles.load_styles()
     }
 
     Connections {
@@ -58,6 +63,7 @@ Item {
         _coverDisplayPath = info.coverImagePath || ""
         if (info.aspectRatio) _ratioText = info.aspectRatio
         if (info.resolution) _resText = info.resolution
+        _visualStyleId = info.visualStyleId || 0
     }
 
     ColumnLayout {
@@ -305,6 +311,74 @@ Item {
                 }
             }
         }
+
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 8
+
+            Label {
+                text: "视觉风格"
+                font.pixelSize: Theme.fontSizeSmall
+                opacity: 0.7
+            }
+            ComboBox {
+                id: styleComboBox
+                Layout.fillWidth: true
+                Layout.preferredHeight: 36
+                model: bridge.visualStyles.listModel
+                textRole: "name"
+                valueRole: "styleId"
+
+                Component.onCompleted: {
+                    updateIndex()
+                }
+
+                onModelChanged: {
+                    updateIndex()
+                }
+
+                onActivated: {
+                    _visualStyleId = currentValue !== undefined ? currentValue : 0
+                }
+
+                function updateIndex() {
+                    if (model && model.rowCount && model.rowCount() > 0) {
+                        var idx = indexOfValue(_visualStyleId)
+                        currentIndex = idx >= 0 ? idx : 0
+                    }
+                }
+
+                delegate: ItemDelegate {
+                    width: styleComboBox.width
+                    height: 48
+
+                    contentItem: RowLayout {
+                        spacing: 12
+
+                        Image {
+                            Layout.preferredWidth: 32
+                            Layout.preferredHeight: 32
+                            source: model.sampleImagePath ? "file:///" + model.sampleImagePath : ""
+                            fillMode: Image.PreserveAspectCrop
+
+                            Rectangle {
+                                anchors.fill: parent
+                                color: "transparent"
+                                border.color: Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.12)
+                                border.width: 1
+                                radius: 4
+                            }
+                        }
+
+                        Label {
+                            Layout.fillWidth: true
+                            text: model.name
+                            elide: Text.ElideRight
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // --- Logic ---
@@ -315,7 +389,7 @@ Item {
             coverToSave = bridge.projects.resolve_cover_path(_coverDisplayPath)
         }
 
-        bridge.projects.update_project(projectId, _nameText.trim(), _resText, _ratioText, coverToSave)
+        bridge.projects.update_project(projectId, _nameText.trim(), _resText, _ratioText, coverToSave, _visualStyleId)
         page.isCreate = false
         page.projectSaved(projectId)
     }

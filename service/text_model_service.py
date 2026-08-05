@@ -267,6 +267,7 @@ class TextModelService:
         dialogue: str = "",
         notes: str = "",
         character_info: str = "",
+        visual_style: str = "",
         model: str | None = None,
         project_id: int | None = None,
         project_name: str | None = None,
@@ -278,9 +279,10 @@ class TextModelService:
             dialogue=dialogue,
             notes=notes,
             character_info=character_info,
+            visual_style=visual_style,
         )
 
-        logger.info(f"调用文本模型生成设计图提示词，模型：{model or self.DEFAULT_MODEL}")
+        logger.info(f"调用文本模型生成设计图提示词，模型：{model or self.DEFAULT_MODEL}，风格：{visual_style or '默认'}")
         return self.chat(
             messages=messages,
             model=model,
@@ -295,6 +297,7 @@ class TextModelService:
         character_name: str,
         description: str,
         user_requirement: str = "",
+        visual_style: str = "",
         model: str | None = None,
         project_id: int | None = None,
         project_name: str | None = None,
@@ -303,9 +306,10 @@ class TextModelService:
             character_name=character_name,
             description=description,
             user_requirement=user_requirement,
+            visual_style=visual_style,
         )
 
-        logger.info(f"调用文本模型生成角色设计图提示词，模型：{model or self.DEFAULT_MODEL}，角色：{character_name}")
+        logger.info(f"调用文本模型生成角色设计图提示词，模型：{model or self.DEFAULT_MODEL}，角色：{character_name}，风格：{visual_style or '默认'}")
         return self.chat(
             messages=messages,
             model=model,

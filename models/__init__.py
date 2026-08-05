@@ -17,6 +17,7 @@ from models.scene import Scene, ScreenplayHistory
 from models.storyboard import Storyboard, StoryboardHistory
 from models.character import Character, CharacterHistory
 from models.generate_task import GenerateTask
+from models.visual_style import VisualStyle
 
 __all__ = [
     "TaskStatus",
@@ -40,4 +41,5 @@ __all__ = [
     "StoryOutline",
     "StoryOutlineHistory",
     "TaskResult",
+    "VisualStyle",
 ]

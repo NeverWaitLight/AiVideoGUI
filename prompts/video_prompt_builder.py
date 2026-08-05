@@ -10,6 +10,7 @@ class VideoPromptBuilder:
         prev_shot: Storyboard | None = None,
         next_shot: Storyboard | None = None,
         reference_images: list[dict[str, str]] | None = None,
+        visual_style: str | None = None,
     ) -> str:
         sections = []
 
@@ -17,6 +18,9 @@ class VideoPromptBuilder:
             scene_context = VideoPromptBuilder._build_scene_context(scene)
             if scene_context:
                 sections.append(f"【场景上下文】\n{scene_context}")
+
+        if visual_style:
+            sections.append(f"【视觉风格】\n{visual_style}")
 
         if reference_images:
             ref_desc = VideoPromptBuilder._build_reference_images_desc(reference_images)

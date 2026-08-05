@@ -225,6 +225,69 @@ class TestVideoPromptBuilder(unittest.TestCase):
             continuity_section = prompt.split("【连贯性提示】")[1].split("【")[0] if "【连贯性提示】" in prompt.split("【镜头画面】")[-1] else prompt.split("【连贯性提示】")[1]
             self.assertLess(len(continuity_section), 150)
 
+    def test_build_shot_prompt_with_visual_style(self):
+        scene = Scene(
+            id=1,
+            project_id=1,
+            scene_number=1,
+            location_type=SceneLocation.EXTERIOR,
+            location="公园",
+            time_type=SceneTime.DAY,
+            time_detail="",
+            content="阳光明媚的公园里，人们在散步。",
+        )
+
+        storyboard = Storyboard(
+            id=1,
+            scene_number=1,
+            shot_number=1,
+            scene_id=1,
+            shot_size=ShotSize.FULL_SHOT,
+            visual_content="孩子们在草地上奔跑",
+            camera_movement="",
+            dialogue="",
+            sound_effect="",
+            duration=5.0,
+            notes="",
+        )
+
+        prompt = VideoPromptBuilder.build_shot_prompt(
+            storyboard, scene=scene, visual_style="写实主义"
+        )
+
+        self.assertIn("【场景上下文】", prompt)
+        self.assertIn("【视觉风格】", prompt)
+        self.assertIn("写实主义", prompt)
+        self.assertIn("【镜头画面】", prompt)
+
+        sections = prompt.split("【")
+        scene_idx = next(i for i, s in enumerate(sections) if "场景上下文" in s)
+        style_idx = next(i for i, s in enumerate(sections) if "视觉风格" in s)
+        shot_idx = next(i for i, s in enumerate(sections) if "镜头画面" in s)
+
+        self.assertLess(scene_idx, style_idx)
+        self.assertLess(style_idx, shot_idx)
+
+    def test_build_shot_prompt_without_visual_style(self):
+        storyboard = Storyboard(
+            id=1,
+            scene_number=1,
+            shot_number=1,
+            scene_id=1,
+            shot_size=ShotSize.MEDIUM_SHOT,
+            visual_content="一个男人站在街道上",
+            camera_movement="",
+            dialogue="",
+            sound_effect="",
+            duration=5.0,
+            notes="",
+        )
+
+        prompt = VideoPromptBuilder.build_shot_prompt(storyboard, visual_style=None)
+
+        self.assertNotIn("【视觉风格】", prompt)
+        self.assertIn("【镜头画面】", prompt)
+
 
 if __name__ == "__main__":
     unittest.main()

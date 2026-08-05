@@ -89,7 +89,7 @@ class CharacterService:
 
         self._sm.begin_write()
         try:
-            character_repo.update(character=updated_character)
+            character_repo.update(dto=updated_character)
             self._sm.commit_write()
             logger.info(f"更新角色：uuid={character_uuid}")
         except Exception as e:

@@ -23,6 +23,7 @@ system_prompt: |
      - 黑白素描风格（black and white sketch），类似手绘分镜稿或故事板
      - 线条清晰，明暗层次分明，适合作为拍摄构图参考
      - 不需要色彩，不需要写实细节
+     - **画面风格要求**：{visual_style_instruction}
 
   **输出要求：**
   - 直接输出一段英文提示词，不超过 200 个单词
@@ -83,3 +84,5 @@ user_prompt_template: |
 
   【角色形象】
   {character_info}
+
+  【画面风格】{visual_style}

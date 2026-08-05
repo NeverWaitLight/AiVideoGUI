@@ -22,12 +22,13 @@ class ProjectBridge(QObject):
     cover_generation_finished = Signal(str)
     cover_generation_failed = Signal(str)
 
-    def __init__(self, project_service, session_manager, parent=None):
+    def __init__(self, project_service, session_manager, visual_style_service, parent=None):
         super().__init__(parent)
         self._project_service = project_service
         self._session_manager = session_manager
-        self._grid_model = ProjectListModel(self)
-        self._list_model = ProjectListModel(self)
+        self._visual_style_service = visual_style_service
+        self._grid_model = ProjectListModel(visual_style_service, self)
+        self._list_model = ProjectListModel(visual_style_service, self)
         self._workspace_root = None
 
     @Property(QObject, constant=True)
@@ -44,10 +45,11 @@ class ProjectBridge(QObject):
         self._grid_model.reset(projects)
         self._list_model.reset(projects)
 
-    @Slot(str, str, str, str)
-    def create_project(self, name: str, resolution: str, ratio: str, cover: str) -> None:
+    @Slot(str, str, str, str, int)
+    def create_project(self, name: str, resolution: str, ratio: str, cover: str, visual_style_id: int) -> None:
+        style_id = visual_style_id if visual_style_id > 0 else None
         project = self._project_service.create_project(
-            name=name, resolution=resolution, aspect_ratio=ratio, cover_image=cover,
+            name=name, resolution=resolution, aspect_ratio=ratio, cover_image=cover, visual_style_id=style_id,
         )
         if project:
             self.load_projects()
@@ -64,12 +66,13 @@ class ProjectBridge(QObject):
             return project.id
         return -1
 
-    @Slot(int, str, str, str, str)
+    @Slot(int, str, str, str, str, int)
     def update_project(self, project_id: int, name: str, resolution: str,
-                       ratio: str, cover: str) -> None:
+                       ratio: str, cover: str, visual_style_id: int) -> None:
+        style_id = visual_style_id if visual_style_id > 0 else None
         self._project_service.update_project(
             project_id=project_id, name=name, resolution=resolution,
-            aspect_ratio=ratio, cover_image=cover,
+            aspect_ratio=ratio, cover_image=cover, visual_style_id=style_id,
         )
         self.load_projects()
         self.project_updated.emit(project_id)
@@ -102,6 +105,7 @@ class ProjectBridge(QObject):
             "coverImagePath": cover_abs,
             "videoCount": 0,
             "hasStoryboardVideos": has_videos,
+            "visualStyleId": project.visual_style_id or 0,
         })
 
     def _has_storyboard_videos(self, project_id: int) -> bool:

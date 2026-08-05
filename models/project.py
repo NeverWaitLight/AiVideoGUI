@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Optional
 
 
 @dataclass
@@ -12,3 +13,4 @@ class Project:
     created_at: int
     updated_at: int
     cover_image: str = ""
+    visual_style_id: Optional[int] = None

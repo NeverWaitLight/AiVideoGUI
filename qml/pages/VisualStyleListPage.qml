@@ -6,43 +6,13 @@ import "../components" as Comp
 import "../dialogs" as Dialogs
 
 Item {
-    id: projectGridPage
+    id: visualStyleListPage
 
-    signal projectSelected(int projectId)
-    signal createRequested()
-    signal editRequested(int projectId)
+    signal styleSelected(int styleId)
+    signal backClicked()
 
-    property var generatingCoverIds: []
-
-    Connections {
-        target: bridge
-
-        function onCover_generation_started(projectId) {
-            var ids = projectGridPage.generatingCoverIds.slice()
-            if (ids.indexOf(projectId) === -1) {
-                ids.push(projectId)
-                projectGridPage.generatingCoverIds = ids
-            }
-        }
-
-        function onCover_generation_finished(projectId) {
-            var ids = projectGridPage.generatingCoverIds.slice()
-            var index = ids.indexOf(projectId)
-            if (index !== -1) {
-                ids.splice(index, 1)
-                projectGridPage.generatingCoverIds = ids
-            }
-            bridge.projects.load_projects()
-        }
-
-        function onCover_generation_failed(projectId, errorMessage) {
-            var ids = projectGridPage.generatingCoverIds.slice()
-            var index = ids.indexOf(projectId)
-            if (index !== -1) {
-                ids.splice(index, 1)
-                projectGridPage.generatingCoverIds = ids
-            }
-        }
+    Component.onCompleted: {
+        bridge.visualStyles.load_styles()
     }
 
     ColumnLayout {
@@ -70,8 +40,33 @@ Item {
                 anchors.fill: parent
                 spacing: 12
 
+                Button {
+                    width: 34
+                    height: 34
+                    flat: true
+                    display: AbstractButton.IconOnly
+                    icon.source: "qrc:/resources/icons/arrow_back.svg"
+                    icon.width: 20
+                    icon.height: 20
+                    topPadding: 7
+                    bottomPadding: 7
+                    leftPadding: 7
+                    rightPadding: 7
+                    ToolTip.visible: hovered
+                    ToolTip.text: "返回"
+                    onClicked: visualStyleListPage.backClicked()
+
+                    background: Rectangle {
+                        anchors.fill: parent
+                        radius: Theme.radiusSmall
+                        color: parent.hovered
+                            ? Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.08)
+                            : "transparent"
+                    }
+                }
+
                 Label {
-                    text: "项目"
+                    text: "视觉风格"
                     font.pixelSize: Theme.fontSizeMedium
                     font.bold: true
                 }
@@ -92,7 +87,7 @@ Item {
                     rightPadding: 7
                     ToolTip.visible: hovered
                     ToolTip.text: "新建"
-                    onClicked: projectGridPage.createRequested()
+                    onClicked: editDialog.open(-1, "", "")
 
                     background: Rectangle {
                         anchors.fill: parent
@@ -108,7 +103,7 @@ Item {
         Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            visible: projectRepeater.count > 0
+            visible: styleRepeater.count > 0
 
             ScrollView {
                 anchors.fill: parent
@@ -117,37 +112,35 @@ Item {
 
                 Grid {
                     width: parent.width
-                    columns: 3
+                    columns: 4
                     rowSpacing: 12
                     columnSpacing: 12
                     padding: 20
 
                     Repeater {
-                        id: projectRepeater
-                        model: bridge.projects.gridModel
-                        delegate: Comp.ProjectCard {
-                            width: (parent.width - parent.padding * 2 - parent.columnSpacing * 2) / 3
-                            height: 280
+                        id: styleRepeater
+                        model: bridge.visualStyles.listModel
+                        delegate: Comp.VisualStyleCard {
+                            width: (parent.width - parent.padding * 2 - parent.columnSpacing * 3) / 4
+                            height: 300
 
-                            projectId: model.projectId
-                            projectName: model.name
-                            resolution: model.resolution
-                            aspectRatio: model.aspectRatio
-                            coverPath: model.coverPath
+                            styleId: model.styleId
+                            styleName: model.name
+                            isDefault: model.isDefault
+                            sampleImagePath: model.sampleImagePath
                             createdAt: model.createdAt || ""
-                            isGeneratingCover: generatingCoverIds.indexOf(projectId) !== -1
-                            visualStyleId: model.visualStyleId || 0
-                            visualStyleName: model.visualStyleName || ""
-                            visualStyleImage: model.visualStyleImage || ""
 
-                            onClicked: projectGridPage.projectSelected(projectId)
+                            onClicked: visualStyleListPage.styleSelected(styleId)
                             onEditClicked: function(id) {
-                                projectGridPage.editRequested(id)
+                                editDialog.open(id, styleName, sampleImagePath)
                             }
                             onDeleteClicked: function(id) {
-                                confirmDialog.confirmDelete("项目", function() {
-                                    bridge.projects.delete_project(id)
+                                confirmDialog.confirmDelete("风格", function() {
+                                    bridge.visualStyles.delete_style(id)
                                 })
+                            }
+                            onSetDefaultClicked: function(id) {
+                                bridge.visualStyles.set_as_default(id)
                             }
                         }
                     }
@@ -156,16 +149,20 @@ Item {
         }
 
         Comp.EmptyState {
-            visible: projectRepeater.count === 0
+            visible: styleRepeater.count === 0
             Layout.fillWidth: true
             Layout.fillHeight: true
-            text: "还没有项目，点击右上角创建"
+            text: "还没有视觉风格，点击右上角创建"
             buttonText: "新建"
-            onButtonClicked: projectGridPage.createRequested()
+            onButtonClicked: editDialog.open(-1, "", "")
         }
     }
 
     Dialogs.ConfirmDialog {
         id: confirmDialog
+    }
+
+    Dialogs.VisualStyleEditDialog {
+        id: editDialog
     }
 }

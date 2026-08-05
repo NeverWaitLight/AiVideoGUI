@@ -17,7 +17,7 @@ class ProjectService:
         self._sm = session_manager
         self._root = workspace_root
 
-    def create_project(self, name: str, resolution: str = "720P", aspect_ratio: str = "16:9", cover_image: str = "") -> Project | None:
+    def create_project(self, name: str, resolution: str = "720P", aspect_ratio: str = "16:9", cover_image: str = "", visual_style_id: int | None = None) -> Project | None:
         project_repo = self._sm.get_repo(repo_class=ProjectRepository)
 
         if project_repo.exists_by_name(name):
@@ -33,6 +33,7 @@ class ProjectService:
             created_at=now_ts,
             updated_at=now_ts,
             cover_image=cover_image,
+            visual_style_id=visual_style_id,
         )
 
         self._sm.begin_write()
@@ -57,7 +58,7 @@ class ProjectService:
         project_repo = self._sm.get_repo(repo_class=ProjectRepository)
         return project_repo.get_by_id(project_id)
 
-    def update_project(self, project_id: int, name: str, resolution: str, aspect_ratio: str, cover_image: str = "") -> bool:
+    def update_project(self, project_id: int, name: str, resolution: str, aspect_ratio: str, cover_image: str = "", visual_style_id: int | None = None) -> bool:
         project_repo = self._sm.get_repo(repo_class=ProjectRepository)
 
         if project_repo.exists_by_name(name=name, exclude_id=project_id):
@@ -66,7 +67,7 @@ class ProjectService:
 
         self._sm.begin_write()
         try:
-            project_repo.update_project(project_id=project_id, name=name, resolution=resolution, aspect_ratio=aspect_ratio, cover_image=cover_image)
+            project_repo.update_project(project_id=project_id, name=name, resolution=resolution, aspect_ratio=aspect_ratio, cover_image=cover_image, visual_style_id=visual_style_id)
             self._sm.commit_write()
             return True
         except Exception as e:

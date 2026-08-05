@@ -91,12 +91,20 @@ ApplicationWindow {
                 id: tabBar
                 Layout.fillHeight: true
                 Layout.preferredWidth: Theme.tabBarWidth
-                currentIndex: root.currentPage === "library" ? 1 : 0
+                currentIndex: {
+                    if (root.currentPage === "library") return 1
+                    if (root.currentPage === "visualStyles") return 2
+                    return 0
+                }
                 onSettingsClicked: settingsDialog.open()
                 onLibraryClicked: {
                     root.currentPage = "library"
                     mainPanel.mediaLibraryPage.projectId = -1
                     bridge.media.load_files()
+                }
+                onVisualStylesClicked: {
+                    root.currentPage = "visualStyles"
+                    bridge.visualStyles.load_styles()
                 }
                 onTabChanged: {
                     root.currentPage = "project"

@@ -21,6 +21,9 @@ Pane {
     property string coverPath: ""
     property string createdAt: ""
     property bool isGeneratingCover: false
+    property int visualStyleId: 0
+    property string visualStyleName: ""
+    property string visualStyleImage: ""
 
     signal clicked()
     signal editClicked(int projectId)
@@ -78,6 +81,35 @@ Pane {
                 }
 
                 Item { Layout.fillWidth: true }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 6
+                visible: visualStyleId > 0
+
+                Image {
+                    Layout.preferredWidth: 20
+                    Layout.preferredHeight: 20
+                    source: visualStyleImage ? "file:///" + visualStyleImage : ""
+                    fillMode: Image.PreserveAspectCrop
+
+                    Rectangle {
+                        anchors.fill: parent
+                        color: "transparent"
+                        border.color: Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.12)
+                        border.width: 1
+                        radius: 3
+                    }
+                }
+
+                Label {
+                    text: visualStyleName
+                    font.pixelSize: Theme.fontSizeSmall
+                    opacity: 0.6
+                    elide: Text.ElideRight
+                    Layout.fillWidth: true
+                }
             }
         }
 

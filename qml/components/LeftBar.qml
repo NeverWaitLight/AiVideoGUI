@@ -9,6 +9,7 @@ Item {
 
     signal tabChanged(int index)
     signal libraryClicked()
+    signal visualStylesClicked()
     signal settingsClicked()
 
     property int currentIndex: 0
@@ -52,6 +53,23 @@ Item {
                 tabBar.libraryClicked()
             }
             ToolTip.text: "素材库"
+            ToolTip.visible: hovered
+        }
+
+        TabButton {
+            Layout.alignment: Qt.AlignHCenter
+            Layout.preferredWidth: 38
+            Layout.preferredHeight: 38
+            icon.source: "qrc:/resources/icons/palette.svg"
+            icon.width: 22
+            icon.height: 22
+            checked: tabBar.currentIndex === 2
+            isActive: tabBar.currentIndex === 2
+            onClicked: {
+                tabBar.currentIndex = 2
+                tabBar.visualStylesClicked()
+            }
+            ToolTip.text: "视觉风格"
             ToolTip.visible: hovered
         }
 

@@ -57,9 +57,11 @@ class TextPromptBuilder:
         dialogue: str = "",
         notes: str = "",
         character_info: str = "",
+        visual_style: str = "",
     ) -> list[dict[str, str]]:
         """构建分镜设计图提示词生成消息"""
         template = self._template_manager.get_template("image_prompt")
+        style_instruction = f"整体画面采用【{visual_style}】风格，在保持黑白素描分镜稿规范的前提下，画面构图、光影、线条质感应符合该风格特点" if visual_style else "无特殊风格要求"
         return template.build_messages(
             visual_content=visual_content,
             shot_size=shot_size or "中景",
@@ -67,6 +69,8 @@ class TextPromptBuilder:
             dialogue=dialogue or "无",
             notes=notes or "无特殊要求",
             character_info=character_info or "无额外角色信息",
+            visual_style=visual_style or "黑白素描风格",
+            visual_style_instruction=style_instruction,
         )
 
     def build_character_design_image_prompt_messages(
@@ -74,13 +78,17 @@ class TextPromptBuilder:
         character_name: str,
         description: str,
         user_requirement: str = "",
+        visual_style: str = "",
     ) -> list[dict[str, str]]:
         """构建角色设计图提示词生成消息"""
         template = self._template_manager.get_template("character_image_prompt")
         req_text = f"\n【用户补充要求】\n{user_requirement}" if user_requirement else ""
+        style_instruction = f"整体画面采用【{visual_style}】风格，在保持角色三视图规范的前提下，画面色调、光影、质感应符合该风格特点" if visual_style else "无特殊风格要求"
         return template.build_messages(
             character_name=character_name,
             description=description,
+            visual_style=visual_style or "通用电影概念设计风格",
+            visual_style_instruction=style_instruction,
             user_requirement=req_text,
         )
 

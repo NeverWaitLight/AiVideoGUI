@@ -32,3 +32,7 @@ def project_dir(root: str, project_id: int) -> str:
 
 def thumbnail_dir(base_dir: str) -> str:
     return os.path.join(base_dir, ".thumbnails")
+
+
+def resources_dir(root: str) -> str:
+    return os.path.join(root, "resources")

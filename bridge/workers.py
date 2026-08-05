@@ -175,7 +175,7 @@ class DesignImageWorker(QThread):
     def __init__(
         self, text_service, image_service, storyboard_service,
         storyboard, shot_size_text: str, character_info: str, project_id: int,
-        project_name: str | None = None, parent=None,
+        visual_style: str = "", project_name: str | None = None, parent=None,
     ):
         super().__init__(parent)
         self._text_service = text_service
@@ -185,6 +185,7 @@ class DesignImageWorker(QThread):
         self._shot_size_text = shot_size_text
         self._character_info = character_info
         self._project_id = project_id
+        self._visual_style = visual_style
         self._project_name = project_name
 
     def run(self):
@@ -197,6 +198,7 @@ class DesignImageWorker(QThread):
                 dialogue=self._storyboard.dialogue,
                 notes=self._storyboard.notes,
                 character_info=self._character_info,
+                visual_style=self._visual_style,
                 project_id=self._project_id,
                 project_name=self._project_name,
             )
@@ -235,7 +237,7 @@ class BatchDesignImageWorker(QThread):
 
     def __init__(
         self, text_service, image_service, storyboard_service, character_service,
-        shot_list: list[dict], project_name: str | None = None, parent=None,
+        shot_list: list[dict], visual_style: str = "", project_name: str | None = None, parent=None,
     ):
         super().__init__(parent)
         self._text_service = text_service
@@ -243,6 +245,7 @@ class BatchDesignImageWorker(QThread):
         self._storyboard_service = storyboard_service
         self._character_service = character_service
         self._shot_list = shot_list
+        self._visual_style = visual_style
         self._project_name = project_name
 
     def run(self):
@@ -291,6 +294,7 @@ class BatchDesignImageWorker(QThread):
                     dialogue=shot_data.get("dialogue", ""),
                     notes=shot_data.get("notes", ""),
                     character_info=character_info,
+                    visual_style=self._visual_style,
                     project_id=project_id,
                     project_name=self._project_name,
                 )
@@ -329,7 +333,7 @@ class CharacterDesignImageWorker(QThread):
     progress_update = Signal(str)
 
     def __init__(self, text_service, image_service, character_service, character, project_id: int,
-                 user_requirement: str = "", project_name: str | None = None, parent=None):
+                 user_requirement: str = "", visual_style: str = "", project_name: str | None = None, parent=None):
         super().__init__(parent)
         self._text_service = text_service
         self._image_service = image_service
@@ -338,6 +342,7 @@ class CharacterDesignImageWorker(QThread):
         self._project_id = project_id
         self._project_name = project_name
         self._user_requirement = user_requirement
+        self._visual_style = visual_style
 
     def run(self):
         try:
@@ -346,6 +351,7 @@ class CharacterDesignImageWorker(QThread):
                 character_name=self._character.name,
                 description=self._character.description,
                 user_requirement=self._user_requirement,
+                visual_style=self._visual_style,
                 project_id=self._project_id,
                 project_name=self._project_name,
             )

@@ -10,6 +10,9 @@ Item {
     property string coverPath: ""
     property string createdAt: ""
     property bool isGeneratingCover: false
+    property int visualStyleId: 0
+    property string visualStyleName: ""
+    property string visualStyleImage: ""
 
     signal clicked()
     signal editClicked(int projectId)
@@ -31,6 +34,9 @@ Item {
                 coverPath: card.coverPath
                 createdAt: card.createdAt
                 isGeneratingCover: card.isGeneratingCover
+                visualStyleId: card.visualStyleId
+                visualStyleName: card.visualStyleName
+                visualStyleImage: card.visualStyleImage
                 onClicked: card.clicked()
                 onEditClicked: function(id) { card.editClicked(id) }
                 onDeleteClicked: function(id) { card.deleteClicked(id) }
@@ -47,6 +53,9 @@ Item {
                 coverPath: card.coverPath
                 createdAt: card.createdAt
                 isGeneratingCover: card.isGeneratingCover
+                visualStyleId: card.visualStyleId
+                visualStyleName: card.visualStyleName
+                visualStyleImage: card.visualStyleImage
                 onClicked: card.clicked()
                 onEditClicked: function(id) { card.editClicked(id) }
                 onDeleteClicked: function(id) { card.deleteClicked(id) }

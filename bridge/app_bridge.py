@@ -18,6 +18,7 @@ from bridge.story_outline_bridge import StoryOutlineBridge
 from bridge.screenplay_bridge import ScreenplayBridge
 from bridge.character_bridge import CharacterBridge
 from bridge.settings_bridge import SettingsBridge
+from bridge.visual_style_bridge import VisualStyleBridge
 
 
 class AppBridge(QObject):
@@ -58,7 +59,8 @@ class AppBridge(QObject):
         self._config = container.config_manager()
         self._scheduler = container.background_scheduler()
         self._projects = ProjectBridge(
-            self._project_service, self._session_manager, self,
+            self._project_service, self._session_manager,
+            container.visual_style_service(), self,
         )
         self._projects.set_workspace_root(container.config.workspace_root())
         self._projects.cover_generation_started.connect(self.cover_generation_started.emit)
@@ -72,7 +74,7 @@ class AppBridge(QObject):
             self._text_model_service, self._image_service,
             self._character_service, self._media_service,
             self._story_outline_service, self._project_service,
-            self._container, self,
+            container.visual_style_service(), self._container, self,
         )
         self._story_outline = StoryOutlineBridge(
             self._story_outline_service, self._text_model_service,
@@ -85,9 +87,13 @@ class AppBridge(QObject):
         self._characters = CharacterBridge(
             self._character_service, self._text_model_service,
             self._image_service, self._story_outline_service,
-            self._screenplay_service, self._project_service, self,
+            self._screenplay_service, self._project_service,
+            container.visual_style_service(), self,
         )
         self._settings_bridge = SettingsBridge(self._config, self)
+        self._visual_styles = VisualStyleBridge(
+            container.visual_style_service(), self,
+        )
         self._video_polling_task = container.video_polling_task()
         signal_emitter = self._video_polling_task.signal_emitter
         signal_emitter.status_changed.connect(self.task_status_changed.emit)
@@ -126,6 +132,10 @@ class AppBridge(QObject):
     @Property(QObject, constant=True)
     def settings(self):
         return self._settings_bridge
+
+    @Property(QObject, constant=True)
+    def visualStyles(self):
+        return self._visual_styles
 
     @Slot(str)
     def play_video(self, path: str) -> None:

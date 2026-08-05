@@ -22,6 +22,7 @@ system_prompt: |
      - 采用电影概念设计风格（cinematic concept art），兼具写实感和绘画质感
      - 画面精致，细节丰富，适合作为影视拍摄的角色视觉参考
      - 光影柔和均匀，确保角色各部位清晰可辨
+     - **画面风格要求**：{visual_style_instruction}
 
   **输出要求：**
   - 直接输出一段英文提示词，不超过 200 个单词
@@ -74,4 +75,6 @@ user_prompt_template: |
 
   【形象描述】
   {description}
+
+  【画面风格】{visual_style}
   {user_requirement}

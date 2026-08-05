@@ -43,7 +43,7 @@ class StoryboardBridge(QObject):
         self, storyboard_service, screenplay_service,
         text_model_service, image_service, character_service,
         media_service, story_outline_service, project_service,
-        container, parent=None,
+        visual_style_service, container, parent=None,
     ):
         super().__init__(parent)
         self._storyboard_service = storyboard_service
@@ -54,6 +54,7 @@ class StoryboardBridge(QObject):
         self._media_service = media_service
         self._story_outline_service = story_outline_service
         self._project_service = project_service
+        self._visual_style_service = visual_style_service
         self._container = container
         self._model = StoryboardListModel(
             workspace_root=container.config.workspace_root(), parent=self,
@@ -349,10 +350,31 @@ class StoryboardBridge(QObject):
             }
             shot_size_text = shot_size_map.get(storyboard.shot_size.value, "中景")
 
+            visual_style = ""
+            if self._visual_style_service:
+                project = self._project_service.get_project(project_id=project_id)
+                if project:
+                    style_id = project.visual_style_id
+                    if not style_id:
+                        default_style = self._visual_style_service.get_default_style()
+                        if default_style:
+                            style_id = default_style.id
+                            logger.info(f"项目未设置视觉风格，使用默认风格: {default_style.name}")
+
+                    if style_id:
+                        style = self._visual_style_service.get_style(style_id)
+                        if style:
+                            visual_style = style.name
+                            logger.info(f"分镜设计图将使用视觉风格: {visual_style}")
+                else:
+                    logger.warning(f"未找到项目 ID={project_id}")
+            else:
+                logger.warning(f"缺少 visual_style_service 依赖")
+
             worker = DesignImageWorker(
                 text_service=self._text_model_service, image_service=self._image_service,
                 storyboard_service=self._storyboard_service, storyboard=storyboard, shot_size_text=shot_size_text,
-                character_info=char_info, project_id=project_id,
+                character_info=char_info, project_id=project_id, visual_style=visual_style,
                 project_name=self._get_project_name(project_id),
             )
             worker.finished.connect(lambda path: self._on_design_done(storyboard_id, path))
@@ -400,12 +422,34 @@ class StoryboardBridge(QObject):
                     "notes": shot.notes,
                 })
 
+            visual_style = ""
+            if self._visual_style_service:
+                project = self._project_service.get_project(project_id=project_id)
+                if project:
+                    style_id = project.visual_style_id
+                    if not style_id:
+                        default_style = self._visual_style_service.get_default_style()
+                        if default_style:
+                            style_id = default_style.id
+                            logger.info(f"项目未设置视觉风格，使用默认风格: {default_style.name}")
+
+                    if style_id:
+                        style = self._visual_style_service.get_style(style_id)
+                        if style:
+                            visual_style = style.name
+                            logger.info(f"批量分镜设计图将使用视觉风格: {visual_style}")
+                else:
+                    logger.warning(f"未找到项目 ID={project_id}")
+            else:
+                logger.warning(f"缺少 visual_style_service 依赖")
+
             worker = BatchDesignImageWorker(
                 text_service=self._text_model_service,
                 image_service=self._image_service,
                 storyboard_service=self._storyboard_service,
                 character_service=self._character_service,
                 shot_list=shot_list,
+                visual_style=visual_style,
                 project_name=self._get_project_name(project_id),
             )
 
@@ -456,6 +500,22 @@ class StoryboardBridge(QObject):
             characters = self._character_service.list_characters(project_id=project_id)
             workspace_root = self._container.config.workspace_root()
 
+            project = self._project_service.get_project(project_id=project_id)
+            if not project:
+                self.error.emit("项目不存在")
+                return
+
+            visual_style_name = None
+            if project.visual_style_id:
+                visual_style = self._visual_style_service.get_style(project.visual_style_id)
+                if visual_style:
+                    visual_style_name = visual_style.name
+
+            if not visual_style_name:
+                default_style = self._visual_style_service.get_default_style()
+                if default_style:
+                    visual_style_name = default_style.name
+
             shot_list_for_prompt = [s for s in shots]
             shot_list = []
             for i, shot in enumerate(selected_shots):
@@ -491,7 +551,9 @@ class StoryboardBridge(QObject):
                             })
 
                 prompt = VideoPromptBuilder.build_shot_prompt(
-                    shot, scene, prev_shot, next_shot, reference_images=reference_images_info
+                    shot, scene, prev_shot, next_shot,
+                    reference_images=reference_images_info,
+                    visual_style=visual_style_name
                 )
 
                 shot_list.append({
@@ -511,10 +573,6 @@ class StoryboardBridge(QObject):
                 return
 
             provider_cfg = config_mgr.get_provider_config(name=provider_name, provider_type="video")
-            project = self._project_service.get_project(project_id=project_id)
-            if not project:
-                self.error.emit("项目不存在")
-                return
 
             signal_emitter = self._container.video_polling_task().signal_emitter
             video_service = self._container.video_service()

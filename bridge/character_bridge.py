@@ -24,7 +24,7 @@ class CharacterBridge(QObject):
     error = Signal(str)
 
     def __init__(self, character_service, text_model_service, image_service,
-                 story_outline_service, screenplay_service, project_service=None, parent=None):
+                 story_outline_service, screenplay_service, project_service=None, visual_style_service=None, parent=None):
         super().__init__(parent)
         self._character_service = character_service
         self._text_model_service = text_model_service
@@ -32,6 +32,7 @@ class CharacterBridge(QObject):
         self._story_outline_service = story_outline_service
         self._screenplay_service = screenplay_service
         self._project_service = project_service
+        self._visual_style_service = visual_style_service
         self._model = CharacterListModel(self)
         self._workers = []
         self._optimizing = False
@@ -114,10 +115,31 @@ class CharacterBridge(QObject):
         if not character:
             return
 
+        visual_style = ""
+        if self._project_service and self._visual_style_service:
+            project = self._project_service.get_project(project_id=project_id)
+            if project:
+                style_id = project.visual_style_id
+                if not style_id:
+                    default_style = self._visual_style_service.get_default_style()
+                    if default_style:
+                        style_id = default_style.id
+                        logger.info(f"项目未设置视觉风格，使用默认风格: {default_style.name}")
+
+                if style_id:
+                    style = self._visual_style_service.get_style(style_id)
+                    if style:
+                        visual_style = style.name
+                        logger.info(f"角色设计图将使用视觉风格: {visual_style}")
+            else:
+                logger.warning(f"未找到项目 ID={project_id}")
+        else:
+            logger.warning(f"缺少服务依赖: project_service={self._project_service is not None}, visual_style_service={self._visual_style_service is not None}")
+
         worker = CharacterDesignImageWorker(
             text_service=self._text_model_service, image_service=self._image_service,
             character_service=self._character_service, character=character, project_id=project_id,
-            user_requirement=user_requirement,
+            user_requirement=user_requirement, visual_style=visual_style,
             project_name=self._get_project_name(project_id),
         )
         worker.finished.connect(lambda path: self._on_design_done(char_uuid, path))

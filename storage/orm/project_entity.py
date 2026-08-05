@@ -14,6 +14,9 @@ class ProjectEntity(Base):
     resolution: Mapped[str] = mapped_column(String(20), nullable=False, default="720P")
     aspect_ratio: Mapped[str] = mapped_column(String(10), nullable=False, default="16:9")
     cover_image: Mapped[str] = mapped_column(String(500), nullable=False, default="")
+    visual_style_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("visual_styles.id", ondelete="SET NULL"), nullable=True
+    )
     created_at: Mapped[int] = mapped_column(Integer, nullable=False)
     updated_at: Mapped[int] = mapped_column(Integer, nullable=False)
 
@@ -26,6 +29,7 @@ class ProjectEntity(Base):
     characters: Mapped[List["CharacterEntity"]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )
+    visual_style: Mapped[Optional["VisualStyleEntity"]] = relationship()
 
 
 class GenerateTaskEntity(Base):

@@ -36,6 +36,7 @@
         <file>resources/icons/chat.svg</file>
         <file>resources/icons/checklist.svg</file>
         <file>resources/icons/save.svg</file>
+        <file>resources/icons/palette.svg</file>
         <file>resources/logo.ico</file>
     </qresource>
 </RCC>

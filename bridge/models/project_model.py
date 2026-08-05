@@ -15,6 +15,9 @@ class ProjectListModel(QAbstractListModel):
     RatioRole = Qt.UserRole + 4
     CoverPathRole = Qt.UserRole + 5
     CreatedAtRole = Qt.UserRole + 6
+    VisualStyleIdRole = Qt.UserRole + 7
+    VisualStyleNameRole = Qt.UserRole + 8
+    VisualStyleImageRole = Qt.UserRole + 9
 
     _ROLE_NAMES = {
         IdRole: b"projectId",
@@ -23,11 +26,15 @@ class ProjectListModel(QAbstractListModel):
         RatioRole: b"aspectRatio",
         CoverPathRole: b"coverPath",
         CreatedAtRole: b"createdAt",
+        VisualStyleIdRole: b"visualStyleId",
+        VisualStyleNameRole: b"visualStyleName",
+        VisualStyleImageRole: b"visualStyleImage",
     }
 
-    def __init__(self, parent=None):
+    def __init__(self, visual_style_service=None, parent=None):
         super().__init__(parent)
         self._data: list[Project] = []
+        self._visual_style_service = visual_style_service
         workspace_root = paths.workspace_root()
         self._workspace_dir = paths.workspace_dir(workspace_root)
 
@@ -56,6 +63,20 @@ class ProjectListModel(QAbstractListModel):
             return ""
         if role == self.CreatedAtRole:
             return format_timestamp_short(item.created_at)
+        if role == self.VisualStyleIdRole:
+            return item.visual_style_id or 0
+        if role == self.VisualStyleNameRole:
+            if item.visual_style_id and self._visual_style_service:
+                style = self._visual_style_service.get_style(item.visual_style_id)
+                return style.name if style else ""
+            return ""
+        if role == self.VisualStyleImageRole:
+            if item.visual_style_id and self._visual_style_service:
+                style = self._visual_style_service.get_style(item.visual_style_id)
+                if style and style.sample_image_path:
+                    abs_path = os.path.join(self._workspace_dir, style.sample_image_path)
+                    return abs_path.replace('\\', '/')
+            return ""
         return None
 
     def reset(self, projects: list[Project]) -> None:

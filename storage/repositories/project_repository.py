@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import List
 
+from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -23,6 +24,7 @@ class ProjectRepository(BaseRepository[ProjectEntity, Project]):
             created_at=entity.created_at,
             updated_at=entity.updated_at,
             cover_image=entity.cover_image,
+            visual_style_id=entity.visual_style_id,
         )
 
     def _to_entity(self, dto: Project) -> ProjectEntity:
@@ -33,6 +35,7 @@ class ProjectRepository(BaseRepository[ProjectEntity, Project]):
             created_at=dto.created_at,
             updated_at=dto.updated_at,
             cover_image=dto.cover_image,
+            visual_style_id=dto.visual_style_id,
         )
         if dto.id > 0:
             entity.id = dto.id
@@ -57,6 +60,7 @@ class ProjectRepository(BaseRepository[ProjectEntity, Project]):
         resolution: str,
         aspect_ratio: str,
         cover_image: str = "",
+        visual_style_id: int | None = None,
     ) -> None:
         entity = self.session.get(ProjectEntity, project_id)
         if not entity:
@@ -66,6 +70,7 @@ class ProjectRepository(BaseRepository[ProjectEntity, Project]):
         entity.resolution = resolution
         entity.aspect_ratio = aspect_ratio
         entity.cover_image = cover_image
+        entity.visual_style_id = visual_style_id
         entity.updated_at = int(datetime.now().timestamp() * 1000)
         self.session.commit()
 

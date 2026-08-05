@@ -11,8 +11,9 @@ from PySide6.QtQuickControls2 import QQuickStyle
 from di import ApplicationContainer
 from bridge.app_bridge import AppBridge
 from bridge.theme import Theme
-from storage.orm.base import init_engine, create_all_tables, ensure_columns
+from storage.orm.base import init_engine
 from utils import paths
+from utils.resources import copy_resources_to_workspace
 
 import resources_rc
 
@@ -69,8 +70,11 @@ def main():
     data_dir = paths.data_dir(root)
     cache_dir = paths.cache_dir(root)
     ws_dir = paths.workspace_dir(root)
-    for d in (data_dir, cache_dir, ws_dir):
+    resources_dir = paths.resources_dir(root)
+    for d in (data_dir, cache_dir, ws_dir, resources_dir):
         os.makedirs(d, exist_ok=True)
+
+    copy_resources_to_workspace(root)
 
     container = ApplicationContainer()
     container.config.workspace_root.from_value(root)
@@ -97,8 +101,18 @@ def main():
     db_path = os.path.join(data_dir, "ai-video-gui.db")
     database_url = f"sqlite:///{db_path}"
     init_engine(database_url, echo=False)
-    create_all_tables()
-    ensure_columns()
+
+    # 使用 Alembic 进行数据库迁移
+    from alembic.config import Config
+    from alembic import command
+    alembic_cfg = Config(os.path.join(os.path.dirname(__file__), "alembic.ini"))
+    alembic_cfg.set_main_option("sqlalchemy.url", database_url)
+    try:
+        command.upgrade(alembic_cfg, "head")
+        logger.info("数据库迁移完成")
+    except Exception as e:
+        logger.error(f"数据库迁移失败: {e}")
+        raise
 
     engine = QQmlApplicationEngine()
     bridge = AppBridge(container, parent=engine)
