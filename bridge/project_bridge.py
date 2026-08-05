@@ -4,13 +4,11 @@ import json
 import os
 import re
 import shutil
-import uuid
 from loguru import logger
 
-from PySide6.QtCore import QObject, Property, Signal, Slot, QThread
+from PySide6.QtCore import QObject, Property, Signal, Slot
 
 from bridge.models.project_model import ProjectListModel
-from bridge.workers import GeneralWorker
 from models.enums import MediaType
 from storage.repositories.media_repository import MediaRepository
 from utils import paths
@@ -30,7 +28,6 @@ class ProjectBridge(QObject):
         self._session_manager = session_manager
         self._grid_model = ProjectListModel(self)
         self._list_model = ProjectListModel(self)
-        self._image_service = None
         self._workspace_root = None
 
     @Property(QObject, constant=True)
@@ -115,9 +112,6 @@ class ProjectBridge(QObject):
         pattern = re.compile(r"^\d+-\d+-\d+\.mp4$")
         return any(pattern.match(m.filename) for m in media_files)
 
-    def set_image_service(self, image_service):
-        self._image_service = image_service
-
     def set_workspace_root(self, workspace_root: str):
         self._workspace_root = workspace_root
 
@@ -126,70 +120,8 @@ class ProjectBridge(QObject):
         self, project_id: int, character_name: str, appearance: str,
         aspect_ratio: str, project_name: str, outline_content: str, design_image_path: str
     ) -> None:
-        if not self._image_service:
-            logger.error("ImageService 未设置")
-            self.cover_generation_failed.emit("服务未初始化")
-            return
-
-        if not self._workspace_root:
-            logger.error("workspace_root 未设置")
-            self.cover_generation_failed.emit("工作目录未设置")
-            return
-
-        self.cover_generation_started.emit()
-
-        def task():
-            outline_summary = outline_content[:300] if outline_content else ""
-            prompt = f"为视频项目《{project_name}》生成封面图。\n项目大纲：{outline_summary}\n主角：{character_name}，形象描述：{appearance}"
-            size = self._get_image_size(aspect_ratio)
-
-            project_dir = paths.project_dir(self._workspace_root, project_id)
-            assets_dir = os.path.join(project_dir, ".assets")
-            os.makedirs(assets_dir, exist_ok=True)
-
-            cover_filename = f"cover_{uuid.uuid4().hex[:8]}.jpg"
-            cover_path = os.path.join(assets_dir, cover_filename)
-
-            local_path = self._image_service.generate(
-                prompt=prompt,
-                save_path=cover_path,
-                size=size,
-                negative_prompt="低质量，模糊，噪点，水印，文字",
-                n=1,
-                project_id=project_id,
-                project_name=project_name,
-                module="project",
-                context="封面图生成",
-            )
-
-            workspace = paths.workspace_dir(self._workspace_root)
-            relative_path = os.path.relpath(local_path, workspace)
-
-            self._project_service.update_cover_image(project_id=project_id, cover_image=relative_path)
-            return relative_path
-
-        def on_success(relative_path):
-            logger.info(f"项目 {project_id} 封面图生成成功: {relative_path}")
-            self.cover_generation_finished.emit(relative_path)
-            self.load_projects()
-
-        def on_error(error_msg):
-            logger.error(f"项目 {project_id} 封面图生成失败: {error_msg}")
-            self.cover_generation_failed.emit(error_msg)
-
-        worker = GeneralWorker(task_func=task)
-        worker.finished.connect(on_success)
-        worker.failed.connect(on_error)
-
-        thread = QThread(self)
-        worker.moveToThread(thread)
-        thread.started.connect(worker.run)
-        worker.finished.connect(thread.quit)
-        worker.failed.connect(thread.quit)
-        thread.finished.connect(thread.deleteLater)
-        worker.finished.connect(worker.deleteLater)
-        worker.failed.connect(worker.deleteLater)
-        thread.start()
+        logger.info("封面图生成功能已禁用")
+        self.cover_generation_failed.emit("封面图生成功能暂不可用")
 
     @Slot(str, result=str)
     def resolve_cover_path(self, absolute_path: str) -> str:
@@ -201,12 +133,3 @@ class ProjectBridge(QObject):
         except ValueError:
             return absolute_path
 
-    def _get_image_size(self, aspect_ratio: str) -> str:
-        size_map = {
-            "1:1": "1280*1280",
-            "3:4": "1104*1472",
-            "4:3": "1472*1104",
-            "9:16": "960*1696",
-            "16:9": "1696*960",
-        }
-        return size_map.get(aspect_ratio, "1696*960")

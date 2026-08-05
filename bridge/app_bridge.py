@@ -60,7 +60,6 @@ class AppBridge(QObject):
         self._projects = ProjectBridge(
             self._project_service, self._session_manager, self,
         )
-        self._projects.set_image_service(self._image_service)
         self._projects.set_workspace_root(container.config.workspace_root())
         self._projects.cover_generation_started.connect(self.cover_generation_started.emit)
         self._projects.cover_generation_finished.connect(self.cover_generation_finished.emit)
