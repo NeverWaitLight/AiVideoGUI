@@ -76,12 +76,12 @@ class VideoService(QObject):
                     {"path": p, "type": "reference_image"}
                     for p in reference_images[1:]
                 ]
-            provider_task_id, request_details = provider.r2v(prompt=prompt, reference_image=main_ref, params=params)
+            provider_task_id, request_details = provider.r2v(prompt=prompt, reference_path=main_ref, params=params)
             logger.info(f"使用参考生视频 (r2v)：{len(reference_images)} 张参考图")
             request_type = "video_generation_r2v"
             context = f"参考图生成视频 (r2v, {len(reference_images)}张)"
         elif reference_image:
-            provider_task_id, request_details = provider.r2v(prompt=prompt, reference_image=reference_image, params=params)
+            provider_task_id, request_details = provider.r2v(prompt=prompt, reference_path=reference_image, params=params)
             logger.info(f"使用参考生视频 (r2v)：reference_image={reference_image}")
             request_type = "video_generation_r2v"
             context = "参考图生成视频 (r2v)"

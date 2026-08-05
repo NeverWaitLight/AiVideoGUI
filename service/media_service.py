@@ -107,7 +107,7 @@ class MediaService:
 
         self._sm.begin_write()
         try:
-            media_repo.create(media=media)
+            media_repo.create(dto=media)
             self._sm.commit_write()
             logger.info(f"素材自动入库：{filename}")
         except Exception as e:
@@ -184,7 +184,7 @@ class MediaService:
             self._sm.begin_write()
             try:
                 media_repo = self._sm.get_repo(repo_class=MediaRepository)
-                media_repo.create(media=media)
+                media_repo.create(dto=media)
                 self._sm.commit_write()
                 imported.append(media)
                 logger.info(f"导入素材：{media.filename}")
@@ -214,6 +214,7 @@ class MediaService:
             media_type=media_type_enum,
             keyword=keyword,
             conversation_ids=None,
+            project_id=project_id,
         )
 
     def delete_file(self, media_id: str) -> bool:
@@ -225,7 +226,7 @@ class MediaService:
 
         self._sm.begin_write()
         try:
-            media_repo.delete(media_id=media_id)
+            media_repo.delete(id=media_id)
             self._sm.commit_write()
         except Exception as e:
             self._sm.rollback_write()

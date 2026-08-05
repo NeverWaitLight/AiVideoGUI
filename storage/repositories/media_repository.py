@@ -113,6 +113,7 @@ class MediaRepository(BaseRepository[MediaFileEntity, MediaFile]):
         media_type: Optional[MediaType] = None,
         keyword: Optional[str] = None,
         conversation_ids: Optional[set[str]] = None,
+        project_id: Optional[int] = None,
     ) -> List[MediaFile]:
         stmt = select(MediaFileEntity).order_by(MediaFileEntity.created_at.desc())
 
@@ -124,6 +125,16 @@ class MediaRepository(BaseRepository[MediaFileEntity, MediaFile]):
 
         if conversation_ids is not None:
             stmt = stmt.where(MediaFileEntity.conversation_id.in_(conversation_ids))
+
+        if project_id is not None:
+            from storage.orm.storyboard_entity import StoryboardEntity
+            from storage.orm.screenplay_entity import ScreenplayEntity
+
+            stmt = (
+                stmt.join(StoryboardEntity, MediaFileEntity.storyboard_id == StoryboardEntity.id)
+                .join(ScreenplayEntity, StoryboardEntity.scene_id == ScreenplayEntity.id)
+                .where(ScreenplayEntity.project_id == project_id)
+            )
 
         entities = self.session.execute(stmt).scalars().all()
         return [self._to_dto(e) for e in entities]

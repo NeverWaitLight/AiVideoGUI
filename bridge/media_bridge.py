@@ -63,7 +63,7 @@ class MediaBridge(QObject):
 
     @Slot(str)
     def delete_file(self, file_id: str) -> None:
-        self._media_service.delete_file(file_id=file_id)
+        self._media_service.delete_file(media_id=file_id)
         self._model.remove_by_id(file_id)
         self.files_changed.emit()
 

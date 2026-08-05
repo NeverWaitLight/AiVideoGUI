@@ -194,7 +194,7 @@ class VideoTaskPollingTask(BackgroundTask):
         task_repo = self._sm.get_repo(repo_class=GenerateTaskRepository)
         self._sm.begin_write()
         try:
-            task_repo.mark_completed(internal_task_id=internal_task_id)
+            task_repo.mark_completed(task_id=internal_task_id)
             self._sm.commit_write()
         except Exception:
             self._sm.rollback_write()
@@ -229,7 +229,7 @@ class VideoTaskPollingTask(BackgroundTask):
             os.makedirs(self._cache_dir, exist_ok=True)
             tmp_path = os.path.join(self._cache_dir, f"{uuid.uuid4().hex}.mp4.part")
 
-            provider.download(url=video_url, save_path=tmp_path, progress_callback=None)
+            provider.download(video_url=video_url, save_path=tmp_path, progress_callback=None)
 
             os.makedirs(os.path.dirname(save_path), exist_ok=True)
             shutil.move(src=tmp_path, dst=save_path)
