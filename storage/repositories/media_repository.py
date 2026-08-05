@@ -142,7 +142,7 @@ class MediaRepository(BaseRepository[MediaFileEntity, MediaFile]):
     def list_featured_by_project(self, project_id: int) -> List[MediaFile]:
         from storage.orm.storyboard_entity import StoryboardEntity
         from storage.orm.screenplay_entity import ScreenplayEntity
-        from sqlalchemy import func
+        from sqlalchemy import func, case
 
         stmt = (
             select(MediaFileEntity)
@@ -163,7 +163,7 @@ class MediaRepository(BaseRepository[MediaFileEntity, MediaFile]):
         subquery = (
             select(
                 MediaFileEntity.storyboard_id,
-                func.max(MediaFileEntity.created_at).label('max_created_at')
+                func.max(MediaFileEntity.filename).label('max_filename')
             )
             .where(MediaFileEntity.media_type == MediaType.VIDEO.value)
             .group_by(MediaFileEntity.storyboard_id)
@@ -177,7 +177,7 @@ class MediaRepository(BaseRepository[MediaFileEntity, MediaFile]):
             .join(
                 subquery,
                 (MediaFileEntity.storyboard_id == subquery.c.storyboard_id) &
-                (MediaFileEntity.created_at == subquery.c.max_created_at)
+                (MediaFileEntity.filename == subquery.c.max_filename)
             )
             .where(
                 ScreenplayEntity.project_id == project_id,

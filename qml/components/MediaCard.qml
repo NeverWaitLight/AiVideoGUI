@@ -14,6 +14,7 @@ Pane {
 
     signal clicked()
     signal doubleClicked()
+    signal playRequested()
 
 
     ColumnLayout {
@@ -37,6 +38,27 @@ Pane {
                     anchors.centerIn: parent
                     text: fileType === "video" ? "视频" : (fileType === "image" ? "图片" : "音频")
                     font.pixelSize: Theme.fontSizeTiny
+                }
+            }
+
+            Image {
+                anchors.centerIn: parent
+                source: "qrc:/resources/icons/play-circle.svg"
+                sourceSize.width: 64
+                sourceSize.height: 64
+                opacity: 0.6
+                visible: fileType === "video"
+            }
+
+            MouseArea {
+                anchors.centerIn: parent
+                width: parent.width * 0.8
+                height: parent.height * 0.8
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                    if (fileType === "video") {
+                        card.playRequested()
+                    }
                 }
             }
         }

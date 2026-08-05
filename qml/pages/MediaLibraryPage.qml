@@ -13,6 +13,12 @@ Item {
 
     signal backClicked()
 
+    Component.onCompleted: {
+        if (projectId > 0) {
+            bridge.media.load_project_files(projectId)
+        }
+    }
+
     onProjectIdChanged: {
         if (projectId > 0) {
             bridge.media.load_project_files(projectId)
@@ -277,19 +283,13 @@ Item {
                     }
                 }
 
-                Rectangle {
+                Image {
                     anchors.centerIn: parent
-                    width: 48; height: 48; radius: 24
-                    color: "black"
-                    opacity: playArea.containsMouse ? 0.6 : 0.4
+                    source: "qrc:/resources/icons/play_arrow.svg"
+                    sourceSize.width: 64
+                    sourceSize.height: 64
+                    opacity: 0.6
                     visible: fileType === "video" || fileType === "audio"
-
-                    Image {
-                        anchors.centerIn: parent
-                        source: "qrc:/resources/icons/play_arrow.svg"
-                        width: 32
-                        height: 32
-                    }
                 }
 
                 Rectangle {
@@ -304,7 +304,9 @@ Item {
 
                 MouseArea {
                     id: playArea
-                    anchors.fill: parent
+                    anchors.centerIn: parent
+                    width: parent.width * 0.8
+                    height: parent.height * 0.8
                     hoverEnabled: fileType === "video" || fileType === "audio"
                     cursorShape: (fileType === "video" || fileType === "audio") ? Qt.PointingHandCursor : Qt.ArrowCursor
                     onClicked: {

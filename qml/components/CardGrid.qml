@@ -17,6 +17,7 @@ Item {
         anchors.fill: parent
         clip: true
         contentWidth: availableWidth
+        contentHeight: container.height
 
         Item {
             id: container

@@ -94,6 +94,7 @@ class AppBridge(QObject):
         signal_emitter.status_changed.connect(self.task_status_changed.emit)
         signal_emitter.download_progress.connect(self.task_download_progress.emit)
         signal_emitter.task_finished.connect(self.task_finished.emit)
+        signal_emitter.task_finished.connect(self._on_video_task_finished)
         signal_emitter.task_failed.connect(self.task_failed.emit)
         self._storyboard_bridge.design_image_ready.connect(self.design_image_ready.emit)
         self._storyboard_bridge.design_image_progress.connect(self.design_image_progress.emit)
@@ -169,4 +170,7 @@ class AppBridge(QObject):
         w = self._window()
         if w:
             w.close()
+
+    def _on_video_task_finished(self, provider_task_id: str, save_path: str, storyboard_id: int) -> None:
+        self._media.files_changed.emit()
 
