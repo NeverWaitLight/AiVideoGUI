@@ -15,6 +15,9 @@ class Scene:
     time_type: SceneTime
     time_detail: str = ""
     content: str = ""
+    sound_effect: str = ""     # 音效（文字描述）
+    ambient_sound: str = ""    # 环境音（文字描述）
+    background_music: str = "" # 背景音乐（文字描述）
     created_at: int = 0
     updated_at: int = 0
 
@@ -30,4 +33,7 @@ class ScreenplayHistory:
     time_type: SceneTime
     time_detail: str = ""
     content: str = ""
+    sound_effect: str = ""     # 音效（文字描述）
+    ambient_sound: str = ""    # 环境音（文字描述）
+    background_music: str = "" # 背景音乐（文字描述）
     created_at: int = 0

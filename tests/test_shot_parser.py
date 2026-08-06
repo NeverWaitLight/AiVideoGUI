@@ -14,7 +14,7 @@ class TestShotParser(unittest.TestCase):
               "shot_number": 1,
               "shot_size": "close_up",
               "camera_movement": "推",
-              "visual_content": "主角面部特写",
+              "content": "主角面部特写",
               "dialogue": "我不信。",
               "sound_effect": "心跳声",
               "duration": 3.5,
@@ -31,7 +31,7 @@ class TestShotParser(unittest.TestCase):
         self.assertEqual(shot["shot_number"], 1)
         self.assertEqual(shot["shot_size"], ShotSize.CLOSE_UP.value)
         self.assertEqual(shot["camera_movement"], "推")
-        self.assertEqual(shot["visual_content"], "主角面部特写")
+        self.assertEqual(shot["content"], "主角面部特写")
         self.assertEqual(shot["dialogue"], "我不信。")
         self.assertEqual(shot["sound_effect"], "心跳声")
         self.assertEqual(shot["duration"], 3.5)
@@ -47,7 +47,7 @@ class TestShotParser(unittest.TestCase):
               "shot_number": 1,
               "shot_size": "medium_shot",
               "camera_movement": "",
-              "visual_content": "全景",
+              "content": "全景",
               "dialogue": "",
               "sound_effect": "",
               "duration": 2.0,
@@ -79,7 +79,7 @@ class TestShotParser(unittest.TestCase):
                   "shot_number": 1,
                   "shot_size": "{size_str}",
                   "camera_movement": "",
-                  "visual_content": "",
+                  "content": "",
                   "dialogue": "",
                   "sound_effect": "",
                   "duration": 1.0,
@@ -105,7 +105,7 @@ class TestShotParser(unittest.TestCase):
               "shot_number": 1,
               "shot_size": "unknown_size",
               "camera_movement": "",
-              "visual_content": "",
+              "content": "",
               "dialogue": "",
               "sound_effect": "",
               "duration": 1.0,
@@ -136,7 +136,7 @@ class TestShotParser(unittest.TestCase):
         self.assertEqual(shot["shot_number"], 2)
         self.assertEqual(shot["shot_size"], ShotSize.MEDIUM_SHOT.value)
         self.assertEqual(shot["camera_movement"], "")
-        self.assertEqual(shot["visual_content"], "")
+        self.assertEqual(shot["content"], "")
         self.assertEqual(shot["dialogue"], "")
         self.assertEqual(shot["sound_effect"], "")
         self.assertEqual(shot["duration"], 0.0)
@@ -168,7 +168,7 @@ class TestShotParser(unittest.TestCase):
               "shot_number": 1,
               "shot_size": "medium_shot",
               "camera_movement": "",
-              "visual_content": "",
+              "content": "",
               "dialogue": "",
               "sound_effect": "",
               "duration": 5,
@@ -183,10 +183,10 @@ class TestShotParser(unittest.TestCase):
 
     def test_unescaped_newlines_in_string_values(self):
         """测试字符串值中包含未转义换行符时仍能解析"""
-        json_input = '{\n  "storyboard": [\n    {\n      "scene_number": 1,\n      "shot_number": 1,\n      "shot_size": "medium_shot",\n      "camera_movement": "",\n      "visual_content": "line1\nline2",\n      "dialogue": "",\n      "sound_effect": "",\n      "duration": 3.0,\n      "notes": ""\n    }\n  ]\n}'
+        json_input = '{\n  "storyboard": [\n    {\n      "scene_number": 1,\n      "shot_number": 1,\n      "shot_size": "medium_shot",\n      "camera_movement": "",\n      "content": "line1\nline2",\n      "dialogue": "",\n      "sound_effect": "",\n      "duration": 3.0,\n      "notes": ""\n    }\n  ]\n}'
         shots = ShotParser.parse(json_input)
         self.assertEqual(len(shots), 1)
-        self.assertEqual(shots[0]["visual_content"], "line1\nline2")
+        self.assertEqual(shots[0]["content"], "line1\nline2")
 
 
 if __name__ == "__main__":

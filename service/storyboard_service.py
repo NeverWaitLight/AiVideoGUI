@@ -37,9 +37,10 @@ class StoryboardService:
         shot_number: int,
         shot_size: ShotSize = ShotSize.MEDIUM_SHOT,
         camera_movement: str = "",
-        visual_content: str = "",
-        dialogue: str = "",
+        content: str = "",
         sound_effect: str = "",
+        ambient_sound: str = "",
+        background_music: str = "",
         duration: float = 0.0,
         notes: str = "",
         design_image: str = "",
@@ -56,9 +57,10 @@ class StoryboardService:
             design_image=relative_design_image,
             shot_size=shot_size,
             camera_movement=camera_movement,
-            visual_content=visual_content,
-            dialogue=dialogue,
+            content=content,
             sound_effect=sound_effect,
+            ambient_sound=ambient_sound,
+            background_music=background_music,
             duration=duration,
             notes=notes,
             seed=seed,
@@ -69,7 +71,7 @@ class StoryboardService:
         repo = self._session_mgr.get_repo(repo_class=StoryboardRepository)
         self._session_mgr.begin_write()
         try:
-            created = repo.create(storyboard=storyboard)
+            created = repo.create(dto=storyboard)
             self._session_mgr.commit_write()
             logger.info(f"创建分镜：ID {created.id}，场次 {scene_number}-{shot_number}")
             return created
@@ -95,9 +97,10 @@ class StoryboardService:
         design_image: str | None = None,
         shot_size: ShotSize | None = None,
         camera_movement: str | None = None,
-        visual_content: str | None = None,
-        dialogue: str | None = None,
+        content: str | None = None,
         sound_effect: str | None = None,
+        ambient_sound: str | None = None,
+        background_music: str | None = None,
         duration: float | None = None,
         notes: str | None = None,
         seed: str | None = None,
@@ -116,12 +119,14 @@ class StoryboardService:
                 storyboard.shot_size = shot_size
             if camera_movement is not None:
                 storyboard.camera_movement = camera_movement
-            if visual_content is not None:
-                storyboard.visual_content = visual_content
-            if dialogue is not None:
-                storyboard.dialogue = dialogue
+            if content is not None:
+                storyboard.content = content
             if sound_effect is not None:
                 storyboard.sound_effect = sound_effect
+            if ambient_sound is not None:
+                storyboard.ambient_sound = ambient_sound
+            if background_music is not None:
+                storyboard.background_music = background_music
             if duration is not None:
                 storyboard.duration = duration
             if notes is not None:
@@ -142,7 +147,7 @@ class StoryboardService:
         repo = self._session_mgr.get_repo(repo_class=StoryboardRepository)
         self._session_mgr.begin_write()
         try:
-            repo.delete(storyboard_id=storyboard_id)
+            repo.delete(storyboard_id)
             self._session_mgr.commit_write()
             logger.info(f"删除分镜：storyboard_id={storyboard_id}")
         except Exception:
@@ -180,7 +185,7 @@ class StoryboardService:
                     design_image=h.design_image,
                     shot_size=h.shot_size,
                     camera_movement=h.camera_movement,
-                    visual_content=h.visual_content,
+                    content=h.content,
                     dialogue=h.dialogue,
                     sound_effect=h.sound_effect,
                     duration=h.duration,

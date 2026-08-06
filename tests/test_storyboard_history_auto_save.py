@@ -74,7 +74,7 @@ class TestStoryboardHistoryAutoSave(unittest.TestCase):
         return project, scene
 
     def _make_storyboard(self, scene_id, scene_number=1, shot_number=1,
-                         visual_content="画面内容"):
+                         content="画面内容"):
         now_ms = int(time.time() * 1000)
         return Storyboard(
             id=0,
@@ -84,7 +84,7 @@ class TestStoryboardHistoryAutoSave(unittest.TestCase):
             design_image="",
             shot_size=ShotSize.MEDIUM_SHOT,
             camera_movement="pan",
-            visual_content=visual_content,
+            content=content,
             dialogue="台词",
             sound_effect="",
             duration=5.0,
@@ -106,7 +106,7 @@ class TestStoryboardHistoryAutoSave(unittest.TestCase):
         history = history_repo.list_by_project(project.id)
         self.assertEqual(len(history), 1, "创建分镜后应自动保存 1 条历史")
         self.assertEqual(history[0].storyboard_id, sb.id)
-        self.assertEqual(history[0].visual_content, "画面内容")
+        self.assertEqual(history[0].content, "画面内容")
         self.assertEqual(history[0].project_id, project.id)
 
     def test_auto_save_history_on_update(self):
@@ -120,13 +120,13 @@ class TestStoryboardHistoryAutoSave(unittest.TestCase):
         session.commit()
 
         entity = session.get(storyboard_repo.entity_class, sb.id)
-        entity.visual_content = "修改后的画面"
+        entity.content = "修改后的画面"
         entity.updated_at = int(time.time() * 1000)
         session.commit()
 
         history = history_repo.list_by_project(project.id)
         self.assertEqual(len(history), 2, "创建+更新后应有 2 条历史")
-        self.assertEqual(history[0].visual_content, "修改后的画面")
+        self.assertEqual(history[0].content, "修改后的画面")
 
     def test_no_history_on_updated_at_only(self):
         project, scene = self._create_project_and_scene()
@@ -153,9 +153,9 @@ class TestStoryboardHistoryAutoSave(unittest.TestCase):
         history_repo = StoryboardHistoryRepository(session)
 
         storyboards = [
-            self._make_storyboard(scene.id, shot_number=1, visual_content="镜头1"),
-            self._make_storyboard(scene.id, shot_number=2, visual_content="镜头2"),
-            self._make_storyboard(scene.id, shot_number=3, visual_content="镜头3"),
+            self._make_storyboard(scene.id, shot_number=1, content="镜头1"),
+            self._make_storyboard(scene.id, shot_number=2, content="镜头2"),
+            self._make_storyboard(scene.id, shot_number=3, content="镜头3"),
         ]
 
         for sb in storyboards:
@@ -177,7 +177,7 @@ class TestStoryboardHistoryAutoSave(unittest.TestCase):
             id=0,
             scene_id=scene.id, scene_number=1, shot_number=1,
             design_image="img.png", shot_size=ShotSize.CLOSE_UP,
-            camera_movement="dolly", visual_content="特写画面",
+            camera_movement="dolly", content="特写画面",
             dialogue="重要台词", sound_effect="风声",
             duration=8.5, notes="注意光影", created_at=now_ms, updated_at=now_ms,
         )
@@ -195,7 +195,7 @@ class TestStoryboardHistoryAutoSave(unittest.TestCase):
         self.assertEqual(h.design_image, "img.png")
         self.assertEqual(h.shot_size, ShotSize.CLOSE_UP)
         self.assertEqual(h.camera_movement, "dolly")
-        self.assertEqual(h.visual_content, "特写画面")
+        self.assertEqual(h.content, "特写画面")
         self.assertEqual(h.dialogue, "重要台词")
         self.assertEqual(h.sound_effect, "风声")
         self.assertEqual(h.duration, 8.5)
@@ -212,12 +212,12 @@ class TestStoryboardHistoryAutoSave(unittest.TestCase):
         session.commit()
 
         entity = session.get(storyboard_repo.entity_class, sb.id)
-        entity.visual_content = "版本2"
+        entity.content = "版本2"
         entity.updated_at = int(time.time() * 1000)
         session.commit()
 
         entity = session.get(storyboard_repo.entity_class, sb.id)
-        entity.visual_content = "版本3"
+        entity.content = "版本3"
         entity.updated_at = int(time.time() * 1000)
         session.commit()
 

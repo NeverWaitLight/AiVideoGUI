@@ -26,8 +26,6 @@ Pane {
     property string visualStyleImage: ""
 
     signal clicked()
-    signal editClicked(int projectId)
-    signal deleteClicked(int projectId)
 
     RowLayout {
         anchors.fill: parent
@@ -110,53 +108,6 @@ Pane {
                 }
             }
 
-            Item { Layout.fillHeight: true }
-
-            Button {
-                Layout.preferredHeight: 36
-                Layout.fillWidth: true
-                flat: true
-                text: "编辑"
-                icon.source: "qrc:/resources/icons/edit.svg"
-                icon.width: 18
-                icon.height: 18
-                topPadding: 6
-                bottomPadding: 6
-                leftPadding: 8
-                rightPadding: 8
-                z: 1
-                onClicked: card.editClicked(card.projectId)
-
-                background: Rectangle {
-                    radius: Theme.radiusSmall
-                    color: parent.hovered
-                        ? Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.15)
-                        : "transparent"
-                }
-            }
-
-            Button {
-                Layout.preferredHeight: 36
-                Layout.fillWidth: true
-                flat: true
-                text: "删除"
-                icon.source: "qrc:/resources/icons/delete.svg"
-                icon.width: 18
-                icon.height: 18
-                topPadding: 6
-                bottomPadding: 6
-                leftPadding: 8
-                rightPadding: 8
-                z: 1
-                onClicked: card.deleteClicked(card.projectId)
-
-                background: Rectangle {
-                    radius: Theme.radiusSmall
-                    color: parent.hovered
-                        ? Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.15)
-                        : "transparent"
-                }
-            }
         }
     }
 

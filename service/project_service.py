@@ -38,7 +38,7 @@ class ProjectService:
 
         self._sm.begin_write()
         try:
-            saved_project = project_repo.save(project=project)
+            saved_project = project_repo.save(project)
             self._sm.commit_write()
 
             proj_dir = paths.project_dir(self._root, saved_project.id)
@@ -82,7 +82,7 @@ class ProjectService:
 
         self._sm.begin_write()
         try:
-            project_repo.delete(project_id=project_id)
+            project_repo.delete(project_id)
             self._sm.commit_write()
         except Exception as e:
             self._sm.rollback_write()

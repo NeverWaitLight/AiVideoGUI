@@ -28,7 +28,7 @@ class VideoTaskPollingTask(BackgroundTask):
         session_manager: SessionManager,
         provider_registry: dict[str, type[VideoProvider]],
         workspace_root: str,
-        poll_interval: float = 10.0,
+        poll_interval: float = 20.0,
         idle_check_interval: float = 60.0,
         max_polls_per_task: int = 150,
     ) -> None:
@@ -149,19 +149,23 @@ class VideoTaskPollingTask(BackgroundTask):
             result = provider.check_status(task_id=provider_task_id)
             self._task_poll_count[internal_task_id] = poll_count + 1
 
-            task_repo = self._sm.get_repo(repo_class=GenerateTaskRepository)
-            self._sm.begin_write()
-            write_lock_acquired = True
-            try:
-                task_repo.update_status(internal_task_id, result.status.value, video_url=result.video_url or "")
-                self._sm.commit_write()
-                write_lock_acquired = False
-            except Exception:
-                self._sm.rollback_write()
-                write_lock_acquired = False
-                raise
+            current_status = task_info["status"]
+            status_changed = current_status != result.status.value
 
-            self._signal_emitter.status_changed.emit(provider_task_id, result.status.value)
+            if status_changed:
+                task_repo = self._sm.get_repo(repo_class=GenerateTaskRepository)
+                self._sm.begin_write()
+                write_lock_acquired = True
+                try:
+                    task_repo.update_status(internal_task_id, result.status.value, video_url=result.video_url or "")
+                    self._sm.commit_write()
+                    write_lock_acquired = False
+                except Exception:
+                    self._sm.rollback_write()
+                    write_lock_acquired = False
+                    raise
+
+                self._signal_emitter.status_changed.emit(provider_task_id, result.status.value)
 
             if result.status == TaskStatus.SUCCEEDED:
                 if not result.video_url:

@@ -7,6 +7,7 @@ from models.enums import TaskStatus
 
 @dataclass
 class TaskResult:
-    status: TaskStatus
-    video_url: str = ""
-    error_message: str = ""
+    """任务结果数据模型"""
+    status: TaskStatus          # 任务状态
+    video_url: str = ""         # 视频URL
+    error_message: str = ""     # 错误消息

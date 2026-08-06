@@ -48,7 +48,7 @@ class ScreenplayService:
         screenplay_repo = self._sm.get_repo(repo_class=ScreenplayRepository)
         self._sm.begin_write()
         try:
-            created_scene = screenplay_repo.save(scene=scene)
+            created_scene = screenplay_repo.save(scene)
             self._sm.commit_write()
             logger.info(f"创建场次：ID {created_scene.id}，场次号：{scene_number}")
             return created_scene
@@ -101,7 +101,7 @@ class ScreenplayService:
 
         self._sm.begin_write()
         try:
-            screenplay_repo.delete(scene_id=scene_id)
+            screenplay_repo.delete(scene_id)
             self._sm.commit_write()
             logger.info(f"删除场次：{scene_id}")
         except Exception as e:
@@ -131,7 +131,7 @@ class ScreenplayService:
                     content=scene.content,
                     created_at=now_ms,
                 )
-                history_repo.save(history=history)
+                history_repo.save(history)
 
             self._sm.commit_write()
             logger.info(f"保存剧本历史：项目 {project_id}，共 {len(scenes)} 场")
@@ -225,7 +225,7 @@ class ScreenplayService:
                     created_at=now_ms,
                     updated_at=now_ms,
                 )
-                created_scene = screenplay_repo.save(scene=scene)
+                created_scene = screenplay_repo.save(scene)
                 created_scenes.append(created_scene)
 
             self._sm.commit_write()

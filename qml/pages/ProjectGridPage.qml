@@ -141,9 +141,6 @@ Item {
                             visualStyleImage: model.visualStyleImage || ""
 
                             onClicked: projectGridPage.projectSelected(projectId)
-                            onEditClicked: function(id) {
-                                projectGridPage.editRequested(id)
-                            }
                             onDeleteClicked: function(id) {
                                 confirmDialog.confirmDelete("项目", function() {
                                     bridge.projects.delete_project(id)

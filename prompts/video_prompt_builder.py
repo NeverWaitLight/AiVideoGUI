@@ -27,7 +27,7 @@ class VideoPromptBuilder:
             if ref_desc:
                 sections.append(f"【参考图片说明】\n{ref_desc}")
 
-        sections.append(f"【镜头画面】\n{storyboard.visual_content.strip()}")
+        sections.append(f"【镜头画面】\n{storyboard.content.strip()}")
 
         shot_params = []
 
@@ -48,22 +48,25 @@ class VideoPromptBuilder:
         if shot_params:
             sections.append(f"【镜头参数】\n{' | '.join(shot_params)}")
 
-        if storyboard.dialogue and storyboard.dialogue.strip():
-            sections.append(f"【台词】\n{storyboard.dialogue.strip()}")
-
         if storyboard.sound_effect and storyboard.sound_effect.strip():
             sections.append(f"【音效】\n{storyboard.sound_effect.strip()}")
 
+        if storyboard.ambient_sound and storyboard.ambient_sound.strip():
+            sections.append(f"【环境音】\n{storyboard.ambient_sound.strip()}")
+
+        if storyboard.background_music and storyboard.background_music.strip():
+            sections.append(f"【背景音乐】\n{storyboard.background_music.strip()}")
+
         continuity_hints = []
-        if prev_shot and prev_shot.visual_content.strip():
-            prev_preview = prev_shot.visual_content.strip()[:80]
-            if len(prev_shot.visual_content.strip()) > 80:
+        if prev_shot and prev_shot.content.strip():
+            prev_preview = prev_shot.content.strip()[:80]
+            if len(prev_shot.content.strip()) > 80:
                 prev_preview += "..."
             continuity_hints.append(f"前一镜：{prev_preview}")
 
-        if next_shot and next_shot.visual_content.strip():
-            next_preview = next_shot.visual_content.strip()[:80]
-            if len(next_shot.visual_content.strip()) > 80:
+        if next_shot and next_shot.content.strip():
+            next_preview = next_shot.content.strip()[:80]
+            if len(next_shot.content.strip()) > 80:
                 next_preview += "..."
             continuity_hints.append(f"后一镜：{next_preview}")
 

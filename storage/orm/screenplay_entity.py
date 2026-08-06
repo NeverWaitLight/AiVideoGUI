@@ -24,6 +24,9 @@ class ScreenplayEntity(Base):
     time_detail: Mapped[str] = mapped_column(String(100), nullable=False, default="")
 
     content: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    sound_effect: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    ambient_sound: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    background_music: Mapped[str] = mapped_column(Text, nullable=False, default="")
 
     created_at: Mapped[int] = mapped_column(Integer, nullable=False)
     updated_at: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -57,6 +60,9 @@ class ScreenplayHistoryEntity(Base):
     time_type: Mapped[str] = mapped_column(String(50), nullable=False)
     time_detail: Mapped[str] = mapped_column(String(100), nullable=False, default="")
     content: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    sound_effect: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    ambient_sound: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    background_music: Mapped[str] = mapped_column(Text, nullable=False, default="")
 
     created_at: Mapped[int] = mapped_column(Integer, nullable=False)
 

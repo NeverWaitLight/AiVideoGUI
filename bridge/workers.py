@@ -192,10 +192,9 @@ class DesignImageWorker(QThread):
         try:
             self.progress_update.emit("正在生成设计图提示词...")
             image_prompt = self._text_service.generate_design_image_prompt(
-                visual_content=self._storyboard.visual_content,
+                content=self._storyboard.content,
                 shot_size=self._shot_size_text,
                 camera_movement=self._storyboard.camera_movement,
-                dialogue=self._storyboard.dialogue,
                 notes=self._storyboard.notes,
                 character_info=self._character_info,
                 visual_style=self._visual_style,
@@ -270,11 +269,11 @@ class BatchDesignImageWorker(QThread):
                     f"({idx}/{total})",
                 )
 
-                visual_content = shot_data["visual_content"]
+                content = shot_data["content"]
                 characters = self._character_service.list_characters(project_id)
                 matched_chars = [
                     c for c in characters
-                    if c.name in visual_content or c.ref_code in visual_content
+                    if c.name in content or c.ref_code in content
                 ]
 
                 character_info = ""
@@ -288,10 +287,9 @@ class BatchDesignImageWorker(QThread):
 
                 shot_size_text = shot_size_map.get(shot_data["shot_size"].value, "中景")
                 image_prompt = self._text_service.generate_design_image_prompt(
-                    visual_content=visual_content,
+                    content=content,
                     shot_size=shot_size_text,
                     camera_movement=shot_data.get("camera_movement", ""),
-                    dialogue=shot_data.get("dialogue", ""),
                     notes=shot_data.get("notes", ""),
                     character_info=character_info,
                     visual_style=self._visual_style,

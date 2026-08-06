@@ -46,9 +46,27 @@ class TextModelService:
         }
 
         logger.info(f"调用文本模型 chat，模型：{model}")
-        resp = requests.post(url=self.DASHSCOPE_TEXT_URL, json=payload, headers=headers, timeout=120)
-        resp.raise_for_status()
-        data = resp.json()
+
+        max_retries = 2
+        timeout = 1800
+
+        for attempt in range(max_retries):
+            try:
+                logger.info(f"发起请求（第 {attempt + 1}/{max_retries} 次尝试）")
+                resp = requests.post(url=self.DASHSCOPE_TEXT_URL, json=payload, headers=headers, timeout=timeout)
+                resp.raise_for_status()
+                data = resp.json()
+                break
+            except requests.exceptions.Timeout:
+                if attempt < max_retries - 1:
+                    logger.warning(f"请求超时（{timeout}秒），准备重试...")
+                    continue
+                else:
+                    logger.error(f"请求超时（{timeout}秒），已重试 {max_retries} 次，放弃")
+                    raise RuntimeError(f"文本生成请求超时（{timeout}秒），请检查网络连接或稍后重试")
+            except requests.exceptions.RequestException as e:
+                logger.exception("文本生成请求失败")
+                raise RuntimeError(f"网络请求失败：{e}")
 
         if self._ai_logger:
             self._ai_logger.log_request(
@@ -125,16 +143,30 @@ class TextModelService:
         logger.info(f"调用文本模型生成剧本，模型：{model}")
         logger.debug(f"请求体：{payload}")
 
+        max_retries = 2
+        timeout = 1800
+
         try:
-            resp = requests.post(
-                self.DASHSCOPE_TEXT_URL,
-                json=payload,
-                headers=headers,
-                timeout=120,
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            logger.debug(f"响应：{data}")
+            for attempt in range(max_retries):
+                try:
+                    logger.info(f"发起请求（第 {attempt + 1}/{max_retries} 次尝试）")
+                    resp = requests.post(
+                        self.DASHSCOPE_TEXT_URL,
+                        json=payload,
+                        headers=headers,
+                        timeout=timeout,
+                    )
+                    resp.raise_for_status()
+                    data = resp.json()
+                    logger.debug(f"响应：{data}")
+                    break
+                except requests.exceptions.Timeout:
+                    if attempt < max_retries - 1:
+                        logger.warning(f"请求超时（{timeout}秒），准备重试...")
+                        continue
+                    else:
+                        logger.error(f"请求超时（{timeout}秒），已重试 {max_retries} 次，放弃")
+                        raise RuntimeError(f"剧本生成请求超时（{timeout}秒），请检查网络连接或稍后重试")
 
             if self._ai_logger:
                 self._ai_logger.log_request(
@@ -210,16 +242,30 @@ class TextModelService:
         logger.info(f"调用文本模型生成分镜，模型：{model}，风格：{art_style or '默认'}")
         logger.debug(f"请求体：{payload}")
 
+        max_retries = 2
+        timeout = 1800
+
         try:
-            resp = requests.post(
-                self.DASHSCOPE_TEXT_URL,
-                json=payload,
-                headers=headers,
-                timeout=120,
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            logger.debug(f"响应：{data}")
+            for attempt in range(max_retries):
+                try:
+                    logger.info(f"发起请求（第 {attempt + 1}/{max_retries} 次尝试）")
+                    resp = requests.post(
+                        self.DASHSCOPE_TEXT_URL,
+                        json=payload,
+                        headers=headers,
+                        timeout=timeout,
+                    )
+                    resp.raise_for_status()
+                    data = resp.json()
+                    logger.debug(f"响应：{data}")
+                    break
+                except requests.exceptions.Timeout:
+                    if attempt < max_retries - 1:
+                        logger.warning(f"请求超时（{timeout}秒），准备重试...")
+                        continue
+                    else:
+                        logger.error(f"请求超时（{timeout}秒），已重试 {max_retries} 次，放弃")
+                        raise RuntimeError(f"分镜生成请求超时（{timeout}秒），请检查网络连接或稍后重试")
 
             if self._ai_logger:
                 self._ai_logger.log_request(
@@ -261,10 +307,9 @@ class TextModelService:
 
     def generate_design_image_prompt(
         self,
-        visual_content: str,
+        content: str,
         shot_size: str = "",
         camera_movement: str = "",
-        dialogue: str = "",
         notes: str = "",
         character_info: str = "",
         visual_style: str = "",
@@ -273,10 +318,9 @@ class TextModelService:
         project_name: str | None = None,
     ) -> str:
         messages = self._prompt_builder.build_design_image_prompt_messages(
-            visual_content=visual_content,
+            content=content,
             shot_size=shot_size,
             camera_movement=camera_movement,
-            dialogue=dialogue,
             notes=notes,
             character_info=character_info,
             visual_style=visual_style,

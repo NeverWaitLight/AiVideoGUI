@@ -53,16 +53,29 @@ class DashScopeImageProvider(ImageProvider):
         logger.info(f"提交图片生成任务，模型：{self._model}，尺寸：{size}，数量：{n}")
         logger.debug(f"请求体：{payload}")
 
-        try:
-            resp = requests.post(
-                self.SUBMIT_URL,
-                json=payload,
-                headers=self.build_headers(),
-                timeout=120,
-            )
-        except requests.exceptions.RequestException as e:
-            logger.exception("提交图片生成任务网络请求失败")
-            raise RuntimeError(f"网络请求失败：{e}")
+        max_retries = 2
+        timeout = 1800
+
+        for attempt in range(max_retries):
+            try:
+                logger.info(f"发起请求（第 {attempt + 1}/{max_retries} 次尝试）")
+                resp = requests.post(
+                    self.SUBMIT_URL,
+                    json=payload,
+                    headers=self.build_headers(),
+                    timeout=timeout,
+                )
+                break
+            except requests.exceptions.Timeout as e:
+                if attempt < max_retries - 1:
+                    logger.warning(f"请求超时（{timeout}秒），准备重试...")
+                    continue
+                else:
+                    logger.error(f"请求超时（{timeout}秒），已重试 {max_retries} 次，放弃")
+                    raise RuntimeError(f"图片生成请求超时（{timeout}秒），请检查网络连接或稍后重试")
+            except requests.exceptions.RequestException as e:
+                logger.exception("提交图片生成任务网络请求失败")
+                raise RuntimeError(f"网络请求失败：{e}")
 
         if not resp.ok:
             try:

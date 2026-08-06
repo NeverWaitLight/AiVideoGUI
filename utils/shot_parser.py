@@ -63,9 +63,11 @@ class ShotParser:
                 "shot_number": shot.get("shot_number", 0),
                 "shot_size": shot_size_enum.value,
                 "camera_movement": shot.get("camera_movement", ""),
-                "visual_content": shot.get("visual_content", ""),
+                "content": shot.get("content", ""),
                 "dialogue": shot.get("dialogue", ""),
                 "sound_effect": shot.get("sound_effect", ""),
+                "ambient_sound": shot.get("ambient_sound", ""),
+                "background_music": shot.get("background_music", ""),
                 "duration": float(shot.get("duration", 0.0)),
                 "notes": shot.get("notes", ""),
             })

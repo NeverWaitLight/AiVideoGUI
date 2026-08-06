@@ -69,9 +69,10 @@ class StoryboardBridge(QObject):
         self._cur_shot_number: int = 0
         self._cur_shot_size_index: int = 2
         self._cur_camera_movement: str = ""
-        self._cur_visual_content: str = ""
-        self._cur_dialogue: str = ""
+        self._cur_content: str = ""
         self._cur_sound_effect: str = ""
+        self._cur_ambient_sound: str = ""
+        self._cur_background_music: str = ""
         self._cur_duration: float = 5.0
         self._cur_notes: str = ""
         self._cur_design_image: str = ""
@@ -104,13 +105,16 @@ class StoryboardBridge(QObject):
     def curCameraMovement(self): return self._cur_camera_movement
 
     @Property(str, notify=shot_detail_changed)
-    def curVisualContent(self): return self._cur_visual_content
-
-    @Property(str, notify=shot_detail_changed)
-    def curDialogue(self): return self._cur_dialogue
+    def curVisualContent(self): return self._cur_content
 
     @Property(str, notify=shot_detail_changed)
     def curSoundEffect(self): return self._cur_sound_effect
+
+    @Property(str, notify=shot_detail_changed)
+    def curAmbientSound(self): return self._cur_ambient_sound
+
+    @Property(str, notify=shot_detail_changed)
+    def curBackgroundMusic(self): return self._cur_background_music
 
     @Property(float, notify=shot_detail_changed)
     def curDuration(self): return self._cur_duration
@@ -209,9 +213,10 @@ class StoryboardBridge(QObject):
                             shot_number=shot_dict.get("shot_number", 1),
                             shot_size=shot_size,
                             camera_movement=shot_dict.get("camera_movement", ""),
-                            visual_content=shot_dict.get("visual_content", ""),
-                            dialogue=shot_dict.get("dialogue", ""),
+                            content=shot_dict.get("content", ""),
                             sound_effect=shot_dict.get("sound_effect", ""),
+                            ambient_sound=shot_dict.get("ambient_sound", ""),
+                            background_music=shot_dict.get("background_music", ""),
                             duration=float(shot_dict.get("duration", 5.0)),
                             notes=shot_dict.get("notes", ""),
                         )
@@ -248,9 +253,10 @@ class StoryboardBridge(QObject):
             self._cur_shot_number = shot.shot_number
             self._cur_shot_size_index = self._SHOT_SIZE_REVERSE.get(shot.shot_size.value, 2)
             self._cur_camera_movement = shot.camera_movement
-            self._cur_visual_content = shot.visual_content
-            self._cur_dialogue = shot.dialogue
+            self._cur_content = shot.content
             self._cur_sound_effect = shot.sound_effect
+            self._cur_ambient_sound = shot.ambient_sound
+            self._cur_background_music = shot.background_music
             self._cur_duration = shot.duration
             self._cur_notes = shot.notes
             self._cur_design_image = shot.design_image
@@ -260,11 +266,12 @@ class StoryboardBridge(QObject):
             logger.exception("加载分镜失败")
             self.error.emit(str(e))
 
-    @Slot(int, int, str, str, str, float, str, str, str, str)
+    @Slot(int, int, str, str, float, str, str, str, str, str, str)
     def save_shot(
         self, shot_id: int, shot_size_index: int, camera_movement: str,
-        visual_content: str, duration: float, dialogue: str,
-        sound_effect: str, notes: str, design_image: str, seed: str,
+        content: str, duration: float, sound_effect: str,
+        ambient_sound: str, background_music: str, notes: str,
+        design_image: str, seed: str,
     ) -> None:
         from models.enums import ShotSize
         shot_size_str = self._SHOT_SIZE_INDEX_MAP.get(shot_size_index, "medium_shot")
@@ -275,10 +282,10 @@ class StoryboardBridge(QObject):
         try:
             self._storyboard_service.update_storyboard(
                 storyboard_id=shot_id, shot_size=ss,
-                camera_movement=camera_movement, visual_content=visual_content,
-                duration=duration, dialogue=dialogue,
-                sound_effect=sound_effect, notes=notes,
-                design_image=design_image, seed=seed,
+                camera_movement=camera_movement, content=content,
+                duration=duration, sound_effect=sound_effect,
+                ambient_sound=ambient_sound, background_music=background_music,
+                notes=notes, design_image=design_image, seed=seed,
             )
             self.shot_saved.emit()
             if self._project_id >= 0:
@@ -300,8 +307,8 @@ class StoryboardBridge(QObject):
 
     @Slot(int, str, str, str, float, str, str, str)
     def update_shot(self, shot_id: int, shot_size: str, camera_movement: str,
-                    visual_content: str, duration: float, dialogue: str,
-                    sound_effect: str, notes: str) -> None:
+                    content: str, duration: float, sound_effect: str,
+                    ambient_sound: str, background_music: str) -> None:
         from models.enums import ShotSize
         try:
             ss = ShotSize(shot_size)
@@ -310,8 +317,9 @@ class StoryboardBridge(QObject):
         self._storyboard_service.update_storyboard(
             storyboard_id=shot_id,
             shot_size=ss, camera_movement=camera_movement,
-            visual_content=visual_content, duration=duration,
-            dialogue=dialogue, sound_effect=sound_effect, notes=notes,
+            content=content, duration=duration,
+            sound_effect=sound_effect, ambient_sound=ambient_sound,
+            background_music=background_music,
         )
         self.data_changed.emit()
 
@@ -329,12 +337,12 @@ class StoryboardBridge(QObject):
                 self.error.emit(f"分镜不存在：{storyboard_id}")
                 return
 
-            if not storyboard.visual_content or not storyboard.visual_content.strip():
+            if not storyboard.content or not storyboard.content.strip():
                 self.error.emit("该分镜没有画面内容描述，无法生成设计图")
                 return
 
             characters = self._character_service.list_characters(project_id=project_id)
-            matched = [c for c in characters if c.name in storyboard.visual_content or c.ref_code in storyboard.visual_content]
+            matched = [c for c in characters if c.name in storyboard.content or c.ref_code in storyboard.content]
             char_info = ""
             if matched:
                 parts = []
@@ -415,10 +423,12 @@ class StoryboardBridge(QObject):
                     "project_id": project_id,
                     "scene_number": shot.scene_number,
                     "shot_number": shot.shot_number,
-                    "visual_content": shot.visual_content,
+                    "content": shot.content,
                     "shot_size": shot.shot_size,
                     "camera_movement": shot.camera_movement,
-                    "dialogue": shot.dialogue,
+                    "sound_effect": shot.sound_effect,
+                    "ambient_sound": shot.ambient_sound,
+                    "background_music": shot.background_music,
                     "notes": shot.notes,
                 })
 
@@ -536,11 +546,11 @@ class StoryboardBridge(QObject):
                             "description": ""
                         })
 
-                visual_content = shot.visual_content or ""
+                content = shot.content or ""
                 for c in characters:
                     if len(reference_images_paths) >= 5:
                         break
-                    if c.design_image and (c.name in visual_content or c.ref_code in visual_content):
+                    if c.design_image and (c.name in content or c.ref_code in content):
                         abs_path = to_absolute_path(c.design_image, workspace_root)
                         if abs_path:
                             reference_images_paths.append(abs_path)
@@ -705,9 +715,9 @@ class StoryboardBridge(QObject):
             project_name=self._get_project_name(project_id),
         )
 
-        def on_finished(result: dict) -> None:
+        def on_finished(result: list) -> None:
             try:
-                shots_data = result.get("shots", [])
+                shots_data = result
 
                 if not shots_data:
                     self.storyboard_generation_failed.emit("AI 返回的分镜数据为空")
@@ -740,9 +750,10 @@ class StoryboardBridge(QObject):
                         shot_number=shot_data.get("shot_number", 1),
                         shot_size=shot_size,
                         camera_movement=shot_data.get("camera_movement", ""),
-                        visual_content=shot_data.get("visual_content", ""),
-                        dialogue=shot_data.get("dialogue", ""),
+                        content=shot_data.get("content", ""),
                         sound_effect=shot_data.get("sound_effect", ""),
+                        ambient_sound=shot_data.get("ambient_sound", ""),
+                        background_music=shot_data.get("background_music", ""),
                         duration=shot_data.get("duration", 5.0),
                         notes=shot_data.get("color_lighting", ""),
                     )
@@ -818,9 +829,10 @@ class StoryboardBridge(QObject):
                         shot_number=shot_data.get("shot_number", 1),
                         shot_size=shot_size,
                         camera_movement=shot_data.get("camera_movement", ""),
-                        visual_content=shot_data.get("visual_content", ""),
-                        dialogue=shot_data.get("dialogue", ""),
+                        content=shot_data.get("content", ""),
                         sound_effect=shot_data.get("sound_effect", ""),
+                        ambient_sound=shot_data.get("ambient_sound", ""),
+                        background_music=shot_data.get("background_music", ""),
                         duration=shot_data.get("duration", 5.0),
                         notes=shot_data.get("color_lighting", ""),
                     )
@@ -886,8 +898,8 @@ class StoryboardBridge(QObject):
     def _format_storyboards_as_text(self, storyboards: list) -> str:
         """将分镜列表格式化为 Markdown 表格"""
         lines = [
-            "| 场次 | 镜头序号 | 景别 | 画面内容描述 | 运镜方式 | 音效/台词 | 时长(秒) | 色调/光影 |",
-            "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |",
+            "| 场次 | 镜头序号 | 景别 | 画面内容描述 | 运镜方式 | 音效 | 环境音 | 背景音乐 | 时长(秒) | 色调/光影 |",
+            "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |",
         ]
 
         shot_size_map = {
@@ -901,14 +913,14 @@ class StoryboardBridge(QObject):
 
         for shot in storyboards:
             shot_size = shot_size_map.get(shot.shot_size, "中景")
-            dialogue = shot.dialogue or "无"
             sound_effect = shot.sound_effect or "无"
-            audio_str = f"{dialogue}；{sound_effect}" if sound_effect != "无" else dialogue
+            ambient_sound = shot.ambient_sound or "无"
+            background_music = shot.background_music or "无"
 
             lines.append(
                 f"| {shot.scene_number} | {shot.shot_number} | {shot_size} | "
-                f"{shot.visual_content} | {shot.camera_movement} | {audio_str} | "
-                f"{shot.duration} | {shot.notes or '无'} |"
+                f"{shot.content} | {shot.camera_movement} | {sound_effect} | "
+                f"{ambient_sound} | {background_music} | {shot.duration} | {shot.notes or '无'} |"
             )
 
         return "\n".join(lines)

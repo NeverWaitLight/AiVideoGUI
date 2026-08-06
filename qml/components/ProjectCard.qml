@@ -1,4 +1,5 @@
 import QtQuick 2.15
+import QtQuick.Controls 2.15
 
 Item {
     id: card
@@ -15,7 +16,6 @@ Item {
     property string visualStyleImage: ""
 
     signal clicked()
-    signal editClicked(int projectId)
     signal deleteClicked(int projectId)
 
     readonly property bool isVerticalVideo: aspectRatio === "9:16"
@@ -38,8 +38,6 @@ Item {
                 visualStyleName: card.visualStyleName
                 visualStyleImage: card.visualStyleImage
                 onClicked: card.clicked()
-                onEditClicked: function(id) { card.editClicked(id) }
-                onDeleteClicked: function(id) { card.deleteClicked(id) }
             }
         }
 
@@ -57,9 +55,29 @@ Item {
                 visualStyleName: card.visualStyleName
                 visualStyleImage: card.visualStyleImage
                 onClicked: card.clicked()
-                onEditClicked: function(id) { card.editClicked(id) }
-                onDeleteClicked: function(id) { card.deleteClicked(id) }
             }
+        }
+    }
+
+    MouseArea {
+        anchors.fill: parent
+        acceptedButtons: Qt.RightButton
+        onClicked: function(mouse) {
+            contextMenu.popup()
+        }
+    }
+
+    Menu {
+        id: contextMenu
+
+        MenuItem {
+            text: "打开"
+            onTriggered: card.clicked()
+        }
+
+        MenuItem {
+            text: "删除"
+            onTriggered: card.deleteClicked(card.projectId)
         }
     }
 }

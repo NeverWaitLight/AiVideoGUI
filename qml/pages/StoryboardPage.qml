@@ -537,7 +537,7 @@ Item {
                             }
 
                             Label {
-                                text: "台词/对白"
+                                text: "音效"
                                 font.pixelSize: Theme.fontSizeSmall; font.bold: true
                                 Layout.leftMargin: 20
                             }
@@ -545,24 +545,43 @@ Item {
                                 Layout.fillWidth: true; Layout.preferredHeight: 64
                                 Layout.leftMargin: 20; Layout.rightMargin: 20; clip: true
                                 TextArea {
-                                    id: dialogueEdit
-                                    text: bridge.storyboard.curDialogue
-                                    placeholderText: "角色对话内容..."
+                                    id: soundEffectEdit
+                                    text: bridge.storyboard.curSoundEffect
+                                    placeholderText: "脚步声、敲门声、物体坠地等特定声音效果..."
                                     wrapMode: TextArea.Wrap; font.pixelSize: Theme.fontSizeSmall
                                 }
                             }
 
                             Label {
-                                text: "音效"
+                                text: "环境音"
                                 font.pixelSize: Theme.fontSizeSmall; font.bold: true
                                 Layout.leftMargin: 20
                             }
-                            Comp.AppTextField {
-                                id: soundEffectInput
-                                text: bridge.storyboard.curSoundEffect
-                                placeholderText: "环境音、特效音、背景音乐提示..."
-                                Layout.fillWidth: true; Layout.leftMargin: 20; Layout.rightMargin: 20
-                                Layout.preferredHeight: 32
+                            ScrollView {
+                                Layout.fillWidth: true; Layout.preferredHeight: 64
+                                Layout.leftMargin: 20; Layout.rightMargin: 20; clip: true
+                                TextArea {
+                                    id: ambientSoundEdit
+                                    text: bridge.storyboard.curAmbientSound
+                                    placeholderText: "树叶沙沙声、城市嗡鸣声等环境背景声音..."
+                                    wrapMode: TextArea.Wrap; font.pixelSize: Theme.fontSizeSmall
+                                }
+                            }
+
+                            Label {
+                                text: "背景音乐"
+                                font.pixelSize: Theme.fontSizeSmall; font.bold: true
+                                Layout.leftMargin: 20
+                            }
+                            ScrollView {
+                                Layout.fillWidth: true; Layout.preferredHeight: 64
+                                Layout.leftMargin: 20; Layout.rightMargin: 20; clip: true
+                                TextArea {
+                                    id: backgroundMusicEdit
+                                    text: bridge.storyboard.curBackgroundMusic
+                                    placeholderText: "温馨快乐氛围音乐、卡点音乐等情绪音乐提示..."
+                                    wrapMode: TextArea.Wrap; font.pixelSize: Theme.fontSizeSmall
+                                }
                             }
 
                             Label {
@@ -747,8 +766,9 @@ Item {
             cameraInput.text,
             visualEdit.text,
             durationSpin.realValue,
-            dialogueEdit.text,
-            soundEffectInput.text,
+            soundEffectEdit.text,
+            ambientSoundEdit.text,
+            backgroundMusicEdit.text,
             notesEdit.text,
             bridge.storyboard.curDesignImage,
             seedInput.text

@@ -28,7 +28,7 @@ class StoryOutlineService:
 
         self._sm.begin_write()
         try:
-            created = outline_repo.create(story_outline=story_outline)
+            created = outline_repo.create(dto=story_outline)
             self._sm.commit_write()
             logger.info(f"为项目 {project_id} 创建新故事大纲，ID: {created.id}")
             return created

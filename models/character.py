@@ -5,24 +5,26 @@ from dataclasses import dataclass
 
 @dataclass
 class Character:
-    id: int
-    uuid: str
-    project_id: int
-    name: str
-    ref_code: str
-    design_image: str = ""
-    description: str = ""
-    created_at: int = 0
-    updated_at: int = 0
+    """角色数据模型"""
+    id: int                      # 主键ID
+    uuid: str                    # UUID（用于跨表关联）
+    project_id: int              # 所属项目ID
+    name: str                    # 角色名称
+    ref_code: str                # 引用代号（如 CHAR_A、CHAR_B）
+    design_image: str = ""       # 角色设计图路径
+    description: str = ""        # 形象描述（结构化格式）
+    created_at: int = 0          # 创建时间（毫秒时间戳）
+    updated_at: int = 0          # 更新时间（毫秒时间戳）
 
 
 @dataclass
 class CharacterHistory:
-    id: int
-    character_id: str
-    project_id: int
-    name: str
-    ref_code: str
-    design_image: str = ""
-    description: str = ""
-    created_at: int = 0
+    """角色编辑历史数据模型"""
+    id: int                      # 主键ID
+    character_id: str            # 原始角色UUID
+    project_id: int              # 所属项目ID
+    name: str                    # 角色名称
+    ref_code: str                # 引用代号
+    design_image: str = ""       # 角色设计图路径
+    description: str = ""        # 形象描述
+    created_at: int = 0          # 创建时间（毫秒时间戳）

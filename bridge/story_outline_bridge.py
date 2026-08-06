@@ -73,7 +73,7 @@ class StoryOutlineBridge(QObject):
             self.error.emit("大纲未加载")
             return
         try:
-            self._service.update_story_outline(outline_id=self._outline_id, content=content)
+            self._service.update_story_outline(story_outline_id=self._outline_id, content=content)
             self._content = content
             self.saved.emit()
             logger.info(f"保存故事大纲：{self._outline_id}")
@@ -95,7 +95,7 @@ class StoryOutlineBridge(QObject):
         if self._outline_id < 0:
             return
         try:
-            history_list = self._service.list_history(outline_id=self._outline_id)
+            history_list = self._service.list_history(story_outline_id=self._outline_id)
             self._history_model.reset(history_list)
         except Exception as e:
             logger.exception("加载历史版本失败")
@@ -106,7 +106,7 @@ class StoryOutlineBridge(QObject):
         if self._outline_id < 0:
             return
         try:
-            self._service.restore_from_history(outline_id=self._outline_id, history_id=history_id)
+            self._service.restore_from_history(story_outline_id=self._outline_id, history_id=history_id)
             # 重新加载
             if self._project_id >= 0:
                 self.load(self._project_id)

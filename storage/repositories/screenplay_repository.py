@@ -24,6 +24,9 @@ class ScreenplayRepository(BaseRepository[ScreenplayEntity, Scene]):
             time_type=SceneTime(entity.time_type) if isinstance(entity.time_type, str) else entity.time_type,
             time_detail=entity.time_detail,
             content=entity.content,
+            sound_effect=entity.sound_effect,
+            ambient_sound=entity.ambient_sound,
+            background_music=entity.background_music,
             created_at=entity.created_at,
             updated_at=entity.updated_at,
         )
@@ -38,6 +41,9 @@ class ScreenplayRepository(BaseRepository[ScreenplayEntity, Scene]):
             time_type=dto.time_type.value if isinstance(dto.time_type, SceneTime) else dto.time_type,
             time_detail=dto.time_detail,
             content=dto.content,
+            sound_effect=dto.sound_effect,
+            ambient_sound=dto.ambient_sound,
+            background_music=dto.background_music,
             created_at=dto.created_at,
             updated_at=dto.updated_at,
         )
@@ -80,6 +86,9 @@ class ScreenplayHistoryRepository(BaseRepository[ScreenplayHistoryEntity, Screen
             time_type=SceneTime(entity.time_type) if isinstance(entity.time_type, str) else entity.time_type,
             time_detail=entity.time_detail,
             content=entity.content,
+            sound_effect=entity.sound_effect,
+            ambient_sound=entity.ambient_sound,
+            background_music=entity.background_music,
             created_at=entity.created_at,
         )
 
@@ -94,6 +103,9 @@ class ScreenplayHistoryRepository(BaseRepository[ScreenplayHistoryEntity, Screen
             time_type=dto.time_type.value if isinstance(dto.time_type, SceneTime) else dto.time_type,
             time_detail=dto.time_detail,
             content=dto.content,
+            sound_effect=dto.sound_effect,
+            ambient_sound=dto.ambient_sound,
+            background_music=dto.background_music,
             created_at=dto.created_at,
         )
 

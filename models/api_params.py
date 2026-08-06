@@ -40,13 +40,14 @@ class BaseAPIParams(ABC):
 
 @dataclass
 class MediaItem:
-    """DashScope 媒体项（用于 r2v、p2v、extend 的 media 数组）"""
+    """DashScope 媒体项数据模型（用于 r2v、p2v、extend 的 media 数组）"""
 
-    type: str
-    url: str
-    reference_voice: str | None = None
+    type: str                           # 媒体类型（image/video）
+    url: str                            # 媒体文件 URL
+    reference_voice: str | None = None  # 参考语音（可选）
 
     def to_dict(self) -> dict[str, Any]:
+        """转换为字典格式"""
         result = {"type": self.type, "url": self.url}
         if self.reference_voice:
             result["reference_voice"] = self.reference_voice
@@ -57,12 +58,13 @@ class MediaItem:
 class DashScopeInputSection:
     """DashScope input 部分"""
 
-    prompt: str
-    negative_prompt: str | None = None
-    audio_url: str | None = None
-    media: list[MediaItem] | None = None
+    prompt: str                              # 文本提示词
+    negative_prompt: str | None = None       # 负向提示词（可选）
+    audio_url: str | None = None             # 音频URL（可选）
+    media: list[MediaItem] | None = None     # 媒体项列表（可选）
 
     def to_dict(self) -> dict[str, Any]:
+        """转换为字典格式"""
         result: dict[str, Any] = {"prompt": self.prompt}
 
         if self.negative_prompt:
@@ -79,14 +81,15 @@ class DashScopeInputSection:
 class DashScopeParametersSection:
     """DashScope parameters 部分（保存所有运行时参数）"""
 
-    resolution: str | None = None
-    ratio: str | None = None
-    duration: int | None = None
-    prompt_extend: bool = True
-    watermark: bool = False
-    extra: dict[str, Any] = field(default_factory=dict)
+    resolution: str | None = None       # 分辨率（如 720P、1080P）
+    ratio: str | None = None            # 宽高比（如 16:9、9:16）
+    duration: int | None = None         # 时长（秒）
+    prompt_extend: bool = True          # 是否启用提示词扩展
+    watermark: bool = False             # 是否添加水印
+    extra: dict[str, Any] = field(default_factory=dict)  # 额外参数
 
     def to_dict(self) -> dict[str, Any]:
+        """转换为字典格式"""
         result = {}
 
         if self.resolution:
@@ -108,11 +111,12 @@ class DashScopeParametersSection:
 class DashScopeVideoRequest(BaseAPIParams):
     """DashScope 视频生成请求（顶层结构）"""
 
-    model: str
-    input: DashScopeInputSection
-    parameters: DashScopeParametersSection = field(default_factory=DashScopeParametersSection)
+    model: str                           # 模型名称
+    input: DashScopeInputSection         # 输入部分
+    parameters: DashScopeParametersSection = field(default_factory=DashScopeParametersSection)  # 参数部分
 
     def to_dict(self) -> dict[str, Any]:
+        """转换为字典格式"""
         return {
             "model": self.model,
             "input": self.input.to_dict(),
@@ -188,9 +192,10 @@ class DashScopeVideoRequest(BaseAPIParams):
 class SeedanceModelParams:
     """Seedance model_params 嵌套对象"""
 
-    web_search: bool | None = None
+    web_search: bool | None = None      # 是否启用联网检索
 
     def to_dict(self) -> dict[str, Any]:
+        """转换为字典格式"""
         result = {}
         if self.web_search is not None:
             result["web_search"] = self.web_search
@@ -201,16 +206,17 @@ class SeedanceModelParams:
 class SeedanceVideoRequest(BaseAPIParams):
     """Seedance 视频生成请求"""
 
-    model: str
-    prompt: str
-    duration: int = 5
-    quality: str = "720p"
-    aspect_ratio: str = "16:9"
-    generate_audio: bool = True
-    callback_url: str | None = None
-    model_params: SeedanceModelParams | None = None
+    model: str                          # 模型名称
+    prompt: str                         # 文本提示词
+    duration: int = 5                   # 时长（秒，4-30秒）
+    quality: str = "720p"               # 画质（480p/720p/1080p/4k）
+    aspect_ratio: str = "16:9"          # 宽高比
+    generate_audio: bool = True         # 是否生成同步音频
+    callback_url: str | None = None     # 回调URL（可选）
+    model_params: SeedanceModelParams | None = None  # 模型参数（可选）
 
     def to_dict(self) -> dict[str, Any]:
+        """转换为字典格式"""
         result = {
             "model": self.model,
             "prompt": self.prompt,

@@ -226,7 +226,7 @@ class MediaService:
 
         self._sm.begin_write()
         try:
-            media_repo.delete(id=media_id)
+            media_repo.delete(media_id)
             self._sm.commit_write()
         except Exception as e:
             self._sm.rollback_write()

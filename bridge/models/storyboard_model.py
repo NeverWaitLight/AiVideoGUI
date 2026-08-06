@@ -67,7 +67,7 @@ class StoryboardListModel(QAbstractListModel):
         if role == self.CameraMovementRole:
             return item.camera_movement
         if role == self.VisualContentRole:
-            return item.visual_content
+            return item.content
         if role == self.DialogueRole:
             return item.dialogue
         if role == self.DurationRole:

@@ -47,7 +47,7 @@ class CharacterService:
         character_repo = self._sm.get_repo(repo_class=CharacterRepository)
         self._sm.begin_write()
         try:
-            created = character_repo.save(character=character)
+            created = character_repo.save(character)
             self._sm.commit_write()
             logger.info(f"创建角色：name={name}, ref_code={ref_code}")
             return created
@@ -102,7 +102,7 @@ class CharacterService:
 
         self._sm.begin_write()
         try:
-            character_repo.delete(character_uuid=character_uuid)
+            character_repo.delete(character_uuid)
             self._sm.commit_write()
             logger.info(f"删除角色：uuid={character_uuid}")
         except Exception as e:
@@ -149,7 +149,7 @@ class CharacterService:
 
         self._sm.begin_write()
         try:
-            history_repo.save(history=history)
+            history_repo.save(history)
             self._sm.commit_write()
             logger.info(f"保存角色历史：uuid={character_uuid}")
         except Exception as e:
@@ -190,23 +190,23 @@ class CharacterService:
         return "" if has_structured_tags else description
 
     def enrich_prompt_with_characters(
-        self, visual_content: str, project_id: int
+        self, content: str, project_id: int
     ) -> str:
         character_repo = self._sm.get_repo(repo_class=CharacterRepository)
         characters = character_repo.list_by_project(project_id)
         if not characters:
-            return visual_content
+            return content
 
         matched = []
         for char in characters:
-            if char.ref_code in visual_content or char.name in visual_content:
+            if char.ref_code in content or char.name in content:
                 if char.description:
                     matched.append(char)
 
         if not matched:
-            return visual_content
+            return content
 
-        replaced_content = visual_content
+        replaced_content = content
         for c in sorted(matched, key=lambda ch: len(ch.name), reverse=True):
             if c.name and c.name in replaced_content:
                 replaced_content = replaced_content.replace(c.name, c.ref_code)

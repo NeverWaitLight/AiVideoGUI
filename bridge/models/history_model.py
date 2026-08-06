@@ -46,7 +46,7 @@ class HistoryListModel(QAbstractListModel):
         if role == self.CreatedAtRole:
             return _format_history_time(item.created_at)
         if role == self.PreviewTextRole:
-            for attr in ("content", "visual_content", "description", "name"):
+            for attr in ("content", "content", "description", "name"):
                 val = getattr(item, attr, "")
                 if val:
                     return val[:80]

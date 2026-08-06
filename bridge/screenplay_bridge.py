@@ -300,7 +300,7 @@ class ScreenplayBridge(QObject):
         def on_finished(title: str, scenes: list) -> None:
             try:
                 if self._project_id >= 0 and scenes:
-                    self._service.batch_create_scenes(project_id=self._project_id, scenes=scenes)
+                    self._service.batch_create_scenes(project_id=self._project_id, scenes_data=scenes)
                 self._load_scenes()
                 self._load_history()
                 self.script_generated.emit(title, len(scenes))

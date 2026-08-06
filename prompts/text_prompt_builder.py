@@ -51,25 +51,23 @@ class TextPromptBuilder:
 
     def build_design_image_prompt_messages(
         self,
-        visual_content: str,
+        content: str,
         shot_size: str = "",
         camera_movement: str = "",
-        dialogue: str = "",
         notes: str = "",
         character_info: str = "",
         visual_style: str = "",
     ) -> list[dict[str, str]]:
         """构建分镜设计图提示词生成消息"""
         template = self._template_manager.get_template("image_prompt")
-        style_instruction = f"整体画面采用【{visual_style}】风格，在保持黑白素描分镜稿规范的前提下，画面构图、光影、线条质感应符合该风格特点" if visual_style else "无特殊风格要求"
+        style_instruction = f"整体画面采用【{visual_style}】风格，在保持纯黑白分镜稿规范（pure black and white, no color）的前提下，画面构图、光影、线条质感应符合该风格特点" if visual_style else "无特殊风格要求，但必须保持纯黑白（pure black and white, no color）"
         return template.build_messages(
-            visual_content=visual_content,
+            content=content,
             shot_size=shot_size or "中景",
             camera_movement=camera_movement or "固定",
-            dialogue=dialogue or "无",
             notes=notes or "无特殊要求",
             character_info=character_info or "无额外角色信息",
-            visual_style=visual_style or "黑白素描风格",
+            visual_style=visual_style or "纯黑白风格",
             visual_style_instruction=style_instruction,
         )
 
