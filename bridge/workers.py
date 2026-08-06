@@ -15,6 +15,117 @@ from utils import paths
 from utils.image_processor import to_black_and_white
 
 
+class CoverGenerationWorker(QObject):
+    finished = Signal(str)
+    failed = Signal(str)
+
+    def __init__(
+        self,
+        project_id: int,
+        project_name: str,
+        aspect_ratio: str,
+        outline_content: str,
+        character_names: str,
+        appearances: str,
+        design_image_paths: str,
+        visual_style: str,
+        chat_model_service,
+        image_service,
+        project_service,
+        workspace_root: str,
+        parent=None,
+    ):
+        super().__init__(parent)
+        self._project_id = project_id
+        self._project_name = project_name
+        self._aspect_ratio = aspect_ratio
+        self._outline_content = outline_content
+        self._character_names = character_names
+        self._appearances = appearances
+        self._design_image_paths = design_image_paths
+        self._visual_style = visual_style
+        self._chat_model_service = chat_model_service
+        self._image_service = image_service
+        self._project_service = project_service
+        self._workspace_root = workspace_root
+
+    def run(self):
+        try:
+            logger.info(f"开始生成封面图：{self._project_name}")
+
+            # 构建角色信息字符串
+            names_list = [n.strip() for n in self._character_names.split(",")]
+            descriptions_list = [d.strip() for d in self._appearances.split("\n\n")]
+
+            character_info_parts = []
+            for i, (name, desc) in enumerate(zip(names_list, descriptions_list), start=1):
+                character_info_parts.append(f"角色{i}：{name}\n形象描述：{desc}")
+            character_info = "\n\n".join(character_info_parts)
+
+            # 生成封面图提示词
+            logger.info("正在生成封面图提示词...")
+            cover_prompt = self._chat_model_service.generate_cover_image_prompt(
+                project_name=self._project_name,
+                aspect_ratio=self._aspect_ratio,
+                outline_content=self._outline_content,
+                character_info=character_info,
+                visual_style=self._visual_style,
+                project_id=self._project_id,
+            )
+            logger.info(f"封面图提示词：{cover_prompt}")
+
+            # 转换宽高比为尺寸
+            size_map = {
+                "16:9": "1696*960",
+                "9:16": "960*1696",
+                "1:1": "1280*1280",
+                "4:3": "1472*1104",
+                "3:4": "1104*1472",
+            }
+            size = size_map.get(self._aspect_ratio, "1696*960")
+
+            # 生成封面图
+            logger.info("正在生成封面图...")
+            save_path = os.path.join(
+                paths.projects_dir(self._workspace_root),
+                str(self._project_id),
+                f"cover-{self._project_id}.png",
+            )
+
+            result_path = self._image_service.generate(
+                prompt=cover_prompt,
+                save_path=save_path,
+                size=size,
+                project_id=self._project_id,
+                project_name=self._project_name,
+                module="cover",
+                context="项目封面图生成",
+            )
+
+            # 更新项目封面路径（相对路径）
+            workspace_dir = paths.workspace_dir(self._workspace_root)
+            relative_path = os.path.relpath(result_path, workspace_dir).replace("\\", "/")
+
+            # 获取项目完整信息以便更新
+            project = self._project_service.get_project(self._project_id)
+            if project:
+                self._project_service.update_project(
+                    project_id=self._project_id,
+                    name=project.name,
+                    resolution=project.resolution,
+                    aspect_ratio=project.aspect_ratio,
+                    cover_image=relative_path,
+                    visual_style_id=project.visual_style_id,
+                )
+
+            logger.info(f"封面图生成完成：{result_path}")
+            self.finished.emit(relative_path)
+
+        except Exception as e:
+            logger.exception("生成封面图失败")
+            self.failed.emit(str(e))
+
+
 class ScriptGenerateWorker(QThread):
     finished = Signal(str, list)
     failed = Signal(str)

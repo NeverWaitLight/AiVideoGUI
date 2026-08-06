@@ -165,3 +165,23 @@ class ChatPromptBuilder:
             current_description=current_description,
             user_requirement=user_requirement,
         )
+
+    def build_cover_image_prompt_messages(
+        self,
+        project_name: str,
+        aspect_ratio: str,
+        outline_content: str,
+        character_info: str,
+        visual_style: str = "",
+    ) -> list[dict[str, str]]:
+        """构建项目封面图提示词生成消息"""
+        template = self._template_manager.get_template("cover_image_prompt")
+        style_instruction = f"整体画面采用【{visual_style}】风格，色调、光影、质感应符合该风格特点" if visual_style else "无特殊风格要求，采用通用电影海报风格"
+        return template.build_messages(
+            project_name=project_name,
+            aspect_ratio=aspect_ratio,
+            outline_content=outline_content if outline_content.strip() else "（暂无大纲）",
+            character_info=character_info if character_info.strip() else "无角色信息",
+            visual_style=visual_style or "通用电影海报风格",
+            visual_style_instruction=style_instruction,
+        )

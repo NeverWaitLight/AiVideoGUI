@@ -6,9 +6,10 @@ import re
 import shutil
 from loguru import logger
 
-from PySide6.QtCore import QObject, Property, Signal, Slot
+from PySide6.QtCore import QObject, Property, Signal, Slot, QThread
 
 from bridge.models.project_model import ProjectListModel
+from bridge.workers import CoverGenerationWorker
 from models.enums import MediaType
 from storage.repositories.media_repository import MediaRepository
 from utils import paths
@@ -22,14 +23,18 @@ class ProjectBridge(QObject):
     cover_generation_finished = Signal(str)
     cover_generation_failed = Signal(str)
 
-    def __init__(self, project_service, session_manager, visual_style_service, parent=None):
+    def __init__(self, project_service, session_manager, visual_style_service, chat_model_service, image_service, parent=None):
         super().__init__(parent)
         self._project_service = project_service
         self._session_manager = session_manager
         self._visual_style_service = visual_style_service
+        self._chat_model_service = chat_model_service
+        self._image_service = image_service
         self._grid_model = ProjectListModel(visual_style_service, self)
         self._list_model = ProjectListModel(visual_style_service, self)
         self._workspace_root = None
+        self._cover_worker = None
+        self._cover_thread = None
 
     @Property(QObject, constant=True)
     def gridModel(self):
@@ -120,12 +125,80 @@ class ProjectBridge(QObject):
         self._workspace_root = workspace_root
 
     @Slot(int, str, str, str, str, str, str)
-    def generate_cover_with_character(
-        self, project_id: int, character_name: str, appearance: str,
-        aspect_ratio: str, project_name: str, outline_content: str, design_image_path: str
+    def generate_cover_with_characters(
+        self, project_id: int, character_names: str, appearances: str,
+        aspect_ratio: str, project_name: str, outline_content: str, design_image_paths: str
     ) -> None:
-        logger.info("封面图生成功能已禁用")
-        self.cover_generation_failed.emit("封面图生成功能暂不可用")
+        """
+        生成项目封面图（支持多个角色）
+
+        Args:
+            project_id: 项目 ID
+            character_names: 角色名称，多个用 ", " 分隔
+            appearances: 角色描述，多个用 "\n\n" 分隔
+            aspect_ratio: 画面比例
+            project_name: 项目名称
+            outline_content: 大纲内容
+            design_image_paths: 设计图路径，多个用 "|" 分隔
+        """
+        if self._cover_worker and self._cover_thread and self._cover_thread.isRunning():
+            logger.warning("封面图生成任务正在进行中，忽略新请求")
+            return
+
+        project = self._project_service.get_project(project_id=project_id)
+        if not project:
+            self.cover_generation_failed.emit("项目不存在")
+            return
+
+        visual_style = ""
+        if project.visual_style_id:
+            style = self._visual_style_service.get_style(project.visual_style_id)
+            if style:
+                visual_style = style.name
+
+        self._cover_thread = QThread()
+        self._cover_worker = CoverGenerationWorker(
+            project_id=project_id,
+            project_name=project_name,
+            aspect_ratio=aspect_ratio,
+            outline_content=outline_content,
+            character_names=character_names,
+            appearances=appearances,
+            design_image_paths=design_image_paths,
+            visual_style=visual_style,
+            chat_model_service=self._chat_model_service,
+            image_service=self._image_service,
+            project_service=self._project_service,
+            workspace_root=self._workspace_root,
+        )
+        self._cover_worker.moveToThread(self._cover_thread)
+
+        self._cover_thread.started.connect(self._cover_worker.run)
+        self._cover_worker.finished.connect(self._on_cover_finished)
+        self._cover_worker.failed.connect(self._on_cover_failed)
+        self._cover_worker.finished.connect(self._cover_thread.quit)
+        self._cover_worker.failed.connect(self._cover_thread.quit)
+        self._cover_thread.finished.connect(self._cleanup_cover_worker)
+
+        self.cover_generation_started.emit()
+        self._cover_thread.start()
+
+    def _on_cover_finished(self, relative_path: str):
+        """封面生成成功"""
+        self.cover_generation_finished.emit(relative_path)
+
+    def _on_cover_failed(self, error_msg: str):
+        """封面生成失败"""
+        self.cover_generation_failed.emit(error_msg)
+
+    def _cleanup_cover_worker(self):
+        """清理 Worker 和线程"""
+        if self._cover_worker:
+            self._cover_worker.deleteLater()
+            self._cover_worker = None
+        if self._cover_thread:
+            self._cover_thread.deleteLater()
+            self._cover_thread = None
 
     @Slot(str, result=str)
     def resolve_cover_path(self, absolute_path: str) -> str:

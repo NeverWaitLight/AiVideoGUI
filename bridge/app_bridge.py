@@ -60,7 +60,10 @@ class AppBridge(QObject):
         self._scheduler = container.background_scheduler()
         self._projects = ProjectBridge(
             self._project_service, self._session_manager,
-            container.visual_style_service(), self,
+            container.visual_style_service(),
+            container.chat_model_service(),
+            container.image_service(),
+            self,
         )
         self._projects.set_workspace_root(container.config.workspace_root())
         self._projects.cover_generation_started.connect(self.cover_generation_started.emit)

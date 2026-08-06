@@ -521,3 +521,32 @@ class ChatModelService:
             context=f"角色描述优化 - {character_name}",
         )
         return result.strip()
+
+    def generate_cover_image_prompt(
+        self,
+        project_name: str,
+        aspect_ratio: str,
+        outline_content: str,
+        character_info: str,
+        visual_style: str = "",
+        model: str | None = None,
+        project_id: int | None = None,
+    ) -> str:
+        """生成项目封面图提示词"""
+        messages = self._prompt_builder.build_cover_image_prompt_messages(
+            project_name=project_name,
+            aspect_ratio=aspect_ratio,
+            outline_content=outline_content,
+            character_info=character_info,
+            visual_style=visual_style,
+        )
+
+        logger.info(f"调用文本模型生成封面图提示词，项目：{project_name}，模型：{model or self.DEFAULT_MODEL}")
+        return self.chat(
+            messages=messages,
+            model=model,
+            project_id=project_id,
+            project_name=project_name,
+            module="cover",
+            context="项目封面图提示词生成",
+        )

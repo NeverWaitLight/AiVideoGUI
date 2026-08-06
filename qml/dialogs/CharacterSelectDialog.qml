@@ -14,7 +14,8 @@ Dialog {
     padding: 0
 
     property int projectId: 0
-    property var onCharacterSelected: null
+    property var onCharactersSelected: null
+    property var selectedCharacterIds: []
 
     title: ""
 
@@ -38,13 +39,25 @@ Dialog {
                 color: Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.12)
             }
 
-            Label {
-                anchors.left: parent.left
+            RowLayout {
+                anchors.fill: parent
                 anchors.leftMargin: 20
-                anchors.verticalCenter: parent.verticalCenter
-                text: "选择角色生成封面图"
-                font.pixelSize: Theme.fontSizeLarge
-                font.bold: true
+                anchors.rightMargin: 20
+                spacing: 12
+
+                Label {
+                    text: "选择角色生成封面图"
+                    font.pixelSize: Theme.fontSizeLarge
+                    font.bold: true
+                    Layout.fillWidth: true
+                }
+
+                Label {
+                    text: "已选 " + selectedCharacterIds.length + " 个"
+                    font.pixelSize: Theme.fontSizeSmall
+                    opacity: 0.7
+                    visible: selectedCharacterIds.length > 0
+                }
             }
         }
     }
@@ -77,6 +90,40 @@ Dialog {
                     Layout.preferredWidth: 80
                     onClicked: characterSelectDialog.reject()
                 }
+
+                Button {
+                    text: "确定"
+                    highlighted: true
+                    Layout.preferredHeight: 40
+                    Layout.preferredWidth: 80
+                    enabled: selectedCharacterIds.length > 0
+                    onClicked: {
+                        if (onCharactersSelected && selectedCharacterIds.length > 0) {
+                            var selectedCharacters = []
+
+                            for (var i = 0; i < characterGridView.contentItem.children.length; i++) {
+                                var item = characterGridView.contentItem.children[i]
+                                if (item && item._characterId !== undefined) {
+                                    if (selectedCharacterIds.indexOf(item._characterId) >= 0) {
+                                        selectedCharacters.push({
+                                            characterId: item._characterId,
+                                            name: item._characterName,
+                                            description: item._characterDescription,
+                                            designImagePath: item._characterDesignImagePath
+                                        })
+                                    }
+                                }
+                            }
+
+                            if (selectedCharacters.length > 0) {
+                                onCharactersSelected(selectedCharacters)
+                            } else {
+                                console.warn("无法获取选中的角色数据")
+                            }
+                        }
+                        characterSelectDialog.accept()
+                    }
+                }
             }
         }
     }
@@ -105,9 +152,15 @@ Dialog {
                     height: 200
                     radius: Theme.radiusMedium
                     color: Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.05)
-                    border.width: cardMouseArea.containsMouse ? 2 : 1
-                    border.color: cardMouseArea.containsMouse ? Material.accent : Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.12)
+                    border.width: _isSelected ? 2 : (cardMouseArea.containsMouse ? 2 : 1)
+                    border.color: _isSelected ? Material.accent : (cardMouseArea.containsMouse ? Material.accent : Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.12))
                     visible: model.designImagePath && model.designImagePath !== ""
+
+                    property bool _isSelected: selectedCharacterIds.indexOf(model.characterId) >= 0
+                    property int _characterId: model.characterId || 0
+                    property string _characterName: model.name || ""
+                    property string _characterDescription: model.description || ""
+                    property string _characterDesignImagePath: model.designImagePath || ""
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -136,6 +189,28 @@ Dialog {
                                     }
                                 }
                             }
+
+                            Rectangle {
+                                anchors.right: parent.right
+                                anchors.top: parent.top
+                                anchors.margins: 8
+                                width: 24
+                                height: 24
+                                radius: 12
+                                color: _isSelected ? Material.accent : Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.2)
+                                border.width: _isSelected ? 0 : 2
+                                border.color: Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.3)
+                                visible: cardMouseArea.containsMouse || _isSelected
+
+                                Label {
+                                    anchors.centerIn: parent
+                                    text: "✓"
+                                    font.pixelSize: 16
+                                    font.bold: true
+                                    color: "white"
+                                    visible: _isSelected
+                                }
+                            }
                         }
 
                         Label {
@@ -162,15 +237,21 @@ Dialog {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            if (onCharacterSelected) {
-                                onCharacterSelected(
-                                    model.characterId || 0,
-                                    model.name || "",
-                                    model.description || "",
-                                    model.designImagePath || ""
-                                )
+                            var charId = model.characterId || 0
+                            var idx = selectedCharacterIds.indexOf(charId)
+                            if (idx >= 0) {
+                                var newList = []
+                                for (var i = 0; i < selectedCharacterIds.length; i++) {
+                                    if (selectedCharacterIds[i] !== charId) {
+                                        newList.push(selectedCharacterIds[i])
+                                    }
+                                }
+                                selectedCharacterIds = newList
+                            } else {
+                                var updatedList = selectedCharacterIds.slice()
+                                updatedList.push(charId)
+                                selectedCharacterIds = updatedList
                             }
-                            characterSelectDialog.accept()
                         }
                     }
                 }
@@ -211,6 +292,7 @@ Dialog {
     }
 
     function open() {
+        selectedCharacterIds = []
         if (projectId > 0) {
             bridge.characters.load_for_project(projectId)
         }

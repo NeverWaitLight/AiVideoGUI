@@ -328,25 +328,46 @@ Dialog {
 
         property string outlineContent: ""
 
-        onCharacterSelected: function(characterId, characterName, appearance, designImageUrl) {
+        onCharactersSelected: function(characters) {
             if (!projectDialog.editProjectId || projectDialog.editProjectId <= 0) {
                 alertDialog.error("错误", "无效的项目 ID")
                 return
             }
 
-            if (!designImageUrl || designImageUrl === "") {
-                alertDialog.error("错误", "所选角色没有设计图，请先生成角色设计图")
+            if (characters.length === 0) {
+                alertDialog.error("错误", "请至少选择一个角色")
                 return
             }
 
-            bridge.projects.generate_cover_with_character(
+            var missingDesignImage = false
+            var characterNames = []
+            var characterDescriptions = []
+            var designImageUrls = []
+
+            for (var i = 0; i < characters.length; i++) {
+                var char = characters[i]
+                if (!char.designImagePath || char.designImagePath === "") {
+                    missingDesignImage = true
+                    break
+                }
+                characterNames.push(char.name)
+                characterDescriptions.push(char.description)
+                designImageUrls.push(char.designImagePath)
+            }
+
+            if (missingDesignImage) {
+                alertDialog.error("错误", "所选角色中存在没有设计图的角色，请先生成角色设计图")
+                return
+            }
+
+            bridge.projects.generate_cover_with_characters(
                 projectDialog.editProjectId,
-                characterName,
-                appearance,
+                characterNames.join(", "),
+                characterDescriptions.join("\n\n"),
                 ratioCombo.currentText,
                 nameField.text,
                 outlineContent,
-                designImageUrl
+                designImageUrls.join("|")
             )
         }
     }
