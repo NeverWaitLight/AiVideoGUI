@@ -77,6 +77,21 @@ Item {
         }
     }
 
+    Connections {
+        target: bridge.media
+        function onExport_progress(percent, message) {
+            exportMessage.text = message + " (" + percent + "%)"
+        }
+        function onExport_finished(outputPath) {
+            exportOverlay.visible = false
+            alertDialog.info("导出成功", "视频已保存到：\n" + outputPath)
+        }
+        function onExport_failed(error) {
+            exportOverlay.visible = false
+            alertDialog.error("导出失败", error)
+        }
+    }
+
     StackLayout {
         anchors.fill: parent
         currentIndex: _showDetail ? 1 : 0
@@ -91,6 +106,37 @@ Item {
                     subtitle: "共" + bridge.storyboard.model.count + "镜"
                     Layout.fillWidth: true
                     onBackClicked: page.backClicked()
+
+                    Button {
+                        Layout.preferredWidth: 34
+                        Layout.preferredHeight: 34
+                        flat: true
+                        display: AbstractButton.IconOnly
+                        icon.source: "qrc:/resources/icons/movie_creation.svg"
+                        icon.width: 20
+                        icon.height: 20
+                        topPadding: 7
+                        bottomPadding: 7
+                        leftPadding: 7
+                        rightPadding: 7
+                        ToolTip.visible: hovered
+                        ToolTip.text: "导出样片"
+                        onClicked: {
+                            var projectInfo = JSON.parse(bridge.projects.get_project_info(page.projectId))
+                            if (projectInfo && projectInfo.name) {
+                                saveDialog.currentFile = "file:///" + projectInfo.name + ".mp4"
+                            }
+                            saveDialog.open()
+                        }
+
+                        background: Rectangle {
+                            anchors.fill: parent
+                            radius: Theme.radiusSmall
+                            color: parent.hovered
+                                ? Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.08)
+                                : "transparent"
+                        }
+                    }
 
                     Button {
                         visible: _multiSelect && _selectedIds.length > 0
@@ -680,6 +726,53 @@ Item {
             var p = selectedFile.toString()
             if (p.startsWith("file:///")) p = p.substring(8)
             bridge.storyboard.upload_design_image(_editingShotId, p)
+        }
+    }
+
+    QtDialogs.FileDialog {
+        id: saveDialog
+        title: "导出视频"
+        fileMode: QtDialogs.FileDialog.SaveFile
+        defaultSuffix: "mp4"
+        nameFilters: ["视频文件 (*.mp4)"]
+        onAccepted: {
+            var path = selectedFile.toString()
+            if (path.startsWith("file:///")) path = path.substring(8)
+            exportMessage.text = "正在准备导出..."
+            exportOverlay.visible = true
+            bridge.media.export_project_video(page.projectId, path)
+        }
+    }
+
+    Rectangle {
+        id: exportOverlay
+        anchors.fill: parent
+        color: Qt.rgba(0, 0, 0, 0.5)
+        visible: false
+        z: 999
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: {}
+        }
+
+        ColumnLayout {
+            anchors.centerIn: parent
+            spacing: 16
+
+            Comp.SpinnerOverlay {
+                Layout.alignment: Qt.AlignHCenter
+                width: 48
+                height: 48
+            }
+
+            Label {
+                id: exportMessage
+                text: "正在导出视频..."
+                font.pixelSize: Theme.fontSizeMedium
+                color: "white"
+                Layout.alignment: Qt.AlignHCenter
+            }
         }
     }
 
