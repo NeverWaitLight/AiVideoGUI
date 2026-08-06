@@ -413,96 +413,96 @@ Item {
                     }
                 }
 
-                ScrollView {
+                RowLayout {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    clip: true
+                    spacing: 0
 
-                    ColumnLayout {
-                        width: parent.width
-                        spacing: 16
+                    Pane {
+                        Layout.preferredWidth: 380
+                        Layout.fillHeight: true
+                        Layout.leftMargin: 24
+                        Layout.topMargin: 16
+                        Layout.bottomMargin: 16
+                        padding: 16
+                        background: Rectangle { color: "transparent" }
 
-                        Item { width: 1; height: 8 }
+                        GridLayout {
+                            anchors.fill: parent
+                            columns: 4
+                            columnSpacing: 16
+                            rowSpacing: 12
 
-                        Pane {
-                            Layout.fillWidth: true
-                            Layout.leftMargin: 24
-                            Layout.rightMargin: 24
-                            padding: 16
+                            Label {
+                                text: "场次号："
+                                font.pixelSize: Theme.fontSizeMedium
+                            }
+                            Label {
+                                text: "第 " + bridge.screenplay.curSceneNumber + " 场"
+                                font.pixelSize: Theme.fontSizeMedium
+                                font.bold: true
+                            }
+                            Item { Layout.fillWidth: true }
+                            Item { Layout.fillWidth: true }
 
-                            GridLayout {
-                                anchors.fill: parent
-                                columns: 4
-                                columnSpacing: 16
-                                rowSpacing: 12
+                            Label {
+                                text: "内外景："
+                                font.pixelSize: Theme.fontSizeMedium
+                            }
+                            ComboBox {
+                                id: locationTypeCombo
+                                model: ["内景", "外景", "内景/外景"]
+                                currentIndex: bridge.screenplay.curLocationTypeIndex
+                                Layout.preferredWidth: 160
+                            }
+                            Item { Layout.fillWidth: true }
+                            Item { Layout.fillWidth: true }
 
-                                Label {
-                                    text: "场次号："
-                                    font.pixelSize: Theme.fontSizeMedium
-                                }
-                                Label {
-                                    text: "第 " + bridge.screenplay.curSceneNumber + " 场"
-                                    font.pixelSize: Theme.fontSizeMedium
-                                    font.bold: true
-                                }
-                                Item { Layout.fillWidth: true }
-                                Item { Layout.fillWidth: true }
+                            Label {
+                                text: "地点："
+                                font.pixelSize: Theme.fontSizeMedium
+                            }
+                            Comp.AppTextField {
+                                id: locationInput
+                                text: bridge.screenplay.curLocation
+                                placeholderText: "如：审讯室、老城区街道"
+                                Layout.fillWidth: true
+                                Layout.columnSpan: 3
+                            }
 
-                                Label {
-                                    text: "内外景："
-                                    font.pixelSize: Theme.fontSizeMedium
-                                }
-                                ComboBox {
-                                    id: locationTypeCombo
-                                    model: ["内景", "外景", "内景/外景"]
-                                    currentIndex: bridge.screenplay.curLocationTypeIndex
-                                    Layout.preferredWidth: 160
-                                }
-                                Item { Layout.fillWidth: true }
-                                Item { Layout.fillWidth: true }
-
-                                Label {
-                                    text: "地点："
-                                    font.pixelSize: Theme.fontSizeMedium
-                                }
-                                Comp.AppTextField {
-                                    id: locationInput
-                                    text: bridge.screenplay.curLocation
-                                    placeholderText: "如：审讯室、老城区街道"
-                                    Layout.fillWidth: true
-                                    Layout.columnSpan: 3
-                                }
-
-                                Label {
-                                    text: "时间："
-                                    font.pixelSize: Theme.fontSizeMedium
-                                }
-                                ComboBox {
-                                    id: timeTypeCombo
-                                    model: ["日", "夜", "晨", "黄昏", "傍晚", "自定义"]
-                                    currentIndex: bridge.screenplay.curTimeTypeIndex
-                                    Layout.preferredWidth: 160
-                                }
-                                Label {
-                                    text: "详细时间："
-                                    font.pixelSize: Theme.fontSizeMedium
-                                    visible: timeTypeCombo.currentIndex === 5
-                                }
-                                Comp.AppTextField {
-                                    id: timeDetailInput
-                                    text: bridge.screenplay.curTimeDetail
-                                    placeholderText: "如：下午3点"
-                                    visible: timeTypeCombo.currentIndex === 5
-                                    Layout.fillWidth: true
-                                }
+                            Label {
+                                text: "时间："
+                                font.pixelSize: Theme.fontSizeMedium
+                            }
+                            ComboBox {
+                                id: timeTypeCombo
+                                model: ["日", "夜", "晨", "黄昏", "傍晚", "自定义"]
+                                currentIndex: bridge.screenplay.curTimeTypeIndex
+                                Layout.preferredWidth: 160
+                            }
+                            Label {
+                                text: "详细时间："
+                                font.pixelSize: Theme.fontSizeMedium
+                                visible: timeTypeCombo.currentIndex === 5
+                            }
+                            Comp.AppTextField {
+                                id: timeDetailInput
+                                text: bridge.screenplay.curTimeDetail
+                                placeholderText: "如：下午3点"
+                                visible: timeTypeCombo.currentIndex === 5
+                                Layout.fillWidth: true
                             }
                         }
+                    }
+
+                    Item {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        Layout.margins: 16
 
                         ScrollView {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 400
-                            Layout.leftMargin: 24
-                            Layout.rightMargin: 24
+                            anchors.fill: parent
+                            anchors.margins: 16
                             clip: true
 
                             TextArea {
@@ -511,10 +511,9 @@ Item {
                                 placeholderText: "请输入场次内容（动作描述 + 对话）..."
                                 wrapMode: TextArea.Wrap
                                 font.pixelSize: Theme.fontSizeMedium
-                                padding: 12
+                                padding: 0
+                            }
                         }
-
-                        Item { width: 1; height: 16 }
                     }
                 }
             }
@@ -637,5 +636,4 @@ Item {
         }
         HoverHandler { id: cardHover }
     }
-}
 }

@@ -563,6 +563,7 @@ class StoryboardBridge(QObject):
                     "project_id": project_id,
                     "shot_id": shot.id,
                     "reference_images": reference_images_paths,
+                    "duration": shot.duration if shot.duration > 0 else None,
                 })
 
             config_mgr = self._container.config_manager()

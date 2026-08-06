@@ -45,9 +45,6 @@ class VideoPromptBuilder:
         if storyboard.camera_movement:
             shot_params.append(f"运镜：{storyboard.camera_movement}")
 
-        if storyboard.duration > 0:
-            shot_params.append(f"时长：{storyboard.duration}秒")
-
         if shot_params:
             sections.append(f"【镜头参数】\n{' | '.join(shot_params)}")
 

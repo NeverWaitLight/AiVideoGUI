@@ -105,6 +105,10 @@ def main():
     # 使用 Alembic 进行数据库迁移
     from alembic.config import Config
     from alembic import command
+    import logging
+
+    logging.getLogger("alembic").setLevel(logging.WARNING)
+
     alembic_cfg = Config(os.path.join(os.path.dirname(__file__), "alembic.ini"))
     alembic_cfg.set_main_option("sqlalchemy.url", database_url)
     try:

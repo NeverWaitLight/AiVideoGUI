@@ -6,6 +6,7 @@ from typing import Any, Callable
 
 import requests
 
+from models.api_params import DashScopeVideoRequest, MediaItem
 from models.enums import TaskStatus
 from models.model_info import ModelInfo
 from models.provider_config import ProviderConfig
@@ -138,8 +139,31 @@ class DashScopeVideoProvider(VideoProvider):
         return task_id, {"url": self.SUBMIT_URL, "json": payload, "headers": headers}
 
     def t2v(self, prompt: str, params: dict[str, Any] | None = None) -> tuple[str, dict[str, Any]]:
+        api_params = params.copy() if params else {}
+
+        negative_prompt = api_params.pop("negative_prompt", None)
+        audio_url = api_params.pop("audio_url", None)
+        resolution = api_params.pop("resolution", None)
+        ratio = api_params.pop("ratio", None)
+        duration = api_params.pop("duration", None)
+        prompt_extend = api_params.pop("prompt_extend", True)
+        watermark = api_params.pop("watermark", False)
+
         model = self._model_mappings.get("t2v") or self._model_mappings.get("default") or self._model
-        payload = self.build_payload(prompt=prompt, params=params, model=model)
+        request = DashScopeVideoRequest.for_t2v(
+            model=model,
+            prompt=prompt,
+            negative_prompt=negative_prompt,
+            audio_url=audio_url,
+            resolution=resolution,
+            ratio=ratio,
+            duration=duration,
+            prompt_extend=prompt_extend,
+            watermark=watermark,
+            **api_params,
+        )
+
+        payload = request.to_dict()
         return self._submit_task(payload=payload)
 
     def p2v(
@@ -155,26 +179,36 @@ class DashScopeVideoProvider(VideoProvider):
         if driving_audio_path:
             driving_audio_path = self._upload_file_if_needed(driving_audio_path)
 
-        model = self._model_mappings.get("i2v") or self._model_mappings.get("default") or self._model
-        payload = self.build_payload(prompt=prompt, params=api_params, model=model)
-
-        media = [{"type": "first_frame", "url": image_path}]
+        media: list[MediaItem] = [MediaItem(type="first_frame", url=image_path)]
 
         if last_frame_path:
-            media.append({"type": "last_frame", "url": last_frame_path})
+            media.append(MediaItem(type="last_frame", url=last_frame_path))
 
         if driving_audio_path:
-            media.append({"type": "driving_audio", "url": driving_audio_path})
+            media.append(MediaItem(type="driving_audio", url=driving_audio_path))
 
-        payload["input"]["media"] = media
+        model = self._model_mappings.get("i2v") or self._model_mappings.get("default") or self._model
+        request = DashScopeVideoRequest.for_r2v(
+            model=model,
+            prompt=prompt,
+            media=media,
+            negative_prompt=api_params.pop("negative_prompt", None),
+            resolution=api_params.pop("resolution", None),
+            ratio=api_params.pop("ratio", None),
+            duration=api_params.pop("duration", None),
+            prompt_extend=api_params.pop("prompt_extend", True),
+            watermark=api_params.pop("watermark", False),
+            **api_params,
+        )
 
+        payload = request.to_dict()
         return self._submit_task(payload)
 
     def r2v(
         self, prompt: str, reference_path: str, params: dict[str, Any] | None = None
     ) -> tuple[str, dict[str, Any]]:
         api_params = params.copy() if params else {}
-        reference_media = api_params.pop("reference_media", [])
+        reference_media_dicts = api_params.pop("reference_media", [])
         first_frame_path = api_params.pop("first_frame_path", None)
         main_reference_voice = api_params.pop("reference_voice", None)
 
@@ -186,40 +220,51 @@ class DashScopeVideoProvider(VideoProvider):
         if main_reference_voice:
             main_reference_voice = self._upload_file_if_needed(main_reference_voice)
 
-        model = self._model_mappings.get("r2v") or self._model_mappings.get("default") or "wan2.7-r2v-2026-06-12"
-        payload = self.build_payload(prompt=prompt, params=api_params, model=model)
-
-        media = []
+        media: list[MediaItem] = []
 
         if first_frame_path:
-            media.append({"type": "first_frame", "url": first_frame_path})
+            media.append(MediaItem(type="first_frame", url=first_frame_path))
 
         main_type = self._detect_media_type(reference_path)
-        main_media = {"type": main_type, "url": reference_path}
-        if main_reference_voice:
-            main_media["reference_voice"] = main_reference_voice
-        media.append(main_media)
+        media.append(MediaItem(
+            type=main_type,
+            url=reference_path,
+            reference_voice=main_reference_voice,
+        ))
 
-        for ref in reference_media:
+        for ref in reference_media_dicts:
             ref_path = ref.get("path")
             if not ref_path:
                 continue
 
             ref_path = self._upload_file_if_needed(ref_path)
-
             ref_type = ref.get("type") or self._detect_media_type(ref_path)
-
-            ref_media = {"type": ref_type, "url": ref_path}
 
             ref_voice = ref.get("reference_voice")
             if ref_voice:
                 ref_voice = self._upload_file_if_needed(ref_voice)
-                ref_media["reference_voice"] = ref_voice
 
-            media.append(ref_media)
+            media.append(MediaItem(
+                type=ref_type,
+                url=ref_path,
+                reference_voice=ref_voice,
+            ))
 
-        payload["input"]["media"] = media
+        model = self._model_mappings.get("r2v") or self._model_mappings.get("default") or "wan2.7-r2v-2026-06-12"
+        request = DashScopeVideoRequest.for_r2v(
+            model=model,
+            prompt=prompt,
+            media=media,
+            negative_prompt=api_params.pop("negative_prompt", None),
+            resolution=api_params.pop("resolution", None),
+            ratio=api_params.pop("ratio", None),
+            duration=api_params.pop("duration", None),
+            prompt_extend=api_params.pop("prompt_extend", True),
+            watermark=api_params.pop("watermark", False),
+            **api_params,
+        )
 
+        payload = request.to_dict()
         return self._submit_task(payload)
 
     @staticmethod
@@ -243,16 +288,26 @@ class DashScopeVideoProvider(VideoProvider):
         if last_frame_path:
             last_frame_path = self._upload_file_if_needed(last_frame_path)
 
-        model = self._model_mappings.get("extend") or self._model_mappings.get("default") or self._model
-        payload = self.build_payload(prompt=prompt, params=api_params, model=model)
-
-        media = [{"type": "first_clip", "url": video_path}]
+        media: list[MediaItem] = [MediaItem(type="first_clip", url=video_path)]
 
         if last_frame_path:
-            media.append({"type": "last_frame", "url": last_frame_path})
+            media.append(MediaItem(type="last_frame", url=last_frame_path))
 
-        payload["input"]["media"] = media
+        model = self._model_mappings.get("extend") or self._model_mappings.get("default") or self._model
+        request = DashScopeVideoRequest.for_r2v(
+            model=model,
+            prompt=prompt,
+            media=media,
+            negative_prompt=api_params.pop("negative_prompt", None),
+            resolution=api_params.pop("resolution", None),
+            ratio=api_params.pop("ratio", None),
+            duration=api_params.pop("duration", None),
+            prompt_extend=api_params.pop("prompt_extend", True),
+            watermark=api_params.pop("watermark", False),
+            **api_params,
+        )
 
+        payload = request.to_dict()
         return self._submit_task(payload)
 
     def check_status(self, task_id: str) -> TaskResult:

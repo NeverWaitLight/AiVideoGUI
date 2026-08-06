@@ -4,6 +4,7 @@ from typing import Any, Callable
 
 import requests
 
+from models.api_params import SeedanceVideoRequest
 from models.enums import TaskStatus
 from models.model_info import ModelInfo
 from models.provider_config import ProviderConfig
@@ -85,7 +86,20 @@ class SeedanceVideoProvider(VideoProvider):
         return task_id, {"url": self.SUBMIT_URL, "json": payload, "headers": headers}
 
     def t2v(self, prompt: str, params: dict[str, Any] | None = None) -> tuple[str, dict[str, Any]]:
-        payload = self.build_payload(prompt=prompt, params=params)
+        api_params = params.copy() if params else {}
+
+        request = SeedanceVideoRequest.for_t2v(
+            model=self._model,
+            prompt=prompt,
+            duration=api_params.get("duration", 5),
+            quality=api_params.get("quality", "720p"),
+            aspect_ratio=api_params.get("aspect_ratio", "16:9"),
+            generate_audio=api_params.get("generate_audio", True),
+            web_search=api_params.get("web_search"),
+            callback_url=api_params.get("callback_url"),
+        )
+
+        payload = request.to_dict()
         return self._submit_task(payload=payload)
 
     def p2v(

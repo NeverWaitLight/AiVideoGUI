@@ -533,6 +533,10 @@ class BatchGenerationController(QThread):
                 params["resolution"] = self._project.resolution
                 params["ratio"] = self._project.aspect_ratio
 
+                duration = shot.get("duration")
+                if duration is not None:
+                    params["duration"] = int(duration)
+
                 key = (scene_number, shot_number)
                 gen_counts[key] = gen_counts.get(key, 0) + 1
                 save_path = os.path.join(
