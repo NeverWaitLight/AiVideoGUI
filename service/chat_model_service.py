@@ -3,10 +3,10 @@ from loguru import logger
 import requests
 
 from config.manager import ConfigManager
-from prompts.text_prompt_builder import TextPromptBuilder
+from prompts.chat_prompt_builder import ChatPromptBuilder
 from utils.ai_request_logger import AIRequestLogger
 
-class TextModelService:
+class ChatModelService:
 
     DASHSCOPE_TEXT_URL = "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation"
     DEFAULT_MODEL = "qwen-max"
@@ -14,7 +14,7 @@ class TextModelService:
     def __init__(
         self,
         config_manager: ConfigManager,
-        text_prompt_builder: TextPromptBuilder,
+        text_prompt_builder: ChatPromptBuilder,
         ai_request_logger: AIRequestLogger | None = None,
     ) -> None:
         self._config = config_manager

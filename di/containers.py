@@ -4,7 +4,7 @@ import os
 
 from config.manager import ConfigManager
 from prompts.manager import PromptTemplateManager
-from prompts.text_prompt_builder import TextPromptBuilder
+from prompts.chat_prompt_builder import ChatPromptBuilder
 from service.background.enhanced_scheduler import BackgroundTaskScheduler
 from service.background.video_polling_task import VideoTaskPollingTask
 from service.character_service import CharacterService
@@ -14,7 +14,7 @@ from service.project_service import ProjectService
 from service.screenplay_service import ScreenplayService
 from service.story_outline_service import StoryOutlineService
 from service.storyboard_service import StoryboardService
-from service.text_model_service import TextModelService
+from service.chat_model_service import ChatModelService
 from service.video_service import VideoService, _PROVIDER_REGISTRY
 from service.visual_style_service import VisualStyleService
 from storage.session_manager import SessionManager
@@ -46,7 +46,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
     )
 
     text_prompt_builder = providers.Singleton(
-        TextPromptBuilder,
+        ChatPromptBuilder,
         template_manager=prompt_template_manager,
     )
 
@@ -98,7 +98,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
     )
 
     text_model_service = providers.Singleton(
-        TextModelService,
+        ChatModelService,
         config_manager=config_manager,
         text_prompt_builder=text_prompt_builder,
         ai_request_logger=ai_request_logger,

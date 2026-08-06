@@ -1,7 +1,7 @@
 from prompts.manager import PromptTemplateManager
 
 
-class TextPromptBuilder:
+class ChatPromptBuilder:
     """文本大模型提示词构建器（统一入口）"""
 
     def __init__(self, template_manager: PromptTemplateManager) -> None:
