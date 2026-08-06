@@ -23,6 +23,7 @@ Item {
 
     signal backClicked()
     signal projectSaved(int projectId)
+    signal nextStepClicked()
 
     onProjectIdChanged: {
         if (projectId > 0) {
@@ -139,6 +140,38 @@ Item {
                 }
 
                 onClicked: _saveProject()
+            }
+
+            Button {
+                Layout.preferredWidth: 34
+                Layout.preferredHeight: 34
+                display: AbstractButton.IconOnly
+                icon.source: "qrc:/resources/icons/arrow_forward.svg"
+                icon.width: 20
+                icon.height: 20
+                topPadding: 7
+                bottomPadding: 7
+                leftPadding: 7
+                rightPadding: 7
+                enabled: _nameText.trim() !== ""
+                ToolTip.visible: hovered
+                ToolTip.text: "下一步"
+
+                background: Rectangle {
+                    anchors.fill: parent
+                    radius: Theme.radiusSmall
+                    color: parent.hovered
+                        ? Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.08)
+                        : "transparent"
+                }
+
+                onClicked: {
+                    if (projectId <= 0) {
+                        alertDialog.error("错误", "请先保存项目")
+                        return
+                    }
+                    page.nextStepClicked()
+                }
             }
         }
 
@@ -339,6 +372,22 @@ Item {
 
                 onActivated: {
                     _visualStyleId = currentValue !== undefined ? currentValue : 0
+                }
+
+                Connections {
+                    target: page
+                    function onProjectIdChanged() {
+                        if (projectId > 0) {
+                            Qt.callLater(styleComboBox.updateIndex)
+                        }
+                    }
+                }
+
+                Connections {
+                    target: page
+                    function on_visualStyleIdChanged() {
+                        styleComboBox.updateIndex()
+                    }
                 }
 
                 function updateIndex() {

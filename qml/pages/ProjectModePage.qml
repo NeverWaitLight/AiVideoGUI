@@ -67,6 +67,9 @@ Item {
             onProjectSaved: function(pid) {
                 projectMode.currentProjectId = pid
             }
+            onNextStepClicked: {
+                projectMode.currentPage = "outline"
+            }
         }
 
         StoryOutlinePage {
