@@ -560,10 +560,16 @@ class StoryboardBridge(QObject):
                                 "description": ""
                             })
 
+                chat_service = self._container.chat_model_service()
+                template_manager = self._container.prompt_template_manager()
+
                 prompt = VideoPromptBuilder.build_shot_prompt(
                     shot, scene, prev_shot, next_shot,
                     reference_images=reference_images_info,
-                    visual_style=visual_style_name
+                    visual_style=visual_style_name,
+                    clean_dialogue_and_sound=True,
+                    chat_service=chat_service,
+                    template_manager=template_manager,
                 )
 
                 shot_list.append({

@@ -52,7 +52,7 @@ class AppBridge(QObject):
         self._screenplay_service = container.screenplay_service()
         self._storyboard_service = container.storyboard_service()
         self._character_service = container.character_service()
-        self._text_model_service = container.text_model_service()
+        self._text_model_service = container.chat_model_service()
         self._image_service = container.image_service()
         self._media_service = container.media_service()
         self._session_manager = container.session_manager()

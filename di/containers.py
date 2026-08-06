@@ -97,7 +97,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
         workspace_root=config.workspace_root,
     )
 
-    text_model_service = providers.Singleton(
+    chat_model_service = providers.Singleton(
         ChatModelService,
         config_manager=config_manager,
         text_prompt_builder=text_prompt_builder,
@@ -124,7 +124,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
         session_manager=session_manager,
         provider_registry=providers.Object(_PROVIDER_REGISTRY),
         workspace_root=config.workspace_root,
-        poll_interval=10.0,
+        poll_interval=20.0,
         idle_check_interval=60.0,
         max_polls_per_task=150,
     )

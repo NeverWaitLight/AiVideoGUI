@@ -53,10 +53,9 @@ class TestDependencyInjection(unittest.TestCase):
             self.container.screenplay_service,
             self.container.storyboard_service,
             self.container.character_service,
-            self.container.chat_service,
-            self.container.text_model_service,
+            self.container.chat_model_service,
             self.container.image_service,
-            self.container.task_polling_service,
+            self.container.visual_style_service,
         ]
 
         for service_provider in services:
