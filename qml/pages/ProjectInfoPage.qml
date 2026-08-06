@@ -360,6 +360,10 @@ Item {
                             Layout.preferredHeight: 32
                             source: model.sampleImagePath ? "file:///" + model.sampleImagePath : ""
                             fillMode: Image.PreserveAspectCrop
+                            asynchronous: true
+                            cache: true
+                            smooth: false
+                            mipmap: false
 
                             Rectangle {
                                 anchors.fill: parent

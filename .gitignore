@@ -6,6 +6,12 @@ dist/
 wheels/
 *.egg-info
 
+# PyInstaller
+*.spec
+
+# Inno Setup
+output/
+
 # Log files
 *.log
 
