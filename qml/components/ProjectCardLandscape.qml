@@ -29,12 +29,11 @@ Pane {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 12
-        spacing: 12
+        spacing: 0
 
         Comp.ImagePreview {
             Layout.fillWidth: true
-            Layout.preferredHeight: 130
+            Layout.preferredHeight: 180
             imageSource: coverPath
             fillMode: Image.PreserveAspectFit
             placeholderIcon: "qrc:/resources/icons/movie.svg"
@@ -45,8 +44,8 @@ Pane {
 
         ColumnLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 56
-            spacing: 4
+            Layout.margins: 12
+            spacing: 2
 
             Label {
                 text: projectName
