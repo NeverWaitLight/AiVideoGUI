@@ -600,6 +600,7 @@ Item {
                                 placeholderText: "暂无设计图"
                                 onUploadClicked: charDesignDialog.open()
                                 onClearClicked: _editingDesignImage = ""
+                                onImageClicked: imagePreviewDialog.show(_editingDesignImage)
                             }
                         }
                     }
@@ -781,6 +782,10 @@ Item {
 
     Dialogs.ConfirmDialog {
         id: confirmDialog
+    }
+
+    Dialogs.ImagePreviewDialog {
+        id: imagePreviewDialog
     }
 
     Dialogs.AIOptimizeDialog {

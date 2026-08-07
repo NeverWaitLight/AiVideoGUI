@@ -40,35 +40,24 @@ Pane {
             placeholderIconSize: 48
         }
 
-        ColumnLayout {
+        RowLayout {
             Layout.fillWidth: true
-            spacing: 4
+            spacing: 8
 
-            RowLayout {
+            Label {
+                text: styleName
+                font.pixelSize: Theme.fontSizeLarge
+                font.bold: true
+                elide: Text.ElideRight
                 Layout.fillWidth: true
-                spacing: 8
-
-                Label {
-                    text: styleName
-                    font.pixelSize: Theme.fontSizeLarge
-                    font.bold: true
-                    elide: Text.ElideRight
-                    Layout.fillWidth: true
-                }
-
-                Label {
-                    visible: card.isDefault
-                    text: "默认"
-                    font.pixelSize: Theme.fontSizeSmall
-                    color: Material.accent
-                    font.bold: true
-                }
             }
 
             Label {
-                text: createdAt
-                font.pixelSize: Theme.fontSizeNormal
-                opacity: 0.5
+                visible: card.isDefault
+                text: "默认"
+                font.pixelSize: Theme.fontSizeSmall
+                color: Material.accent
+                font.bold: true
             }
         }
 
@@ -76,9 +65,9 @@ Pane {
             Layout.fillWidth: true
             Layout.preferredHeight: 36
             spacing: 6
+            visible: !card.isDefault
 
             Button {
-                visible: !card.isDefault
                 Layout.preferredWidth: 68
                 Layout.fillHeight: true
                 flat: true
@@ -98,32 +87,6 @@ Pane {
             Item { Layout.fillWidth: true }
 
             Button {
-                Layout.preferredWidth: 36
-                Layout.fillHeight: true
-                flat: true
-                display: AbstractButton.IconOnly
-                icon.source: "qrc:/resources/icons/edit.svg"
-                icon.width: 18
-                icon.height: 18
-                topPadding: 9
-                bottomPadding: 9
-                leftPadding: 9
-                rightPadding: 9
-                z: 1
-                ToolTip.visible: hovered
-                ToolTip.text: "编辑"
-                onClicked: card.editClicked(card.styleId)
-
-                background: Rectangle {
-                    radius: Theme.radiusSmall
-                    color: parent.hovered
-                        ? Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.15)
-                        : "transparent"
-                }
-            }
-
-            Button {
-                visible: !card.isDefault
                 Layout.preferredWidth: 36
                 Layout.fillHeight: true
                 flat: true

@@ -540,6 +540,13 @@ Item {
                                             visible: !bridge.storyboard.curDesignImage
                                             opacity: 0.5
                                         }
+
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            enabled: bridge.storyboard.curDesignImage !== ""
+                                            cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                            onClicked: if (bridge.storyboard.curDesignImage) imagePreviewDialog.show(bridge.storyboard.curDesignImage)
+                                        }
                                     }
 
                                     ColumnLayout {
@@ -715,6 +722,7 @@ Item {
 
     Dialogs.AlertDialog { id: alertDialog }
     Dialogs.ConfirmDialog { id: confirmDialog }
+    Dialogs.ImagePreviewDialog { id: imagePreviewDialog }
     Dialogs.AIOptimizeDialog {
         id: aiOptimizeDialog
         onOptimizeRequested: function(userInput) {

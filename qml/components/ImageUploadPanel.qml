@@ -11,6 +11,7 @@ ColumnLayout {
 
     signal uploadClicked()
     signal clearClicked()
+    signal imageClicked()
 
     spacing: 8
 
@@ -24,12 +25,20 @@ ColumnLayout {
         clip: true
 
         Image {
+            id: displayImage
             anchors.fill: parent
             anchors.margins: 2
             source: root.imageSource ? "file:///" + root.imageSource : ""
             fillMode: Image.PreserveAspectFit
             visible: source !== ""
             asynchronous: true
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            enabled: root.imageSource !== ""
+            cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+            onClicked: if (root.imageSource) root.imageClicked()
         }
 
         BusyIndicator {
