@@ -10,7 +10,7 @@ class TestDependencyInjection(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.mkdtemp()
         self.workspace_root = os.path.join(self.temp_dir, "workspace")
-        self.config_path = os.path.join(self.temp_dir, "settings.json")
+        self.config_path = os.path.join(self.temp_dir, "config.json")
 
         os.makedirs(self.workspace_root, exist_ok=True)
 

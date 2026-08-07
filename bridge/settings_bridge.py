@@ -6,6 +6,7 @@ import os
 from PySide6.QtCore import QObject, Signal, Slot
 
 from models.provider_config import ProviderConfig
+from providers.dashscope_chat import DashScopeChatProvider
 from utils import paths
 
 
@@ -41,63 +42,20 @@ class SettingsBridge(QObject):
 
     @Slot(str, str, str, result=list)
     def list_chat_models(self, api_key: str, base_url: str, provider_name: str) -> list:
-        """已废弃：聊天模型现在使用预设配置，不再需要动态获取模型列表"""
-        logger.warning("list_chat_models 已废弃，聊天模型使用预设配置")
-        return []
-
-    @Slot(result=list)
-    def get_chat_provider_presets(self) -> list:
-        """获取所有聊天模型厂商预设"""
-        presets = self._config.get_chat_provider_presets()
-        return [
-            {
-                "id": p.id,
-                "display_name": p.display_name,
-                "type": p.type,
-                "model_prefix": p.model_prefix,
-                "default_model": p.default_model,
-                "common_models": p.common_models or [],
-                "description": p.description,
-            }
-            for p in presets
-        ]
-
-    @Slot(result=str)
-    def get_active_chat_provider_id(self) -> str:
-        """获取当前激活的聊天模型厂商 ID"""
-        return self._config.get_active_chat_provider_id() or "deepseek"
-
-    @Slot(str)
-    def set_active_chat_provider_id(self, provider_id: str) -> None:
-        """设置当前激活的聊天模型厂商"""
-        self._config.set_active_chat_provider_id(provider_id, auto_save=True)
-        self.settings_saved.emit()
-
-    @Slot(str, result="QVariantMap")
-    def get_chat_provider_credential(self, provider_id: str) -> dict:
-        """获取聊天模型厂商凭证"""
-        cred = self._config.get_chat_provider_credential(provider_id)
-        if not cred:
-            return {"api_key": "", "base_url": "", "model": ""}
-        return {
-            "api_key": cred.api_key,
-            "base_url": cred.base_url,
-            "model": cred.model,
-        }
-
-    @Slot(str, str, str, str)
-    def update_chat_provider_credential(
-        self, provider_id: str, api_key: str, base_url: str = "", model: str = ""
-    ) -> None:
-        """更新聊天模型厂商凭证"""
-        self._config.update_chat_provider_credential(
-            provider_id=provider_id,
-            api_key=api_key,
-            base_url=base_url,
-            model=model,
-            auto_save=True,
-        )
-        self.settings_saved.emit()
+        if not api_key:
+            return []
+        try:
+            cfg = ProviderConfig(
+                provider_name=provider_name or "dashscope",
+                api_key=api_key,
+                base_url=base_url,
+                default_model="",
+            )
+            provider = DashScopeChatProvider(config=cfg)
+            return provider.list_available_models()
+        except Exception as e:
+            logger.warning(f"获取模型列表失败：{e}")
+            return []
 
     @Slot(result=str)
     def get_default_video_provider(self) -> str:

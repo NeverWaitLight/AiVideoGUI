@@ -94,7 +94,7 @@ Windows 桌面端 AI 视频生成工具。用户通过聊天界面输入文字�
 **应用数据根目录**
 `%LOCALAPPDATA%\ai-video-gui\`，所有持久化文件集中存放在此：
 - ai-video-gui.db — SQLite 数据库文件
-- settings.json — 应用配置（Provider 凭证 + 全局设置）
+- config.json — 应用配置（Provider 凭证 + 全局设置）
 - logs/ — 日志文件目录（详见下方日志规范）
 
 **临时文件目录**
@@ -102,7 +102,7 @@ Windows 桌面端 AI 视频生成工具。用户通过聊天界面输入文字�
 
 **视频下载目录**
 - 默认路径：`%USERPROFILE%\Videos\AI-Video-GUI\`，跟随系统视频目录惯例，用户无需额外配置即可找到
-- 用户可在设置面板中自定义下载路径，自定义路径保存在 settings.json 的 app_settings.default_download_dir 中
+- 用户可在设置面板中自定义下载路径，自定义路径保存在 config.json 的 app_settings.default_download_dir 中
 - 视频文件命名规则：`{日期}_{时间}_{模型名}_{prompt前20字}.mp4`，避免文件名冲突且便于识别
 
 **日志规范**

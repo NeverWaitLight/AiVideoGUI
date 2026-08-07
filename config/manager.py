@@ -4,16 +4,12 @@ import os
 
 from models.app_settings import AppSettings
 from models.provider_config import ProviderConfig
-from models.chat_provider_preset import ChatProviderPreset, ChatProviderCredential
 
 class ConfigManager:
     def __init__(self, config_path: str) -> None:
         self._path = config_path
         self._providers: dict[str, ProviderConfig] = {}
         self._settings = AppSettings()
-        self._chat_presets: list[ChatProviderPreset] = []
-        self._active_chat_provider_id: str = ""
-        self._chat_credentials: dict[str, ChatProviderCredential] = {}
         self._load()
 
     def _load(self) -> None:
@@ -27,35 +23,6 @@ class ConfigManager:
             logger.error(f"读取配置失败：{e}")
             return
 
-        # 加载聊天模型预设配置
-        self._chat_presets = []
-        for item in data.get("chat_providers", []):
-            preset = ChatProviderPreset(
-                id=item.get("id", ""),
-                display_name=item.get("display_name", ""),
-                type=item.get("type", "preset"),
-                model_prefix=item.get("model_prefix", ""),
-                default_model=item.get("default_model", ""),
-                api_key_env=item.get("api_key_env", ""),
-                common_models=item.get("common_models", []),
-                description=item.get("description", ""),
-            )
-            self._chat_presets.append(preset)
-
-        self._active_chat_provider_id = data.get("active_provider_id", "")
-
-        # 加载聊天模型凭证
-        self._chat_credentials = {}
-        for provider_id, cred_data in data.get("provider_credentials", {}).items():
-            cred = ChatProviderCredential(
-                provider_id=provider_id,
-                api_key=cred_data.get("api_key", ""),
-                base_url=cred_data.get("base_url", ""),
-                model=cred_data.get("model", ""),
-            )
-            self._chat_credentials[provider_id] = cred
-
-        # 加载旧的 providers 配置（视频、图片等）
         _renamed = {"bailian": "dashscope", "bailian_image": "dashscope_image"}
         migrated = False
 
@@ -98,7 +65,7 @@ class ConfigManager:
             color_scheme=s.get("color_scheme", "System"),
             enable_ai_request_logging=s.get("enable_ai_request_logging", True),
         )
-        logger.info(f"配置已加载，providers={list(self._providers.keys())}, chat_presets={len(self._chat_presets)}")
+        logger.info(f"配置已加载，providers={list(self._providers.keys())}")
 
         # 如果发生了迁移，自动保存更新后的配置
         if migrated:
@@ -107,28 +74,6 @@ class ConfigManager:
 
     def save(self) -> None:
         data = {
-            "chat_providers": [
-                {
-                    "id": p.id,
-                    "display_name": p.display_name,
-                    "type": p.type,
-                    "model_prefix": p.model_prefix,
-                    "default_model": p.default_model,
-                    "api_key_env": p.api_key_env,
-                    "common_models": p.common_models or [],
-                    "description": p.description,
-                }
-                for p in self._chat_presets
-            ],
-            "active_provider_id": self._active_chat_provider_id,
-            "provider_credentials": {
-                provider_id: {
-                    "api_key": cred.api_key,
-                    "base_url": cred.base_url,
-                    "model": cred.model,
-                }
-                for provider_id, cred in self._chat_credentials.items()
-            },
             "providers": [
                 {
                     "provider_name": p.provider_name,
@@ -298,48 +243,5 @@ class ConfigManager:
         for k, v in kwargs.items():
             if hasattr(self._settings, k):
                 setattr(self._settings, k, v)
-        if auto_save:
-            self.save()
-
-    def get_chat_provider_presets(self) -> list[ChatProviderPreset]:
-        """获取所有聊天模型厂商预设"""
-        return self._chat_presets
-
-    def get_active_chat_provider_id(self) -> str:
-        """获取当前激活的聊天模型厂商 ID"""
-        return self._active_chat_provider_id
-
-    def set_active_chat_provider_id(self, provider_id: str, auto_save: bool = True) -> None:
-        """设置当前激活的聊天模型厂商"""
-        self._active_chat_provider_id = provider_id
-        if auto_save:
-            self.save()
-
-    def get_chat_provider_preset(self, provider_id: str) -> ChatProviderPreset | None:
-        """根据 ID 获取聊天模型厂商预设"""
-        for preset in self._chat_presets:
-            if preset.id == provider_id:
-                return preset
-        return None
-
-    def get_chat_provider_credential(self, provider_id: str) -> ChatProviderCredential | None:
-        """获取聊天模型厂商凭证"""
-        return self._chat_credentials.get(provider_id)
-
-    def update_chat_provider_credential(
-        self, provider_id: str, api_key: str = "", base_url: str = "", model: str = "", auto_save: bool = True
-    ) -> None:
-        """更新聊天模型厂商凭证"""
-        if provider_id not in self._chat_credentials:
-            self._chat_credentials[provider_id] = ChatProviderCredential(provider_id=provider_id)
-
-        cred = self._chat_credentials[provider_id]
-        if api_key:
-            cred.api_key = api_key
-        if base_url:
-            cred.base_url = base_url
-        if model:
-            cred.model = model
-
         if auto_save:
             self.save()
