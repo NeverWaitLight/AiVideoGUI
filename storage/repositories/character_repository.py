@@ -30,6 +30,8 @@ class CharacterRepository(BaseRepository[CharacterEntity, Character]):
             ref_code=entity.ref_code,
             design_image=to_absolute_path(entity.design_image, self._workspace_root),
             description=entity.description,
+            voice_tone=entity.voice_tone,
+            voice_reference_file=to_absolute_path(entity.voice_reference_file, self._workspace_root),
             created_at=entity.created_at,
             updated_at=entity.updated_at,
         )
@@ -42,6 +44,8 @@ class CharacterRepository(BaseRepository[CharacterEntity, Character]):
             ref_code=dto.ref_code,
             design_image=dto.design_image,
             description=dto.description,
+            voice_tone=dto.voice_tone,
+            voice_reference_file=dto.voice_reference_file,
             created_at=dto.created_at,
             updated_at=dto.updated_at,
         )
@@ -77,6 +81,8 @@ class CharacterRepository(BaseRepository[CharacterEntity, Character]):
             entity.ref_code = dto.ref_code
             entity.design_image = dto.design_image
             entity.description = dto.description
+            entity.voice_tone = dto.voice_tone
+            entity.voice_reference_file = dto.voice_reference_file
             entity.updated_at = int(time.time() * 1000)
 
     def delete(self, id: str) -> bool:
@@ -107,6 +113,8 @@ class CharacterHistoryRepository(BaseRepository[CharacterHistoryEntity, Characte
             ref_code=entity.ref_code,
             design_image=entity.design_image,
             description=entity.description,
+            voice_tone=entity.voice_tone,
+            voice_reference_file=entity.voice_reference_file,
             created_at=entity.created_at,
         )
 
@@ -118,6 +126,8 @@ class CharacterHistoryRepository(BaseRepository[CharacterHistoryEntity, Characte
             ref_code=dto.ref_code,
             design_image=dto.design_image,
             description=dto.description,
+            voice_tone=dto.voice_tone,
+            voice_reference_file=dto.voice_reference_file,
             created_at=dto.created_at,
         )
 

@@ -29,8 +29,11 @@ class CharacterService:
         ref_code: str,
         description: str = "",
         design_image: str = "",
+        voice_tone: str = "",
+        voice_reference_file: str = "",
     ) -> Character:
         relative_design_image = to_relative_path(design_image, self._workspace_root) if design_image else ""
+        relative_voice_file = to_relative_path(voice_reference_file, self._workspace_root) if voice_reference_file else ""
 
         character = Character(
             id=0,
@@ -40,6 +43,8 @@ class CharacterService:
             ref_code=ref_code,
             description=description,
             design_image=relative_design_image,
+            voice_tone=voice_tone,
+            voice_reference_file=relative_voice_file,
             created_at=int(time.time() * 1000),
             updated_at=int(time.time() * 1000),
         )
@@ -63,6 +68,8 @@ class CharacterService:
         ref_code: str | None = None,
         description: str | None = None,
         design_image: str | None = None,
+        voice_tone: str | None = None,
+        voice_reference_file: str | None = None,
     ) -> None:
         character_repo = self._sm.get_repo(repo_class=CharacterRepository)
 
@@ -75,6 +82,10 @@ class CharacterService:
         if design_image is not None:
             final_design_image = to_relative_path(design_image, self._workspace_root) if design_image else ""
 
+        final_voice_file = character.voice_reference_file
+        if voice_reference_file is not None:
+            final_voice_file = to_relative_path(voice_reference_file, self._workspace_root) if voice_reference_file else ""
+
         updated_character = Character(
             id=character.id,
             uuid=character.uuid,
@@ -83,6 +94,8 @@ class CharacterService:
             ref_code=ref_code if ref_code is not None else character.ref_code,
             description=description if description is not None else character.description,
             design_image=final_design_image,
+            voice_tone=voice_tone if voice_tone is not None else character.voice_tone,
+            voice_reference_file=final_voice_file,
             created_at=character.created_at,
             updated_at=int(time.time() * 1000),
         )
@@ -144,6 +157,8 @@ class CharacterService:
             ref_code=character.ref_code,
             design_image=character.design_image,
             description=character.description,
+            voice_tone=character.voice_tone,
+            voice_reference_file=character.voice_reference_file,
             created_at=int(time.time() * 1000),
         )
 
@@ -216,7 +231,11 @@ class CharacterService:
             traits = self.extract_fixed_traits(c.description)
             if traits:
                 traits_clean = self._clean_format_markers(traits)
-                prefix_lines.append(f"[角色形象] {c.ref_code}：{traits_clean}")
+                char_info = f"[角色形象] {c.ref_code}：{traits_clean}"
+                if c.voice_tone and c.voice_tone.strip():
+                    voice_tone_clean = self._clean_format_markers(c.voice_tone)
+                    char_info += f"；音色：{voice_tone_clean}"
+                prefix_lines.append(char_info)
 
         if not prefix_lines:
             return replaced_content

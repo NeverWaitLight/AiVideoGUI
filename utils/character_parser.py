@@ -86,6 +86,7 @@ class CharacterParser:
             name = (item.get("name") or item.get("角色名") or "").strip()
             ref_code = (item.get("ref_code") or item.get("引用代号") or "").strip()
             description = (item.get("description") or item.get("形象描述") or "").strip()
+            voice_tone = (item.get("voice_tone") or item.get("音色描述") or "").strip()
 
             if not name or not ref_code:
                 logger.warning(f"跳过无效角色数据: {item}")
@@ -95,6 +96,7 @@ class CharacterParser:
                 "name": name,
                 "ref_code": ref_code,
                 "description": description,
+                "voice_tone": voice_tone,
             })
 
         return validated if validated else None

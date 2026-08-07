@@ -18,6 +18,8 @@ class CharacterEntity(Base):
     ref_code: Mapped[str] = mapped_column(String(100), nullable=False)
     design_image: Mapped[str] = mapped_column(String(500), nullable=False, default="")
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    voice_tone: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    voice_reference_file: Mapped[str] = mapped_column(Text, nullable=False, default="")
     created_at: Mapped[int] = mapped_column(Integer, nullable=False)
     updated_at: Mapped[int] = mapped_column(Integer, nullable=False)
 
@@ -45,6 +47,8 @@ class CharacterHistoryEntity(Base):
     ref_code: Mapped[str] = mapped_column(String(100), nullable=False)
     design_image: Mapped[str] = mapped_column(String(500), nullable=False, default="")
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    voice_tone: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    voice_reference_file: Mapped[str] = mapped_column(Text, nullable=False, default="")
 
     created_at: Mapped[int] = mapped_column(Integer, nullable=False)
 

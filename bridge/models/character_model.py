@@ -12,6 +12,8 @@ class CharacterListModel(QAbstractListModel):
     RefCodeRole = Qt.UserRole + 4
     DescriptionRole = Qt.UserRole + 5
     DesignImageRole = Qt.UserRole + 6
+    VoiceToneRole = Qt.UserRole + 7
+    VoiceReferenceFileRole = Qt.UserRole + 8
 
     _ROLE_NAMES = {
         IdRole: b"characterId",
@@ -20,6 +22,8 @@ class CharacterListModel(QAbstractListModel):
         RefCodeRole: b"refCode",
         DescriptionRole: b"description",
         DesignImageRole: b"designImagePath",
+        VoiceToneRole: b"voiceTone",
+        VoiceReferenceFileRole: b"voiceReferenceFile",
     }
 
     count_changed = Signal()
@@ -54,6 +58,10 @@ class CharacterListModel(QAbstractListModel):
             return item.description
         if role == self.DesignImageRole:
             return item.design_image
+        if role == self.VoiceToneRole:
+            return item.voice_tone
+        if role == self.VoiceReferenceFileRole:
+            return item.voice_reference_file
         return None
 
     def reset(self, characters: list[Character]) -> None:

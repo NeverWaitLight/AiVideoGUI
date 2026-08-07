@@ -360,7 +360,9 @@ Item {
                                     projectId,
                                     nameInput.text.trim(),
                                     refCodeInput.text.trim(),
-                                    descInput.text.trim()
+                                    descInput.text.trim(),
+                                    voiceToneInput.text.trim(),
+                                    voiceRefFileInput.text.trim()
                                 )
                                 _isNewCharacter = false
                             } else {
@@ -368,7 +370,9 @@ Item {
                                     _editingCharUuid,
                                     nameInput.text.trim(),
                                     refCodeInput.text.trim(),
-                                    descInput.text.trim()
+                                    descInput.text.trim(),
+                                    voiceToneInput.text.trim(),
+                                    voiceRefFileInput.text.trim()
                                 )
                             }
                         }
@@ -428,32 +432,37 @@ Item {
                             ColumnLayout {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
-                                spacing: 16
+                                spacing: 12
 
                                 Pane {
                                     Layout.fillWidth: true
-                                    padding: 16
+                                    padding: 12
                                     background: Item {}
 
                                     GridLayout {
                                         anchors.fill: parent
                                         columns: 4
-                                        columnSpacing: 16
-                                        rowSpacing: 12
+                                        columnSpacing: 12
+                                        rowSpacing: 8
 
                                         Label {
                                             text: "角色名："
-                                            font.pixelSize: Theme.fontSizeMedium
+                                            font.pixelSize: Theme.fontSizeSmall
                                         }
                                         Comp.AppTextField {
                                             id: nameInput
                                             Layout.fillWidth: true
                                             Layout.columnSpan: 3
+                                            Layout.preferredHeight: 32
+                                            font.pixelSize: Theme.fontSizeSmall
+                                            padding: 6
+                                            leftPadding: 10
+                                            rightPadding: 10
                                         }
 
                                         Label {
                                             text: "引用代号："
-                                            font.pixelSize: Theme.fontSizeMedium
+                                            font.pixelSize: Theme.fontSizeSmall
                                         }
                                         Comp.AppTextField {
                                             id: refCodeInput
@@ -461,11 +470,16 @@ Item {
                                             placeholderText: "如 CHAR_A"
                                             Layout.fillWidth: true
                                             Layout.columnSpan: 3
+                                            Layout.preferredHeight: 32
+                                            font.pixelSize: Theme.fontSizeSmall
+                                            padding: 6
+                                            leftPadding: 10
+                                            rightPadding: 10
                                         }
                                         Label {
                                             visible: !_isNewCharacter
                                             text: refCodeInput.text || "—"
-                                            font.pixelSize: Theme.fontSizeMedium
+                                            font.pixelSize: Theme.fontSizeSmall
                                             Layout.fillWidth: true
                                             Layout.columnSpan: 3
                                         }
@@ -475,16 +489,16 @@ Item {
                                 Pane {
                                     Layout.fillWidth: true
                                     Layout.fillHeight: true
-                                    padding: 16
+                                    padding: 12
                                     background: Item {}
 
                                     ColumnLayout {
                                         anchors.fill: parent
-                                        spacing: 12
+                                        spacing: 8
 
                                         Label {
                                             text: "形象描述："
-                                            font.pixelSize: Theme.fontSizeMedium
+                                            font.pixelSize: Theme.fontSizeSmall
                                         }
 
                                         ScrollView {
@@ -495,7 +509,78 @@ Item {
                                                 id: descInput
                                                 wrapMode: TextArea.Wrap
                                                 font.pixelSize: Theme.fontSizeSmall
-                                                padding: 12
+                                                padding: 10
+                                            }
+                                        }
+                                    }
+                                }
+
+                                Pane {
+                                    Layout.fillWidth: true
+                                    padding: 12
+                                    background: Item {}
+
+                                    ColumnLayout {
+                                        anchors.fill: parent
+                                        spacing: 8
+
+                                        Label {
+                                            text: "音色描述："
+                                            font.pixelSize: Theme.fontSizeSmall
+                                        }
+
+                                        Comp.AppTextField {
+                                            id: voiceToneInput
+                                            Layout.fillWidth: true
+                                            Layout.preferredHeight: 32
+                                            placeholderText: "如：温柔清脆的女声，语速适中，带有亲切感"
+                                            font.pixelSize: Theme.fontSizeSmall
+                                            padding: 6
+                                            leftPadding: 10
+                                            rightPadding: 10
+                                        }
+
+                                        Label {
+                                            text: "音色参考文件："
+                                            font.pixelSize: Theme.fontSizeSmall
+                                            Layout.topMargin: 4
+                                        }
+
+                                        RowLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 8
+
+                                            Comp.AppTextField {
+                                                id: voiceRefFileInput
+                                                Layout.fillWidth: true
+                                                Layout.preferredHeight: 32
+                                                placeholderText: "选择音频文件（暂未使用）"
+                                                readOnly: true
+                                                font.pixelSize: Theme.fontSizeSmall
+                                                padding: 6
+                                                leftPadding: 10
+                                                rightPadding: 10
+                                            }
+
+                                            Button {
+                                                text: "选择"
+                                                Layout.preferredHeight: 32
+                                                font.pixelSize: Theme.fontSizeSmall
+                                                padding: 4
+                                                leftPadding: 12
+                                                rightPadding: 12
+                                                onClicked: voiceFileDialog.open()
+                                            }
+
+                                            Button {
+                                                text: "清除"
+                                                Layout.preferredHeight: 32
+                                                font.pixelSize: Theme.fontSizeSmall
+                                                padding: 4
+                                                leftPadding: 12
+                                                rightPadding: 12
+                                                visible: voiceRefFileInput.text.length > 0
+                                                onClicked: voiceRefFileInput.text = ""
                                             }
                                         }
                                     }
@@ -527,6 +612,18 @@ Item {
             var p = selectedFile.toString()
             if (p.startsWith("file:///")) p = p.substring(8)
             bridge.characters.upload_design_image(_editingCharUuid, p)
+        }
+    }
+
+    QtDialogs.FileDialog {
+        id: voiceFileDialog
+        title: "选择音色参考音频文件"
+        fileMode: QtDialogs.FileDialog.OpenFile
+        nameFilters: ["音频文件 (*.mp3 *.wav *.m4a *.ogg)", "所有文件 (*)"]
+        onAccepted: {
+            var p = selectedFile.toString()
+            if (p.startsWith("file:///")) p = p.substring(8)
+            voiceRefFileInput.text = p
         }
     }
 
@@ -636,6 +733,8 @@ Item {
         nameInput.text = ""
         refCodeInput.text = ""
         descInput.text = ""
+        voiceToneInput.text = ""
+        voiceRefFileInput.text = ""
         _showDetail = true
     }
 
@@ -646,6 +745,8 @@ Item {
         nameInput.text = model.name || ""
         refCodeInput.text = model.refCode || ""
         descInput.text = model.description || ""
+        voiceToneInput.text = model.voiceTone || ""
+        voiceRefFileInput.text = model.voiceReferenceFile || ""
         _showDetail = true
     }
 

@@ -60,42 +60,46 @@ class CharacterBridge(QObject):
         chars = self._character_service.list_characters(project_id=project_id)
         self._model.reset(chars)
 
-    @Slot(int, str, str, str)
-    def create_character(self, project_id: int, name: str, ref_code: str, description: str) -> None:
+    @Slot(int, str, str, str, str, str)
+    def create_character(self, project_id: int, name: str, ref_code: str, description: str, voice_tone: str = "", voice_reference_file: str = "") -> None:
         self._character_service.create_character(
             project_id=project_id, name=name, ref_code=ref_code, description=description,
+            voice_tone=voice_tone, voice_reference_file=voice_reference_file,
         )
         self.load_for_project(project_id)
         self.data_changed.emit()
         self.character_saved.emit()
 
-    @Slot(int, str, str, str)
-    def save_new_character(self, project_id: int, name: str, ref_code: str, description: str) -> None:
+    @Slot(int, str, str, str, str, str)
+    def save_new_character(self, project_id: int, name: str, ref_code: str, description: str, voice_tone: str = "", voice_reference_file: str = "") -> None:
         if not name.strip():
             self.error.emit("请输入角色名")
             return
         self._character_service.create_character(
             project_id=project_id, name=name.strip(), ref_code=ref_code.strip(), description=description.strip(),
+            voice_tone=voice_tone.strip(), voice_reference_file=voice_reference_file.strip(),
         )
         self.load_for_project(project_id)
         self.data_changed.emit()
         self.character_saved.emit()
 
-    @Slot(str, str, str, str)
-    def save_existing_character(self, char_uuid: str, name: str, ref_code: str, description: str) -> None:
+    @Slot(str, str, str, str, str, str)
+    def save_existing_character(self, char_uuid: str, name: str, ref_code: str, description: str, voice_tone: str = "", voice_reference_file: str = "") -> None:
         if not name.strip():
             self.error.emit("请输入角色名")
             return
         self._character_service.update_character(
             character_uuid=char_uuid, name=name.strip(), ref_code=ref_code.strip(), description=description.strip(),
+            voice_tone=voice_tone.strip(), voice_reference_file=voice_reference_file.strip(),
         )
         self.data_changed.emit()
         self.character_saved.emit()
 
-    @Slot(str, str, str, str)
-    def update_character(self, char_uuid: str, name: str, ref_code: str, description: str) -> None:
+    @Slot(str, str, str, str, str, str)
+    def update_character(self, char_uuid: str, name: str, ref_code: str, description: str, voice_tone: str = "", voice_reference_file: str = "") -> None:
         self._character_service.update_character(
             character_uuid=char_uuid, name=name, ref_code=ref_code, description=description,
+            voice_tone=voice_tone, voice_reference_file=voice_reference_file,
         )
         self.data_changed.emit()
 
@@ -275,6 +279,7 @@ class CharacterBridge(QObject):
                         name=char_data["name"],
                         ref_code=char_data["ref_code"],
                         description=char_data["description"],
+                        voice_tone=char_data.get("voice_tone", ""),
                     )
 
                 self.load_for_project(project_id)
@@ -325,6 +330,7 @@ class CharacterBridge(QObject):
                         name=char_data["name"],
                         ref_code=char_data["ref_code"],
                         description=char_data["description"],
+                        voice_tone=char_data.get("voice_tone", ""),
                     )
 
                 self.load_for_project(project_id)
