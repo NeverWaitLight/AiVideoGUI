@@ -13,7 +13,6 @@ from bridge.app_bridge import AppBridge
 from bridge.theme import Theme
 from storage.orm.base import init_engine
 from utils import paths
-from utils.resources import copy_resources_to_workspace
 from config.config_merger import ConfigMerger
 
 import resources_rc
@@ -74,8 +73,6 @@ def main():
     resources_dir = paths.resources_dir(root)
     for d in (data_dir, cache_dir, ws_dir, resources_dir):
         os.makedirs(d, exist_ok=True)
-
-    copy_resources_to_workspace(root)
 
     # 合并默认配置和用户配置
     default_config_path = os.path.join(os.path.dirname(__file__), "resources", "configs", "default_settings.json")
