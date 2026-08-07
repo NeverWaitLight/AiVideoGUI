@@ -15,6 +15,7 @@ Item {
     property string _outlineContent: ""
     property bool _multiSelect: false
     property var _selectedIds: []
+    property string _projectName: ""
 
     signal backClicked()
     signal navigateToCharacters(int projectId)
@@ -30,6 +31,8 @@ Item {
 
     onProjectIdChanged: {
         if (projectId > 0) {
+            var info = JSON.parse(bridge.projects.get_project_info(projectId))
+            _projectName = info.name || ""
             bridge.screenplay.load_for_project(projectId)
             _showDetail = false
             _showHistory = false
@@ -87,8 +90,9 @@ Item {
                 spacing: 0
 
                 Comp.PageHeader {
+                    projectName: _projectName
                     title: "剧本"
-                    subtitle: "共" + bridge.screenplay.sceneModel.count + "场"
+                    titleSuffix: "共" + bridge.screenplay.sceneModel.count + "场"
                     Layout.fillWidth: true
                     onBackClicked: page.backClicked()
 
@@ -331,6 +335,7 @@ Item {
                 spacing: 0
 
                 Comp.PageHeader {
+                    projectName: _projectName
                     title: "第 " + bridge.screenplay.curSceneNumber + " 场"
                     Layout.fillWidth: true
                     onBackClicked: {

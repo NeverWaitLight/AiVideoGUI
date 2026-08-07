@@ -10,12 +10,15 @@ Item {
     property int projectId: -1
     property bool _dirty: false
     property string _loadedContent: ""
+    property string _projectName: ""
 
     signal backClicked()
     signal nextStepClicked(string content)
 
     onProjectIdChanged: {
         if (projectId > 0) {
+            var info = JSON.parse(bridge.projects.get_project_info(projectId))
+            _projectName = info.name || ""
             bridge.storyOutline.load(projectId)
         }
     }
@@ -57,6 +60,7 @@ Item {
         spacing: 0
 
         Comp.PageHeader {
+            projectName: _projectName
             title: "大纲"
             Layout.fillWidth: true
             onBackClicked: page.backClicked()

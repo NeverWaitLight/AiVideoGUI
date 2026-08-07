@@ -15,6 +15,7 @@ Item {
     property bool _multiSelect: false
     property bool _showDetail: false
     property string _editingDesignImage: ""
+    property string _projectName: ""
 
     signal backClicked()
     signal navigateToStoryboard(int projectId)
@@ -30,6 +31,8 @@ Item {
 
     onProjectIdChanged: {
         if (projectId > 0) {
+            var info = JSON.parse(bridge.projects.get_project_info(projectId))
+            _projectName = info.name || ""
             bridge.characters.load_for_project(projectId)
             _selectedIds = []
             _showDetail = false
@@ -91,8 +94,9 @@ Item {
                 spacing: 0
 
                 Comp.PageHeader {
+                    projectName: _projectName
                     title: "角色"
-                    subtitle: "共" + bridge.characters.model.count + "个角色"
+                    titleSuffix: "共" + bridge.characters.model.count + "个角色"
                     Layout.fillWidth: true
                     onBackClicked: page.backClicked()
 
@@ -300,6 +304,7 @@ Item {
                 spacing: 0
 
                 Comp.PageHeader {
+                    projectName: _projectName
                     title: _isNewCharacter ? "新增角色" : "编辑角色"
                     Layout.fillWidth: true
                     onBackClicked: {

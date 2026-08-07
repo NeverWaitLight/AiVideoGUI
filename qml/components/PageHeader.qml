@@ -7,9 +7,9 @@ Item {
     id: header
     implicitHeight: Theme.headerHeight
 
+    property string projectName: ""
     property string title: ""
     property string titleSuffix: ""
-    property string subtitle: ""
     property bool showBack: true
 
     signal backClicked()
@@ -48,26 +48,26 @@ Item {
             }
         }
 
-        ColumnLayout {
-            spacing: 2
-            RowLayout {
-                spacing: 8
-                Label {
-                    text: header.title
-                    font.pixelSize: Theme.fontSizeMedium
-                    font.bold: true
+        RowLayout {
+            spacing: 8
+            Label {
+                text: {
+                    if (header.projectName !== "" && header.title !== "") {
+                        return header.projectName + " - " + header.title
+                    } else if (header.projectName !== "") {
+                        return header.projectName
+                    } else {
+                        return header.title
+                    }
                 }
-                Label {
-                    visible: header.titleSuffix !== ""
-                    text: header.titleSuffix
-                    font.pixelSize: Theme.fontSizeSmall
-                    opacity: 0.7
-                }
+                font.pixelSize: Theme.fontSizeMedium
+                font.bold: true
             }
             Label {
-                visible: header.subtitle !== ""
-                text: header.subtitle
+                visible: header.titleSuffix !== ""
+                text: header.titleSuffix
                 font.pixelSize: Theme.fontSizeSmall
+                opacity: 0.7
             }
         }
 

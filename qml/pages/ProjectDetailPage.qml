@@ -18,7 +18,7 @@ Item {
         if (projectId > 0) {
             var info = JSON.parse(bridge.projects.get_project_info(projectId))
             _projectName = info.name || "项目详情"
-            _projectInfo = (info.aspectRatio || "") + " · " + (info.resolution || "") + " · " + (info.videoCount || 0) + " 个视频"
+            _projectInfo = (info.aspectRatio || "") + " · " + (info.resolution || "")
         }
     }
 
@@ -26,70 +26,12 @@ Item {
         anchors.fill: parent
         spacing: 0
 
-        Pane {
+        Comp.PageHeader {
+            projectName: _projectName
+            title: ""
+            titleSuffix: _projectInfo
             Layout.fillWidth: true
-            Layout.preferredHeight: 44
-            padding: 5
-
-            background: Rectangle {
-                color: "transparent"
-                border.width: 0
-                Rectangle {
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.bottom: parent.bottom
-                    height: 1
-                    color: "white"
-                }
-            }
-
-            RowLayout {
-                anchors.fill: parent
-                spacing: 12
-
-                Button {
-                    Layout.preferredWidth: 34
-                    Layout.preferredHeight: 34
-                    flat: true
-                    display: AbstractButton.IconOnly
-                    icon.source: "qrc:/resources/icons/arrow_back.svg"
-                    icon.width: 20
-                    icon.height: 20
-                    topPadding: 7
-                    bottomPadding: 7
-                    leftPadding: 7
-                    rightPadding: 7
-                    ToolTip.visible: hovered
-                    ToolTip.text: "返回"
-                    onClicked: detailPage.backClicked()
-
-                    background: Rectangle {
-                        anchors.fill: parent
-                        radius: Theme.radiusSmall
-                        color: parent.hovered
-                            ? Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.08)
-                            : "transparent"
-                    }
-                }
-
-                ColumnLayout {
-                    spacing: 2
-
-                    Label {
-                        text: _projectName
-                        font.pixelSize: Theme.fontSizeMedium
-                        font.bold: true
-                    }
-
-                    Label {
-                        text: _projectInfo
-                        font.pixelSize: Theme.fontSizeSmall
-                        opacity: 0.7
-                    }
-                }
-
-                Item { Layout.fillWidth: true }
-            }
+            onBackClicked: detailPage.backClicked()
         }
 
         Grid {

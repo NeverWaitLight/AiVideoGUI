@@ -15,6 +15,7 @@ Item {
     property bool _multiSelect: false
     property var _selectedIds: []
     property int _designImageVersion: 0
+    property string _projectName: ""
 
     signal backClicked()
     signal navigateToMediaLibrary(int projectId)
@@ -30,6 +31,8 @@ Item {
 
     onProjectIdChanged: {
         if (projectId > 0) {
+            var info = JSON.parse(bridge.projects.get_project_info(projectId))
+            _projectName = info.name || ""
             bridge.storyboard.load_for_project(projectId)
             _showDetail = false
             _multiSelect = false
@@ -102,8 +105,9 @@ Item {
                 spacing: 0
 
                 Comp.PageHeader {
+                    projectName: _projectName
                     title: "分镜"
-                    subtitle: "共" + bridge.storyboard.model.count + "镜"
+                    titleSuffix: "共" + bridge.storyboard.model.count + "镜"
                     Layout.fillWidth: true
                     onBackClicked: page.backClicked()
 
@@ -365,6 +369,7 @@ Item {
                 spacing: 0
 
                 Comp.PageHeader {
+                    projectName: _projectName
                     title: bridge.storyboard.curSceneNumber + "场" + bridge.storyboard.curShotNumber + "镜"
                     Layout.fillWidth: true
                     onBackClicked: {

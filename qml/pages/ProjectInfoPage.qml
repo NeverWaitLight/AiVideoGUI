@@ -14,6 +14,7 @@ Item {
     property string _coverRelativePath: ""
     property string _coverDisplayPath: ""
     property bool isGeneratingCover: false
+    property string _projectName: ""
 
     readonly property bool _isPortrait: _ratioText === "9:16" || _ratioText === "3:4"
     property string _ratioText: "16:9"
@@ -59,6 +60,7 @@ Item {
 
     function _loadProjectData() {
         var info = JSON.parse(bridge.projects.get_project_info(projectId))
+        _projectName = info.name || ""
         _nameText = info.name || ""
         _coverRelativePath = info.coverImage || ""
         _coverDisplayPath = info.coverImagePath || ""
@@ -72,7 +74,8 @@ Item {
         spacing: 0
 
         Comp.PageHeader {
-            title: page.isCreate ? "新建项目" : "项目"
+            projectName: page.isCreate ? "" : _projectName
+            title: page.isCreate ? "新建项目" : "编辑"
             Layout.fillWidth: true
             onBackClicked: page.backClicked()
 
