@@ -26,10 +26,10 @@ Dialog {
     property string videoModelT2V: ""
     property string videoModelI2V: ""
     property string videoModelR2V: ""
-    property string chatProvider: "dashscope"
+    property string chatProvider: "deepseek"
+    property string chatProviderId: "deepseek"
     property string chatModel: ""
-    property var chatModelList: []
-    property bool chatModelsLoading: false
+    property var chatProviderPresets: []
     property string imageProvider: "dashscope_image"
     property string imageModel: ""
     property var imageModelList: []
@@ -183,8 +183,9 @@ Dialog {
         videoModelI2V = bridge.settings.get_model_for_task_type(videoProvider, "video", "i2v")
         videoModelR2V = bridge.settings.get_model_for_task_type(videoProvider, "video", "r2v")
 
-        chatProvider = bridge.settings.get_default_chat_provider()
-        chatModel = bridge.settings.get_default_model(chatProvider, "chat")
+        // Load chat provider presets and active provider
+        chatProviderPresets = bridge.settings.get_chat_provider_presets()
+        chatProviderId = bridge.settings.get_active_chat_provider_id()
 
         imageProvider = bridge.settings.get_default_image_provider()
         imageModel = bridge.settings.get_default_model(imageProvider, "image")
@@ -197,17 +198,55 @@ Dialog {
         var img = imageLoader.item
         var vid = videoLoader.item
 
-        // Validate chat
+        // Save chat provider
         if (chat) {
-            var chatError = bridge.settings.validate_provider_config(
-                "chat", chat.chatProviderCombo.currentText,
-                chat.chatApiKeyField.text, chat.chatBaseUrlField.text,
-                chat.chatModelCombo.currentText || chat.chatModelCombo.editText)
-            if (chatError) {
-                alertDialog.warning("文本配置错误", chatError)
+            var selectedPreset = chat.getSelectedPreset()
+            if (!selectedPreset) {
+                alertDialog.warning("配置错误", "请选择一个文本模型提供商")
                 tabBar.currentIndex = 0
                 return
             }
+
+            if (selectedPreset.type === "custom") {
+                // Custom provider needs all fields
+                if (!chat.chatApiKeyField.text) {
+                    alertDialog.warning("配置错误", "请输入 API Key")
+                    tabBar.currentIndex = 0
+                    return
+                }
+                if (!chat.chatBaseUrlField.text) {
+                    alertDialog.warning("配置错误", "请输入 Base URL")
+                    tabBar.currentIndex = 0
+                    return
+                }
+                if (!chat.chatModelField.text) {
+                    alertDialog.warning("配置错误", "请输入模型名称")
+                    tabBar.currentIndex = 0
+                    return
+                }
+                bridge.settings.update_chat_provider_credential(
+                    selectedPreset.id,
+                    chat.chatApiKeyField.text,
+                    chat.chatBaseUrlField.text,
+                    chat.chatModelField.text
+                )
+            } else {
+                // Preset provider only needs API key
+                if (!chat.chatApiKeyField.text) {
+                    alertDialog.warning("配置错误", "请输入 API Key")
+                    tabBar.currentIndex = 0
+                    return
+                }
+                bridge.settings.update_chat_provider_credential(
+                    selectedPreset.id,
+                    chat.chatApiKeyField.text,
+                    "",
+                    ""
+                )
+            }
+
+            // Set active provider
+            bridge.settings.set_active_chat_provider_id(selectedPreset.id)
         }
 
         // Validate image
@@ -237,16 +276,9 @@ Dialog {
         }
 
         // Batch save providers (re-read after validation switched tabs)
-        chat = chatLoader.item
         img = imageLoader.item
         vid = videoLoader.item
 
-        if (chat) {
-            bridge.settings.batch_save_provider("chat",
-                chat.chatProviderCombo.currentText,
-                chat.chatApiKeyField.text, chat.chatBaseUrlField.text,
-                chat.chatModelCombo.currentText, {})
-        }
         if (img) {
             bridge.settings.batch_save_provider("image",
                 img.imageProviderCombo.currentText,
@@ -305,35 +337,44 @@ Dialog {
             property alias chatProviderCombo: chatProviderCombo
             property alias chatApiKeyField: chatApiKeyField
             property alias chatBaseUrlField: chatBaseUrlField
-            property alias chatModelCombo: chatModelCombo
+            property alias chatModelField: chatModelField
 
-            Timer {
-                id: chatFetchTimer
-                interval: 50
-                repeat: false
-                onTriggered: {
-                    var models = bridge.settings.list_chat_models(
-                        chatApiKeyField.text, chatBaseUrlField.text,
-                        chatProviderCombo.currentText)
-                    settingsDialog.chatModelList = models
-                    settingsDialog.chatModelsLoading = false
-                    if (settingsDialog.chatModel) {
-                        var idx = chatModelCombo.find(settingsDialog.chatModel)
-                        if (idx >= 0) {
-                            chatModelCombo.currentIndex = idx
-                        } else {
-                            chatModelCombo.editText = settingsDialog.chatModel
-                        }
-                        settingsDialog.chatModel = ""
-                    }
+            // Get selected preset object
+            function getSelectedPreset() {
+                var idx = chatProviderCombo.currentIndex
+                if (idx >= 0 && idx < settingsDialog.chatProviderPresets.length) {
+                    return settingsDialog.chatProviderPresets[idx]
                 }
+                return null
             }
 
-            function fetchChatModels() {
-                var apiKey = chatApiKeyField.text
-                if (!apiKey) return
-                settingsDialog.chatModelsLoading = true
-                chatFetchTimer.start()
+            // Update UI based on selected provider type
+            function updateProviderUI() {
+                var preset = getSelectedPreset()
+                if (!preset) return
+
+                var providerId = preset.id
+                var credential = bridge.settings.get_chat_provider_credential(providerId)
+
+                // Load credentials
+                chatApiKeyField.text = credential.api_key || ""
+
+                if (preset.type === "custom") {
+                    // Custom provider: show Base URL and Model fields
+                    chatBaseUrlField.visible = true
+                    baseUrlLabel.visible = true
+                    chatModelField.visible = true
+                    modelLabel.visible = true
+
+                    chatBaseUrlField.text = credential.base_url || ""
+                    chatModelField.text = credential.model || ""
+                } else {
+                    // Preset provider: hide Base URL and Model fields
+                    chatBaseUrlField.visible = false
+                    baseUrlLabel.visible = false
+                    chatModelField.visible = false
+                    modelLabel.visible = false
+                }
             }
 
             ColumnLayout {
@@ -397,10 +438,15 @@ Dialog {
                             }
                             ComboBox {
                                 id: chatProviderCombo
-                                model: ["dashscope"]
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 36
                                 Material.elevation: 0
+                                textRole: "display_name"
+                                model: settingsDialog.chatProviderPresets
+
+                                onCurrentIndexChanged: {
+                                    updateProviderUI()
+                                }
                             }
 
                             Label {
@@ -418,62 +464,35 @@ Dialog {
                             }
 
                             Label {
+                                id: baseUrlLabel
                                 text: "Base URL"
                                 font.pixelSize: Theme.fontSizeNormal
-                                color: Material.hintTextColor
                                 Layout.alignment: Qt.AlignTop
                                 topPadding: 6
+                                visible: false
                             }
                             Comp.AppTextField {
                                 id: chatBaseUrlField
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 36
-                                placeholderText: "API 基础地址（可选）"
+                                placeholderText: "https://api.example.com/v1"
+                                visible: false
                             }
 
                             Label {
-                                text: "默认模型"
+                                id: modelLabel
+                                text: "Model"
                                 font.pixelSize: Theme.fontSizeNormal
                                 Layout.alignment: Qt.AlignTop
                                 topPadding: 6
+                                visible: false
                             }
-                            RowLayout {
+                            Comp.AppTextField {
+                                id: chatModelField
                                 Layout.fillWidth: true
-                                spacing: 8
-
-                                ComboBox {
-                                    id: chatModelCombo
-                                    Layout.fillWidth: true
-                                    Layout.preferredHeight: 36
-                                    editable: true
-                                    enabled: !settingsDialog.chatModelsLoading
-                                    model: settingsDialog.chatModelList
-                                    Material.elevation: 0
-                                }
-
-                                Button {
-                                    implicitHeight: 36
-                                    implicitWidth: 36
-                                    enabled: chatApiKeyField.text.length > 0 && !settingsDialog.chatModelsLoading
-                                    Material.elevation: 0
-                                    padding: 6
-                                    onClicked: fetchChatModels()
-
-                                    Image {
-                                        anchors.centerIn: parent
-                                        width: 20; height: 20
-                                        source: "qrc:/resources/icons/autorenew.svg"
-                                        sourceSize: Qt.size(20, 20)
-                                        fillMode: Image.PreserveAspectFit
-
-                                        RotationAnimation on rotation {
-                                            running: settingsDialog.chatModelsLoading
-                                            from: 0; to: 360
-                                            duration: 1000
-                                            loops: Animation.Infinite
-                                        }
-                                    }
-                                }
+                                Layout.preferredHeight: 36
+                                placeholderText: "模型名称（如 gpt-4o）"
+                                visible: false
                             }
                         }
                     }
@@ -483,21 +502,14 @@ Dialog {
             }
 
             Component.onCompleted: {
-                chatApiKeyField.text = bridge.settings.get_api_key(settingsDialog.chatProvider, "chat")
-                chatBaseUrlField.text = bridge.settings.get_base_url(settingsDialog.chatProvider, "chat")
-                if (settingsDialog.chatModelList.length > 0) {
-                    var idx = chatModelCombo.find(settingsDialog.chatModel)
-                    if (idx >= 0) {
-                        chatModelCombo.currentIndex = idx
-                    } else if (settingsDialog.chatModel) {
-                        chatModelCombo.editText = settingsDialog.chatModel
+                // Find and select the active provider
+                for (var i = 0; i < settingsDialog.chatProviderPresets.length; i++) {
+                    if (settingsDialog.chatProviderPresets[i].id === settingsDialog.chatProviderId) {
+                        chatProviderCombo.currentIndex = i
+                        break
                     }
-                } else if (settingsDialog.chatModel) {
-                    chatModelCombo.editText = settingsDialog.chatModel
                 }
-                if (chatApiKeyField.text.length > 0) {
-                    fetchChatModels()
-                }
+                updateProviderUI()
             }
         }
     }

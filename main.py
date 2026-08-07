@@ -14,6 +14,7 @@ from bridge.theme import Theme
 from storage.orm.base import init_engine
 from utils import paths
 from utils.resources import copy_resources_to_workspace
+from config.config_merger import ConfigMerger
 
 import resources_rc
 
@@ -76,9 +77,14 @@ def main():
 
     copy_resources_to_workspace(root)
 
+    # 合并默认配置和用户配置
+    default_config_path = os.path.join(os.path.dirname(__file__), "resources", "configs", "default_settings.json")
+    user_config_path = os.path.join(data_dir, "settings.json")
+    ConfigMerger.merge_configs(default_config_path, user_config_path)
+
     container = ApplicationContainer()
     container.config.workspace_root.from_value(root)
-    container.config.config_path.from_value(os.path.join(data_dir, "config.json"))
+    container.config.config_path.from_value(user_config_path)
     config_manager = container.config_manager()
     color_scheme = config_manager.settings.color_scheme or "System"
 

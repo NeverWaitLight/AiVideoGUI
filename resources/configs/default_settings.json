@@ -1,0 +1,117 @@
+{
+  "chat_providers": [
+    {
+      "id": "custom",
+      "display_name": "OpenAI Compatible",
+      "type": "custom",
+      "model_prefix": "",
+      "default_model": "",
+      "api_key_env": "OPENAI_API_KEY",
+      "description": "OpenAI Compatible API Service"
+    },
+    {
+      "id": "deepseek",
+      "display_name": "DeepSeek",
+      "type": "preset",
+      "model_prefix": "deepseek/",
+      "default_model": "deepseek-chat",
+      "api_key_env": "DEEPSEEK_API_KEY",
+      "common_models": [
+        "deepseek-chat",
+        "deepseek-coder",
+        "deepseek-reasoner"
+      ],
+      "description": "DeepSeek Chat Models"
+    },
+    {
+      "id": "openai",
+      "display_name": "OpenAI",
+      "type": "preset",
+      "model_prefix": "openai/",
+      "default_model": "gpt-4o",
+      "api_key_env": "OPENAI_API_KEY",
+      "common_models": [
+        "gpt-4o",
+        "gpt-4o-mini",
+        "gpt-3.5-turbo"
+      ],
+      "description": "OpenAI GPT Models"
+    },
+    {
+      "id": "anthropic",
+      "display_name": "Anthropic",
+      "type": "preset",
+      "model_prefix": "anthropic/",
+      "default_model": "claude-opus-4-7",
+      "api_key_env": "ANTHROPIC_API_KEY",
+      "common_models": [
+        "claude-opus-4-7",
+        "claude-sonnet-4-3",
+        "claude-3-5-sonnet-20241022"
+      ],
+      "description": "Anthropic Claude Models"
+    },
+    {
+      "id": "alibaba",
+      "display_name": "Alibaba (China)",
+      "type": "preset",
+      "model_prefix": "alibaba/",
+      "default_model": "qwen-max",
+      "api_key_env": "ALIBABA_API_KEY",
+      "common_models": [
+        "qwen-max",
+        "qwen-plus",
+        "qwen-turbo",
+        "qwen-vl-max",
+        "qwen-vl-plus"
+      ],
+      "description": "Alibaba Cloud Models (China Region)"
+    },
+    {
+      "id": "gemini",
+      "display_name": "Gemini",
+      "type": "preset",
+      "model_prefix": "gemini/",
+      "default_model": "gemini-1.5-pro",
+      "api_key_env": "GEMINI_API_KEY",
+      "common_models": [
+        "gemini-1.5-pro",
+        "gemini-1.5-flash",
+        "gemini-2.0-flash-exp"
+      ],
+      "description": "Google Gemini Models"
+    }
+  ],
+  "active_provider_id": "deepseek",
+  "provider_credentials": {
+    "custom": {
+      "api_key": "",
+      "base_url": "",
+      "model": ""
+    },
+    "deepseek": {
+      "api_key": ""
+    },
+    "openai": {
+      "api_key": ""
+    },
+    "anthropic": {
+      "api_key": ""
+    },
+    "alibaba": {
+      "api_key": ""
+    },
+    "gemini": {
+      "api_key": ""
+    }
+  },
+  "providers": [],
+  "app_settings": {
+    "default_provider": "",
+    "default_chat_provider": "",
+    "default_image_provider": "",
+    "workspace_dir": "",
+    "color_scheme": "System",
+    "enable_ai_request_logging": true
+  }
+}

@@ -1,15 +1,13 @@
 from loguru import logger
 
-import requests
+import os
+import litellm
 
 from config.manager import ConfigManager
 from prompts.chat_prompt_builder import ChatPromptBuilder
 from utils.ai_request_logger import AIRequestLogger
 
 class ChatModelService:
-
-    DASHSCOPE_TEXT_URL = "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation"
-    DEFAULT_MODEL = "qwen-max"
 
     def __init__(
         self,
@@ -21,6 +19,143 @@ class ChatModelService:
         self._prompt_builder = text_prompt_builder
         self._ai_logger = ai_request_logger
 
+        # 设置 litellm 环境变量（禁用远程定价获取和自动忽略不支持的参数）
+        os.environ["LITELLM_LOCAL_MODEL_COST_MAP"] = "True"
+        os.environ["LITELLM_DROP_PARAMS"] = "True"
+
+    def _setup_litellm_env(self, provider_id: str) -> tuple[str, dict]:
+        """
+        设置 litellm 所需的环境变量，返回 (model_name, litellm_params)
+
+        Args:
+            provider_id: 厂商 ID
+
+        Returns:
+            (model_name, litellm_params): 模型名称和 litellm 额外参数
+
+        Raises:
+            RuntimeError: 配置错误或缺失
+        """
+        preset = self._config.get_chat_provider_preset(provider_id)
+        if not preset:
+            raise RuntimeError(f"未找到聊天模型厂商预设：{provider_id}")
+
+        credential = self._config.get_chat_provider_credential(provider_id)
+        if not credential:
+            raise RuntimeError(f"未配置聊天模型厂商凭证：{provider_id}，请在设置中配置")
+
+        litellm_params = {}
+
+        if preset.type == "custom":
+            # 自定义 OpenAI 协议
+            if not credential.api_key:
+                raise RuntimeError(f"未配置 {preset.display_name} 的 API Key，请在设置中配置")
+            if not credential.base_url:
+                raise RuntimeError(f"未配置 {preset.display_name} 的 Base URL，请在设置中配置")
+            if not credential.model:
+                raise RuntimeError(f"未配置 {preset.display_name} 的 Model，请在设置中配置")
+
+            os.environ["OPENAI_API_KEY"] = credential.api_key
+            litellm_params["api_base"] = credential.base_url
+            model_name = credential.model
+
+        else:
+            # 预设厂商
+            if not credential.api_key:
+                raise RuntimeError(f"未配置 {preset.display_name} 的 API Key，请在设置中配置")
+
+            # 设置环境变量
+            os.environ[preset.api_key_env] = credential.api_key
+
+            # 使用预设的默认模型
+            model_name = f"{preset.model_prefix}{preset.default_model}"
+
+        return model_name, litellm_params
+
+    def _call_litellm(
+        self,
+        messages: list[dict],
+        model_override: str | None = None,
+        project_id: int | None = None,
+        project_name: str | None = None,
+        module: str = "chat",
+        context: str | None = None,
+    ) -> str:
+        """
+        调用 litellm 完成文本生成
+
+        Args:
+            messages: 消息列表
+            model_override: 覆盖默认模型（可选）
+            project_id: 项目 ID（用于日志）
+            project_name: 项目名称（用于日志）
+            module: 模块名称（用于日志）
+            context: 上下文描述（用于日志）
+
+        Returns:
+            生成的文本内容
+
+        Raises:
+            RuntimeError: API 调用失败
+        """
+        provider_id = self._config.get_active_chat_provider_id()
+        if not provider_id:
+            raise RuntimeError("未选择聊天模型厂商，请在设置中配置")
+
+        model_name, litellm_params = self._setup_litellm_env(provider_id)
+
+        # 如果有覆盖模型，使用覆盖模型（保留 prefix）
+        if model_override:
+            preset = self._config.get_chat_provider_preset(provider_id)
+            if preset and preset.model_prefix:
+                if not model_override.startswith(preset.model_prefix):
+                    model_name = f"{preset.model_prefix}{model_override}"
+                else:
+                    model_name = model_override
+            else:
+                model_name = model_override
+
+        logger.info(f"调用 litellm 文本生成，模型：{model_name}")
+
+        max_retries = 2
+        timeout = 1800
+
+        for attempt in range(max_retries):
+            try:
+                logger.info(f"发起请求（第 {attempt + 1}/{max_retries} 次尝试）")
+
+                response = litellm.completion(
+                    model=model_name,
+                    messages=messages,
+                    timeout=timeout,
+                    **litellm_params,
+                )
+
+                if self._ai_logger:
+                    self._ai_logger.log_request(
+                        request_type="text_generation",
+                        module=module,
+                        payload={"model": model_name, "messages": messages, "litellm_params": litellm_params},
+                        response=response.model_dump() if hasattr(response, "model_dump") else str(response),
+                        project_id=project_id,
+                        project_name=project_name,
+                        context=context or "文本生成",
+                    )
+
+                content = response.choices[0].message.content
+                if not content or not content.strip():
+                    raise RuntimeError("API 返回的内容为空")
+
+                return content.strip()
+
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    logger.warning(f"请求失败，准备重试：{e}")
+                    continue
+                else:
+                    logger.exception("文本生成请求失败")
+                    raise RuntimeError(f"文本生成失败：{e}")
+
     def chat(
         self,
         messages: list[dict],
@@ -30,63 +165,14 @@ class ChatModelService:
         module: str = "storyboard",
         context: str | None = None,
     ) -> str:
-        provider_config = self._config.get_provider_config(name="dashscope", provider_type="chat")
-        if not provider_config or not provider_config.api_key:
-            raise RuntimeError("未配置 DashScope API Key，请在设置中配置")
-
-        model = model or provider_config.default_model or self.DEFAULT_MODEL
-        payload = {
-            "model": model,
-            "input": {"messages": messages},
-            "parameters": {"result_format": "message"},
-        }
-        headers = {
-            "Authorization": f"Bearer {provider_config.api_key}",
-            "Content-Type": "application/json",
-        }
-
-        logger.info(f"调用文本模型 chat，模型：{model}")
-
-        max_retries = 2
-        timeout = 1800
-
-        for attempt in range(max_retries):
-            try:
-                logger.info(f"发起请求（第 {attempt + 1}/{max_retries} 次尝试）")
-                resp = requests.post(url=self.DASHSCOPE_TEXT_URL, json=payload, headers=headers, timeout=timeout)
-                resp.raise_for_status()
-                data = resp.json()
-                break
-            except requests.exceptions.Timeout:
-                if attempt < max_retries - 1:
-                    logger.warning(f"请求超时（{timeout}秒），准备重试...")
-                    continue
-                else:
-                    logger.error(f"请求超时（{timeout}秒），已重试 {max_retries} 次，放弃")
-                    raise RuntimeError(f"文本生成请求超时（{timeout}秒），请检查网络连接或稍后重试")
-            except requests.exceptions.RequestException as e:
-                logger.exception("文本生成请求失败")
-                raise RuntimeError(f"网络请求失败：{e}")
-
-        if self._ai_logger:
-            self._ai_logger.log_request(
-                request_type="text_generation",
-                module=module,
-                payload={"url": self.DASHSCOPE_TEXT_URL, "json": payload, "headers": headers},
-                response=data,
-                project_id=project_id,
-                project_name=project_name,
-                context=context or "文本生成",
-            )
-
-        output = data.get("output", {})
-        choices = output.get("choices", [])
-        if not choices:
-            raise RuntimeError("API 未返回有效内容")
-        content = choices[0].get("message", {}).get("content", "").strip()
-        if not content:
-            raise RuntimeError("API 返回的内容为空")
-        return content
+        return self._call_litellm(
+            messages=messages,
+            model_override=model,
+            project_id=project_id,
+            project_name=project_name,
+            module=module,
+            context=context,
+        )
 
     def optimize_story_outline(
         self,
@@ -101,10 +187,10 @@ class ChatModelService:
             user_requirement=user_requirement,
         )
 
-        logger.info(f"调用文本模型优化大纲，模型：{model or self.DEFAULT_MODEL}")
-        return self.chat(
+        logger.info(f"调用文本模型优化大纲")
+        return self._call_litellm(
             messages=messages,
-            model=model,
+            model_override=model,
             project_id=project_id,
             project_name=project_name,
             module="outline",
@@ -118,93 +204,25 @@ class ChatModelService:
         project_id: int | None = None,
         project_name: str | None = None,
     ) -> tuple[str, list[dict]]:
-        provider_config = self._config.get_provider_config(name="dashscope", provider_type="chat")
-        if not provider_config or not provider_config.api_key:
-            raise RuntimeError("未配置 DashScope API Key，请在设置中配置")
-
-        model = model or provider_config.default_model or self.DEFAULT_MODEL
-
         messages = self._prompt_builder.build_script_generation_messages(outline_content)
 
-        payload = {
-            "model": model,
-            "input": {"messages": messages},
-            "parameters": {
-                "result_format": "message",
-                "max_tokens": 16384,
-            },
-        }
+        logger.info(f"调用文本模型生成剧本")
 
-        headers = {
-            "Authorization": f"Bearer {provider_config.api_key}",
-            "Content-Type": "application/json",
-        }
+        script_content = self._call_litellm(
+            messages=messages,
+            model_override=model,
+            project_id=project_id,
+            project_name=project_name,
+            module="script",
+            context="剧本生成",
+        )
 
-        logger.info(f"调用文本模型生成剧本，模型：{model}")
-        logger.debug(f"请求体：{payload}")
+        from utils.script_parser import ScriptParser
 
-        max_retries = 2
-        timeout = 1800
+        title, scenes = ScriptParser.parse(script_content)
+        logger.info(f"剧本解析成功：标题='{title}'，共 {len(scenes)} 场")
 
-        try:
-            for attempt in range(max_retries):
-                try:
-                    logger.info(f"发起请求（第 {attempt + 1}/{max_retries} 次尝试）")
-                    resp = requests.post(
-                        self.DASHSCOPE_TEXT_URL,
-                        json=payload,
-                        headers=headers,
-                        timeout=timeout,
-                    )
-                    resp.raise_for_status()
-                    data = resp.json()
-                    logger.debug(f"响应：{data}")
-                    break
-                except requests.exceptions.Timeout:
-                    if attempt < max_retries - 1:
-                        logger.warning(f"请求超时（{timeout}秒），准备重试...")
-                        continue
-                    else:
-                        logger.error(f"请求超时（{timeout}秒），已重试 {max_retries} 次，放弃")
-                        raise RuntimeError(f"剧本生成请求超时（{timeout}秒），请检查网络连接或稍后重试")
-
-            if self._ai_logger:
-                self._ai_logger.log_request(
-                    request_type="text_generation",
-                    module="script",
-                    payload={"url": self.DASHSCOPE_TEXT_URL, "json": payload, "headers": headers},
-                    response=data,
-                    project_id=project_id,
-                    project_name=project_name,
-                    context="剧本生成",
-                )
-
-            output = data.get("output", {})
-            choices = output.get("choices", [])
-            if not choices:
-                raise RuntimeError("API 未返回有效内容")
-
-            message = choices[0].get("message", {})
-            script_content = message.get("content", "").strip()
-
-            if not script_content:
-                raise RuntimeError("API 返回的内容为空")
-
-            logger.info("剧本生成成功")
-
-            from utils.script_parser import ScriptParser
-
-            title, scenes = ScriptParser.parse(script_content)
-            logger.info(f"剧本解析成功：标题='{title}'，共 {len(scenes)} 场")
-
-            return title, scenes
-
-        except requests.exceptions.RequestException as e:
-            logger.exception("调用文本模型 API 失败")
-            raise RuntimeError(f"网络请求失败：{e}")
-        except (KeyError, ValueError) as e:
-            logger.exception("解析 API 响应失败")
-            raise RuntimeError(f"解析响应失败：{e}")
+        return title, scenes
 
     def generate_storyboard(
         self,
@@ -214,96 +232,28 @@ class ChatModelService:
         project_id: int | None = None,
         project_name: str | None = None,
     ) -> list[dict]:
-        provider_config = self._config.get_provider_config(name="dashscope", provider_type="chat")
-        if not provider_config or not provider_config.api_key:
-            raise RuntimeError("未配置 DashScope API Key，请在设置中配置")
-
-        model = model or provider_config.default_model or self.DEFAULT_MODEL
-
         messages = self._prompt_builder.build_storyboard_generation_messages(
             script_content=script_content,
             art_style=art_style,
         )
 
-        payload = {
-            "model": model,
-            "input": {"messages": messages},
-            "parameters": {
-                "result_format": "message",
-                "max_tokens": 16384,
-            },
-        }
+        logger.info(f"调用文本模型生成分镜，风格：{art_style or '默认'}")
 
-        headers = {
-            "Authorization": f"Bearer {provider_config.api_key}",
-            "Content-Type": "application/json",
-        }
+        storyboard_content = self._call_litellm(
+            messages=messages,
+            model_override=model,
+            project_id=project_id,
+            project_name=project_name,
+            module="storyboard",
+            context="分镜生成",
+        )
 
-        logger.info(f"调用文本模型生成分镜，模型：{model}，风格：{art_style or '默认'}")
-        logger.debug(f"请求体：{payload}")
+        from utils.shot_parser import ShotParser
 
-        max_retries = 2
-        timeout = 1800
+        shots = ShotParser.parse(storyboard_content)
+        logger.info(f"分镜解析成功：共 {len(shots)} 个镜头")
 
-        try:
-            for attempt in range(max_retries):
-                try:
-                    logger.info(f"发起请求（第 {attempt + 1}/{max_retries} 次尝试）")
-                    resp = requests.post(
-                        self.DASHSCOPE_TEXT_URL,
-                        json=payload,
-                        headers=headers,
-                        timeout=timeout,
-                    )
-                    resp.raise_for_status()
-                    data = resp.json()
-                    logger.debug(f"响应：{data}")
-                    break
-                except requests.exceptions.Timeout:
-                    if attempt < max_retries - 1:
-                        logger.warning(f"请求超时（{timeout}秒），准备重试...")
-                        continue
-                    else:
-                        logger.error(f"请求超时（{timeout}秒），已重试 {max_retries} 次，放弃")
-                        raise RuntimeError(f"分镜生成请求超时（{timeout}秒），请检查网络连接或稍后重试")
-
-            if self._ai_logger:
-                self._ai_logger.log_request(
-                    request_type="text_generation",
-                    module="storyboard",
-                    payload={"url": self.DASHSCOPE_TEXT_URL, "json": payload, "headers": headers},
-                    response=data,
-                    project_id=project_id,
-                    project_name=project_name,
-                    context="分镜生成",
-                )
-
-            output = data.get("output", {})
-            choices = output.get("choices", [])
-            if not choices:
-                raise RuntimeError("API 未返回有效内容")
-
-            message = choices[0].get("message", {})
-            storyboard_content = message.get("content", "").strip()
-
-            if not storyboard_content:
-                raise RuntimeError("API 返回的内容为空")
-
-            logger.info("分镜生成成功")
-
-            from utils.shot_parser import ShotParser
-
-            shots = ShotParser.parse(storyboard_content)
-            logger.info(f"分镜解析成功：共 {len(shots)} 个镜头")
-
-            return shots
-
-        except requests.exceptions.RequestException as e:
-            logger.exception("调用文本模型 API 失败")
-            raise RuntimeError(f"网络请求失败：{e}")
-        except (KeyError, ValueError) as e:
-            logger.exception("解析 API 响应失败")
-            raise RuntimeError(f"解析响应失败：{e}")
+        return shots
 
     def generate_design_image_prompt(
         self,
@@ -326,10 +276,10 @@ class ChatModelService:
             visual_style=visual_style,
         )
 
-        logger.info(f"调用文本模型生成设计图提示词，模型：{model or self.DEFAULT_MODEL}，风格：{visual_style or '默认'}")
-        return self.chat(
+        logger.info(f"调用文本模型生成设计图提示词，风格：{visual_style or '默认'}")
+        return self._call_litellm(
             messages=messages,
-            model=model,
+            model_override=model,
             project_id=project_id,
             project_name=project_name,
             module="storyboard",
@@ -353,10 +303,10 @@ class ChatModelService:
             visual_style=visual_style,
         )
 
-        logger.info(f"调用文本模型生成角色设计图提示词，模型：{model or self.DEFAULT_MODEL}，角色：{character_name}，风格：{visual_style or '默认'}")
-        return self.chat(
+        logger.info(f"调用文本模型生成角色设计图提示词，角色：{character_name}，风格：{visual_style or '默认'}")
+        return self._call_litellm(
             messages=messages,
-            model=model,
+            model_override=model,
             project_id=project_id,
             project_name=project_name,
             module="character",
@@ -379,10 +329,10 @@ class ChatModelService:
             user_requirement=user_requirement,
         )
 
-        logger.info(f"调用文本模型优化剧本，模型：{model or self.DEFAULT_MODEL}")
-        result = self.chat(
+        logger.info(f"调用文本模型优化剧本")
+        result = self._call_litellm(
             messages=messages,
-            model=model,
+            model_override=model,
             project_id=project_id,
             project_name=project_name,
             module="script",
@@ -411,10 +361,10 @@ class ChatModelService:
             user_requirement=user_requirement,
         )
 
-        logger.info(f"调用文本模型生成角色，模型：{model or self.DEFAULT_MODEL}")
-        result = self.chat(
+        logger.info(f"调用文本模型生成角色")
+        result = self._call_litellm(
             messages=messages,
-            model=model,
+            model_override=model,
             project_id=project_id,
             project_name=project_name,
             module="character",
@@ -444,10 +394,10 @@ class ChatModelService:
             user_requirement=user_requirement,
         )
 
-        logger.info(f"调用文本模型优化角色，模型：{model or self.DEFAULT_MODEL}")
-        result = self.chat(
+        logger.info(f"调用文本模型优化角色")
+        result = self._call_litellm(
             messages=messages,
-            model=model,
+            model_override=model,
             project_id=project_id,
             project_name=project_name,
             module="character",
@@ -479,10 +429,10 @@ class ChatModelService:
             user_requirement=user_requirement,
         )
 
-        logger.info(f"调用文本模型优化分镜，模型：{model or self.DEFAULT_MODEL}")
-        result = self.chat(
+        logger.info(f"调用文本模型优化分镜")
+        result = self._call_litellm(
             messages=messages,
-            model=model,
+            model_override=model,
             project_id=project_id,
             project_name=project_name,
             module="storyboard",
@@ -511,10 +461,10 @@ class ChatModelService:
             user_requirement=user_requirement,
         )
 
-        logger.info(f"调用文本模型修改角色描述，角色：{character_name}，模型：{model or self.DEFAULT_MODEL}")
-        result = self.chat(
+        logger.info(f"调用文本模型修改角色描述，角色：{character_name}")
+        result = self._call_litellm(
             messages=messages,
-            model=model,
+            model_override=model,
             project_id=project_id,
             project_name=project_name,
             module="character",
@@ -541,10 +491,10 @@ class ChatModelService:
             visual_style=visual_style,
         )
 
-        logger.info(f"调用文本模型生成封面图提示词，项目：{project_name}，模型：{model or self.DEFAULT_MODEL}")
-        return self.chat(
+        logger.info(f"调用文本模型生成封面图提示词，项目：{project_name}")
+        return self._call_litellm(
             messages=messages,
-            model=model,
+            model_override=model,
             project_id=project_id,
             project_name=project_name,
             module="cover",

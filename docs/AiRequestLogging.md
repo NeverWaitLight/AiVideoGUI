@@ -14,7 +14,7 @@ AI 请求日志记录功能可以记录所有 AI 调用的请求和响应详情�
 
 ## 启用方式
 
-编辑 `%LOCALAPPDATA%\ai-video-gui\data\config.json`，在 `app_settings` 中添加：
+编辑 `%LOCALAPPDATA%\ai-video-gui\data\settings.json`，在 `app_settings` 中添加：
 
 ```json
 {
