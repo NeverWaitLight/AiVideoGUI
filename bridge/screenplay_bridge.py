@@ -21,7 +21,7 @@ class ScreenplayBridge(QObject):
     script_failed = Signal(str)
     script_optimized = Signal(int)  # scene_count
     isOptimizingChanged = Signal()
-    error = Signal(str)
+    bridge_error = Signal(str)
     current_scene_changed = Signal()
 
     _LOCATION_TYPE_MAP = {
@@ -123,7 +123,8 @@ class ScreenplayBridge(QObject):
             self.scenes_loaded.emit()
         except Exception as e:
             logger.exception("加载场次列表失败")
-            self.error.emit(str(e))
+            error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+            self.bridge_error.emit(error_msg)
 
     def _load_history(self) -> None:
         if self._project_id < 0:
@@ -137,14 +138,15 @@ class ScreenplayBridge(QObject):
             self._history_model.reset(items)
         except Exception as e:
             logger.exception("加载历史版本失败")
-            self.error.emit(str(e))
+            error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+            self.bridge_error.emit(error_msg)
 
     @Slot(int)
     def load_scene(self, scene_id: int) -> None:
         try:
             scene = self._service.get_scene(scene_id=scene_id)
             if not scene:
-                self.error.emit("场次不存在")
+                self.bridge_error.emit("场次不存在")
                 return
 
             self._cur_scene_id = scene.id
@@ -157,7 +159,8 @@ class ScreenplayBridge(QObject):
             self.current_scene_changed.emit()
         except Exception as e:
             logger.exception("加载场次失败")
-            self.error.emit(str(e))
+            error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+            self.bridge_error.emit(error_msg)
 
     @Slot(int, int, str, int, str, str)
     def save_scene(
@@ -170,10 +173,10 @@ class ScreenplayBridge(QObject):
         content: str,
     ) -> None:
         if not location.strip():
-            self.error.emit("请输入地点")
+            self.bridge_error.emit("请输入地点")
             return
         if not content.strip():
-            self.error.emit("请输入场次内容")
+            self.bridge_error.emit("请输入场次内容")
             return
 
         location_type = self._LOCATION_TYPE_MAP.get(location_type_index, SceneLocation.INTERIOR)
@@ -193,7 +196,8 @@ class ScreenplayBridge(QObject):
             self._load_scenes()
         except Exception as e:
             logger.exception("保存场次失败")
-            self.error.emit(str(e))
+            error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+            self.bridge_error.emit(error_msg)
 
     @Slot(int)
     def delete_scene(self, scene_id: int) -> None:
@@ -203,7 +207,8 @@ class ScreenplayBridge(QObject):
             self._load_scenes()
         except Exception as e:
             logger.exception("删除场次失败")
-            self.error.emit(str(e))
+            error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+            self.bridge_error.emit(error_msg)
 
     @Slot(int)
     def prepare_new_scene(self, project_id: int) -> None:
@@ -221,7 +226,8 @@ class ScreenplayBridge(QObject):
             self.new_scene_created.emit()
         except Exception as e:
             logger.exception("准备新增场次失败")
-            self.error.emit(str(e))
+            error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+            self.bridge_error.emit(error_msg)
 
     @Slot(int, int, str, int, str, str)
     def create_scene(
@@ -234,10 +240,10 @@ class ScreenplayBridge(QObject):
         content: str,
     ) -> None:
         if not location.strip():
-            self.error.emit("请输入地点")
+            self.bridge_error.emit("请输入地点")
             return
         if not content.strip():
-            self.error.emit("请输入场次内容")
+            self.bridge_error.emit("请输入场次内容")
             return
 
         location_type = self._LOCATION_TYPE_MAP.get(location_type_index, SceneLocation.INTERIOR)
@@ -258,7 +264,8 @@ class ScreenplayBridge(QObject):
             self.scene_saved.emit()
         except Exception as e:
             logger.exception("保存新增场次失败")
-            self.error.emit(str(e))
+            error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+            self.bridge_error.emit(error_msg)
 
     @Slot()
     def save_history(self) -> None:
@@ -270,7 +277,8 @@ class ScreenplayBridge(QObject):
             self.history_saved.emit()
         except Exception as e:
             logger.exception("保存历史版本失败")
-            self.error.emit(str(e))
+            error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+            self.bridge_error.emit(error_msg)
 
     @Slot(int)
     def restore_history(self, created_at: int) -> None:
@@ -283,12 +291,13 @@ class ScreenplayBridge(QObject):
             self.history_restored.emit()
         except Exception as e:
             logger.exception("恢复历史版本失败")
-            self.error.emit(str(e))
+            error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+            self.bridge_error.emit(error_msg)
 
     @Slot(str)
     def generate_script(self, outline_content: str) -> None:
         if not outline_content.strip():
-            self.error.emit("大纲内容为空，无法生成剧本")
+            self.bridge_error.emit("大纲内容为空，无法生成剧本")
             return
 
         self._worker = ScriptGenerateWorker(
@@ -306,7 +315,9 @@ class ScreenplayBridge(QObject):
                 self.script_generated.emit(title, len(scenes))
             except Exception as e:
                 logger.exception("保存生成的剧本失败")
-                self.script_failed.emit(str(e))
+                error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+
+                self.script_failed.emit(error_msg)
 
         def on_failed(err: str) -> None:
             self.script_failed.emit(err)
@@ -323,7 +334,7 @@ class ScreenplayBridge(QObject):
         try:
             outline = self._story_outline_service.get_or_create_story_outline(project_id=project_id)
             if not outline.content.strip():
-                self.error.emit("大纲内容为空，无法生成剧本")
+                self.bridge_error.emit("大纲内容为空，无法生成剧本")
                 return
 
             scenes = self._service.list_scenes(project_id=project_id)
@@ -335,7 +346,8 @@ class ScreenplayBridge(QObject):
 
         except Exception as e:
             logger.exception("AI 优化剧本失败")
-            self.error.emit(str(e))
+            error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+            self.bridge_error.emit(error_msg)
 
     def _generate_from_outline(self, outline_content: str, user_input: str) -> None:
         combined_content = f"{outline_content}\n\n用户要求：{user_input}"

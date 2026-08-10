@@ -98,21 +98,24 @@ Dialog {
     function info(title, message) {
         alertType = "info"
         alertDialog.title = title
-        alertMessage = message
+        alertMessage = message || "(无提示信息)"
+        console.log("[AlertDialog] info:", title, alertMessage)
         open()
     }
 
     function warning(title, message) {
         alertType = "warning"
         alertDialog.title = title
-        alertMessage = message
+        alertMessage = message || "(无提示信息)"
+        console.log("[AlertDialog] warning:", title, alertMessage)
         open()
     }
 
     function error(title, message) {
         alertType = "error"
         alertDialog.title = title
-        alertMessage = message
+        alertMessage = message || "(无提示信息)"
+        console.log("[AlertDialog] error:", title, alertMessage)
         open()
     }
 }

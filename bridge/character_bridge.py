@@ -21,7 +21,7 @@ class CharacterBridge(QObject):
     characters_generated = Signal(int)  # count
     characters_optimized = Signal(int)  # count
     isOptimizingChanged = Signal()
-    error = Signal(str)
+    bridge_error = Signal(str)
 
     def __init__(self, character_service, text_model_service, image_service,
                  story_outline_service, screenplay_service, project_service=None, visual_style_service=None, parent=None):
@@ -73,7 +73,7 @@ class CharacterBridge(QObject):
     @Slot(int, str, str, str, str, str)
     def save_new_character(self, project_id: int, name: str, ref_code: str, description: str, voice_tone: str = "", voice_reference_file: str = "") -> None:
         if not name.strip():
-            self.error.emit("请输入角色名")
+            self.bridge_error.emit("请输入角色名")
             return
         self._character_service.create_character(
             project_id=project_id, name=name.strip(), ref_code=ref_code.strip(), description=description.strip(),
@@ -86,7 +86,7 @@ class CharacterBridge(QObject):
     @Slot(str, str, str, str, str, str)
     def save_existing_character(self, char_uuid: str, name: str, ref_code: str, description: str, voice_tone: str = "", voice_reference_file: str = "") -> None:
         if not name.strip():
-            self.error.emit("请输入角色名")
+            self.bridge_error.emit("请输入角色名")
             return
         self._character_service.update_character(
             character_uuid=char_uuid, name=name.strip(), ref_code=ref_code.strip(), description=description.strip(),
@@ -110,47 +110,53 @@ class CharacterBridge(QObject):
 
     @Slot(str, int, str)
     def generate_design_image(self, char_uuid: str, project_id: int, user_requirement: str = "") -> None:
-        chars = self._character_service.list_characters(project_id=project_id)
-        character = None
-        for c in chars:
-            if c.uuid == char_uuid:
-                character = c
-                break
-        if not character:
-            return
+        try:
+            chars = self._character_service.list_characters(project_id=project_id)
+            character = None
+            for c in chars:
+                if c.uuid == char_uuid:
+                    character = c
+                    break
+            if not character:
+                self.design_image_failed.emit("角色不存在")
+                return
 
-        visual_style = ""
-        if self._project_service and self._visual_style_service:
-            project = self._project_service.get_project(project_id=project_id)
-            if project:
-                style_id = project.visual_style_id
-                if not style_id:
-                    default_style = self._visual_style_service.get_default_style()
-                    if default_style:
-                        style_id = default_style.id
-                        logger.info(f"项目未设置视觉风格，使用默认风格: {default_style.name}")
+            visual_style = ""
+            if self._project_service and self._visual_style_service:
+                project = self._project_service.get_project(project_id=project_id)
+                if project:
+                    style_id = project.visual_style_id
+                    if not style_id:
+                        default_style = self._visual_style_service.get_default_style()
+                        if default_style:
+                            style_id = default_style.id
+                            logger.info(f"项目未设置视觉风格，使用默认风格: {default_style.name}")
 
-                if style_id:
-                    style = self._visual_style_service.get_style(style_id)
-                    if style:
-                        visual_style = style.name
-                        logger.info(f"角色设计图将使用视觉风格: {visual_style}")
+                    if style_id:
+                        style = self._visual_style_service.get_style(style_id)
+                        if style:
+                            visual_style = style.name
+                            logger.info(f"角色设计图将使用视觉风格: {visual_style}")
+                else:
+                    logger.warning(f"未找到项目 ID={project_id}")
             else:
-                logger.warning(f"未找到项目 ID={project_id}")
-        else:
-            logger.warning(f"缺少服务依赖: project_service={self._project_service is not None}, visual_style_service={self._visual_style_service is not None}")
+                logger.warning(f"缺少服务依赖: project_service={self._project_service is not None}, visual_style_service={self._visual_style_service is not None}")
 
-        worker = CharacterDesignImageWorker(
-            text_service=self._text_model_service, image_service=self._image_service,
-            character_service=self._character_service, character=character, project_id=project_id,
-            user_requirement=user_requirement, visual_style=visual_style,
-            project_name=self._get_project_name(project_id),
-        )
-        worker.finished.connect(lambda path: self._on_design_done(char_uuid, path))
-        worker.failed.connect(self.design_image_failed.emit)
-        worker.progress_update.connect(self.design_image_progress.emit)
-        worker.start()
-        self._workers.append(worker)
+            worker = CharacterDesignImageWorker(
+                text_service=self._text_model_service, image_service=self._image_service,
+                character_service=self._character_service, character=character, project_id=project_id,
+                user_requirement=user_requirement, visual_style=visual_style,
+                project_name=self._get_project_name(project_id),
+            )
+            worker.finished.connect(lambda path: self._on_design_done(char_uuid, path))
+            worker.failed.connect(self.design_image_failed.emit)
+            worker.progress_update.connect(self.design_image_progress.emit)
+            worker.start()
+            self._workers.append(worker)
+        except Exception as e:
+            logger.exception("启动角色设计图生成失败")
+            error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+            self.design_image_failed.emit(error_msg)
 
     def _on_design_done(self, char_uuid: str, path: str) -> None:
         self._model.update_design_image(char_uuid, path)
@@ -158,25 +164,34 @@ class CharacterBridge(QObject):
 
     @Slot(str, str, str)
     def refine_description(self, char_uuid: str, current_description: str, user_requirement: str) -> None:
-        character_name = ""
-        for c in self._model._data:
-            if c.uuid == char_uuid:
-                character_name = c.name
-                break
+        try:
+            character_name = ""
+            for c in self._model._data:
+                if c.uuid == char_uuid:
+                    character_name = c.name
+                    break
 
-        worker = CharacterRefineWorker(
-            text_service=self._text_model_service,
-            character_name=character_name,
-            current_description=current_description,
-            user_requirement=user_requirement,
-            project_id=self._project_id if self._project_id >= 0 else None,
-            project_name=self._get_project_name(),
-        )
-        worker.finished.connect(lambda desc: self._on_refine_done(char_uuid, desc))
-        worker.failed.connect(self.description_refine_failed.emit)
-        worker.finished.connect(worker.deleteLater)
-        worker.start()
-        self._workers.append(worker)
+            if not character_name:
+                self.description_refine_failed.emit("角色不存在")
+                return
+
+            worker = CharacterRefineWorker(
+                text_service=self._text_model_service,
+                character_name=character_name,
+                current_description=current_description,
+                user_requirement=user_requirement,
+                project_id=self._project_id if self._project_id >= 0 else None,
+                project_name=self._get_project_name(),
+            )
+            worker.finished.connect(lambda desc: self._on_refine_done(char_uuid, desc))
+            worker.failed.connect(self.description_refine_failed.emit)
+            worker.finished.connect(worker.deleteLater)
+            worker.start()
+            self._workers.append(worker)
+        except Exception as e:
+            logger.exception("启动角色描述修改失败")
+            error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+            self.description_refine_failed.emit(error_msg)
 
     def _on_refine_done(self, char_uuid: str, new_description: str) -> None:
         self.description_refined.emit(char_uuid, new_description)
@@ -209,7 +224,8 @@ class CharacterBridge(QObject):
             self.design_image_ready.emit(char_uuid, image_path)
         except Exception as e:
             logger.exception("上传角色设计图失败")
-            self.error.emit(str(e))
+            error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+            self.bridge_error.emit(error_msg)
 
     @Slot(list)
     def batch_delete(self, char_ids: list) -> None:
@@ -237,7 +253,7 @@ class CharacterBridge(QObject):
             scenes = self._screenplay_service.list_scenes(project_id=project_id)
 
             if not outline.content.strip() or not scenes:
-                self.error.emit("必须先完成大纲和剧本")
+                self.bridge_error.emit("必须先完成大纲和剧本")
                 return
 
             # 2. 查询现有角色
@@ -251,7 +267,8 @@ class CharacterBridge(QObject):
 
         except Exception as e:
             logger.exception("AI 优化角色失败")
-            self.error.emit(str(e))
+            error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+            self.bridge_error.emit(error_msg)
 
     def _generate_characters(self, outline_content: str, scenes: list, user_input: str, project_id: int) -> None:
         self._optimizing = True
@@ -287,12 +304,12 @@ class CharacterBridge(QObject):
 
             except Exception as e:
                 logger.exception("保存生成的角色失败")
-                self.error.emit(f"保存失败：{e}")
+                self.bridge_error.emit(f"保存失败：{e}")
 
         def on_failed(err: str) -> None:
             self._optimizing = False
             self.isOptimizingChanged.emit()
-            self.error.emit(f"生成角色失败：{err}")
+            self.bridge_error.emit(f"生成角色失败：{err}")
 
         self._character_worker.finished.connect(on_finished)
         self._character_worker.failed.connect(on_failed)
@@ -338,12 +355,12 @@ class CharacterBridge(QObject):
 
             except Exception as e:
                 logger.exception("保存优化后的角色失败")
-                self.error.emit(f"保存失败：{e}")
+                self.bridge_error.emit(f"保存失败：{e}")
 
         def on_failed(err: str) -> None:
             self._optimizing = False
             self.isOptimizingChanged.emit()
-            self.error.emit(f"优化角色失败：{err}")
+            self.bridge_error.emit(f"优化角色失败：{err}")
 
         self._character_worker.finished.connect(on_finished)
         self._character_worker.failed.connect(on_failed)

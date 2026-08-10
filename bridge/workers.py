@@ -123,7 +123,8 @@ class CoverGenerationWorker(QObject):
 
         except Exception as e:
             logger.exception("生成封面图失败")
-            self.failed.emit(str(e))
+            error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+            self.failed.emit(error_msg)
 
 
 class ScriptGenerateWorker(QThread):
@@ -148,7 +149,8 @@ class ScriptGenerateWorker(QThread):
             self.finished.emit(title, scenes)
         except Exception as e:
             logger.exception("生成剧本失败")
-            self.failed.emit(str(e))
+            error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+            self.failed.emit(error_msg)
 
 
 class StoryboardGenerateWorker(QThread):
@@ -174,7 +176,8 @@ class StoryboardGenerateWorker(QThread):
             self.finished.emit(result)
         except Exception as e:
             logger.exception("生成分镜失败")
-            self.failed.emit(str(e))
+            error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+            self.failed.emit(error_msg)
 
 
 class CharacterWorker(QThread):
@@ -212,7 +215,8 @@ class CharacterWorker(QThread):
             self.finished.emit(characters)
         except Exception as e:
             logger.exception(f"{'生成' if self._mode == 'generate' else '优化'}角色失败")
-            self.failed.emit(str(e))
+            error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+            self.failed.emit(error_msg)
 
 
 class ScreenplayOptimizeWorker(QThread):
@@ -241,7 +245,8 @@ class ScreenplayOptimizeWorker(QThread):
             self.finished.emit(title, scenes)
         except Exception as e:
             logger.exception("优化剧本失败")
-            self.failed.emit(str(e))
+            error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+            self.failed.emit(error_msg)
 
 
 class StoryboardOptimizeWorker(QThread):
@@ -275,7 +280,8 @@ class StoryboardOptimizeWorker(QThread):
             self.finished.emit(shots)
         except Exception as e:
             logger.exception("优化分镜失败")
-            self.failed.emit(str(e))
+            error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+            self.failed.emit(error_msg)
 
 
 class DesignImageWorker(QThread):
@@ -336,7 +342,8 @@ class DesignImageWorker(QThread):
             self.finished.emit(result_path)
         except Exception as e:
             logger.exception("生成设计图失败")
-            self.failed.emit(str(e))
+            error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+            self.failed.emit(error_msg)
 
 
 class BatchDesignImageWorker(QThread):
@@ -487,7 +494,8 @@ class CharacterDesignImageWorker(QThread):
             self.finished.emit(result_path)
         except Exception as e:
             logger.exception("生成角色设计图失败")
-            self.failed.emit(str(e))
+            error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+            self.failed.emit(error_msg)
 
 
 class CharacterRefineWorker(QThread):
@@ -517,7 +525,8 @@ class CharacterRefineWorker(QThread):
             self.finished.emit(result)
         except Exception as e:
             logger.exception("修改角色描述失败")
-            self.failed.emit(str(e))
+            error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+            self.failed.emit(error_msg)
 
 
 class OptimizeWorker(QThread):
@@ -547,7 +556,8 @@ class OptimizeWorker(QThread):
             self.finished.emit(reply)
         except Exception as e:
             logger.exception("AI 优化失败")
-            self.failed.emit(str(e))
+            error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+            self.failed.emit(error_msg)
 
 
 class GeneralWorker(QObject):
@@ -564,7 +574,8 @@ class GeneralWorker(QObject):
             self.finished.emit(result)
         except Exception as e:
             logger.exception("任务执行失败")
-            self.failed.emit(str(e))
+            error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+            self.failed.emit(error_msg)
 
 
 class VideoExportWorker(QThread):
@@ -588,10 +599,8 @@ class VideoExportWorker(QThread):
             self.finished.emit(output_path)
         except Exception as e:
             logger.exception("视频导出失败")
-            self.failed.emit(str(e))
-        except Exception as e:
-            logger.exception("任务执行失败")
-            self.failed.emit(str(e))
+            error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+            self.failed.emit(error_msg)
 
 
 class BatchGenerationController(QThread):

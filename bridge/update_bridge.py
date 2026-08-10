@@ -29,7 +29,8 @@ class DownloadWorker(QThread):
                 self.failed.emit("下载失败，请检查网络连接")
         except Exception as e:
             logger.error(f"下载更新时发生错误：{e}")
-            self.failed.emit(str(e))
+            error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+            self.failed.emit(error_msg)
 
 
 class UpdateBridge(QObject):

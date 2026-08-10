@@ -77,7 +77,7 @@ Item {
             aiOptimizeDialog.finishOptimizing()
             alertDialog.info("成功", "角色优化完成，共 " + count + " 个角色")
         }
-        function onError(msg) {
+        function onBridge_error(msg) {
             aiOptimizeDialog.finishOptimizing()
             alertDialog.error("错误", msg)
         }

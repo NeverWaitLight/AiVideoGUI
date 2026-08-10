@@ -90,8 +90,10 @@ Dialog {
                     enabled: inputArea.text.trim().length > 0 && !isOptimizing
                     onClicked: {
                         if (inputArea.text.trim().length > 0) {
+                            console.log("[AIOptimizeDialog] optimizeRequested:", inputArea.text.trim())
                             isOptimizing = true
                             optimizeRequested(inputArea.text.trim())
+                            console.log("[AIOptimizeDialog] signal emitted, isOptimizing =", isOptimizing)
                         }
                     }
                 }

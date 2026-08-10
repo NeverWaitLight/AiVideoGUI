@@ -94,14 +94,6 @@ Item {
             onNavigateToMediaLibrary: function(pid) {
                 projectMode.currentPage = "media"
             }
-
-            Connections {
-                target: bridge.storyboard
-                function onStoryboard_generated(shotCount) {
-                }
-                function onStoryboard_generation_failed(error) {
-                }
-            }
         }
 
         CharacterPage {

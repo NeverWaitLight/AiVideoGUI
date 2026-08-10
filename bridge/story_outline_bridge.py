@@ -14,7 +14,7 @@ class StoryOutlineBridge(QObject):
     optimize_finished = Signal(str)
     optimize_failed = Signal(str)
     isOptimizingChanged = Signal()
-    error = Signal(str)
+    bridge_error = Signal(str)
 
     def __init__(self, story_outline_service, text_model_service, project_service=None, parent=None):
         super().__init__(parent)
@@ -63,14 +63,15 @@ class StoryOutlineBridge(QObject):
             logger.info(f"加载故事大纲：project={project_id}, id={outline.id}")
         except Exception as e:
             logger.exception("加载故事大纲失败")
-            self.error.emit(str(e))
+            error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+            self.bridge_error.emit(error_msg)
         finally:
             self._loading = False
 
     @Slot(str)
     def save(self, content: str) -> None:
         if self._outline_id < 0:
-            self.error.emit("大纲未加载")
+            self.bridge_error.emit("大纲未加载")
             return
         try:
             self._service.update_story_outline(story_outline_id=self._outline_id, content=content)
@@ -79,7 +80,9 @@ class StoryOutlineBridge(QObject):
             logger.info(f"保存故事大纲：{self._outline_id}")
         except Exception as e:
             logger.exception("保存故事大纲失败")
-            self.error.emit(str(e))
+            error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+
+            self.bridge_error.emit(error_msg)
 
     @Slot(int, result=str)
     def get_outline_content(self, project_id: int) -> str:
@@ -99,7 +102,9 @@ class StoryOutlineBridge(QObject):
             self._history_model.reset(history_list)
         except Exception as e:
             logger.exception("加载历史版本失败")
-            self.error.emit(str(e))
+            error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+
+            self.bridge_error.emit(error_msg)
 
     @Slot(int)
     def restore_history(self, history_id: int) -> None:
@@ -112,7 +117,9 @@ class StoryOutlineBridge(QObject):
                 self.load(self._project_id)
         except Exception as e:
             logger.exception("恢复历史版本失败")
-            self.error.emit(str(e))
+            error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+
+            self.bridge_error.emit(error_msg)
 
     @Slot(str, str)
     def optimize(self, requirement: str, current_content: str) -> None:

@@ -50,8 +50,10 @@ Item {
             alertDialog.error("错误", "优化失败：" + error)
         }
 
-        function onError(msg) {
-            alertDialog.error("错误", msg)
+        function onBridge_error(msg) {
+            aiOptimizeDialog.finishOptimizing()
+            var safeMsg = msg ? String(msg) : "未知错误"
+            alertDialog.error("错误", safeMsg)
         }
     }
 

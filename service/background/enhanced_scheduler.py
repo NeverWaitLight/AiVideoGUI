@@ -249,7 +249,8 @@ class _TaskWorker(QThread):
                         self._task.execute()
                     except Exception as e:
                         logger.exception(f"任务 {self._task.name} 执行异常：{e}")
-                        self.failed_signal.emit(str(e))
+                        error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+                        self.failed_signal.emit(error_msg)
 
                     interval = self._task.get_interval()
                     if interval > 0:
