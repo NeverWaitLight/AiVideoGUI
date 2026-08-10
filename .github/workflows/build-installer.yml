@@ -45,10 +45,9 @@ jobs:
           }
         shell: pwsh
 
-      - name: Download and setup Inno Setup
+      - name: Setup Inno Setup
         run: |
-          Invoke-WebRequest -Uri "https://jrsoftware.org/download.php/is.exe" -OutFile "innosetup-installer.exe"
-          Start-Process -FilePath "innosetup-installer.exe" -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/SP-" -Wait
+          choco install innosetup -y
         shell: pwsh
 
       - name: Build installer with Inno Setup
