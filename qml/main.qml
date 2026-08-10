@@ -148,10 +148,24 @@ ApplicationWindow {
         id: alertDialog
     }
 
+    Dialogs.UpdateDialog {
+        id: updateDialog
+    }
+
     Component.onCompleted: {
         x = (Screen.width - width) / 2
         y = (Screen.height - height) / 2
 
         bridge.projects.load_projects()
+
+        bridge.update.update_available.connect(function(version, downloadUrl, releaseNotes, htmlUrl) {
+            updateDialog.newVersion = version
+            updateDialog.downloadUrl = downloadUrl
+            updateDialog.releaseNotes = releaseNotes
+            updateDialog.htmlUrl = htmlUrl
+            updateDialog.open()
+        })
+
+        bridge.update.check_update()
     }
 }

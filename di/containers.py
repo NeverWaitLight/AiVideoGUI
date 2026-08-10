@@ -17,6 +17,7 @@ from service.storyboard_service import StoryboardService
 from service.chat_model_service import ChatModelService
 from service.video_service import VideoService, _PROVIDER_REGISTRY
 from service.visual_style_service import VisualStyleService
+from service.update_service import UpdateService
 from storage.session_manager import SessionManager
 from prompts.video_prompt_builder import VideoPromptBuilder
 from utils.ai_request_logger import AIRequestLogger
@@ -127,5 +128,11 @@ class ApplicationContainer(containers.DeclarativeContainer):
         poll_interval=20.0,
         idle_check_interval=60.0,
         max_polls_per_task=150,
+    )
+
+    update_service = providers.Singleton(
+        UpdateService,
+        current_version=config.app_version,
+        workspace_root=config.workspace_root,
     )
 

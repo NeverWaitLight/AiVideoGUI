@@ -101,6 +101,11 @@ Dialog {
                 implicitWidth: 144
                 font.pixelSize: Theme.fontSizeNormal
             }
+            TabButton {
+                text: "关于"
+                implicitWidth: 144
+                font.pixelSize: Theme.fontSizeNormal
+            }
         }
 
         // Lazy-loaded tab content: each tab's Loader only instantiates its
@@ -138,6 +143,11 @@ Dialog {
                 id: appearanceLoader
                 active: tabBar.currentIndex >= 4
                 sourceComponent: appearanceTabComponent
+            }
+            Loader {
+                id: aboutLoader
+                active: tabBar.currentIndex >= 5
+                sourceComponent: aboutTabComponent
             }
         }
     }
@@ -1332,6 +1342,174 @@ Dialog {
                     colorSchemeSystem.checked = true
                 }
                 aiLoggingSwitch.checked = bridge.settings.get_enable_ai_request_logging()
+            }
+        }
+    }
+
+    Component {
+        id: aboutTabComponent
+
+        ScrollView {
+            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+            clip: true
+            contentWidth: availableWidth
+
+            property bool checkingUpdate: false
+
+            ColumnLayout {
+                width: parent.parent.width
+                spacing: 20
+
+                Item { Layout.preferredHeight: 8 }
+
+                Pane {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 0
+                    Layout.rightMargin: 0
+                    Material.elevation: 2
+                    padding: 24
+
+                    background: Rectangle {
+                        color: Material.dialogColor
+                        radius: 8
+                        border.width: 0
+                    }
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        spacing: 16
+
+                        ColumnLayout {
+                            spacing: 4
+                            Layout.fillWidth: true
+
+                            Label {
+                                text: "关于"
+                                font.pixelSize: Theme.fontSizeLarge
+                                font.bold: true
+                            }
+
+                            Label {
+                                text: "应用版本信息和更新"
+                                font.pixelSize: Theme.fontSizeSmall
+                                color: Material.hintTextColor
+                            }
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            height: 1
+                            color: Material.frameColor
+                        }
+
+                        ColumnLayout {
+                            spacing: 16
+                            Layout.fillWidth: true
+
+                            RowLayout {
+                                spacing: 12
+                                Layout.fillWidth: true
+
+                                Label {
+                                    text: ""
+                                    font.family: "Material Icons"
+                                    font.pixelSize: 48
+                                    color: Material.accent
+                                }
+
+                                ColumnLayout {
+                                    spacing: 4
+                                    Layout.fillWidth: true
+
+                                    Label {
+                                        text: "AI Video GUI"
+                                        font.pixelSize: 18
+                                        font.bold: true
+                                    }
+
+                                    Label {
+                                        text: "版本 " + (Qt.application.version || "0.0.1")
+                                        font.pixelSize: Theme.fontSizeNormal
+                                        color: Material.hintTextColor
+                                    }
+                                }
+                            }
+
+                            Rectangle {
+                                Layout.fillWidth: true
+                                height: 1
+                                color: Material.frameColor
+                            }
+
+                            ColumnLayout {
+                                spacing: 8
+                                Layout.fillWidth: true
+
+                                Label {
+                                    text: "检查更新"
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    font.bold: true
+                                }
+
+                                Label {
+                                    text: "检查是否有新版本可用"
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    color: Material.hintTextColor
+                                    wrapMode: Text.Wrap
+                                    Layout.fillWidth: true
+                                }
+
+                                Button {
+                                    text: checkingUpdate ? "检查中..." : "检查更新"
+                                    enabled: !checkingUpdate
+                                    implicitHeight: 36
+                                    Material.elevation: 1
+                                    highlighted: true
+                                    onClicked: {
+                                        checkingUpdate = true
+                                        bridge.update.check_update()
+                                        Qt.callLater(function() {
+                                            checkingUpdate = false
+                                        })
+                                    }
+                                }
+                            }
+
+                            Rectangle {
+                                Layout.fillWidth: true
+                                height: 1
+                                color: Material.frameColor
+                            }
+
+                            ColumnLayout {
+                                spacing: 8
+                                Layout.fillWidth: true
+
+                                Label {
+                                    text: "项目信息"
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    font.bold: true
+                                }
+
+                                Label {
+                                    text: "GitHub: <a href='https://github.com/NeverWaitLight/AiVideoGUI'>NeverWaitLight/AiVideoGUI</a>"
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    color: Material.hintTextColor
+                                    wrapMode: Text.Wrap
+                                    Layout.fillWidth: true
+                                    onLinkActivated: Qt.openUrlExternally(link)
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        acceptedButtons: Qt.NoButton
+                                        cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Item { Layout.fillHeight: true }
             }
         }
     }

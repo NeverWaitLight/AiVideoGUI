@@ -94,6 +94,15 @@ def main():
     container = ApplicationContainer()
     container.config.workspace_root.from_value(root)
     container.config.config_path.from_value(os.path.join(data_dir, "config.json"))
+
+    # 读取版本号
+    import tomllib
+    pyproject_path = os.path.join(os.path.dirname(__file__), "pyproject.toml")
+    with open(pyproject_path, "rb") as f:
+        pyproject_data = tomllib.load(f)
+    app_version = pyproject_data.get("project", {}).get("version", "0.0.1")
+    container.config.app_version.from_value(app_version)
+
     config_manager = container.config_manager()
     color_scheme = config_manager.settings.color_scheme or "System"
 
@@ -107,7 +116,8 @@ def main():
     logger.info(f"应用 Material 主题: {color_scheme}")
 
     app = QApplication(sys.argv)
-    app.setApplicationName("AI Video GUI")
+    app.setApplicationName("AiVideoGUI")
+    app.setApplicationVersion(app_version)
     app.setWindowIcon(QIcon(":/resources/logo.ico"))
 
     QQuickStyle.setStyle("Material")
