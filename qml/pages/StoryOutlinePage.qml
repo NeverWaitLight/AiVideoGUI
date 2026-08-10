@@ -180,6 +180,14 @@ Item {
         }
     }
 
+    Shortcut {
+        sequence: StandardKey.Save
+        enabled: _dirty
+        onActivated: {
+            bridge.storyOutline.save(textArea.text)
+        }
+    }
+
     Dialogs.AlertDialog {
         id: alertDialog
     }
