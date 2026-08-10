@@ -6,11 +6,11 @@ dist/
 wheels/
 *.egg-info
 
-# PyInstaller
-*.spec
-
 # Inno Setup
 output/
+
+# Packaging artifacts
+*.zip
 
 # Log files
 *.log
