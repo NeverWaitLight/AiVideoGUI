@@ -45,16 +45,11 @@ jobs:
           }
         shell: pwsh
 
-      - name: Download and setup Inno Setup
-        run: |
-          Invoke-WebRequest -Uri "https://files.jrsoftware.org/is/6/innosetup-6.3.3.exe" -OutFile "innosetup-installer.exe"
-          Start-Process -FilePath "innosetup-installer.exe" -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/SP-" -Wait
-        shell: pwsh
-
       - name: Build installer with Inno Setup
-        run: |
-          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
-        shell: pwsh
+        uses: Minionguyjpro/Inno-Setup-Action@v1.2.4
+        with:
+          path: installer.iss
+          options: /O+
 
       - name: Get version
         id: version
