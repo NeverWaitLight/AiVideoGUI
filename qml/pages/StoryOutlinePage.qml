@@ -181,7 +181,7 @@ Item {
     }
 
     Shortcut {
-        sequence: StandardKey.Save
+        sequences: [StandardKey.Save]
         enabled: _dirty
         onActivated: {
             bridge.storyOutline.save(textArea.text)
