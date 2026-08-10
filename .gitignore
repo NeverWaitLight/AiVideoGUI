@@ -32,3 +32,6 @@ CLAUDE.md
 
 # JetBrains IDEs
 .idea/
+
+# Dev workspace (local development environment)
+dev_workspace/

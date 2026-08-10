@@ -1,8 +1,18 @@
 import os
+import sys
 
 
 def workspace_root() -> str:
-    root = os.environ.get("LOCALAPPDATA", os.path.expanduser("~"))
+    if os.environ.get("DEV_MODE") == "1":
+        if getattr(sys, 'frozen', False):
+            project_root = os.path.dirname(sys.executable)
+        else:
+            project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        return os.path.join(project_root, "dev_workspace")
+
+    root = os.environ.get("LOCALAPPDATA")
+    if not root:
+        root = os.path.expanduser("~")
     return os.path.join(root, "ai-video-gui")
 
 

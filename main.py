@@ -21,15 +21,30 @@ import resources_rc
 def setup_logging():
     logger.remove()
 
-    logger.add(
-        sys.stderr,
-        level="DEBUG",
-        format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
-        colorize=True,
-    )
+    # 打包后无控制台环境下 sys.stderr 可能为 None，跳过控制台日志
+    if sys.stderr is not None:
+        logger.add(
+            sys.stderr,
+            level="DEBUG",
+            format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
+            colorize=True,
+        )
 
     try:
-        log_dir = os.path.join(os.path.expandvars("%LOCALAPPDATA%"), "ai-video-gui", "logs")
+        root = paths.workspace_root()
+        if not root:
+            if sys.stderr:
+                print(f"[ERROR] workspace_root() returned None or empty string", file=sys.stderr)
+                print(f"LOCALAPPDATA: {os.environ.get('LOCALAPPDATA')}", file=sys.stderr)
+                print(f"HOME: {os.path.expanduser('~')}", file=sys.stderr)
+            return
+
+        log_dir = paths.logs_dir(root)
+        if not log_dir:
+            if sys.stderr:
+                print(f"[ERROR] logs_dir() returned None or empty string", file=sys.stderr)
+            return
+
         os.makedirs(log_dir, exist_ok=True)
 
         logger.add(
