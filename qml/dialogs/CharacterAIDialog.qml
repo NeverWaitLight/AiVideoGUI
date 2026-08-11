@@ -224,4 +224,11 @@ Dialog {
         }
         return designInput.text.trim()
     }
+
+    function openGenerateDesign() {
+        root.currentTab = 1
+        tabBar.currentIndex = 1
+        root.open()
+        designInput.forceActiveFocus()
+    }
 }

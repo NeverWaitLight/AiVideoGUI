@@ -587,15 +587,16 @@ Item {
                                 }
                             }
 
-                            Comp.ImageUploadPanel {
+                            Comp.ImagePicker {
                                 Layout.preferredWidth: 320
                                 Layout.fillHeight: true
                                 visible: !_isNewCharacter
                                 imageSource: _editingDesignImage
-                                placeholderText: "暂无设计图"
+                                onAiGenerateClicked: {
+                                    characterAIDialog.openGenerateDesign()
+                                }
                                 onUploadClicked: charDesignDialog.open()
-                                onClearClicked: _editingDesignImage = ""
-                                onImageClicked: imagePreviewDialog.show(_editingDesignImage)
+                                onDeleteClicked: _editingDesignImage = ""
                             }
                         }
                     }

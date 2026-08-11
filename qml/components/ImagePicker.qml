@@ -170,5 +170,9 @@ Item {
         }
 
         Keys.onEscapePressed: fullscreenOverlay.close()
+
+        onOpened: {
+            fullscreenOverlay.forceActiveFocus()
+        }
     }
 }

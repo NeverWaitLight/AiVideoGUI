@@ -80,46 +80,6 @@ Item {
             onBackClicked: page.backClicked()
 
             Button {
-                Layout.preferredWidth: 36
-                Layout.preferredHeight: 36
-                display: AbstractButton.IconOnly
-                icon.source: "qrc:/resources/icons/auto_awesome.svg"
-                icon.width: 20
-                icon.height: 20
-                icon.color: "white"
-                enabled: !isGeneratingCover
-                topPadding: 8
-                bottomPadding: 8
-                leftPadding: 8
-                rightPadding: 8
-                ToolTip.visible: hovered
-                ToolTip.text: "Ai"
-
-                background: Rectangle {
-                    anchors.fill: parent
-                    radius: parent.width / 2
-                    color: parent.enabled ? (parent.pressed ? "#E65100" : (parent.hovered ? "#FB8C00" : "#FF9800")) : "#BDBDBD"
-                }
-
-                onClicked: {
-                    if (!projectId || projectId <= 0) {
-                        alertDialog.error("错误", "请先保存项目后再生成封面图")
-                        return
-                    }
-
-                    var outlineContent = bridge.storyOutline.get_outline_content(projectId)
-                    if (!outlineContent || outlineContent.trim() === "") {
-                        alertDialog.error("错误", "请先编写项目大纲后再生成封面图")
-                        return
-                    }
-
-                    characterSelectDialog.projectId = projectId
-                    characterSelectDialog.outlineContent = outlineContent
-                    characterSelectDialog.open()
-                }
-            }
-
-            Button {
                 Layout.preferredWidth: 34
                 Layout.preferredHeight: 34
                 display: AbstractButton.IconOnly
@@ -218,13 +178,28 @@ Item {
                 Layout.leftMargin: 16
                 Layout.rightMargin: 16
 
-                Comp.ImageUploadPanel {
+                Comp.ImagePicker {
                     anchors.fill: parent
                     imageSource: _coverDisplayPath
-                    placeholderText: "暂无封面图"
                     busy: isGeneratingCover
+                    onAiGenerateClicked: {
+                        if (!projectId || projectId <= 0) {
+                            alertDialog.error("错误", "请先保存项目后再生成封面图")
+                            return
+                        }
+
+                        var outlineContent = bridge.storyOutline.get_outline_content(projectId)
+                        if (!outlineContent || outlineContent.trim() === "") {
+                            alertDialog.error("错误", "请先编写项目大纲后再生成封面图")
+                            return
+                        }
+
+                        characterSelectDialog.projectId = projectId
+                        characterSelectDialog.outlineContent = outlineContent
+                        characterSelectDialog.open()
+                    }
                     onUploadClicked: coverFileDialog.open()
-                    onClearClicked: {
+                    onDeleteClicked: {
                         _coverRelativePath = ""
                         _coverDisplayPath = ""
                     }
@@ -255,13 +230,28 @@ Item {
                     Layout.preferredWidth: 240
                     Layout.fillHeight: true
 
-                    Comp.ImageUploadPanel {
+                    Comp.ImagePicker {
                         anchors.fill: parent
                         imageSource: _coverDisplayPath
-                        placeholderText: "暂无封面图"
                         busy: isGeneratingCover
+                        onAiGenerateClicked: {
+                            if (!projectId || projectId <= 0) {
+                                alertDialog.error("错误", "请先保存项目后再生成封面图")
+                                return
+                            }
+
+                            var outlineContent = bridge.storyOutline.get_outline_content(projectId)
+                            if (!outlineContent || outlineContent.trim() === "") {
+                                alertDialog.error("错误", "请先编写项目大纲后再生成封面图")
+                                return
+                            }
+
+                            characterSelectDialog.projectId = projectId
+                            characterSelectDialog.outlineContent = outlineContent
+                            characterSelectDialog.open()
+                        }
                         onUploadClicked: coverFileDialog.open()
-                        onClearClicked: {
+                        onDeleteClicked: {
                             _coverRelativePath = ""
                             _coverDisplayPath = ""
                         }
