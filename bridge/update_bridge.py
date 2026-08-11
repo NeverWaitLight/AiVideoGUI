@@ -1,7 +1,6 @@
 """更新检查桥接层"""
 
 from PySide6.QtCore import QObject, Slot, Signal, QThread
-from loguru import logger
 from service.update_service import UpdateService
 
 
@@ -28,7 +27,6 @@ class DownloadWorker(QThread):
             else:
                 self.failed.emit("下载失败，请检查网络连接")
         except Exception as e:
-            logger.error(f"下载更新时发生错误：{e}")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
             self.failed.emit(error_msg)
 
@@ -52,21 +50,19 @@ class UpdateBridge(QObject):
         try:
             update_info = self._update_service.check_update()
             if update_info:
-                logger.info(f"发现新版本：{update_info['version']}")
                 self.update_available.emit(
                     update_info["version"],
                     update_info["download_url"],
                     update_info["release_notes"],
                     update_info["html_url"]
                 )
-        except Exception as e:
-            logger.error(f"检查更新失败：{e}")
+        except Exception:
+            pass
 
     @Slot(str)
     def download_update(self, download_url: str):
         """下载更新"""
         if self._download_worker and self._download_worker.isRunning():
-            logger.warning("已有下载任务正在进行")
             return
 
         self._download_worker = DownloadWorker(self._update_service, download_url)

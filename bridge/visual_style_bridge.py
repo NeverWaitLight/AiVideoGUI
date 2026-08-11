@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from loguru import logger
 from PySide6.QtCore import QObject, Property, Signal, Slot
 
 from bridge.models.visual_style_model import VisualStyleListModel
@@ -35,8 +34,7 @@ class VisualStyleBridge(QObject):
             self.load_styles()
             self.style_created.emit(style.id)
             return style.id
-        except Exception as e:
-            logger.error(f"创建风格失败: {e}")
+        except Exception:
             return -1
 
     @Slot(int, str, str)
@@ -49,8 +47,8 @@ class VisualStyleBridge(QObject):
             )
             self.load_styles()
             self.style_updated.emit(style_id)
-        except Exception as e:
-            logger.error(f"更新风格失败: {e}")
+        except Exception:
+            pass
 
     @Slot(int)
     def delete_style(self, style_id: int) -> None:
@@ -58,8 +56,8 @@ class VisualStyleBridge(QObject):
             self._visual_style_service.delete_style(style_id=style_id)
             self.load_styles()
             self.style_deleted.emit(style_id)
-        except Exception as e:
-            logger.error(f"删除风格失败: {e}")
+        except Exception:
+            pass
 
     @Slot(int, result=str)
     def get_style_name(self, style_id: int) -> str:
@@ -71,8 +69,8 @@ class VisualStyleBridge(QObject):
         try:
             self._visual_style_service.set_default_style(style_id=style_id)
             self.load_styles()
-        except Exception as e:
-            logger.error(f"设置默认风格失败: {e}")
+        except Exception:
+            pass
 
     @Slot(result=int)
     def get_default_style_id(self) -> int:

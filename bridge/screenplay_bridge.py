@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from loguru import logger
-
 from PySide6.QtCore import QObject, Property, Signal, Slot
 
 from bridge.models.scene_model import SceneListModel
@@ -122,7 +120,6 @@ class ScreenplayBridge(QObject):
             self._scene_model.reset(scenes)
             self.scenes_loaded.emit()
         except Exception as e:
-            logger.exception("加载场次列表失败")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
             self.bridge_error.emit(error_msg)
 
@@ -137,7 +134,6 @@ class ScreenplayBridge(QObject):
                 items.append((ts, len(scenes)))
             self._history_model.reset(items)
         except Exception as e:
-            logger.exception("加载历史版本失败")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
             self.bridge_error.emit(error_msg)
 
@@ -158,7 +154,6 @@ class ScreenplayBridge(QObject):
             self._cur_content = scene.content
             self.current_scene_changed.emit()
         except Exception as e:
-            logger.exception("加载场次失败")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
             self.bridge_error.emit(error_msg)
 
@@ -195,7 +190,6 @@ class ScreenplayBridge(QObject):
             self.scene_saved.emit()
             self._load_scenes()
         except Exception as e:
-            logger.exception("保存场次失败")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
             self.bridge_error.emit(error_msg)
 
@@ -206,7 +200,6 @@ class ScreenplayBridge(QObject):
             self.scene_deleted.emit()
             self._load_scenes()
         except Exception as e:
-            logger.exception("删除场次失败")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
             self.bridge_error.emit(error_msg)
 
@@ -225,7 +218,6 @@ class ScreenplayBridge(QObject):
             self.current_scene_changed.emit()
             self.new_scene_created.emit()
         except Exception as e:
-            logger.exception("准备新增场次失败")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
             self.bridge_error.emit(error_msg)
 
@@ -263,7 +255,6 @@ class ScreenplayBridge(QObject):
             self.load_scene(new_scene.id)
             self.scene_saved.emit()
         except Exception as e:
-            logger.exception("保存新增场次失败")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
             self.bridge_error.emit(error_msg)
 
@@ -276,7 +267,6 @@ class ScreenplayBridge(QObject):
             self._load_history()
             self.history_saved.emit()
         except Exception as e:
-            logger.exception("保存历史版本失败")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
             self.bridge_error.emit(error_msg)
 
@@ -290,7 +280,6 @@ class ScreenplayBridge(QObject):
             self._load_history()
             self.history_restored.emit()
         except Exception as e:
-            logger.exception("恢复历史版本失败")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
             self.bridge_error.emit(error_msg)
 
@@ -314,9 +303,7 @@ class ScreenplayBridge(QObject):
                 self._load_history()
                 self.script_generated.emit(title, len(scenes))
             except Exception as e:
-                logger.exception("保存生成的剧本失败")
                 error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
-
                 self.script_failed.emit(error_msg)
 
         def on_failed(err: str) -> None:
@@ -345,7 +332,6 @@ class ScreenplayBridge(QObject):
                 self._optimize_existing_script(outline.content, scenes, user_input)
 
         except Exception as e:
-            logger.exception("AI 优化剧本失败")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
             self.bridge_error.emit(error_msg)
 
@@ -383,7 +369,6 @@ class ScreenplayBridge(QObject):
                 self.script_optimized.emit(len(new_scenes))
 
             except Exception as e:
-                logger.exception("保存优化后的剧本失败")
                 self.script_failed.emit(f"保存失败：{e}")
 
         def on_failed(err: str) -> None:

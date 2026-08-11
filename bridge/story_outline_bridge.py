@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from loguru import logger
-
 from PySide6.QtCore import QObject, Property, Signal, Slot
 
 from bridge.models.history_model import HistoryListModel
@@ -60,9 +58,7 @@ class StoryOutlineBridge(QObject):
             self._outline_id = outline.id
             self._content = outline.content
             self.loaded.emit(self._content)
-            logger.info(f"加载故事大纲：project={project_id}, id={outline.id}")
         except Exception as e:
-            logger.exception("加载故事大纲失败")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
             self.bridge_error.emit(error_msg)
         finally:
@@ -78,9 +74,7 @@ class StoryOutlineBridge(QObject):
             self._content = content
             self.saved.emit()
         except Exception as e:
-            logger.exception("保存故事大纲失败")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
-
             self.bridge_error.emit(error_msg)
 
     @Slot(int, result=str)
@@ -88,8 +82,7 @@ class StoryOutlineBridge(QObject):
         try:
             outline = self._service.get_or_create_story_outline(project_id=project_id)
             return outline.content if outline else ""
-        except Exception as e:
-            logger.exception(f"获取大纲内容失败: {e}")
+        except Exception:
             return ""
 
     @Slot()
@@ -100,9 +93,7 @@ class StoryOutlineBridge(QObject):
             history_list = self._service.list_history(story_outline_id=self._outline_id)
             self._history_model.reset(history_list)
         except Exception as e:
-            logger.exception("加载历史版本失败")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
-
             self.bridge_error.emit(error_msg)
 
     @Slot(int)
@@ -115,9 +106,7 @@ class StoryOutlineBridge(QObject):
             if self._project_id >= 0:
                 self.load(self._project_id)
         except Exception as e:
-            logger.exception("恢复历史版本失败")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
-
             self.bridge_error.emit(error_msg)
 
     @Slot(str, str)

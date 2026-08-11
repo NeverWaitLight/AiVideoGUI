@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from loguru import logger
 import os
 
 from PySide6.QtCore import QObject, Signal, Slot
@@ -53,8 +52,7 @@ class SettingsBridge(QObject):
             )
             provider = DashScopeChatProvider(config=cfg)
             return provider.list_available_models()
-        except Exception as e:
-            logger.warning(f"获取模型列表失败：{e}")
+        except Exception:
             return []
 
     @Slot(result=str)
@@ -198,11 +196,9 @@ class SettingsBridge(QObject):
                 from providers.dashscope_image import DashScopeImageProvider
                 provider = DashScopeImageProvider(config=cfg)
             else:
-                logger.warning(f"未知的图片供应商：{provider_name}")
                 return []
 
             return provider.list_available_models()
-        except Exception as e:
-            logger.warning(f"获取图片模型列表失败：{e}")
+        except Exception:
             return []
 

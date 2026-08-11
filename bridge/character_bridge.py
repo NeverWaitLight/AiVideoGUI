@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from loguru import logger
 
 from PySide6.QtCore import QObject, Property, Signal, Slot
 
@@ -130,17 +129,11 @@ class CharacterBridge(QObject):
                         default_style = self._visual_style_service.get_default_style()
                         if default_style:
                             style_id = default_style.id
-                            logger.info(f"项目未设置视觉风格，使用默认风格: {default_style.name}")
 
                     if style_id:
                         style = self._visual_style_service.get_style(style_id)
                         if style:
                             visual_style = style.name
-                            logger.info(f"角色设计图将使用视觉风格: {visual_style}")
-                else:
-                    logger.warning(f"未找到项目 ID={project_id}")
-            else:
-                logger.warning(f"缺少服务依赖: project_service={self._project_service is not None}, visual_style_service={self._visual_style_service is not None}")
 
             worker = CharacterDesignImageWorker(
                 text_service=self._text_model_service, image_service=self._image_service,
@@ -154,7 +147,6 @@ class CharacterBridge(QObject):
             worker.start()
             self._workers.append(worker)
         except Exception as e:
-            logger.exception("启动角色设计图生成失败")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
             self.design_image_failed.emit(error_msg)
 
@@ -189,7 +181,6 @@ class CharacterBridge(QObject):
             worker.start()
             self._workers.append(worker)
         except Exception as e:
-            logger.exception("启动角色描述修改失败")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
             self.description_refine_failed.emit(error_msg)
 
@@ -211,7 +202,6 @@ class CharacterBridge(QObject):
                 })
             return json.dumps(result)
         except Exception as e:
-            logger.exception("获取角色历史失败")
             return "[]"
 
     @Slot(str, str)
@@ -223,7 +213,6 @@ class CharacterBridge(QObject):
             self._model.update_design_image(char_uuid, image_path)
             self.design_image_ready.emit(char_uuid, image_path)
         except Exception as e:
-            logger.exception("上传角色设计图失败")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
             self.bridge_error.emit(error_msg)
 
@@ -232,8 +221,8 @@ class CharacterBridge(QObject):
         for cid in char_ids:
             try:
                 self._character_service.delete_character(character_uuid=cid)
-            except Exception as e:
-                logger.error(f"删除角色 {cid} 失败: {e}")
+            except Exception:
+                pass
         self.data_changed.emit()
 
     @Slot(result=str)
@@ -266,7 +255,6 @@ class CharacterBridge(QObject):
                 self._optimize_characters(outline.content, scenes, characters, user_input, project_id)
 
         except Exception as e:
-            logger.exception("AI 优化角色失败")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
             self.bridge_error.emit(error_msg)
 
@@ -303,7 +291,6 @@ class CharacterBridge(QObject):
                 self.characters_generated.emit(len(characters))
 
             except Exception as e:
-                logger.exception("保存生成的角色失败")
                 self.bridge_error.emit(f"保存失败：{e}")
 
         def on_failed(err: str) -> None:
@@ -354,7 +341,6 @@ class CharacterBridge(QObject):
                 self.characters_optimized.emit(len(new_characters))
 
             except Exception as e:
-                logger.exception("保存优化后的角色失败")
                 self.bridge_error.emit(f"保存失败：{e}")
 
         def on_failed(err: str) -> None:

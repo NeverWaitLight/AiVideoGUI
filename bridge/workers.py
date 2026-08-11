@@ -3,7 +3,6 @@ from __future__ import annotations
 import glob
 import os
 import re
-from loguru import logger
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QObject, QThread, Signal
@@ -51,8 +50,6 @@ class CoverGenerationWorker(QObject):
 
     def run(self):
         try:
-            logger.info(f"开始生成封面图：{self._project_name}")
-
             # 构建角色信息字符串
             names_list = [n.strip() for n in self._character_names.split(",")]
             descriptions_list = [d.strip() for d in self._appearances.split("\n\n")]
@@ -63,7 +60,6 @@ class CoverGenerationWorker(QObject):
             character_info = "\n\n".join(character_info_parts)
 
             # 生成封面图提示词
-            logger.info("正在生成封面图提示词...")
             cover_prompt = self._chat_model_service.generate_cover_image_prompt(
                 project_name=self._project_name,
                 aspect_ratio=self._aspect_ratio,
@@ -72,7 +68,6 @@ class CoverGenerationWorker(QObject):
                 visual_style=self._visual_style,
                 project_id=self._project_id,
             )
-            logger.info(f"封面图提示词：{cover_prompt}")
 
             # 转换宽高比为尺寸
             size_map = {
@@ -85,7 +80,6 @@ class CoverGenerationWorker(QObject):
             size = size_map.get(self._aspect_ratio, "1696*960")
 
             # 生成封面图
-            logger.info("正在生成封面图...")
             save_path = os.path.join(
                 paths.projects_dir(self._workspace_root),
                 str(self._project_id),
@@ -118,11 +112,9 @@ class CoverGenerationWorker(QObject):
                     visual_style_id=project.visual_style_id,
                 )
 
-            logger.info(f"封面图生成完成：{result_path}")
             self.finished.emit(relative_path)
 
         except Exception as e:
-            logger.exception("生成封面图失败")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
             self.failed.emit(error_msg)
 
@@ -148,7 +140,6 @@ class ScriptGenerateWorker(QThread):
             )
             self.finished.emit(title, scenes)
         except Exception as e:
-            logger.exception("生成剧本失败")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
             self.failed.emit(error_msg)
 
@@ -175,7 +166,6 @@ class StoryboardGenerateWorker(QThread):
             )
             self.finished.emit(result)
         except Exception as e:
-            logger.exception("生成分镜失败")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
             self.failed.emit(error_msg)
 
@@ -214,7 +204,6 @@ class CharacterWorker(QThread):
                 )
             self.finished.emit(characters)
         except Exception as e:
-            logger.exception(f"{'生成' if self._mode == 'generate' else '优化'}角色失败")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
             self.failed.emit(error_msg)
 
@@ -244,7 +233,6 @@ class ScreenplayOptimizeWorker(QThread):
             )
             self.finished.emit(title, scenes)
         except Exception as e:
-            logger.exception("优化剧本失败")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
             self.failed.emit(error_msg)
 
@@ -279,7 +267,6 @@ class StoryboardOptimizeWorker(QThread):
             )
             self.finished.emit(shots)
         except Exception as e:
-            logger.exception("优化分镜失败")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
             self.failed.emit(error_msg)
 
@@ -318,7 +305,6 @@ class DesignImageWorker(QThread):
                 project_id=self._project_id,
                 project_name=self._project_name,
             )
-            logger.info(f"设计图提示词：{image_prompt}")
 
             self.progress_update.emit("正在调用图片生成模型...")
             save_path = os.path.join(
@@ -338,10 +324,8 @@ class DesignImageWorker(QThread):
             self._storyboard_service.update_storyboard(
                 storyboard_id=self._storyboard.id, design_image=result_path,
             )
-            logger.info(f"设计图生成完成：{result_path}")
             self.finished.emit(result_path)
         except Exception as e:
-            logger.exception("生成设计图失败")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
             self.failed.emit(error_msg)
 
@@ -436,9 +420,8 @@ class BatchDesignImageWorker(QThread):
                 self.shot_design_done.emit(storyboard_id, result_path)
                 self.progress_update.emit(idx, f"完成 {scene_number}-{shot_number}", f"({idx}/{total})")
 
-            except Exception as e:
-                logger.warning(f"批量设计图生成 [{idx}/{total}] 失败：{e}")
-                self.progress_update.emit(idx, f"失败：{e}", f"({idx}/{total})")
+            except Exception:
+                self.progress_update.emit(idx, f"生成失败", f"({idx}/{total})")
 
         self.finished.emit(success_count, total)
 
@@ -471,7 +454,6 @@ class CharacterDesignImageWorker(QThread):
                 project_id=self._project_id,
                 project_name=self._project_name,
             )
-            logger.info(f"角色设计图提示词：{image_prompt}")
 
             self.progress_update.emit("正在调用图片生成模型...")
             save_path = os.path.join(
@@ -490,10 +472,8 @@ class CharacterDesignImageWorker(QThread):
             self._character_service.update_character(
                 character_uuid=self._character.uuid, design_image=result_path,
             )
-            logger.info(f"角色设计图生成完成：{result_path}")
             self.finished.emit(result_path)
         except Exception as e:
-            logger.exception("生成角色设计图失败")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
             self.failed.emit(error_msg)
 
@@ -524,7 +504,6 @@ class CharacterRefineWorker(QThread):
             )
             self.finished.emit(result)
         except Exception as e:
-            logger.exception("修改角色描述失败")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
             self.failed.emit(error_msg)
 
@@ -555,7 +534,6 @@ class OptimizeWorker(QThread):
             )
             self.finished.emit(reply)
         except Exception as e:
-            logger.exception("AI 优化失败")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
             self.failed.emit(error_msg)
 
@@ -573,7 +551,6 @@ class GeneralWorker(QObject):
             result = self._task_func()
             self.finished.emit(result)
         except Exception as e:
-            logger.exception("任务执行失败")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
             self.failed.emit(error_msg)
 
@@ -598,7 +575,6 @@ class VideoExportWorker(QThread):
             )
             self.finished.emit(output_path)
         except Exception as e:
-            logger.exception("视频导出失败")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
             self.failed.emit(error_msg)
 
@@ -675,10 +651,9 @@ class BatchGenerationController(QThread):
                 self._submitted_task_ids.add(provider_task_id)
                 submitted += 1
 
-            except Exception as e:
-                logger.exception(f"批量生成提交失败：场{scene_number}镜{shot_number}")
+            except Exception:
                 self._failed += 1
-                self.progress.emit(submitted, len(self._shot_list), f"场{scene_number}镜{shot_number} 提交失败：{e}")
+                self.progress.emit(submitted, len(self._shot_list), f"场{scene_number}镜{shot_number} 提交失败")
 
         if submitted > 0:
             self.progress.emit(submitted, len(self._shot_list), f"已提交 {submitted} 个任务，等待生成完成...")

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 import subprocess
-from loguru import logger
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QObject, Property, Signal, Slot, Qt

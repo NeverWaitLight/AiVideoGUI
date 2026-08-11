@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from loguru import logger
 
 from PySide6.QtCore import QObject, Property, Signal, Slot
 
@@ -201,7 +200,6 @@ class StoryboardBridge(QObject):
                         scene_id = scene_map.get(scene_number)
 
                         if not scene_id:
-                            logger.warning(f"未找到场次 {scene_number} 的 scene_id，跳过该分镜")
                             continue
 
                         shot_size_str = shot_dict.get("shot_size", "中景")
@@ -225,7 +223,6 @@ class StoryboardBridge(QObject):
                     self.storyboard_generated.emit(len(shots_data))
 
                 except Exception as e:
-                    logger.exception("保存生成的分镜失败")
                     error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
                     self.storyboard_generation_failed.emit(error_msg)
 
@@ -239,7 +236,6 @@ class StoryboardBridge(QObject):
             worker.start()
 
         except Exception as e:
-            logger.exception("准备生成分镜失败")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
             self.bridge_error.emit(error_msg)
 
@@ -265,9 +261,7 @@ class StoryboardBridge(QObject):
             self._cur_seed = shot.seed
             self.shot_detail_changed.emit()
         except Exception as e:
-            logger.exception("加载分镜失败")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
-
             self.bridge_error.emit(error_msg)
 
     @Slot(int, int, str, str, float, str, str, str, str, str, str)
@@ -295,9 +289,7 @@ class StoryboardBridge(QObject):
             if self._project_id >= 0:
                 self.load_for_project(self._project_id)
         except Exception as e:
-            logger.exception("保存分镜失败")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
-
             self.bridge_error.emit(error_msg)
 
     @Slot(int)
@@ -308,9 +300,7 @@ class StoryboardBridge(QObject):
             if self._project_id >= 0:
                 self.load_for_project(self._project_id)
         except Exception as e:
-            logger.exception("删除分镜失败")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
-
             self.bridge_error.emit(error_msg)
 
     @Slot(int, str, str, str, float, str, str, str)
@@ -339,24 +329,18 @@ class StoryboardBridge(QObject):
 
     @Slot(int, int)
     def generate_design_image(self, storyboard_id: int, project_id: int) -> None:
-        import sys
-        print(f"[StoryboardBridge] generate_design_image: storyboard_id={storyboard_id}, project_id={project_id}", file=sys.stderr, flush=True)
-        logger.info(f"开始生成分镜设计图：storyboard_id={storyboard_id}, project_id={project_id}")
         try:
             if storyboard_id <= 0:
                 error_msg = f"无效的分镜 ID: {storyboard_id}"
-                logger.error(error_msg)
                 self.bridge_error.emit(error_msg)
                 return
 
             if project_id <= 0:
                 error_msg = f"无效的项目 ID: {project_id}"
-                logger.error(error_msg)
                 self.bridge_error.emit(error_msg)
                 return
 
             storyboard = self._storyboard_service.get_storyboard(storyboard_id=storyboard_id)
-            logger.debug(f"获取到分镜：{storyboard is not None}")
             if not storyboard:
                 self.bridge_error.emit(f"分镜不存在：{storyboard_id}")
                 return
@@ -391,17 +375,11 @@ class StoryboardBridge(QObject):
                         default_style = self._visual_style_service.get_default_style()
                         if default_style:
                             style_id = default_style.id
-                            logger.info(f"项目未设置视觉风格，使用默认风格: {default_style.name}")
 
                     if style_id:
                         style = self._visual_style_service.get_style(style_id)
                         if style:
                             visual_style = style.name
-                            logger.info(f"分镜设计图将使用视觉风格: {visual_style}")
-                else:
-                    logger.warning(f"未找到项目 ID={project_id}")
-            else:
-                logger.warning(f"缺少 visual_style_service 依赖")
 
             worker = DesignImageWorker(
                 text_service=self._text_model_service, image_service=self._image_service,
@@ -416,9 +394,7 @@ class StoryboardBridge(QObject):
             self._workers.append(worker)
 
         except Exception as e:
-            logger.exception("启动设计图生成失败")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
-            logger.error(f"发送错误信号：{error_msg}")
             self.bridge_error.emit(error_msg)
 
     @Slot(int, str)
@@ -432,8 +408,7 @@ class StoryboardBridge(QObject):
             if shot_ids_json and shot_ids_json != "[]":
                 try:
                     selected_ids = json.loads(shot_ids_json)
-                except (json.JSONDecodeError, TypeError) as e:
-                    logger.error(f"解析选中分镜 ID 失败：{e}")
+                except (json.JSONDecodeError, TypeError):
                     self.bridge_error.emit(f"参数解析失败")
                     return
 
@@ -467,16 +442,11 @@ class StoryboardBridge(QObject):
                         default_style = self._visual_style_service.get_default_style()
                         if default_style:
                             style_id = default_style.id
-                            logger.info(f"项目未设置视觉风格，使用默认风格: {default_style.name}")
 
                     if style_id:
                         style = self._visual_style_service.get_style(style_id)
                         if style:
                             visual_style = style.name
-                else:
-                    logger.warning(f"未找到项目 ID={project_id}")
-            else:
-                logger.warning(f"缺少 visual_style_service 依赖")
 
             worker = BatchDesignImageWorker(
                 text_service=self._text_model_service,
@@ -511,7 +481,6 @@ class StoryboardBridge(QObject):
             worker.start()
 
         except Exception as e:
-            logger.exception("启动批量设计图生成失败")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
             self.bridge_error.emit(error_msg)
 
@@ -641,9 +610,7 @@ class StoryboardBridge(QObject):
             controller.start()
 
         except Exception as e:
-            logger.exception("启动批量视频生成失败")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
-
             self.bridge_error.emit(error_msg)
 
     @Slot(int, str)
@@ -659,9 +626,7 @@ class StoryboardBridge(QObject):
                 self.shot_detail_changed.emit()
             self.design_image_ready.emit(str(shot_id), image_path)
         except Exception as e:
-            logger.exception("上传设计图失败")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
-
             self.bridge_error.emit(error_msg)
 
     @Slot(int)
@@ -676,9 +641,7 @@ class StoryboardBridge(QObject):
                 self._cur_design_image = ""
                 self.shot_detail_changed.emit()
         except Exception as e:
-            logger.exception("删除设计图失败")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
-
             self.bridge_error.emit(error_msg)
 
     @Slot(int, result=str)
@@ -698,8 +661,7 @@ class StoryboardBridge(QObject):
                     "featured": getattr(v, "featured", False),
                 })
             return json.dumps(result)
-        except Exception as e:
-            logger.exception("获取关联视频失败")
+        except Exception:
             return "[]"
 
     def _on_design_done(self, shot_id: int, path: str) -> None:
@@ -712,12 +674,7 @@ class StoryboardBridge(QObject):
     @Slot(str, int)
     def optimize_with_ai(self, user_input: str, project_id: int) -> None:
         """AI 优化分镜：自动判断生成或优化"""
-        import sys
-        print(f"[StoryboardBridge] optimize_with_ai called: optimizing={self._optimizing}, project_id={project_id}", file=sys.stderr, flush=True)
-        logger.info(f"optimize_with_ai called: optimizing={self._optimizing}, project_id={project_id}")
-
         if self._optimizing:
-            print("[StoryboardBridge] optimize_with_ai: already optimizing, skip", file=sys.stderr, flush=True)
             return
 
         try:
@@ -728,32 +685,23 @@ class StoryboardBridge(QObject):
 
             has_content = bool(outline.content and outline.content.strip())
             has_scenes = bool(scenes)
-            print(f"[StoryboardBridge] outline has_content={has_content}, scenes={len(scenes) if scenes else 0}", file=sys.stderr, flush=True)
 
             if not has_content or not has_scenes:
                 error_msg = "必须先完成大纲和剧本"
-                print(f"[StoryboardBridge] emitting error: {error_msg}", file=sys.stderr, flush=True)
                 self.bridge_error.emit(error_msg)
                 return
 
             # 2. 查询现有分镜
             storyboards = self._storyboard_service.list_storyboards(project_id=project_id)
-            print(f"[StoryboardBridge] existing storyboards: {len(storyboards) if storyboards else 0}", file=sys.stderr, flush=True)
 
             # 3. 判断分支
             if not storyboards:
-                # 生成模式：复用现有逻辑
-                print("[StoryboardBridge] → generate mode", file=sys.stderr, flush=True)
                 self._generate_storyboard_with_requirement(outline.content, scenes, characters, user_input, project_id)
             else:
-                # 优化模式：优化现有分镜
-                print("[StoryboardBridge] → optimize mode", file=sys.stderr, flush=True)
                 self._optimize_storyboard(outline.content, scenes, characters, storyboards, user_input, project_id)
 
         except Exception as e:
-            logger.exception("AI 优化分镜失败")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
-            print(f"[StoryboardBridge] optimize_with_ai exception: {error_msg}", file=sys.stderr, flush=True)
             self.bridge_error.emit(error_msg)
 
     def _generate_storyboard_with_requirement(self, outline_content: str, scenes: list, characters: list, user_input: str, project_id: int) -> None:
@@ -818,7 +766,6 @@ class StoryboardBridge(QObject):
                 self.storyboard_generated.emit(len(storyboards))
 
             except Exception as e:
-                logger.exception("保存生成的分镜失败")
                 self.storyboard_generation_failed.emit(f"保存失败：{e}")
 
         def on_failed(err: str) -> None:
@@ -897,7 +844,6 @@ class StoryboardBridge(QObject):
                 self.storyboard_optimized.emit(len(storyboards_to_create))
 
             except Exception as e:
-                logger.exception("保存优化后的分镜失败")
                 self.storyboard_generation_failed.emit(f"保存失败：{e}")
 
         def on_failed(err: str) -> None:

@@ -4,7 +4,6 @@ import json
 import os
 import re
 import shutil
-from loguru import logger
 
 from PySide6.QtCore import QObject, Property, Signal, Slot, QThread
 
@@ -142,7 +141,6 @@ class ProjectBridge(QObject):
             design_image_paths: 设计图路径，多个用 "|" 分隔
         """
         if self._cover_worker and self._cover_thread and self._cover_thread.isRunning():
-            logger.warning("封面图生成任务正在进行中，忽略新请求")
             return
 
         project = self._project_service.get_project(project_id=project_id)
