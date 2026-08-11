@@ -119,7 +119,6 @@ Item {
         modal: true
         padding: 0
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-        focus: true
 
         implicitWidth: Overlay.overlay ? Overlay.overlay.width - 120 : 680
         implicitHeight: Overlay.overlay ? Overlay.overlay.height - 120 : 480
@@ -133,46 +132,45 @@ Item {
             radius: Theme.radiusMedium
         }
 
-        Image {
-            id: previewImage
-            anchors.fill: parent
-            anchors.margins: 16
-            fillMode: Image.PreserveAspectFit
-            source: root.imageSource ? "file:///" + root.imageSource : ""
-            asynchronous: true
-        }
-
-        Button {
-            anchors.top: parent.top
-            anchors.right: parent.right
-            anchors.topMargin: 8
-            anchors.rightMargin: 8
-            width: 28
-            height: 28
-            display: AbstractButton.IconOnly
-            icon.source: "qrc:/resources/icons/close.svg"
-            icon.width: 20
-            icon.height: 20
-            icon.color: Qt.rgba(0, 0, 0, 0.87)
-            topPadding: 0
-            bottomPadding: 0
-            leftPadding: 0
-            rightPadding: 0
-            z: 1
-
-            background: Rectangle {
+        contentItem: Item {
+            Image {
+                id: previewImage
                 anchors.fill: parent
-                radius: parent.width / 2
-                color: parent.hovered ? Qt.rgba(0, 0, 0, 0.12) : Qt.rgba(1, 1, 1, 0.8)
+                anchors.margins: 16
+                fillMode: Image.PreserveAspectFit
+                source: root.imageSource ? "file:///" + root.imageSource : ""
+                asynchronous: true
             }
 
-            onClicked: fullscreenOverlay.close()
-        }
+            Button {
+                anchors.top: parent.top
+                anchors.right: parent.right
+                anchors.topMargin: 8
+                anchors.rightMargin: 8
+                width: 28
+                height: 28
+                display: AbstractButton.IconOnly
+                icon.source: "qrc:/resources/icons/close.svg"
+                icon.width: 20
+                icon.height: 20
+                icon.color: Qt.rgba(0, 0, 0, 0.87)
+                topPadding: 0
+                bottomPadding: 0
+                leftPadding: 0
+                rightPadding: 0
+                z: 1
 
-        Keys.onEscapePressed: fullscreenOverlay.close()
+                background: Rectangle {
+                    anchors.fill: parent
+                    radius: parent.width / 2
+                    color: parent.hovered ? Qt.rgba(0, 0, 0, 0.12) : Qt.rgba(1, 1, 1, 0.8)
+                }
 
-        onOpened: {
-            fullscreenOverlay.forceActiveFocus()
+                onClicked: fullscreenOverlay.close()
+            }
+
+            Keys.onEscapePressed: fullscreenOverlay.close()
+            focus: true
         }
     }
 }

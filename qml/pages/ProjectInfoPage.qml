@@ -378,7 +378,7 @@ Item {
 
                 Connections {
                     target: page
-                    function on_visualStyleIdChanged() {
+                    function on_VisualStyleIdChanged() {
                         styleComboBox.updateIndex()
                     }
                 }
