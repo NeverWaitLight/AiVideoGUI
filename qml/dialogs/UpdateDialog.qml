@@ -142,6 +142,16 @@ Dialog {
             visible: !downloading
         }
         Button {
+            text: "忽略此版本"
+            DialogButtonBox.buttonRole: DialogButtonBox.NoRole
+            flat: true
+            visible: !downloading
+            onClicked: {
+                bridge.update.ignore_version(updateDialog.newVersion)
+                updateDialog.close()
+            }
+        }
+        Button {
             text: "后台下载"
             DialogButtonBox.buttonRole: DialogButtonBox.NoRole
             flat: true

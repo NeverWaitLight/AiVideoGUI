@@ -64,6 +64,7 @@ class ConfigManager:
             workspace_dir=s.get("workspace_dir", ""),
             color_scheme=s.get("color_scheme", "System"),
             enable_ai_request_logging=s.get("enable_ai_request_logging", True),
+            ignored_update_version=s.get("ignored_update_version", ""),
         )
         logger.info(f"配置已加载，providers={list(self._providers.keys())}")
 
@@ -91,6 +92,7 @@ class ConfigManager:
                 "workspace_dir": self._settings.workspace_dir,
                 "color_scheme": self._settings.color_scheme,
                 "enable_ai_request_logging": self._settings.enable_ai_request_logging,
+                "ignored_update_version": self._settings.ignored_update_version,
             },
         }
         os.makedirs(os.path.dirname(self._path), exist_ok=True)

@@ -134,5 +134,6 @@ class ApplicationContainer(containers.DeclarativeContainer):
         UpdateService,
         current_version=config.app_version,
         workspace_root=config.workspace_root,
+        config_manager=config_manager,
     )
 

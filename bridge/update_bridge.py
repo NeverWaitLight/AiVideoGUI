@@ -75,3 +75,8 @@ class UpdateBridge(QObject):
     def install_update(self, installer_path: str) -> bool:
         """启动安装程序"""
         return self._update_service.install_update(installer_path)
+
+    @Slot(str)
+    def ignore_version(self, version: str):
+        """忽略指定版本的更新"""
+        self._update_service.ignore_version(version)

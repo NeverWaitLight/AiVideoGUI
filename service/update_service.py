@@ -14,9 +14,10 @@ class UpdateService:
     GITHUB_REPO = "NeverWaitLight/AiVideoGUI"
     GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
-    def __init__(self, current_version: str, workspace_root: str):
+    def __init__(self, current_version: str, workspace_root: str, config_manager=None):
         self.current_version = current_version
         self.workspace_root = workspace_root
+        self._config_manager = config_manager
 
     def check_update(self) -> Optional[Dict[str, Any]]:
         """
@@ -48,6 +49,13 @@ class UpdateService:
                 return None
 
             logger.info(f"最新版本：{latest_version}")
+
+            # 检查是否被忽略
+            if self._config_manager:
+                ignored_version = self._config_manager.settings.ignored_update_version
+                if ignored_version and version.parse(latest_version) <= version.parse(ignored_version):
+                    logger.info(f"版本 {latest_version} 已被忽略（忽略版本：{ignored_version}）")
+                    return None
 
             if version.parse(latest_version) > version.parse(self.current_version):
                 assets = release_data.get("assets", [])
@@ -157,3 +165,17 @@ class UpdateService:
         except Exception as e:
             logger.error(f"启动安装程序失败：{e}")
             return False
+
+    def ignore_version(self, version_to_ignore: str) -> None:
+        """
+        忽略指定版本的更新
+
+        Args:
+            version_to_ignore: 要忽略的版本号
+        """
+        if not self._config_manager:
+            logger.warning("无法保存忽略版本：ConfigManager 未设置")
+            return
+
+        logger.info(f"忽略更新版本：{version_to_ignore}")
+        self._config_manager.update_settings(ignored_update_version=version_to_ignore)

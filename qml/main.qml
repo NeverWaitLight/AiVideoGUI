@@ -165,7 +165,5 @@ ApplicationWindow {
             updateDialog.htmlUrl = htmlUrl
             updateDialog.open()
         })
-
-        bridge.update.check_update()
     }
 }

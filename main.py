@@ -14,6 +14,7 @@ from bridge.theme import Theme
 from storage.orm.base import init_engine
 from utils import paths
 from utils.resources import copy_resources_to_workspace
+from service.background.update_check_task import UpdateCheckTask
 
 import resources_rc
 
@@ -181,9 +182,21 @@ def main():
     scheduler.start()
     logger.info("后台任务调度器已启动")
 
+    # 启动后台更新检查
+    update_service = container.update_service()
+    update_check_task = UpdateCheckTask(update_service)
+    update_check_task.update_found.connect(
+        lambda version, url, notes, html_url: bridge.update.update_available.emit(version, url, notes, html_url)
+    )
+    update_check_task.start()
+    logger.info("后台更新检查已启动")
+
     def on_about_to_quit():
         logger.info("应用即将退出，清理资源...")
         scheduler.shutdown()
+        if update_check_task.isRunning():
+            update_check_task.quit()
+            update_check_task.wait(1000)
         logger.info("资源清理完成")
 
     app.aboutToQuit.connect(on_about_to_quit)
