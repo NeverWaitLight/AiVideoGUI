@@ -103,7 +103,7 @@ Item {
         Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            visible: styleRepeater.count > 0
+            visible: styleRepeater.count > 1
 
             ScrollView {
                 anchors.fill: parent
@@ -123,6 +123,7 @@ Item {
                         delegate: Comp.VisualStyleCard {
                             width: (parent.width - parent.padding * 2 - parent.columnSpacing * 3) / 4
                             height: 300
+                            visible: model.styleId !== -1
 
                             styleId: model.styleId
                             styleName: model.name
@@ -149,7 +150,7 @@ Item {
         }
 
         Comp.EmptyState {
-            visible: styleRepeater.count === 0
+            visible: styleRepeater.count <= 1
             Layout.fillWidth: true
             Layout.fillHeight: true
             text: "还没有视觉风格，点击右上角创建"

@@ -17,7 +17,6 @@ ApplicationWindow {
     title: "AI Video GUI"
     flags: Qt.Window | Qt.FramelessWindowHint
 
-    property string currentPage: "project"
     property int resizeBorderWidth: 5
 
 
@@ -92,25 +91,26 @@ ApplicationWindow {
                 Layout.fillHeight: true
                 Layout.preferredWidth: Theme.tabBarWidth
                 currentIndex: {
-                    if (root.currentPage === "library") return 1
-                    if (root.currentPage === "visualStyles") return 2
+                    if (mainPanel.currentPage === "library") return 1
+                    if (mainPanel.currentPage === "visualStyles") return 2
+                    if (mainPanel.currentPage === "tasks" || mainPanel.currentPage === "taskDetail") return -1
                     return 0
                 }
                 onSettingsClicked: settingsDialog.open()
                 onLibraryClicked: {
-                    root.currentPage = "library"
+                    mainPanel.currentPage = "library"
                     mainPanel.mediaLibraryPage.projectId = -1
                     bridge.media.load_files()
                 }
                 onVisualStylesClicked: {
-                    root.currentPage = "visualStyles"
+                    mainPanel.currentPage = "visualStyles"
                     bridge.visualStyles.load_styles()
                 }
                 onTasksClicked: {
-                    root.currentPage = "tasks"
+                    mainPanel.currentPage = "tasks"
                 }
                 onTabChanged: {
-                    root.currentPage = "project"
+                    mainPanel.currentPage = "project"
                 }
             }
 
@@ -131,8 +131,6 @@ ApplicationWindow {
                         id: mainPanel
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        currentPage: root.currentPage
-                        onCurrentPageChanged: root.currentPage = currentPage
                     }
                 }
             }
