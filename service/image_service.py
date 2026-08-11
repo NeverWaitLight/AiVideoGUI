@@ -9,7 +9,6 @@ from providers.dashscope_image import DashScopeImageProvider
 from providers.image_base import ImageProvider
 from storage.session_manager import SessionManager
 from storage.repositories.generate_task_repository import GenerateTaskRepository
-from utils.ai_request_logger import AIRequestLogger
 
 _PROVIDER_REGISTRY: dict[str, type[ImageProvider]] = {
     "dashscope_image": DashScopeImageProvider,
@@ -26,12 +25,10 @@ class ImageService:
         self,
         config_manager: ConfigManager,
         session_manager: SessionManager,
-        ai_request_logger: AIRequestLogger | None = None,
     ) -> None:
         self._config = config_manager
         self._sm = session_manager
         self._providers: dict[str, ImageProvider] = {}
-        self._ai_logger = ai_request_logger
 
     def _get_provider(self) -> ImageProvider:
         provider_name = self._config.settings.default_image_provider or "dashscope_image"

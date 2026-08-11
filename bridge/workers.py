@@ -36,7 +36,6 @@ class CoverGenerationWorker(QObject):
         workspace_root: str,
         config_manager=None,
         session_manager=None,
-        ai_request_logger=None,
         parent=None,
     ):
         super().__init__(parent)
@@ -54,7 +53,6 @@ class CoverGenerationWorker(QObject):
         self._workspace_root = workspace_root
         self._config_manager = config_manager
         self._session_manager = session_manager
-        self._ai_request_logger = ai_request_logger
         self._image_worker = None
 
     def run(self):
@@ -113,7 +111,6 @@ class CoverGenerationWorker(QObject):
                 config_manager=self._config_manager,
                 session_manager=self._session_manager,
                 workspace_root=self._workspace_root,
-                ai_request_logger=self._ai_request_logger,
             )
 
             def on_image_finished(task_id: str, image_path: str):
@@ -312,7 +309,7 @@ class DesignImageWorker(QThread):
         self, text_service, image_service, storyboard_service,
         storyboard, shot_size_text: str, character_info: str, project_id: int,
         visual_style: str = "", project_name: str | None = None,
-        config_manager=None, session_manager=None, ai_request_logger=None,
+        config_manager=None, session_manager=None,
         parent=None,
     ):
         super().__init__(parent)
@@ -327,7 +324,6 @@ class DesignImageWorker(QThread):
         self._project_name = project_name
         self._config_manager = config_manager
         self._session_manager = session_manager
-        self._ai_request_logger = ai_request_logger
         self._image_worker = None
 
     def run(self):
@@ -374,7 +370,6 @@ class DesignImageWorker(QThread):
                 config_manager=self._config_manager,
                 session_manager=self._session_manager,
                 workspace_root=self._workspace_root,
-                ai_request_logger=self._ai_request_logger,
             )
 
             def on_image_finished(task_id: str, image_path: str):
@@ -411,7 +406,7 @@ class BatchDesignImageWorker(QThread):
     def __init__(
         self, text_service, image_service, storyboard_service, character_service,
         shot_list: list[dict], visual_style: str = "", project_name: str | None = None,
-        config_manager=None, session_manager=None, ai_request_logger=None,
+        config_manager=None, session_manager=None,
         parent=None,
     ):
         super().__init__(parent)
@@ -424,7 +419,6 @@ class BatchDesignImageWorker(QThread):
         self._project_name = project_name
         self._config_manager = config_manager
         self._session_manager = session_manager
-        self._ai_request_logger = ai_request_logger
 
     def run(self):
         success_count = 0
@@ -503,7 +497,6 @@ class BatchDesignImageWorker(QThread):
                     config_manager=self._config_manager,
                     session_manager=self._session_manager,
                     workspace_root=self._workspace_root,
-                    ai_request_logger=self._ai_request_logger,
                 )
 
                 generation_success = [False]
@@ -549,7 +542,7 @@ class CharacterDesignImageWorker(QThread):
 
     def __init__(self, text_service, image_service, character_service, character, project_id: int,
                  user_requirement: str = "", visual_style: str = "", project_name: str | None = None,
-                 config_manager=None, session_manager=None, ai_request_logger=None,
+                 config_manager=None, session_manager=None,
                  parent=None):
         super().__init__(parent)
         self._text_service = text_service
@@ -562,7 +555,6 @@ class CharacterDesignImageWorker(QThread):
         self._visual_style = visual_style
         self._config_manager = config_manager
         self._session_manager = session_manager
-        self._ai_request_logger = ai_request_logger
         self._image_worker = None
 
     def run(self):
@@ -607,7 +599,6 @@ class CharacterDesignImageWorker(QThread):
                 config_manager=self._config_manager,
                 session_manager=self._session_manager,
                 workspace_root=self._workspace_root,
-                ai_request_logger=self._ai_request_logger,
             )
 
             def on_image_finished(task_id: str, image_path: str):

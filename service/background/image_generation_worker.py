@@ -10,7 +10,6 @@ from providers.dashscope_image import DashScopeImageProvider
 from providers.image_base import ImageProvider
 from storage.session_manager import SessionManager
 from storage.repositories.generate_task_repository import GenerateTaskRepository
-from utils.ai_request_logger import AIRequestLogger
 
 _PROVIDER_REGISTRY: dict[str, type[ImageProvider]] = {
     "dashscope_image": DashScopeImageProvider,
@@ -34,7 +33,6 @@ class ImageGenerationWorker(QThread):
         config_manager: ConfigManager,
         session_manager: SessionManager,
         workspace_root: str,
-        ai_request_logger: AIRequestLogger | None = None,
         parent=None,
     ):
         super().__init__(parent)
@@ -42,7 +40,6 @@ class ImageGenerationWorker(QThread):
         self._config = config_manager
         self._sm = session_manager
         self._workspace_root = workspace_root
-        self._ai_logger = ai_request_logger
         self._providers: dict[str, ImageProvider] = {}
 
     def _get_provider(self, provider_name: str, config_name: str | None = None) -> ImageProvider:
@@ -111,23 +108,6 @@ class ImageGenerationWorker(QThread):
                 prompt_extend=True,
                 watermark=False,
             )
-
-            if self._ai_logger:
-                project_id = request_params.get("project_id")
-                project_name = request_params.get("project_name")
-                self._ai_logger.log_request(
-                    request_type="image_generation",
-                    module=module,
-                    payload={
-                        "url": provider.submit_url,
-                        "json": request_payload,
-                        "headers": provider.build_headers(),
-                    },
-                    response={"image_url": image_url, "local_path": local_path},
-                    project_id=project_id,
-                    project_name=project_name,
-                    context=context,
-                )
 
             # local_path 是相对路径，需要拼接工作目录
             absolute_path = os.path.join(self._workspace_root, local_path)

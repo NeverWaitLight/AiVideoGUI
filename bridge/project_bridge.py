@@ -172,7 +172,6 @@ class ProjectBridge(QObject):
             workspace_root=self._workspace_root,
             config_manager=self._container.config_manager() if self._container else None,
             session_manager=self._container.session_manager() if self._container else None,
-            ai_request_logger=self._container.ai_request_logger() if self._container else None,
         )
         self._cover_worker.moveToThread(self._cover_thread)
 

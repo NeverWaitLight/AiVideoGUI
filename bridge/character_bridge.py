@@ -144,7 +144,6 @@ class CharacterBridge(QObject):
                 project_name=self._get_project_name(project_id),
                 config_manager=self._container.config_manager() if hasattr(self, '_container') else None,
                 session_manager=self._container.session_manager() if hasattr(self, '_container') else None,
-                ai_request_logger=self._container.ai_request_logger() if hasattr(self, '_container') else None,
             )
             worker.finished.connect(lambda path: self._on_design_done(char_uuid, path))
             worker.failed.connect(self.design_image_failed.emit)

@@ -10,7 +10,6 @@ from models.enums import GenerateTaskType, GenerateTaskCallerType
 from prompts.chat_prompt_builder import ChatPromptBuilder
 from storage.session_manager import SessionManager
 from storage.repositories.generate_task_repository import GenerateTaskRepository
-from utils.ai_request_logger import AIRequestLogger
 
 class ChatService:
 
@@ -22,12 +21,10 @@ class ChatService:
         config_manager: ConfigManager,
         session_manager: SessionManager,
         text_prompt_builder: ChatPromptBuilder,
-        ai_request_logger: AIRequestLogger | None = None,
     ) -> None:
         self._config = config_manager
         self._sm = session_manager
         self._prompt_builder = text_prompt_builder
-        self._ai_logger = ai_request_logger
 
     def chat(
         self,
@@ -127,17 +124,6 @@ class ChatService:
                 except Exception:
                     self._sm.rollback_write()
                 raise RuntimeError(f"网络请求失败：{e}")
-
-        if self._ai_logger:
-            self._ai_logger.log_request(
-                request_type="text_generation",
-                module=module,
-                payload={"url": self.DASHSCOPE_TEXT_URL, "json": payload, "headers": headers},
-                response=data,
-                project_id=project_id,
-                project_name=project_name,
-                context=context or "文本生成",
-            )
 
         output = data.get("output", {})
         choices = output.get("choices", [])
@@ -294,17 +280,6 @@ class ChatService:
                         except Exception:
                             self._sm.rollback_write()
                         raise RuntimeError(f"剧本生成请求超时（{timeout}秒），请检查网络连接或稍后重试")
-
-            if self._ai_logger:
-                self._ai_logger.log_request(
-                    request_type="text_generation",
-                    module="script",
-                    payload={"url": self.DASHSCOPE_TEXT_URL, "json": payload, "headers": headers},
-                    response=data,
-                    project_id=project_id,
-                    project_name=project_name,
-                    context="剧本生成",
-                )
 
             output = data.get("output", {})
             choices = output.get("choices", [])
@@ -474,17 +449,6 @@ class ChatService:
                         except Exception:
                             self._sm.rollback_write()
                         raise RuntimeError(f"分镜生成请求超时（{timeout}秒），请检查网络连接或稍后重试")
-
-            if self._ai_logger:
-                self._ai_logger.log_request(
-                    request_type="text_generation",
-                    module="storyboard",
-                    payload={"url": self.DASHSCOPE_TEXT_URL, "json": payload, "headers": headers},
-                    response=data,
-                    project_id=project_id,
-                    project_name=project_name,
-                    context="分镜生成",
-                )
 
             output = data.get("output", {})
             choices = output.get("choices", [])

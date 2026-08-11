@@ -155,15 +155,6 @@ class SettingsBridge(QObject):
             self._config.update_settings(color_scheme=scheme)
             self.settings_saved.emit()
 
-    @Slot(result=bool)
-    def get_enable_ai_request_logging(self) -> bool:
-        return self._config.settings.enable_ai_request_logging
-
-    @Slot(bool)
-    def set_enable_ai_request_logging(self, enabled: bool) -> None:
-        self._config.update_settings(enable_ai_request_logging=enabled)
-        self.settings_saved.emit()
-
     @Slot(str, str, str, str, str, result=str)
     def validate_provider_config(
         self, provider_type: str, provider_name: str,

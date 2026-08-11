@@ -20,7 +20,6 @@ from service.visual_style_service import VisualStyleService
 from service.update_service import UpdateService
 from storage.session_manager import SessionManager
 from prompts.video_prompt_builder import VideoPromptBuilder
-from utils.ai_request_logger import AIRequestLogger
 
 
 def _get_project_root() -> Path:
@@ -51,17 +50,10 @@ class ApplicationContainer(containers.DeclarativeContainer):
         template_manager=prompt_template_manager,
     )
 
-    ai_request_logger = providers.Singleton(
-        AIRequestLogger,
-        config_manager=config_manager,
-        workspace_root=config.workspace_root,
-    )
-
     video_service = providers.Singleton(
         VideoService,
         session_manager=session_manager,
         config=config_manager,
-        ai_request_logger=ai_request_logger,
     )
 
     media_service = providers.Singleton(
@@ -103,14 +95,12 @@ class ApplicationContainer(containers.DeclarativeContainer):
         config_manager=config_manager,
         session_manager=session_manager,
         text_prompt_builder=text_prompt_builder,
-        ai_request_logger=ai_request_logger,
     )
 
     image_service = providers.Singleton(
         ImageService,
         config_manager=config_manager,
         session_manager=session_manager,
-        ai_request_logger=ai_request_logger,
     )
 
     visual_style_service = providers.Singleton(

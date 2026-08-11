@@ -15,7 +15,6 @@ from providers.dashscope_video import DashScopeVideoProvider
 from providers.seedance_video import SeedanceVideoProvider
 from storage.session_manager import SessionManager
 from storage.repositories.generate_task_repository import GenerateTaskRepository
-from utils.ai_request_logger import AIRequestLogger
 
 _PROVIDER_REGISTRY: dict[str, type[VideoProvider]] = {
     "dashscope": DashScopeVideoProvider,
@@ -29,13 +28,11 @@ class VideoService(QObject):
         session_manager: SessionManager,
         config: ConfigManager,
         parent: QObject | None = None,
-        ai_request_logger: AIRequestLogger | None = None,
     ) -> None:
         super().__init__(parent)
         self._sm = session_manager
         self._config = config
         self._providers: dict[str, VideoProvider] = {}
-        self._ai_logger = ai_request_logger
 
     def get_provider(self, name: str) -> VideoProvider:
         if name in self._providers:
@@ -90,18 +87,6 @@ class VideoService(QObject):
             logger.info(f"使用文生视频 (t2v)")
             request_type = "video_generation_t2v"
             context = "文生视频 (t2v)"
-
-        # 记录 AI 请求（与文本/图片模型日志格式一致，包含完整 HTTP 请求信息）
-        if self._ai_logger:
-            self._ai_logger.log_request(
-                request_type=request_type,
-                module="storyboard",
-                payload=request_details,
-                response={"provider_task_id": provider_task_id},
-                project_id=project_id,
-                project_name=project_name,
-                context=context,
-            )
 
         task_repo = self._sm.get_repo(GenerateTaskRepository)
 
