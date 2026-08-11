@@ -20,7 +20,7 @@ Item {
     property string _ratioText: "16:9"
     property string _resText: "720P"
     property string _nameText: ""
-    property int _visualStyleId: 0
+    property int _visualStyleId: -1  // -1 表示默认（数据库 null），0+ 表示具体风格
 
     signal backClicked()
     signal projectSaved(int projectId)
@@ -66,7 +66,7 @@ Item {
         _coverDisplayPath = info.coverImagePath || ""
         if (info.aspectRatio) _ratioText = info.aspectRatio
         if (info.resolution) _resText = info.resolution
-        _visualStyleId = info.visualStyleId || 0
+        _visualStyleId = info.visualStyleId !== undefined && info.visualStyleId !== null ? info.visualStyleId : -1
     }
 
     ColumnLayout {
@@ -347,6 +347,7 @@ Item {
                 font.pixelSize: Theme.fontSizeSmall
                 opacity: 0.7
             }
+
             ComboBox {
                 id: styleComboBox
                 Layout.fillWidth: true
@@ -363,8 +364,12 @@ Item {
                     updateIndex()
                 }
 
-                onActivated: {
-                    _visualStyleId = currentValue !== undefined ? currentValue : 0
+                onActivated: function(index) {
+                    if (index === 0) {
+                        _visualStyleId = -1  // 默认选项
+                    } else {
+                        _visualStyleId = currentValue !== undefined ? currentValue : -1
+                    }
                 }
 
                 Connections {
@@ -384,15 +389,22 @@ Item {
                 }
 
                 function updateIndex() {
+                    if (_visualStyleId === -1) {
+                        currentIndex = 0  // 默认选项
+                        return
+                    }
                     if (model && model.rowCount && model.rowCount() > 0) {
                         var idx = indexOfValue(_visualStyleId)
-                        currentIndex = idx >= 0 ? idx : 0
+                        currentIndex = idx >= 0 ? idx + 1 : 0  // +1 因为有默认选项
                     }
                 }
 
                 delegate: ItemDelegate {
+                    required property int index
+                    required property var model
+
                     width: styleComboBox.width
-                    height: 48
+                    height: index === 0 ? 36 : 48
 
                     contentItem: RowLayout {
                         spacing: 12
@@ -400,12 +412,13 @@ Item {
                         Image {
                             Layout.preferredWidth: 32
                             Layout.preferredHeight: 32
-                            source: model.sampleImagePath ? "file:///" + model.sampleImagePath : ""
+                            source: parent.parent.index === 0 ? "" : (parent.parent.model.sampleImagePath ? "file:///" + parent.parent.model.sampleImagePath : "")
                             fillMode: Image.PreserveAspectCrop
                             asynchronous: true
                             cache: true
                             smooth: false
                             mipmap: false
+                            visible: parent.parent.index !== 0
 
                             Rectangle {
                                 anchors.fill: parent
@@ -418,7 +431,7 @@ Item {
 
                         Label {
                             Layout.fillWidth: true
-                            text: model.name
+                            text: parent.parent.index === 0 ? "默认" : parent.parent.model.name
                             elide: Text.ElideRight
                         }
                     }

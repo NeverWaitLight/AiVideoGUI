@@ -51,7 +51,7 @@ class ProjectBridge(QObject):
 
     @Slot(str, str, str, str, int)
     def create_project(self, name: str, resolution: str, ratio: str, cover: str, visual_style_id: int) -> None:
-        style_id = visual_style_id if visual_style_id > 0 else None
+        style_id = None if visual_style_id <= 0 else visual_style_id
         project = self._project_service.create_project(
             name=name, resolution=resolution, aspect_ratio=ratio, cover_image=cover, visual_style_id=style_id,
         )
@@ -73,7 +73,7 @@ class ProjectBridge(QObject):
     @Slot(int, str, str, str, str, int)
     def update_project(self, project_id: int, name: str, resolution: str,
                        ratio: str, cover: str, visual_style_id: int) -> None:
-        style_id = visual_style_id if visual_style_id > 0 else None
+        style_id = None if visual_style_id <= 0 else visual_style_id
         self._project_service.update_project(
             project_id=project_id, name=name, resolution=resolution,
             aspect_ratio=ratio, cover_image=cover, visual_style_id=style_id,
@@ -109,7 +109,7 @@ class ProjectBridge(QObject):
             "coverImagePath": cover_abs,
             "videoCount": 0,
             "hasStoryboardVideos": has_videos,
-            "visualStyleId": project.visual_style_id or 0,
+            "visualStyleId": project.visual_style_id if project.visual_style_id is not None else -1,
         })
 
     def _has_storyboard_videos(self, project_id: int) -> bool:

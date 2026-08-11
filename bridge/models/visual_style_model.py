@@ -33,12 +33,28 @@ class VisualStyleListModel(QAbstractListModel):
         return self._ROLE_NAMES
 
     def rowCount(self, parent=QModelIndex()):
-        return len(self._data)
+        return len(self._data) + 1  # +1 for "默认" option
 
     def data(self, index, role=Qt.DisplayRole):
-        if not index.isValid() or index.row() >= len(self._data):
+        if not index.isValid() or index.row() >= self.rowCount():
             return None
-        item = self._data[index.row()]
+
+        # First item is "默认" option
+        if index.row() == 0:
+            if role == self.IdRole:
+                return -1  # Special ID for default option
+            if role == self.NameRole:
+                return "默认"
+            if role == self.IsDefaultRole:
+                return False
+            if role == self.SampleImagePathRole:
+                return ""
+            if role == self.CreatedAtRole:
+                return ""
+            return None
+
+        # Other items are actual styles
+        item = self._data[index.row() - 1]
         if role == self.IdRole:
             return item.id
         if role == self.NameRole:
