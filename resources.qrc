@@ -37,6 +37,8 @@
         <file>resources/icons/checklist.svg</file>
         <file>resources/icons/save.svg</file>
         <file>resources/icons/palette.svg</file>
+        <file>resources/icons/fullscreen.svg</file>
+        <file>resources/icons/fullscreen_exit.svg</file>
         <file>resources/logo.ico</file>
     </qresource>
 </RCC>

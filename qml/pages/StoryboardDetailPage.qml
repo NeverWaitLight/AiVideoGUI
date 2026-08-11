@@ -2,6 +2,7 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Controls.Material 2.15
 import QtQuick.Layouts 1.15
+import QtQuick.Dialogs as QtDialogs
 import "../components" as Comp
 import "../dialogs" as Dialogs
 
@@ -10,8 +11,27 @@ Item {
     property int projectId: -1
     property string projectName: ""
     property int shotId: -1
+    property bool contentFullscreen: false
 
     signal backClicked()
+
+    property color borderColor: Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.15)
+
+    onContentFullscreenChanged: {
+        if (contentFullscreen) {
+            fullscreenContentEdit.text = contentEdit.text
+            detailPage.forceActiveFocus()
+        }
+    }
+
+    focus: true
+
+    Keys.onEscapePressed: {
+        if (contentFullscreen) {
+            contentEdit.text = fullscreenContentEdit.text
+            contentFullscreen = false
+        }
+    }
 
     onShotIdChanged: {
         if (shotId > 0) {
@@ -26,6 +46,7 @@ Item {
         Comp.PageHeader {
             projectName: detailPage.projectName
             title: bridge.storyboard.curSceneNumber + "场" + bridge.storyboard.curShotNumber + "镜"
+            titleSuffix: detailPage.contentFullscreen ? "- 画面内容" : ""
             Layout.fillWidth: true
             onBackClicked: detailPage.backClicked()
 
@@ -82,73 +103,425 @@ Item {
             }
         }
 
-        GridLayout {
+        Flickable {
             Layout.fillWidth: true
-            Layout.leftMargin: 20
-            Layout.rightMargin: 20
-            Layout.topMargin: 12
-            columns: 2
-            columnSpacing: 10
-            rowSpacing: 6
+            Layout.fillHeight: true
+            visible: !detailPage.contentFullscreen
+            enabled: !detailPage.contentFullscreen
+            contentHeight: contentColumn.implicitHeight
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
 
-            Label { text: "景别："; font.pixelSize: Theme.fontSizeSmall }
-            ComboBox {
-                id: shotSizeCombo
-                model: ["特写", "近景", "中景", "全景", "远景", "大远景"]
-                currentIndex: bridge.storyboard.curShotSizeIndex
-                Layout.fillWidth: true
-                Layout.preferredHeight: 32
-                font.pixelSize: Theme.fontSizeSmall
-            }
+            ColumnLayout {
+                id: contentColumn
+                anchors.left: parent.left
+                anchors.right: parent.right
+                spacing: 0
 
-            Label { text: "运镜："; font.pixelSize: Theme.fontSizeSmall }
-            Comp.AppTextField {
-                id: cameraInput
-                text: bridge.storyboard.curCameraMovement
-                placeholderText: "固定、慢推、跟拍"
-                Layout.fillWidth: true
-                Layout.preferredHeight: 32
-            }
-
-            Label { text: "时长（秒）："; font.pixelSize: Theme.fontSizeSmall }
-            SpinBox {
-                id: durationSpin
-                from: 0; to: 600; stepSize: 5
-                value: Math.round(bridge.storyboard.curDuration * 10)
-                property real realValue: value / 10.0
-                textFromValue: function(v, l) { return (v / 10.0).toFixed(1) }
-                valueFromText: function(t, l) { return parseFloat(t) * 10 }
-                Layout.fillWidth: true
-                Layout.preferredHeight: 32
-            }
-
-            Label { text: "种子："; font.pixelSize: Theme.fontSizeSmall }
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 6
-
-                Comp.AppTextField {
-                    id: seedInput
-                    text: bridge.storyboard.curSeed
-                    placeholderText: "留空则随机"
+                // Top section: form + image side by side
+                Item {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 32
-                    validator: IntValidator { bottom: 0; top: 2147483647 }
+                    implicitHeight: Math.max(formGrid.implicitHeight + 24, imagePicker.height + 24)
+
+                    GridLayout {
+                        id: formGrid
+                        anchors.left: parent.left
+                        anchors.top: parent.top
+                        width: parent.width / 2 - 20
+                        anchors.leftMargin: 20
+                        anchors.topMargin: 12
+                        columns: 2
+                        columnSpacing: 10
+                        rowSpacing: 6
+
+                        Label { text: "景别："; font.pixelSize: Theme.fontSizeSmall; Layout.preferredWidth: 80; horizontalAlignment: Text.AlignRight }
+                        ComboBox {
+                            id: shotSizeCombo
+                            model: ["特写", "近景", "中景", "全景", "远景", "大远景"]
+                            currentIndex: bridge.storyboard.curShotSizeIndex
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 32
+                            font.pixelSize: Theme.fontSizeSmall
+                            background: Rectangle {
+                                radius: Theme.radiusSmall
+                                color: "transparent"
+                                border.width: 1
+                                border.color: detailPage.borderColor
+                            }
+                        }
+
+                        Label { text: "运镜："; font.pixelSize: Theme.fontSizeSmall; Layout.preferredWidth: 80; horizontalAlignment: Text.AlignRight }
+                        Comp.AppTextField {
+                            id: cameraInput
+                            text: bridge.storyboard.curCameraMovement
+                            placeholderText: "固定、慢推、跟拍"
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 32
+                            background: Rectangle {
+                                radius: Theme.radiusSmall
+                                color: "transparent"
+                                border.width: 1
+                                border.color: detailPage.borderColor
+                            }
+                        }
+
+                        Label { text: "时长："; font.pixelSize: Theme.fontSizeSmall; Layout.preferredWidth: 80; horizontalAlignment: Text.AlignRight }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 4
+
+                            SpinBox {
+                                id: durationSpin
+                                from: 0; to: 600; stepSize: 1
+                                value: bridge.storyboard.curDuration
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 32
+                                background: Rectangle {
+                                    radius: Theme.radiusSmall
+                                    color: "transparent"
+                                    border.width: 1
+                                    border.color: detailPage.borderColor
+                                }
+                            }
+
+                            Label { text: "秒"; font.pixelSize: Theme.fontSizeSmall }
+                        }
+
+                        Label { text: "种子："; font.pixelSize: Theme.fontSizeSmall; Layout.preferredWidth: 80; horizontalAlignment: Text.AlignRight }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 6
+
+                            Comp.AppTextField {
+                                id: seedInput
+                                text: bridge.storyboard.curSeed
+                                placeholderText: "留空则随机"
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 32
+                                validator: IntValidator { bottom: 0; top: 2147483647 }
+                                background: Rectangle {
+                                    radius: Theme.radiusSmall
+                                    color: "transparent"
+                                    border.width: 1
+                                    border.color: detailPage.borderColor
+                                }
+                            }
+
+                            Button {
+                                Layout.preferredWidth: 32
+                                Layout.preferredHeight: 32
+                                display: AbstractButton.IconOnly
+                                icon.source: "qrc:/resources/icons/autorenew.svg"
+                                icon.width: 18
+                                icon.height: 18
+                                topPadding: 7
+                                bottomPadding: 7
+                                leftPadding: 7
+                                rightPadding: 7
+                                ToolTip.visible: hovered
+                                ToolTip.text: "随机种子"
+
+                                background: Rectangle {
+                                    anchors.fill: parent
+                                    radius: Theme.radiusSmall
+                                    color: parent.hovered
+                                        ? Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.08)
+                                        : "transparent"
+                                }
+
+                                onClicked: seedInput.text = Math.floor(Math.random() * 2147483647).toString()
+                            }
+                        }
+                    }
+
+                    Comp.ImagePicker {
+                        id: imagePicker
+                        x: parent.width / 2 + 10
+                        y: 12
+                        width: parent.width / 2 - 30
+                        height: formGrid.implicitHeight
+                        imageSource: bridge.storyboard.curDesignImage
+
+                        onAiGenerateClicked: bridge.storyboard.generate_design_image(
+                            bridge.storyboard.curShotId, detailPage.projectId)
+                        onUploadClicked: uploadImageDialog.open()
+                        onDeleteClicked: bridge.storyboard.delete_design_image(
+                            bridge.storyboard.curShotId)
+                    }
+                }
+
+                // Bottom section: remaining fields
+                GridLayout {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 20
+                    Layout.rightMargin: 20
+                    Layout.topMargin: 12
+                    Layout.bottomMargin: 20
+                    columns: 2
+                    columnSpacing: 10
+                    rowSpacing: 6
+
+                    Label { text: "画面内容："; font.pixelSize: Theme.fontSizeSmall; Layout.preferredWidth: 80; horizontalAlignment: Text.AlignRight; Layout.alignment: Qt.AlignTop }
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: width / 4
+                        radius: Theme.radiusSmall
+                        color: "transparent"
+                        border.width: 1
+                        border.color: detailPage.borderColor
+                        clip: true
+
+                        Flickable {
+                            id: contentFlick
+                            anchors.fill: parent
+                            anchors.margins: 8
+                            anchors.rightMargin: 36
+                            contentHeight: contentEdit.contentHeight
+                            boundsBehavior: Flickable.StopAtBounds
+                            clip: true
+
+                            TextArea.flickable: TextArea {
+                                id: contentEdit
+                                text: bridge.storyboard.curVisualContent
+                                placeholderText: "画面描述"
+                                wrapMode: TextArea.Wrap
+                                font.pixelSize: Theme.fontSizeMedium
+                                padding: 0
+                                background: null
+                                selectByMouse: true
+                            }
+
+                            ScrollBar.vertical: ScrollBar {
+                                policy: ScrollBar.AsNeeded
+                            }
+                        }
+
+                        Button {
+                            anchors.right: parent.right
+                            anchors.top: parent.top
+                            anchors.margins: 4
+                            width: 28
+                            height: 28
+                            display: AbstractButton.IconOnly
+                            icon.source: "qrc:/resources/icons/fullscreen.svg"
+                            icon.width: 18
+                            icon.height: 18
+                            topPadding: 5
+                            bottomPadding: 5
+                            leftPadding: 5
+                            rightPadding: 5
+                            ToolTip.visible: hovered
+                            ToolTip.text: "全屏查看"
+                            onClicked: detailPage.contentFullscreen = true
+
+                            background: Rectangle {
+                                anchors.fill: parent
+                                radius: Theme.radiusSmall
+                                color: parent.hovered
+                                    ? Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.08)
+                                    : "transparent"
+                            }
+                        }
+                    }
+
+                    Label { text: "音效："; font.pixelSize: Theme.fontSizeSmall; Layout.preferredWidth: 80; horizontalAlignment: Text.AlignRight; Layout.alignment: Qt.AlignTop }
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 56
+                        radius: Theme.radiusSmall
+                        color: "transparent"
+                        border.width: 1
+                        border.color: detailPage.borderColor
+                        clip: true
+
+                        Flickable {
+                            anchors.fill: parent
+                            anchors.margins: 8
+                            contentHeight: soundEffectInput.contentHeight
+                            boundsBehavior: Flickable.StopAtBounds
+                            clip: true
+
+                            TextArea.flickable: TextArea {
+                                id: soundEffectInput
+                                text: bridge.storyboard.curSoundEffect
+                                placeholderText: "音效描述"
+                                wrapMode: TextArea.Wrap
+                                font.pixelSize: Theme.fontSizeMedium
+                                padding: 0
+                                background: null
+                                selectByMouse: true
+                            }
+
+                            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                        }
+                    }
+
+                    Label { text: "环境音："; font.pixelSize: Theme.fontSizeSmall; Layout.preferredWidth: 80; horizontalAlignment: Text.AlignRight; Layout.alignment: Qt.AlignTop }
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 56
+                        radius: Theme.radiusSmall
+                        color: "transparent"
+                        border.width: 1
+                        border.color: detailPage.borderColor
+                        clip: true
+
+                        Flickable {
+                            anchors.fill: parent
+                            anchors.margins: 8
+                            contentHeight: ambientSoundInput.contentHeight
+                            boundsBehavior: Flickable.StopAtBounds
+                            clip: true
+
+                            TextArea.flickable: TextArea {
+                                id: ambientSoundInput
+                                text: bridge.storyboard.curAmbientSound
+                                placeholderText: "环境音描述"
+                                wrapMode: TextArea.Wrap
+                                font.pixelSize: Theme.fontSizeMedium
+                                padding: 0
+                                background: null
+                                selectByMouse: true
+                            }
+
+                            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                        }
+                    }
+
+                    Label { text: "背景音乐："; font.pixelSize: Theme.fontSizeSmall; Layout.preferredWidth: 80; horizontalAlignment: Text.AlignRight; Layout.alignment: Qt.AlignTop }
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 56
+                        radius: Theme.radiusSmall
+                        color: "transparent"
+                        border.width: 1
+                        border.color: detailPage.borderColor
+                        clip: true
+
+                        Flickable {
+                            anchors.fill: parent
+                            anchors.margins: 8
+                            contentHeight: bgMusicInput.contentHeight
+                            boundsBehavior: Flickable.StopAtBounds
+                            clip: true
+
+                            TextArea.flickable: TextArea {
+                                id: bgMusicInput
+                                text: bridge.storyboard.curBackgroundMusic
+                                placeholderText: "背景音乐描述"
+                                wrapMode: TextArea.Wrap
+                                font.pixelSize: Theme.fontSizeMedium
+                                padding: 0
+                                background: null
+                                selectByMouse: true
+                            }
+
+                            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                        }
+                    }
+
+                    Label { text: "备注："; font.pixelSize: Theme.fontSizeSmall; Layout.preferredWidth: 80; horizontalAlignment: Text.AlignRight; Layout.alignment: Qt.AlignTop }
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 56
+                        radius: Theme.radiusSmall
+                        color: "transparent"
+                        border.width: 1
+                        border.color: detailPage.borderColor
+                        clip: true
+
+                        Flickable {
+                            anchors.fill: parent
+                            anchors.margins: 8
+                            contentHeight: notesInput.contentHeight
+                            boundsBehavior: Flickable.StopAtBounds
+                            clip: true
+
+                            TextArea.flickable: TextArea {
+                                id: notesInput
+                                text: bridge.storyboard.curNotes
+                                placeholderText: "备注信息"
+                                wrapMode: TextArea.Wrap
+                                font.pixelSize: Theme.fontSizeMedium
+                                padding: 0
+                                background: null
+                                selectByMouse: true
+                            }
+
+                            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Fullscreen content overlay
+        Item {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            visible: detailPage.contentFullscreen
+            enabled: detailPage.contentFullscreen
+
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: 20
+                radius: Theme.radiusSmall
+                color: "transparent"
+                border.width: 1
+                border.color: detailPage.borderColor
+                clip: true
+
+                Flickable {
+                    id: fullscreenContentFlick
+                    anchors.fill: parent
+                    anchors.margins: 12
+                    anchors.rightMargin: 44
+                    contentHeight: fullscreenContentEdit.contentHeight
+                    boundsBehavior: Flickable.StopAtBounds
+                    clip: true
+
+                    TextArea.flickable: TextArea {
+                        id: fullscreenContentEdit
+                        text: bridge.storyboard.curVisualContent
+                        placeholderText: "画面描述"
+                        wrapMode: TextArea.Wrap
+                        font.pixelSize: Theme.fontSizeMedium
+                        padding: 0
+                        background: null
+                        selectByMouse: true
+
+                        onTextChanged: {
+                            if (detailPage.contentFullscreen) {
+                                contentEdit.text = text
+                            }
+                        }
+                    }
+
+                    ScrollBar.vertical: ScrollBar {
+                        policy: ScrollBar.AsNeeded
+                    }
                 }
 
                 Button {
-                    Layout.preferredWidth: 32
-                    Layout.preferredHeight: 32
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.margins: 8
+                    width: 28
+                    height: 28
                     display: AbstractButton.IconOnly
-                    icon.source: "qrc:/resources/icons/autorenew.svg"
+                    icon.source: "qrc:/resources/icons/fullscreen_exit.svg"
                     icon.width: 18
                     icon.height: 18
-                    topPadding: 7
-                    bottomPadding: 7
-                    leftPadding: 7
-                    rightPadding: 7
+                    topPadding: 5
+                    bottomPadding: 5
+                    leftPadding: 5
+                    rightPadding: 5
                     ToolTip.visible: hovered
-                    ToolTip.text: "随机种子"
+                    ToolTip.text: "退出全屏"
+                    onClicked: {
+                        contentEdit.text = fullscreenContentEdit.text
+                        detailPage.contentFullscreen = false
+                    }
 
                     background: Rectangle {
                         anchors.fill: parent
@@ -157,28 +530,36 @@ Item {
                             ? Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.08)
                             : "transparent"
                     }
-
-                    onClicked: seedInput.text = Math.floor(Math.random() * 2147483647).toString()
                 }
             }
         }
-
-        Item { Layout.fillHeight: true }
     }
 
     Dialogs.ConfirmDialog { id: confirmDialog }
+
+    QtDialogs.FileDialog {
+        id: uploadImageDialog
+        title: "选择图片"
+        fileMode: QtDialogs.FileDialog.OpenFile
+        nameFilters: ["图片文件 (*.png *.jpg *.jpeg *.bmp *.webp)"]
+        onAccepted: {
+            var path = selectedFile.toString()
+            if (path.startsWith("file:///")) path = path.substring(8)
+            bridge.storyboard.upload_design_image(bridge.storyboard.curShotId, path)
+        }
+    }
 
     function _saveCurrentShot() {
         bridge.storyboard.save_shot(
             detailPage.shotId,
             shotSizeCombo.currentIndex,
             cameraInput.text,
-            "",
-            durationSpin.realValue,
-            "",
-            "",
-            "",
-            "",
+            contentEdit.text,
+            durationSpin.value,
+            soundEffectInput.text,
+            ambientSoundInput.text,
+            bgMusicInput.text,
+            notesInput.text,
             "",
             seedInput.text
         )

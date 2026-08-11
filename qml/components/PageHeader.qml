@@ -66,8 +66,7 @@ Item {
             Label {
                 visible: header.titleSuffix !== ""
                 text: header.titleSuffix
-                font.pixelSize: Theme.fontSizeSmall
-                opacity: 0.7
+                font.pixelSize: Theme.fontSizeMedium
             }
         }
 
