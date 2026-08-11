@@ -20,7 +20,7 @@ prompts/
 
 - `TextPromptBuilder` 依赖 `PromptTemplateManager`，通过 DI 容器注入
 - `ImagePromptBuilder` 和 `VideoPromptBuilder` 为静态方法，无需依赖注入
-- `ChatModelService` 依赖 `TextPromptBuilder`，通过 DI 容器注入
+- `ChatService` 依赖 `TextPromptBuilder`，通过 DI 容器注入
 
 ## YAML 模板覆盖率
 

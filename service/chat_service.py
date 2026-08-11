@@ -12,7 +12,7 @@ from storage.session_manager import SessionManager
 from storage.repositories.generate_task_repository import GenerateTaskRepository
 from utils.ai_request_logger import AIRequestLogger
 
-class ChatModelService:
+class ChatService:
 
     DASHSCOPE_TEXT_URL = "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation"
     DEFAULT_MODEL = "qwen-max"

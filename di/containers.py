@@ -14,7 +14,7 @@ from service.project_service import ProjectService
 from service.screenplay_service import ScreenplayService
 from service.story_outline_service import StoryOutlineService
 from service.storyboard_service import StoryboardService
-from service.chat_model_service import ChatModelService
+from service.chat_service import ChatService
 from service.video_service import VideoService, _PROVIDER_REGISTRY
 from service.visual_style_service import VisualStyleService
 from service.update_service import UpdateService
@@ -99,7 +99,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
     )
 
     chat_model_service = providers.Singleton(
-        ChatModelService,
+        ChatService,
         config_manager=config_manager,
         session_manager=session_manager,
         text_prompt_builder=text_prompt_builder,

@@ -3,7 +3,7 @@ from models.storyboard import Storyboard
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from service.chat_model_service import ChatModelService
+    from service.chat_service import ChatService
     from prompts.manager import PromptTemplateManager
 
 
@@ -17,7 +17,7 @@ class VideoPromptBuilder:
         reference_images: list[dict[str, str]] | None = None,
         visual_style: str | None = None,
         clean_dialogue_and_sound: bool = False,
-        chat_service: "ChatModelService | None" = None,
+        chat_service: "ChatService | None" = None,
         template_manager: "PromptTemplateManager | None" = None,
     ) -> str:
         sections = []
@@ -155,7 +155,7 @@ class VideoPromptBuilder:
     @staticmethod
     def clean_prompt(
         original_prompt: str,
-        chat_service: "ChatModelService",
+        chat_service: "ChatService",
         template_manager: "PromptTemplateManager",
     ) -> str:
         """
