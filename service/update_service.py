@@ -108,6 +108,8 @@ class UpdateService:
 
             total_size = int(response.headers.get("content-length", 0))
             downloaded = 0
+            last_reported = 0
+            report_threshold = max(total_size // 100, 102400)  # 最少每 100KB 或 1% 报告一次
 
             with open(save_path, "wb") as f:
                 for chunk in response.iter_content(chunk_size=8192):
@@ -115,7 +117,9 @@ class UpdateService:
                         f.write(chunk)
                         downloaded += len(chunk)
                         if progress_callback and total_size > 0:
-                            progress_callback(downloaded, total_size)
+                            if downloaded - last_reported >= report_threshold or downloaded == total_size:
+                                progress_callback(downloaded, total_size)
+                                last_reported = downloaded
 
             logger.info(f"更新下载完成：{save_path}")
             return save_path

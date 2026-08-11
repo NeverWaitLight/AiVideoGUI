@@ -18,12 +18,24 @@ Dialog {
     property int downloadedBytes: 0
     property int totalBytes: 0
     property string installerPath: ""
+    property string progressText: ""
 
     function formatBytes(bytes) {
         if (bytes < 1024) return bytes + " B"
         if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB"
         return (bytes / (1024 * 1024)).toFixed(1) + " MB"
     }
+
+    function updateProgressText() {
+        if (totalBytes > 0) {
+            progressText = formatBytes(downloadedBytes) + " / " + formatBytes(totalBytes)
+        } else {
+            progressText = "准备下载..."
+        }
+    }
+
+    onDownloadedBytesChanged: updateProgressText()
+    onTotalBytesChanged: updateProgressText()
 
     ColumnLayout {
         width: parent.width
@@ -35,59 +47,63 @@ Dialog {
             font.bold: true
         }
 
-        RowLayout {
+        ColumnLayout {
+            Layout.fillWidth: true
             spacing: 8
             visible: !downloading
-            Label {
-                text: "当前版本："
-                font.pixelSize: 14
-            }
-            Label {
-                text: Qt.application.version || "0.0.1"
-                font.pixelSize: 14
-                color: Material.color(Material.Grey)
-            }
-        }
 
-        RowLayout {
-            spacing: 8
-            visible: !downloading
-            Label {
-                text: "最新版本："
-                font.pixelSize: 14
+            RowLayout {
+                spacing: 8
+                Label {
+                    text: "当前版本："
+                    font.pixelSize: 14
+                }
+                Label {
+                    text: Qt.application.version || "0.0.1"
+                    font.pixelSize: 14
+                    color: "#9E9E9E"
+                }
             }
+
+            RowLayout {
+                spacing: 8
+                Label {
+                    text: "最新版本："
+                    font.pixelSize: 14
+                }
+                Label {
+                    text: updateDialog.newVersion
+                    font.pixelSize: 14
+                    font.bold: true
+                    color: Material.accent
+                }
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 1
+                color: Qt.rgba(0, 0, 0, 0.12)
+            }
+
             Label {
-                text: updateDialog.newVersion
+                text: "更新内容："
                 font.pixelSize: 14
                 font.bold: true
-                color: Material.accent
+                visible: updateDialog.releaseNotes !== ""
             }
-        }
 
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 1
-            color: Material.dividerColor
-            visible: !downloading
-        }
+            ScrollView {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 200
+                visible: updateDialog.releaseNotes !== ""
+                clip: true
 
-        Label {
-            text: "更新内容："
-            font.pixelSize: 14
-            font.bold: true
-            visible: updateDialog.releaseNotes !== "" && !downloading
-        }
-
-        ScrollView {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 200
-            visible: updateDialog.releaseNotes !== "" && !downloading
-
-            TextArea {
-                text: updateDialog.releaseNotes
-                readOnly: true
-                wrapMode: TextArea.Wrap
-                selectByMouse: true
+                TextArea {
+                    text: updateDialog.releaseNotes
+                    readOnly: true
+                    wrapMode: TextArea.Wrap
+                    selectByMouse: true
+                }
             }
         }
 
@@ -105,9 +121,7 @@ Dialog {
             }
 
             Label {
-                text: updateDialog.totalBytes > 0
-                    ? formatBytes(updateDialog.downloadedBytes) + " / " + formatBytes(updateDialog.totalBytes)
-                    : "准备下载..."
+                text: updateDialog.progressText
                 font.pixelSize: 12
                 color: Material.hintTextColor
                 Layout.alignment: Qt.AlignHCenter
