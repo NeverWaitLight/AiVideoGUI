@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from models.generate_task import GenerateTask
-from models.enums import TaskStatus
+from models.enums import TaskStatus, GenerateTaskType, GenerateTaskCallerType
 from storage.orm.project_entity import GenerateTaskEntity
 from storage.repositories.base_repository import BaseRepository
 
@@ -18,16 +18,19 @@ class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
     def _to_dto(self, entity: GenerateTaskEntity) -> GenerateTask:
         return GenerateTask(
             id=entity.id,
+            type=GenerateTaskType(entity.type),
             provider_task_id=entity.provider_task_id,
             provider_name=entity.provider_name,
             model_name=entity.model_name,
             status=entity.status,
             completed=entity.completed,
             request_params=entity.request_params,
-            video_url=entity.video_url,
-            save_path=entity.save_path,
+            remote_url=entity.remote_url,
+            local_path=entity.local_path,
             error_message=entity.error_message,
-            storyboard_id=entity.storyboard_id,
+            caller_type=GenerateTaskCallerType(entity.caller_type) if entity.caller_type else None,
+            caller_id=entity.caller_id,
+            parent_ids=entity.parent_ids,
             created_at=entity.created_at,
             updated_at=entity.updated_at,
         )
@@ -35,16 +38,19 @@ class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
     def _to_entity(self, dto: GenerateTask) -> GenerateTaskEntity:
         return GenerateTaskEntity(
             id=dto.id,
+            type=dto.type.value,
             provider_task_id=dto.provider_task_id,
             provider_name=dto.provider_name,
             model_name=dto.model_name,
             status=dto.status,
             completed=dto.completed,
             request_params=dto.request_params,
-            video_url=dto.video_url,
-            save_path=dto.save_path,
+            remote_url=dto.remote_url,
+            local_path=dto.local_path,
             error_message=dto.error_message,
-            storyboard_id=dto.storyboard_id,
+            caller_type=dto.caller_type.value if dto.caller_type else None,
+            caller_id=dto.caller_id,
+            parent_ids=dto.parent_ids,
             created_at=dto.created_at,
             updated_at=dto.updated_at,
         )
@@ -54,21 +60,27 @@ class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
         provider_task_id: str,
         provider_name: str,
         model_name: str,
-        save_path: str,
+        local_path: str,
         request_params: str,
-        storyboard_id: int = 0,
+        type: GenerateTaskType = GenerateTaskType.VIDEO,
+        caller_type: GenerateTaskCallerType | None = None,
+        caller_id: str = "",
+        parent_ids: str = "",
     ) -> int:
         entity = GenerateTaskEntity(
+            type=type.value,
             provider_task_id=provider_task_id,
             provider_name=provider_name,
             model_name=model_name,
             status="pending",
             completed=False,
             request_params=request_params,
-            video_url="",
-            save_path=save_path,
+            remote_url="",
+            local_path=local_path,
             error_message="",
-            storyboard_id=storyboard_id,
+            caller_type=caller_type.value if caller_type else None,
+            caller_id=caller_id,
+            parent_ids=parent_ids,
             created_at=int(time.time() * 1000),
             updated_at=int(time.time() * 1000),
         )
@@ -86,16 +98,19 @@ class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
         return [
             {
                 "id": e.id,
+                "type": e.type,
                 "provider_task_id": e.provider_task_id,
                 "provider_name": e.provider_name,
                 "model_name": e.model_name,
                 "status": e.status,
                 "completed": e.completed,
                 "request_params": e.request_params,
-                "video_url": e.video_url,
-                "save_path": e.save_path,
+                "remote_url": e.remote_url,
+                "local_path": e.local_path,
                 "error_message": e.error_message,
-                "storyboard_id": e.storyboard_id,
+                "caller_type": e.caller_type,
+                "caller_id": e.caller_id,
+                "parent_ids": e.parent_ids,
                 "created_at": e.created_at,
                 "updated_at": e.updated_at,
             }
@@ -108,16 +123,19 @@ class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
             return None
         return {
             "id": entity.id,
+            "type": entity.type,
             "provider_task_id": entity.provider_task_id,
             "provider_name": entity.provider_name,
             "model_name": entity.model_name,
             "status": entity.status,
             "completed": entity.completed,
             "request_params": entity.request_params,
-            "video_url": entity.video_url,
-            "save_path": entity.save_path,
+            "remote_url": entity.remote_url,
+            "local_path": entity.local_path,
             "error_message": entity.error_message,
-            "storyboard_id": entity.storyboard_id,
+            "caller_type": entity.caller_type,
+            "caller_id": entity.caller_id,
+            "parent_ids": entity.parent_ids,
             "created_at": entity.created_at,
             "updated_at": entity.updated_at,
         }
@@ -131,16 +149,19 @@ class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
             return None
         return {
             "id": entity.id,
+            "type": entity.type,
             "provider_task_id": entity.provider_task_id,
             "provider_name": entity.provider_name,
             "model_name": entity.model_name,
             "status": entity.status,
             "completed": entity.completed,
             "request_params": entity.request_params,
-            "video_url": entity.video_url,
-            "save_path": entity.save_path,
+            "remote_url": entity.remote_url,
+            "local_path": entity.local_path,
             "error_message": entity.error_message,
-            "storyboard_id": entity.storyboard_id,
+            "caller_type": entity.caller_type,
+            "caller_id": entity.caller_id,
+            "parent_ids": entity.parent_ids,
             "created_at": entity.created_at,
             "updated_at": entity.updated_at,
         }
@@ -149,7 +170,7 @@ class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
         self,
         task_id: int,
         status: str,
-        video_url: str = "",
+        remote_url: str = "",
         error_message: str = "",
     ) -> None:
         entity = self.session.get(GenerateTaskEntity, task_id)
@@ -157,8 +178,8 @@ class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
             return
 
         entity.status = status
-        if video_url:
-            entity.video_url = video_url
+        if remote_url:
+            entity.remote_url = remote_url
         if error_message:
             entity.error_message = error_message
         entity.updated_at = int(time.time() * 1000)
@@ -183,16 +204,19 @@ class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
         return [
             {
                 "id": e.id,
+                "type": e.type,
                 "provider_task_id": e.provider_task_id,
                 "provider_name": e.provider_name,
                 "model_name": e.model_name,
                 "status": e.status,
                 "completed": e.completed,
                 "request_params": e.request_params,
-                "video_url": e.video_url,
-                "save_path": e.save_path,
+                "remote_url": e.remote_url,
+                "local_path": e.local_path,
                 "error_message": e.error_message,
-                "storyboard_id": e.storyboard_id,
+                "caller_type": e.caller_type,
+                "caller_id": e.caller_id,
+                "parent_ids": e.parent_ids,
                 "created_at": e.created_at,
                 "updated_at": e.updated_at,
             }

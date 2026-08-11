@@ -22,13 +22,15 @@ class ProjectBridge(QObject):
     cover_generation_finished = Signal(str)
     cover_generation_failed = Signal(str)
 
-    def __init__(self, project_service, session_manager, visual_style_service, chat_model_service, image_service, parent=None):
+    def __init__(self, project_service, session_manager, visual_style_service, chat_model_service, image_service,
+                 container=None, parent=None):
         super().__init__(parent)
         self._project_service = project_service
         self._session_manager = session_manager
         self._visual_style_service = visual_style_service
         self._chat_model_service = chat_model_service
         self._image_service = image_service
+        self._container = container
         self._grid_model = ProjectListModel(visual_style_service, self)
         self._list_model = ProjectListModel(visual_style_service, self)
         self._workspace_root = None
@@ -168,6 +170,9 @@ class ProjectBridge(QObject):
             image_service=self._image_service,
             project_service=self._project_service,
             workspace_root=self._workspace_root,
+            config_manager=self._container.config_manager() if self._container else None,
+            session_manager=self._container.session_manager() if self._container else None,
+            ai_request_logger=self._container.ai_request_logger() if self._container else None,
         )
         self._cover_worker.moveToThread(self._cover_thread)
 
@@ -202,9 +207,8 @@ class ProjectBridge(QObject):
     def resolve_cover_path(self, absolute_path: str) -> str:
         if not absolute_path or not self._workspace_root:
             return absolute_path
-        workspace_dir = paths.workspace_dir(self._workspace_root)
         try:
-            return os.path.relpath(absolute_path, workspace_dir).replace("\\", "/")
+            return to_relative_path(absolute_path, self._workspace_root)
         except ValueError:
             return absolute_path
 

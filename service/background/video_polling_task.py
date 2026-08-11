@@ -133,7 +133,8 @@ class VideoTaskPollingTask(BackgroundTask):
         provider_task_id = task_info["provider_task_id"]
         provider_name = task_info["provider_name"]
         model_name = task_info["model_name"]
-        storyboard_id = task_info.get("storyboard_id", 0)
+        caller_type = task_info.get("caller_type")
+        caller_id = task_info.get("caller_id", "")
 
         poll_count = self._task_poll_count.get(internal_task_id, 0)
         if poll_count >= self._max_polls_per_task:
@@ -157,7 +158,7 @@ class VideoTaskPollingTask(BackgroundTask):
                 self._sm.begin_write()
                 write_lock_acquired = True
                 try:
-                    task_repo.update_status(internal_task_id, result.status.value, video_url=result.video_url or "")
+                    task_repo.update_status(internal_task_id, result.status.value, remote_url=result.video_url or "")
                     self._sm.commit_write()
                     write_lock_acquired = False
                 except Exception:
@@ -174,10 +175,11 @@ class VideoTaskPollingTask(BackgroundTask):
                     provider=provider,
                     internal_task_id=internal_task_id,
                     provider_task_id=provider_task_id,
-                    video_url=result.video_url,
+                    remote_url=result.video_url,
                     model_name=model_name,
-                    save_path=task_info.get("save_path", ""),
-                    storyboard_id=storyboard_id,
+                    local_path=task_info.get("local_path", ""),
+                    caller_type=caller_type,
+                    caller_id=caller_id,
                 )
             elif result.status == TaskStatus.FAILED:
                 error_msg = result.error_message or "未知原因"
@@ -214,44 +216,49 @@ class VideoTaskPollingTask(BackgroundTask):
         provider: VideoProvider,
         internal_task_id: int,
         provider_task_id: str,
-        video_url: str,
+        remote_url: str,
         model_name: str,
-        save_path: str = "",
-        storyboard_id: int = 0,
+        local_path: str = "",
+        caller_type: str | None = None,
+        caller_id: str = "",
     ) -> None:
         try:
             workspace = paths.workspace_dir(self._workspace_root)
-            if save_path:
-                save_path = os.path.join(workspace, save_path)
+            if local_path:
+                absolute_path = os.path.join(workspace, local_path)
             else:
                 import time
                 target_dir = paths.workspace_dir(self._workspace_root)
                 stamp = time.strftime("%Y%m%d_%H%M%S")
                 filename = f"{stamp}_{model_name}_video.mp4"
-                save_path = os.path.join(target_dir, filename)
+                absolute_path = os.path.join(target_dir, filename)
 
             os.makedirs(self._cache_dir, exist_ok=True)
             tmp_path = os.path.join(self._cache_dir, f"{uuid.uuid4().hex}.mp4.part")
 
-            provider.download(video_url=video_url, save_path=tmp_path, progress_callback=None)
+            provider.download(video_url=remote_url, save_path=tmp_path, progress_callback=None)
 
-            os.makedirs(os.path.dirname(save_path), exist_ok=True)
-            shutil.move(src=tmp_path, dst=save_path)
+            os.makedirs(os.path.dirname(absolute_path), exist_ok=True)
+            shutil.move(src=tmp_path, dst=absolute_path)
 
-            relative_save_path = to_relative_path(save_path, self._workspace_root)
+            relative_save_path = to_relative_path(absolute_path, self._workspace_root)
 
             if self._media_service:
                 try:
+                    # 根据 caller_type 判断是否传递 storyboard_id
+                    storyboard_id = int(caller_id) if caller_type == "storyboard" and caller_id else 0
                     self._media_service.register_task_result(
-                        provider_task_id, save_path, "", storyboard_id=storyboard_id
+                        provider_task_id, absolute_path, "", storyboard_id=storyboard_id
                     )
                 except Exception as e:
                     logger.warning(f"素材自动入库失败：{e}")
 
             self._mark_task_completed(internal_task_id)
-            logger.info(f"任务完成 internal_id={internal_task_id} local_path={save_path}")
+            logger.info(f"任务完成 internal_id={internal_task_id} local_path={absolute_path}")
 
-            self._signal_emitter.task_finished.emit(provider_task_id, save_path, storyboard_id)
+            # 根据 caller_type 发送信号
+            storyboard_id = int(caller_id) if caller_type == "storyboard" and caller_id else 0
+            self._signal_emitter.task_finished.emit(provider_task_id, absolute_path, storyboard_id)
 
         except Exception as e:
             logger.exception(f"下载失败 internal_id={internal_task_id}")

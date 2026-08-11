@@ -59,7 +59,7 @@ class VideoService(QObject):
         prompt: str,
         provider_name: str,
         params: dict[str, Any] | None = None,
-        save_path: str = "",
+        local_path: str = "",
         storyboard_id: int = 0,
         reference_image: str = "",
         reference_images: list[str] | None = None,
@@ -111,7 +111,7 @@ class VideoService(QObject):
                 provider_task_id=provider_task_id,
                 provider_name=provider_name,
                 model_name=provider._config.default_model,
-                save_path=save_path,
+                local_path=local_path,
                 request_params=json.dumps(request_details["json"], ensure_ascii=False),
                 storyboard_id=storyboard_id,
             )
@@ -119,11 +119,11 @@ class VideoService(QObject):
             self._sm.commit_write()
 
             logger.info(
-                "任务已提交 provider_task=%s generate_task=%s provider=%s save_path=%s storyboard_id=%s",
+                "任务已提交 provider_task=%s generate_task=%s provider=%s local_path=%s storyboard_id=%s",
                 provider_task_id,
                 generate_task_id,
                 provider_name,
-                save_path,
+                local_path,
                 storyboard_id,
             )
             return provider_task_id

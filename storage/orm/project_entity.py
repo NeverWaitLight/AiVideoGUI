@@ -37,6 +37,7 @@ class GenerateTaskEntity(Base):
 
     id: Mapped[Optional[int]] = mapped_column(Integer, primary_key=True, autoincrement=True, nullable=False)
 
+    type: Mapped[str] = mapped_column(String(20), nullable=False, default="video")
     provider_task_id: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
 
     provider_name: Mapped[str] = mapped_column(String(50), nullable=False)
@@ -46,11 +47,14 @@ class GenerateTaskEntity(Base):
     completed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     request_params: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
-    video_url: Mapped[str] = mapped_column(String(500), nullable=False, default="")
-    save_path: Mapped[str] = mapped_column(String(500), nullable=False, default="")
+    remote_url: Mapped[str] = mapped_column(String(500), nullable=False, default="")
+    local_path: Mapped[str] = mapped_column(String(500), nullable=False, default="")
     error_message: Mapped[str] = mapped_column(Text, nullable=False, default="")
 
-    storyboard_id: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    caller_type: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    caller_id: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+
+    parent_ids: Mapped[str] = mapped_column(String(500), nullable=False, default="")
 
     created_at: Mapped[int] = mapped_column(Integer, nullable=False)
     updated_at: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -58,4 +62,6 @@ class GenerateTaskEntity(Base):
     __table_args__ = (
         Index("idx_generate_task_completed", "completed"),
         Index("idx_generate_task_provider_task_id", "provider_task_id"),
+        Index("idx_generate_task_type", "type"),
+        Index("idx_generate_task_caller", "caller_type", "caller_id"),
     )

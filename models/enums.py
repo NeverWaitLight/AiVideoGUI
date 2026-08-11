@@ -3,6 +3,22 @@ from __future__ import annotations
 import enum
 
 
+class GenerateTaskType(enum.Enum):
+    """生成任务类型"""
+    VIDEO = "video"
+    IMAGE = "image"
+    AUDIO = "audio"
+    CHAT = "chat"
+
+
+class GenerateTaskCallerType(enum.Enum):
+    """生成任务调用者类型"""
+    STORYBOARD = "storyboard"      # 分镜
+    CHARACTER = "character"        # 角色
+    COVER = "cover"                # 封面
+    CHAT = "chat"                  # 聊天
+
+
 class TaskStatus(enum.Enum):
     """视频生成任务状态"""
     PENDING = "pending"        # 待处理

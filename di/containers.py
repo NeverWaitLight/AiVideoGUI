@@ -101,6 +101,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
     chat_model_service = providers.Singleton(
         ChatModelService,
         config_manager=config_manager,
+        session_manager=session_manager,
         text_prompt_builder=text_prompt_builder,
         ai_request_logger=ai_request_logger,
     )
@@ -108,6 +109,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
     image_service = providers.Singleton(
         ImageService,
         config_manager=config_manager,
+        session_manager=session_manager,
         ai_request_logger=ai_request_logger,
     )
 

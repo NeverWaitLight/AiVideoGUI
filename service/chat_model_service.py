@@ -1,9 +1,15 @@
 from loguru import logger
 
+import json
+import time
+import uuid
 import requests
 
 from config.manager import ConfigManager
+from models.enums import GenerateTaskType, GenerateTaskCallerType
 from prompts.chat_prompt_builder import ChatPromptBuilder
+from storage.session_manager import SessionManager
+from storage.repositories.generate_task_repository import GenerateTaskRepository
 from utils.ai_request_logger import AIRequestLogger
 
 class ChatModelService:
@@ -14,10 +20,12 @@ class ChatModelService:
     def __init__(
         self,
         config_manager: ConfigManager,
+        session_manager: SessionManager,
         text_prompt_builder: ChatPromptBuilder,
         ai_request_logger: AIRequestLogger | None = None,
     ) -> None:
         self._config = config_manager
+        self._sm = session_manager
         self._prompt_builder = text_prompt_builder
         self._ai_logger = ai_request_logger
 
@@ -29,12 +37,48 @@ class ChatModelService:
         project_name: str | None = None,
         module: str = "storyboard",
         context: str | None = None,
-    ) -> str:
+        caller_type: GenerateTaskCallerType | None = None,
+        caller_id: str = "",
+        parent_ids: str = "",
+    ) -> tuple[str, int]:
         provider_config = self._config.get_provider_config(name="dashscope", provider_type="chat")
         if not provider_config or not provider_config.api_key:
             raise RuntimeError("未配置 DashScope API Key，请在设置中配置")
 
         model = model or provider_config.default_model or self.DEFAULT_MODEL
+
+        # 创建 generate_task 记录
+        provider_task_id = str(uuid.uuid4())
+        request_params = json.dumps({
+            "messages": messages,
+            "model": model,
+            "module": module,
+            "context": context,
+            "project_id": project_id,
+            "project_name": project_name,
+        }, ensure_ascii=False)
+
+        task_repo = self._sm.get_repo(repo_class=GenerateTaskRepository)
+        self._sm.begin_write()
+        try:
+            task_id = task_repo.add(
+                provider_task_id=provider_task_id,
+                provider_name="dashscope",
+                model_name=model,
+                local_path="",  # 文本对话无本地路径
+                request_params=request_params,
+                type=GenerateTaskType.CHAT,
+                caller_type=caller_type,
+                caller_id=caller_id,
+                parent_ids=parent_ids,
+            )
+            self._sm.commit_write()
+        except Exception:
+            self._sm.rollback_write()
+            raise
+
+        logger.info(f"文本对话任务已创建：task_id={task_id}, provider_task_id={provider_task_id}, model={model}, caller_type={caller_type}, caller_id={caller_id}, parent_ids={parent_ids}")
+
         payload = {
             "model": model,
             "input": {"messages": messages},
@@ -63,9 +107,25 @@ class ChatModelService:
                     continue
                 else:
                     logger.error(f"请求超时（{timeout}秒），已重试 {max_retries} 次，放弃")
+                    # 更新任务状态为失败
+                    self._sm.begin_write()
+                    try:
+                        task_repo.update_status(task_id, "failed", error_message=f"请求超时（{timeout}秒）")
+                        task_repo.mark_completed(task_id)
+                        self._sm.commit_write()
+                    except Exception:
+                        self._sm.rollback_write()
                     raise RuntimeError(f"文本生成请求超时（{timeout}秒），请检查网络连接或稍后重试")
             except requests.exceptions.RequestException as e:
                 logger.exception("文本生成请求失败")
+                # 更新任务状态为失败
+                self._sm.begin_write()
+                try:
+                    task_repo.update_status(task_id, "failed", error_message=str(e))
+                    task_repo.mark_completed(task_id)
+                    self._sm.commit_write()
+                except Exception:
+                    self._sm.rollback_write()
                 raise RuntimeError(f"网络请求失败：{e}")
 
         if self._ai_logger:
@@ -82,11 +142,37 @@ class ChatModelService:
         output = data.get("output", {})
         choices = output.get("choices", [])
         if not choices:
+            # 更新任务状态为失败
+            self._sm.begin_write()
+            try:
+                task_repo.update_status(task_id, "failed", error_message="API 未返回有效内容")
+                task_repo.mark_completed(task_id)
+                self._sm.commit_write()
+            except Exception:
+                self._sm.rollback_write()
             raise RuntimeError("API 未返回有效内容")
         content = choices[0].get("message", {}).get("content", "").strip()
         if not content:
+            # 更新任务状态为失败
+            self._sm.begin_write()
+            try:
+                task_repo.update_status(task_id, "failed", error_message="API 返回的内容为空")
+                task_repo.mark_completed(task_id)
+                self._sm.commit_write()
+            except Exception:
+                self._sm.rollback_write()
             raise RuntimeError("API 返回的内容为空")
-        return content
+
+        # 更新任务状态为成功
+        self._sm.begin_write()
+        try:
+            task_repo.update_status(task_id, "succeeded")
+            task_repo.mark_completed(task_id)
+            self._sm.commit_write()
+        except Exception:
+            self._sm.rollback_write()
+
+        return content, task_id
 
     def optimize_story_outline(
         self,
@@ -95,7 +181,7 @@ class ChatModelService:
         model: str | None = None,
         project_id: int | None = None,
         project_name: str | None = None,
-    ) -> str:
+    ) -> tuple[str, int]:
         messages = self._prompt_builder.build_outline_optimization_messages(
             original_content=original_content,
             user_requirement=user_requirement,
@@ -109,6 +195,8 @@ class ChatModelService:
             project_name=project_name,
             module="outline",
             context="大纲优化",
+            caller_type=GenerateTaskCallerType.OUTLINE,
+            caller_id=str(project_id) if project_id else "",
         )
 
     def generate_script(
@@ -117,7 +205,7 @@ class ChatModelService:
         model: str | None = None,
         project_id: int | None = None,
         project_name: str | None = None,
-    ) -> tuple[str, list[dict]]:
+    ) -> tuple[str, list[dict], int]:
         provider_config = self._config.get_provider_config(name="dashscope", provider_type="chat")
         if not provider_config or not provider_config.api_key:
             raise RuntimeError("未配置 DashScope API Key，请在设置中配置")
@@ -125,6 +213,37 @@ class ChatModelService:
         model = model or provider_config.default_model or self.DEFAULT_MODEL
 
         messages = self._prompt_builder.build_script_generation_messages(outline_content)
+
+        # 创建 generate_task 记录
+        provider_task_id = str(uuid.uuid4())
+        request_params = json.dumps({
+            "messages": messages,
+            "model": model,
+            "module": "script",
+            "context": "剧本生成",
+            "project_id": project_id,
+            "project_name": project_name,
+        }, ensure_ascii=False)
+
+        task_repo = self._sm.get_repo(repo_class=GenerateTaskRepository)
+        self._sm.begin_write()
+        try:
+            task_id = task_repo.add(
+                provider_task_id=provider_task_id,
+                provider_name="dashscope",
+                model_name=model,
+                local_path="",
+                request_params=request_params,
+                type=GenerateTaskType.CHAT,
+                caller_type=GenerateTaskCallerType.SCRIPT,
+                caller_id=str(project_id) if project_id else "",
+            )
+            self._sm.commit_write()
+        except Exception:
+            self._sm.rollback_write()
+            raise
+
+        logger.info(f"剧本生成任务已创建：task_id={task_id}, provider_task_id={provider_task_id}, model={model}")
 
         payload = {
             "model": model,
@@ -166,6 +285,14 @@ class ChatModelService:
                         continue
                     else:
                         logger.error(f"请求超时（{timeout}秒），已重试 {max_retries} 次，放弃")
+                        # 更新任务状态为失败
+                        self._sm.begin_write()
+                        try:
+                            task_repo.update_status(task_id, "failed", error_message=f"请求超时（{timeout}秒）")
+                            task_repo.mark_completed(task_id)
+                            self._sm.commit_write()
+                        except Exception:
+                            self._sm.rollback_write()
                         raise RuntimeError(f"剧本生成请求超时（{timeout}秒），请检查网络连接或稍后重试")
 
             if self._ai_logger:
@@ -182,12 +309,28 @@ class ChatModelService:
             output = data.get("output", {})
             choices = output.get("choices", [])
             if not choices:
+                # 更新任务状态为失败
+                self._sm.begin_write()
+                try:
+                    task_repo.update_status(task_id, "failed", error_message="API 未返回有效内容")
+                    task_repo.mark_completed(task_id)
+                    self._sm.commit_write()
+                except Exception:
+                    self._sm.rollback_write()
                 raise RuntimeError("API 未返回有效内容")
 
             message = choices[0].get("message", {})
             script_content = message.get("content", "").strip()
 
             if not script_content:
+                # 更新任务状态为失败
+                self._sm.begin_write()
+                try:
+                    task_repo.update_status(task_id, "failed", error_message="API 返回的内容为空")
+                    task_repo.mark_completed(task_id)
+                    self._sm.commit_write()
+                except Exception:
+                    self._sm.rollback_write()
                 raise RuntimeError("API 返回的内容为空")
 
             logger.info("剧本生成成功")
@@ -197,13 +340,38 @@ class ChatModelService:
             title, scenes = ScriptParser.parse(script_content)
             logger.info(f"剧本解析成功：标题='{title}'，共 {len(scenes)} 场")
 
-            return title, scenes
+            # 更新任务状态为成功
+            self._sm.begin_write()
+            try:
+                task_repo.update_status(task_id, "succeeded")
+                task_repo.mark_completed(task_id)
+                self._sm.commit_write()
+            except Exception:
+                self._sm.rollback_write()
+
+            return title, scenes, task_id
 
         except requests.exceptions.RequestException as e:
             logger.exception("调用文本模型 API 失败")
+            # 更新任务状态为失败
+            self._sm.begin_write()
+            try:
+                task_repo.update_status(task_id, "failed", error_message=str(e))
+                task_repo.mark_completed(task_id)
+                self._sm.commit_write()
+            except Exception:
+                self._sm.rollback_write()
             raise RuntimeError(f"网络请求失败：{e}")
         except (KeyError, ValueError) as e:
             logger.exception("解析 API 响应失败")
+            # 更新任务状态为失败
+            self._sm.begin_write()
+            try:
+                task_repo.update_status(task_id, "failed", error_message=f"解析响应失败：{e}")
+                task_repo.mark_completed(task_id)
+                self._sm.commit_write()
+            except Exception:
+                self._sm.rollback_write()
             raise RuntimeError(f"解析响应失败：{e}")
 
     def generate_storyboard(
@@ -213,7 +381,7 @@ class ChatModelService:
         model: str | None = None,
         project_id: int | None = None,
         project_name: str | None = None,
-    ) -> list[dict]:
+    ) -> tuple[list[dict], int]:
         provider_config = self._config.get_provider_config(name="dashscope", provider_type="chat")
         if not provider_config or not provider_config.api_key:
             raise RuntimeError("未配置 DashScope API Key，请在设置中配置")
@@ -224,6 +392,38 @@ class ChatModelService:
             script_content=script_content,
             art_style=art_style,
         )
+
+        # 创建 generate_task 记录
+        provider_task_id = str(uuid.uuid4())
+        request_params = json.dumps({
+            "messages": messages,
+            "model": model,
+            "module": "storyboard",
+            "context": "分镜生成",
+            "project_id": project_id,
+            "project_name": project_name,
+            "art_style": art_style,
+        }, ensure_ascii=False)
+
+        task_repo = self._sm.get_repo(repo_class=GenerateTaskRepository)
+        self._sm.begin_write()
+        try:
+            task_id = task_repo.add(
+                provider_task_id=provider_task_id,
+                provider_name="dashscope",
+                model_name=model,
+                local_path="",
+                request_params=request_params,
+                type=GenerateTaskType.CHAT,
+                caller_type=GenerateTaskCallerType.STORYBOARD,
+                caller_id=str(project_id) if project_id else "",
+            )
+            self._sm.commit_write()
+        except Exception:
+            self._sm.rollback_write()
+            raise
+
+        logger.info(f"分镜生成任务已创建：task_id={task_id}, provider_task_id={provider_task_id}, model={model}, 风格：{art_style or '默认'}")
 
         payload = {
             "model": model,
@@ -265,6 +465,14 @@ class ChatModelService:
                         continue
                     else:
                         logger.error(f"请求超时（{timeout}秒），已重试 {max_retries} 次，放弃")
+                        # 更新任务状态为失败
+                        self._sm.begin_write()
+                        try:
+                            task_repo.update_status(task_id, "failed", error_message=f"请求超时（{timeout}秒）")
+                            task_repo.mark_completed(task_id)
+                            self._sm.commit_write()
+                        except Exception:
+                            self._sm.rollback_write()
                         raise RuntimeError(f"分镜生成请求超时（{timeout}秒），请检查网络连接或稍后重试")
 
             if self._ai_logger:
@@ -281,12 +489,28 @@ class ChatModelService:
             output = data.get("output", {})
             choices = output.get("choices", [])
             if not choices:
+                # 更新任务状态为失败
+                self._sm.begin_write()
+                try:
+                    task_repo.update_status(task_id, "failed", error_message="API 未返回有效内容")
+                    task_repo.mark_completed(task_id)
+                    self._sm.commit_write()
+                except Exception:
+                    self._sm.rollback_write()
                 raise RuntimeError("API 未返回有效内容")
 
             message = choices[0].get("message", {})
             storyboard_content = message.get("content", "").strip()
 
             if not storyboard_content:
+                # 更新任务状态为失败
+                self._sm.begin_write()
+                try:
+                    task_repo.update_status(task_id, "failed", error_message="API 返回的内容为空")
+                    task_repo.mark_completed(task_id)
+                    self._sm.commit_write()
+                except Exception:
+                    self._sm.rollback_write()
                 raise RuntimeError("API 返回的内容为空")
 
             logger.info("分镜生成成功")
@@ -296,13 +520,38 @@ class ChatModelService:
             shots = ShotParser.parse(storyboard_content)
             logger.info(f"分镜解析成功：共 {len(shots)} 个镜头")
 
-            return shots
+            # 更新任务状态为成功
+            self._sm.begin_write()
+            try:
+                task_repo.update_status(task_id, "succeeded")
+                task_repo.mark_completed(task_id)
+                self._sm.commit_write()
+            except Exception:
+                self._sm.rollback_write()
+
+            return shots, task_id
 
         except requests.exceptions.RequestException as e:
             logger.exception("调用文本模型 API 失败")
+            # 更新任务状态为失败
+            self._sm.begin_write()
+            try:
+                task_repo.update_status(task_id, "failed", error_message=str(e))
+                task_repo.mark_completed(task_id)
+                self._sm.commit_write()
+            except Exception:
+                self._sm.rollback_write()
             raise RuntimeError(f"网络请求失败：{e}")
         except (KeyError, ValueError) as e:
             logger.exception("解析 API 响应失败")
+            # 更新任务状态为失败
+            self._sm.begin_write()
+            try:
+                task_repo.update_status(task_id, "failed", error_message=f"解析响应失败：{e}")
+                task_repo.mark_completed(task_id)
+                self._sm.commit_write()
+            except Exception:
+                self._sm.rollback_write()
             raise RuntimeError(f"解析响应失败：{e}")
 
     def generate_design_image_prompt(
@@ -316,7 +565,7 @@ class ChatModelService:
         model: str | None = None,
         project_id: int | None = None,
         project_name: str | None = None,
-    ) -> str:
+    ) -> tuple[str, int]:
         messages = self._prompt_builder.build_design_image_prompt_messages(
             content=content,
             shot_size=shot_size,
@@ -334,6 +583,8 @@ class ChatModelService:
             project_name=project_name,
             module="storyboard",
             context="分镜设计图提示词生成",
+            caller_type=GenerateTaskCallerType.STORYBOARD,
+            caller_id=str(project_id) if project_id else "",
         )
 
     def generate_character_design_image_prompt(
@@ -345,7 +596,7 @@ class ChatModelService:
         model: str | None = None,
         project_id: int | None = None,
         project_name: str | None = None,
-    ) -> str:
+    ) -> tuple[str, int]:
         messages = self._prompt_builder.build_character_design_image_prompt_messages(
             character_name=character_name,
             description=description,
@@ -361,6 +612,8 @@ class ChatModelService:
             project_name=project_name,
             module="character",
             context=f"角色设计图提示词生成 - {character_name}",
+            caller_type=GenerateTaskCallerType.CHARACTER,
+            caller_id=str(project_id) if project_id else "",
         )
 
     def optimize_screenplay(
@@ -371,8 +624,8 @@ class ChatModelService:
         model: str | None = None,
         project_id: int | None = None,
         project_name: str | None = None,
-    ) -> tuple[str, list[dict]]:
-        """优化剧本：返回 (title, scenes)"""
+    ) -> tuple[str, list[dict], int]:
+        """优化剧本：返回 (title, scenes, task_id)"""
         messages = self._prompt_builder.build_screenplay_optimization_messages(
             outline_content=outline_content,
             current_script=current_script,
@@ -380,20 +633,22 @@ class ChatModelService:
         )
 
         logger.info(f"调用文本模型优化剧本，模型：{model or self.DEFAULT_MODEL}")
-        result = self.chat(
+        result, task_id = self.chat(
             messages=messages,
             model=model,
             project_id=project_id,
             project_name=project_name,
             module="script",
             context="剧本优化",
+            caller_type=GenerateTaskCallerType.SCRIPT,
+            caller_id=str(project_id) if project_id else "",
         )
 
         from utils.script_parser import ScriptParser
         title, scenes = ScriptParser.parse(result)
         logger.info(f"剧本解析成功：标题='{title}'，共 {len(scenes)} 场")
 
-        return title, scenes
+        return title, scenes, task_id
 
     def generate_characters(
         self,
@@ -403,8 +658,8 @@ class ChatModelService:
         model: str | None = None,
         project_id: int | None = None,
         project_name: str | None = None,
-    ) -> list[dict]:
-        """生成角色：返回角色列表"""
+    ) -> tuple[list[dict], int]:
+        """生成角色：返回 (角色列表, task_id)"""
         messages = self._prompt_builder.build_character_generation_messages(
             outline_content=outline_content,
             script_content=script_content,
@@ -412,19 +667,21 @@ class ChatModelService:
         )
 
         logger.info(f"调用文本模型生成角色，模型：{model or self.DEFAULT_MODEL}")
-        result = self.chat(
+        result, task_id = self.chat(
             messages=messages,
             model=model,
             project_id=project_id,
             project_name=project_name,
             module="character",
             context="角色生成",
+            caller_type=GenerateTaskCallerType.CHARACTER,
+            caller_id=str(project_id) if project_id else "",
         )
 
         from utils.character_parser import CharacterParser
         characters = CharacterParser.parse(result)
         logger.info(f"角色解析成功：共 {len(characters)} 个角色")
-        return characters
+        return characters, task_id
 
     def optimize_characters(
         self,
@@ -435,8 +692,8 @@ class ChatModelService:
         model: str | None = None,
         project_id: int | None = None,
         project_name: str | None = None,
-    ) -> list[dict]:
-        """优化角色：返回角色列表"""
+    ) -> tuple[list[dict], int]:
+        """优化角色：返回 (角色列表, task_id)"""
         messages = self._prompt_builder.build_character_optimization_messages(
             outline_content=outline_content,
             script_content=script_content,
@@ -445,19 +702,21 @@ class ChatModelService:
         )
 
         logger.info(f"调用文本模型优化角色，模型：{model or self.DEFAULT_MODEL}")
-        result = self.chat(
+        result, task_id = self.chat(
             messages=messages,
             model=model,
             project_id=project_id,
             project_name=project_name,
             module="character",
             context="角色优化",
+            caller_type=GenerateTaskCallerType.CHARACTER,
+            caller_id=str(project_id) if project_id else "",
         )
 
         from utils.character_parser import CharacterParser
         characters = CharacterParser.parse(result)
         logger.info(f"角色解析成功：共 {len(characters)} 个角色")
-        return characters
+        return characters, task_id
 
     def optimize_storyboard(
         self,
@@ -469,8 +728,8 @@ class ChatModelService:
         model: str | None = None,
         project_id: int | None = None,
         project_name: str | None = None,
-    ) -> list[dict]:
-        """优化分镜：返回分镜列表"""
+    ) -> tuple[list[dict], int]:
+        """优化分镜：返回 (分镜列表, task_id)"""
         messages = self._prompt_builder.build_storyboard_optimization_messages(
             outline_content=outline_content,
             script_content=script_content,
@@ -480,20 +739,22 @@ class ChatModelService:
         )
 
         logger.info(f"调用文本模型优化分镜，模型：{model or self.DEFAULT_MODEL}")
-        result = self.chat(
+        result, task_id = self.chat(
             messages=messages,
             model=model,
             project_id=project_id,
             project_name=project_name,
             module="storyboard",
             context="分镜优化",
+            caller_type=GenerateTaskCallerType.STORYBOARD,
+            caller_id=str(project_id) if project_id else "",
         )
 
         from utils.shot_parser import ShotParser
 
         shots = ShotParser.parse(result)
         logger.info(f"分镜解析成功：共 {len(shots)} 个镜头")
-        return shots
+        return shots, task_id
 
     def refine_character_description(
         self,
@@ -503,8 +764,8 @@ class ChatModelService:
         model: str | None = None,
         project_id: int | None = None,
         project_name: str | None = None,
-    ) -> str:
-        """根据用户要求修改单个角色的形象描述，返回修改后的描述文本"""
+    ) -> tuple[str, int]:
+        """根据用户要求修改单个角色的形象描述，返回 (修改后的描述文本, task_id)"""
         messages = self._prompt_builder.build_character_description_refine_messages(
             character_name=character_name,
             current_description=current_description,
@@ -512,15 +773,17 @@ class ChatModelService:
         )
 
         logger.info(f"调用文本模型修改角色描述，角色：{character_name}，模型：{model or self.DEFAULT_MODEL}")
-        result = self.chat(
+        result, task_id = self.chat(
             messages=messages,
             model=model,
             project_id=project_id,
             project_name=project_name,
             module="character",
             context=f"角色描述优化 - {character_name}",
+            caller_type=GenerateTaskCallerType.CHARACTER,
+            caller_id=str(project_id) if project_id else "",
         )
-        return result.strip()
+        return result.strip(), task_id
 
     def generate_cover_image_prompt(
         self,
@@ -531,7 +794,7 @@ class ChatModelService:
         visual_style: str = "",
         model: str | None = None,
         project_id: int | None = None,
-    ) -> str:
+    ) -> tuple[str, int]:
         """生成项目封面图提示词"""
         messages = self._prompt_builder.build_cover_image_prompt_messages(
             project_name=project_name,
@@ -549,4 +812,6 @@ class ChatModelService:
             project_name=project_name,
             module="cover",
             context="项目封面图提示词生成",
+            caller_type=GenerateTaskCallerType.COVER,
+            caller_id=str(project_id) if project_id else "",
         )

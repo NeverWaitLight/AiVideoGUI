@@ -10,8 +10,10 @@ from PySide6.QtCore import QObject, QThread, Signal
 if TYPE_CHECKING:
     from di import ApplicationContainer
 
+from models.enums import GenerateTaskCallerType
 from utils import paths
 from utils.image_processor import to_black_and_white
+from utils.path_converter import to_relative_path
 
 
 class CoverGenerationWorker(QObject):
@@ -32,6 +34,9 @@ class CoverGenerationWorker(QObject):
         image_service,
         project_service,
         workspace_root: str,
+        config_manager=None,
+        session_manager=None,
+        ai_request_logger=None,
         parent=None,
     ):
         super().__init__(parent)
@@ -47,10 +52,13 @@ class CoverGenerationWorker(QObject):
         self._image_service = image_service
         self._project_service = project_service
         self._workspace_root = workspace_root
+        self._config_manager = config_manager
+        self._session_manager = session_manager
+        self._ai_request_logger = ai_request_logger
+        self._image_worker = None
 
     def run(self):
         try:
-            # 构建角色信息字符串
             names_list = [n.strip() for n in self._character_names.split(",")]
             descriptions_list = [d.strip() for d in self._appearances.split("\n\n")]
 
@@ -59,8 +67,7 @@ class CoverGenerationWorker(QObject):
                 character_info_parts.append(f"角色{i}：{name}\n形象描述：{desc}")
             character_info = "\n\n".join(character_info_parts)
 
-            # 生成封面图提示词
-            cover_prompt = self._chat_model_service.generate_cover_image_prompt(
+            cover_prompt, chat_task_id = self._chat_model_service.generate_cover_image_prompt(
                 project_name=self._project_name,
                 aspect_ratio=self._aspect_ratio,
                 outline_content=self._outline_content,
@@ -69,7 +76,6 @@ class CoverGenerationWorker(QObject):
                 project_id=self._project_id,
             )
 
-            # 转换宽高比为尺寸
             size_map = {
                 "16:9": "1696*960",
                 "9:16": "960*1696",
@@ -79,40 +85,66 @@ class CoverGenerationWorker(QObject):
             }
             size = size_map.get(self._aspect_ratio, "1696*960")
 
-            # 生成封面图
-            save_path = os.path.join(
-                paths.projects_dir(self._workspace_root),
-                str(self._project_id),
-                f"cover-{self._project_id}.png",
+            local_path = to_relative_path(
+                os.path.join(
+                    paths.projects_dir(self._workspace_root),
+                    str(self._project_id),
+                    f"cover-{self._project_id}.png",
+                ),
+                self._workspace_root,
             )
 
-            result_path = self._image_service.generate(
+            provider_task_id = self._image_service.generate(
                 prompt=cover_prompt,
-                save_path=save_path,
+                local_path=local_path,
                 size=size,
                 project_id=self._project_id,
                 project_name=self._project_name,
                 module="cover",
                 context="项目封面图生成",
+                caller_type=GenerateTaskCallerType.COVER,
+                caller_id=str(self._project_id),
+                parent_ids=str(chat_task_id),
             )
 
-            # 更新项目封面路径（相对路径）
-            workspace_dir = paths.workspace_dir(self._workspace_root)
-            relative_path = os.path.relpath(result_path, workspace_dir).replace("\\", "/")
+            from service.background.image_generation_worker import ImageGenerationWorker
+            self._image_worker = ImageGenerationWorker(
+                provider_task_id=provider_task_id,
+                config_manager=self._config_manager,
+                session_manager=self._session_manager,
+                workspace_root=self._workspace_root,
+                ai_request_logger=self._ai_request_logger,
+            )
 
-            # 获取项目完整信息以便更新
-            project = self._project_service.get_project(self._project_id)
-            if project:
-                self._project_service.update_project(
-                    project_id=self._project_id,
-                    name=project.name,
-                    resolution=project.resolution,
-                    aspect_ratio=project.aspect_ratio,
-                    cover_image=relative_path,
-                    visual_style_id=project.visual_style_id,
-                )
+            def on_image_finished(task_id: str, image_path: str):
+                try:
+                    from utils.path_converter import to_relative_path
+                    relative_path = to_relative_path(image_path, self._workspace_root)
 
-            self.finished.emit(relative_path)
+                    project = self._project_service.get_project(self._project_id)
+                    if project:
+                        self._project_service.update_project(
+                            project_id=self._project_id,
+                            name=project.name,
+                            resolution=project.resolution,
+                            aspect_ratio=project.aspect_ratio,
+                            cover_image=relative_path,
+                            visual_style_id=project.visual_style_id,
+                        )
+
+                    self.finished.emit(relative_path)
+                except Exception as e:
+                    error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+                    self.failed.emit(error_msg)
+
+            def on_image_failed(task_id: str, error: str):
+                self.failed.emit(error)
+
+            self._image_worker.finished.connect(on_image_finished)
+            self._image_worker.failed.connect(on_image_failed)
+            self._image_worker.finished.connect(self._image_worker.deleteLater)
+            self._image_worker.start()
+            self._image_worker.wait()
 
         except Exception as e:
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
@@ -133,7 +165,7 @@ class ScriptGenerateWorker(QThread):
 
     def run(self):
         try:
-            title, scenes = self._text_service.generate_script(
+            title, scenes, task_id = self._text_service.generate_script(
                 self._outline_content,
                 project_id=self._project_id,
                 project_name=self._project_name,
@@ -159,7 +191,7 @@ class StoryboardGenerateWorker(QThread):
 
     def run(self):
         try:
-            result = self._text_service.generate_storyboard(
+            result, task_id = self._text_service.generate_storyboard(
                 self._script_content, self._art_style,
                 project_id=self._project_id,
                 project_name=self._project_name,
@@ -186,7 +218,7 @@ class CharacterWorker(QThread):
     def run(self):
         try:
             if self._mode == 'generate':
-                characters = self._text_service.generate_characters(
+                characters, task_id = self._text_service.generate_characters(
                     outline_content=self._kwargs['outline_content'],
                     script_content=self._kwargs['script_content'],
                     user_requirement=self._kwargs['user_requirement'],
@@ -194,7 +226,7 @@ class CharacterWorker(QThread):
                     project_name=self._project_name,
                 )
             else:
-                characters = self._text_service.optimize_characters(
+                characters, task_id = self._text_service.optimize_characters(
                     outline_content=self._kwargs['outline_content'],
                     script_content=self._kwargs['script_content'],
                     current_characters=self._kwargs['current_characters'],
@@ -224,7 +256,7 @@ class ScreenplayOptimizeWorker(QThread):
 
     def run(self):
         try:
-            title, scenes = self._text_service.optimize_screenplay(
+            title, scenes, task_id = self._text_service.optimize_screenplay(
                 self._outline_content,
                 self._current_script,
                 self._user_requirement,
@@ -256,7 +288,7 @@ class StoryboardOptimizeWorker(QThread):
 
     def run(self):
         try:
-            shots = self._text_service.optimize_storyboard(
+            shots, task_id = self._text_service.optimize_storyboard(
                 self._outline_content,
                 self._script_content,
                 self._character_content,
@@ -279,7 +311,9 @@ class DesignImageWorker(QThread):
     def __init__(
         self, text_service, image_service, storyboard_service,
         storyboard, shot_size_text: str, character_info: str, project_id: int,
-        visual_style: str = "", project_name: str | None = None, parent=None,
+        visual_style: str = "", project_name: str | None = None,
+        config_manager=None, session_manager=None, ai_request_logger=None,
+        parent=None,
     ):
         super().__init__(parent)
         self._text_service = text_service
@@ -291,11 +325,15 @@ class DesignImageWorker(QThread):
         self._project_id = project_id
         self._visual_style = visual_style
         self._project_name = project_name
+        self._config_manager = config_manager
+        self._session_manager = session_manager
+        self._ai_request_logger = ai_request_logger
+        self._image_worker = None
 
     def run(self):
         try:
             self.progress_update.emit("正在生成设计图提示词...")
-            image_prompt = self._text_service.generate_design_image_prompt(
+            image_prompt, chat_task_id = self._text_service.generate_design_image_prompt(
                 content=self._storyboard.content,
                 shot_size=self._shot_size_text,
                 camera_movement=self._storyboard.camera_movement,
@@ -306,25 +344,59 @@ class DesignImageWorker(QThread):
                 project_name=self._project_name,
             )
 
-            self.progress_update.emit("正在调用图片生成模型...")
-            save_path = os.path.join(
-                paths.projects_dir(paths.workspace_root()),
-                str(self._project_id),
-                f"design-{self._storyboard.scene_number}-{self._storyboard.shot_number}.png",
+            self.progress_update.emit("正在提交图片生成任务...")
+            local_path = to_relative_path(
+                os.path.join(
+                    paths.projects_dir(paths.workspace_root()),
+                    str(self._project_id),
+                    f"design-{self._storyboard.scene_number}-{self._storyboard.shot_number}.png",
+                ),
+                paths.workspace_root(),
             )
-            result_path = self._image_service.generate(
-                prompt=image_prompt, save_path=save_path,
+
+            provider_task_id = self._image_service.generate(
+                prompt=image_prompt,
+                local_path=local_path,
                 project_id=self._project_id,
                 project_name=self._project_name,
                 module="storyboard",
                 context="分镜设计图生成",
+                caller_type=GenerateTaskCallerType.STORYBOARD,
+                caller_id=str(self._storyboard.id),
+                parent_ids=str(chat_task_id),
             )
-            to_black_and_white(result_path)
 
-            self._storyboard_service.update_storyboard(
-                storyboard_id=self._storyboard.id, design_image=result_path,
+            self.progress_update.emit("图片生成中，请稍候...")
+
+            from service.background.image_generation_worker import ImageGenerationWorker
+            self._image_worker = ImageGenerationWorker(
+                provider_task_id=provider_task_id,
+                config_manager=self._config_manager,
+                session_manager=self._session_manager,
+                workspace_root=self._workspace_root,
+                ai_request_logger=self._ai_request_logger,
             )
-            self.finished.emit(result_path)
+
+            def on_image_finished(task_id: str, image_path: str):
+                try:
+                    to_black_and_white(image_path)
+                    self._storyboard_service.update_storyboard(
+                        storyboard_id=self._storyboard.id, design_image=image_path,
+                    )
+                    self.finished.emit(image_path)
+                except Exception as e:
+                    error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+                    self.failed.emit(error_msg)
+
+            def on_image_failed(task_id: str, error: str):
+                self.failed.emit(error)
+
+            self._image_worker.finished.connect(on_image_finished)
+            self._image_worker.failed.connect(on_image_failed)
+            self._image_worker.finished.connect(self._image_worker.deleteLater)
+            self._image_worker.start()
+            self._image_worker.wait()
+
         except Exception as e:
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
             self.failed.emit(error_msg)
@@ -338,7 +410,9 @@ class BatchDesignImageWorker(QThread):
 
     def __init__(
         self, text_service, image_service, storyboard_service, character_service,
-        shot_list: list[dict], visual_style: str = "", project_name: str | None = None, parent=None,
+        shot_list: list[dict], visual_style: str = "", project_name: str | None = None,
+        config_manager=None, session_manager=None, ai_request_logger=None,
+        parent=None,
     ):
         super().__init__(parent)
         self._text_service = text_service
@@ -348,6 +422,9 @@ class BatchDesignImageWorker(QThread):
         self._shot_list = shot_list
         self._visual_style = visual_style
         self._project_name = project_name
+        self._config_manager = config_manager
+        self._session_manager = session_manager
+        self._ai_request_logger = ai_request_logger
 
     def run(self):
         success_count = 0
@@ -388,7 +465,7 @@ class BatchDesignImageWorker(QThread):
                     character_info = "\n".join(parts)
 
                 shot_size_text = shot_size_map.get(shot_data["shot_size"].value, "中景")
-                image_prompt = self._text_service.generate_design_image_prompt(
+                image_prompt, chat_task_id = self._text_service.generate_design_image_prompt(
                     content=content,
                     shot_size=shot_size_text,
                     camera_movement=shot_data.get("camera_movement", ""),
@@ -399,26 +476,65 @@ class BatchDesignImageWorker(QThread):
                     project_name=self._project_name,
                 )
 
-                save_path = os.path.join(
-                    paths.projects_dir(paths.workspace_root()),
-                    str(project_id),
-                    f"design-{scene_number}-{shot_number}.png",
+                local_path = to_relative_path(
+                    os.path.join(
+                        paths.projects_dir(paths.workspace_root()),
+                        str(project_id),
+                        f"design-{scene_number}-{shot_number}.png",
+                    ),
+                    paths.workspace_root(),
                 )
-                result_path = self._image_service.generate(
-                    prompt=image_prompt, save_path=save_path,
+
+                provider_task_id = self._image_service.generate(
+                    prompt=image_prompt,
+                    local_path=local_path,
                     project_id=project_id,
                     project_name=self._project_name,
                     module="storyboard",
                     context="分镜设计图批量生成",
+                    caller_type=GenerateTaskCallerType.STORYBOARD,
+                    caller_id=str(storyboard_id),
+                    parent_ids=str(chat_task_id),
                 )
-                to_black_and_white(result_path)
 
-                self._storyboard_service.update_storyboard(
-                    storyboard_id=storyboard_id, design_image=result_path,
+                from service.background.image_generation_worker import ImageGenerationWorker
+                image_worker = ImageGenerationWorker(
+                    provider_task_id=provider_task_id,
+                    config_manager=self._config_manager,
+                    session_manager=self._session_manager,
+                    workspace_root=self._workspace_root,
+                    ai_request_logger=self._ai_request_logger,
                 )
-                success_count += 1
-                self.shot_design_done.emit(storyboard_id, result_path)
-                self.progress_update.emit(idx, f"完成 {scene_number}-{shot_number}", f"({idx}/{total})")
+
+                generation_success = [False]
+                result_path_holder = [""]
+
+                def on_image_finished(task_id: str, image_path: str):
+                    try:
+                        to_black_and_white(image_path)
+                        self._storyboard_service.update_storyboard(
+                            storyboard_id=storyboard_id, design_image=image_path,
+                        )
+                        generation_success[0] = True
+                        result_path_holder[0] = image_path
+                    except Exception:
+                        generation_success[0] = False
+
+                def on_image_failed(task_id: str, error: str):
+                    generation_success[0] = False
+
+                image_worker.finished.connect(on_image_finished)
+                image_worker.failed.connect(on_image_failed)
+                image_worker.finished.connect(image_worker.deleteLater)
+                image_worker.start()
+                image_worker.wait()
+
+                if generation_success[0]:
+                    success_count += 1
+                    self.shot_design_done.emit(storyboard_id, result_path_holder[0])
+                    self.progress_update.emit(idx, f"完成 {scene_number}-{shot_number}", f"({idx}/{total})")
+                else:
+                    self.progress_update.emit(idx, f"生成失败", f"({idx}/{total})")
 
             except Exception:
                 self.progress_update.emit(idx, f"生成失败", f"({idx}/{total})")
@@ -432,7 +548,9 @@ class CharacterDesignImageWorker(QThread):
     progress_update = Signal(str)
 
     def __init__(self, text_service, image_service, character_service, character, project_id: int,
-                 user_requirement: str = "", visual_style: str = "", project_name: str | None = None, parent=None):
+                 user_requirement: str = "", visual_style: str = "", project_name: str | None = None,
+                 config_manager=None, session_manager=None, ai_request_logger=None,
+                 parent=None):
         super().__init__(parent)
         self._text_service = text_service
         self._image_service = image_service
@@ -442,11 +560,15 @@ class CharacterDesignImageWorker(QThread):
         self._project_name = project_name
         self._user_requirement = user_requirement
         self._visual_style = visual_style
+        self._config_manager = config_manager
+        self._session_manager = session_manager
+        self._ai_request_logger = ai_request_logger
+        self._image_worker = None
 
     def run(self):
         try:
             self.progress_update.emit("正在生成角色设计图提示词...")
-            image_prompt = self._text_service.generate_character_design_image_prompt(
+            image_prompt, chat_task_id = self._text_service.generate_character_design_image_prompt(
                 character_name=self._character.name,
                 description=self._character.description,
                 user_requirement=self._user_requirement,
@@ -455,24 +577,58 @@ class CharacterDesignImageWorker(QThread):
                 project_name=self._project_name,
             )
 
-            self.progress_update.emit("正在调用图片生成模型...")
-            save_path = os.path.join(
-                paths.projects_dir(paths.workspace_root()),
-                str(self._project_id),
-                f"char-{self._character.uuid}.png",
+            self.progress_update.emit("正在提交图片生成任务...")
+            local_path = to_relative_path(
+                os.path.join(
+                    paths.projects_dir(paths.workspace_root()),
+                    str(self._project_id),
+                    f"char-{self._character.uuid}.png",
+                ),
+                paths.workspace_root(),
             )
-            result_path = self._image_service.generate(
-                prompt=image_prompt, save_path=save_path,
+
+            provider_task_id = self._image_service.generate(
+                prompt=image_prompt,
+                local_path=local_path,
                 project_id=self._project_id,
                 project_name=self._project_name,
                 module="character",
                 context=f"角色设计图生成 - {self._character.name}",
+                caller_type=GenerateTaskCallerType.CHARACTER,
+                caller_id=self._character.uuid,
+                parent_ids=str(chat_task_id),
             )
 
-            self._character_service.update_character(
-                character_uuid=self._character.uuid, design_image=result_path,
+            self.progress_update.emit("图片生成中，请稍候...")
+
+            from service.background.image_generation_worker import ImageGenerationWorker
+            self._image_worker = ImageGenerationWorker(
+                provider_task_id=provider_task_id,
+                config_manager=self._config_manager,
+                session_manager=self._session_manager,
+                workspace_root=self._workspace_root,
+                ai_request_logger=self._ai_request_logger,
             )
-            self.finished.emit(result_path)
+
+            def on_image_finished(task_id: str, image_path: str):
+                try:
+                    self._character_service.update_character(
+                        character_uuid=self._character.uuid, design_image=image_path,
+                    )
+                    self.finished.emit(image_path)
+                except Exception as e:
+                    error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+                    self.failed.emit(error_msg)
+
+            def on_image_failed(task_id: str, error: str):
+                self.failed.emit(error)
+
+            self._image_worker.finished.connect(on_image_finished)
+            self._image_worker.failed.connect(on_image_failed)
+            self._image_worker.finished.connect(self._image_worker.deleteLater)
+            self._image_worker.start()
+            self._image_worker.wait()
+
         except Exception as e:
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
             self.failed.emit(error_msg)
@@ -495,7 +651,7 @@ class CharacterRefineWorker(QThread):
 
     def run(self):
         try:
-            result = self._text_service.refine_character_description(
+            result, task_id = self._text_service.refine_character_description(
                 character_name=self._character_name,
                 current_description=self._current_description,
                 user_requirement=self._user_requirement,
@@ -525,7 +681,7 @@ class OptimizeWorker(QThread):
 
     def run(self):
         try:
-            reply = self._text_service.chat(
+            reply, task_id = self._text_service.chat(
                 self._messages,
                 project_id=self._project_id,
                 project_name=self._project_name,
@@ -633,16 +789,19 @@ class BatchGenerationController(QThread):
 
                 key = (scene_number, shot_number)
                 gen_counts[key] = gen_counts.get(key, 0) + 1
-                save_path = os.path.join(
-                    paths.projects_dir(paths.workspace_root()),
-                    str(project_id), f"{scene_number}-{shot_number}-{gen_counts[key]}.mp4",
+                local_path = to_relative_path(
+                    os.path.join(
+                        paths.projects_dir(paths.workspace_root()),
+                        str(project_id), f"{scene_number}-{shot_number}-{gen_counts[key]}.mp4",
+                    ),
+                    paths.workspace_root(),
                 )
 
                 provider_task_id = self._service.submit_task(
                     prompt=prompt,
                     provider_name=self._provider_name,
                     params=params,
-                    save_path=save_path,
+                    local_path=local_path,
                     storyboard_id=shot_id,
                     reference_images=reference_images,
                     project_id=self._project.id,

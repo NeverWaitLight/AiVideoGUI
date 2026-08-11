@@ -63,6 +63,7 @@ class AppBridge(QObject):
             container.visual_style_service(),
             container.chat_model_service(),
             container.image_service(),
+            container,
             self,
         )
         self._projects.set_workspace_root(container.config.workspace_root())
@@ -91,7 +92,7 @@ class AppBridge(QObject):
             self._character_service, self._text_model_service,
             self._image_service, self._story_outline_service,
             self._screenplay_service, self._project_service,
-            container.visual_style_service(), self,
+            container.visual_style_service(), container, self,
         )
         self._settings_bridge = SettingsBridge(self._config, self)
         self._visual_styles = VisualStyleBridge(

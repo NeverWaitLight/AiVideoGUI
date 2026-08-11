@@ -23,7 +23,8 @@ class CharacterBridge(QObject):
     bridge_error = Signal(str)
 
     def __init__(self, character_service, text_model_service, image_service,
-                 story_outline_service, screenplay_service, project_service=None, visual_style_service=None, parent=None):
+                 story_outline_service, screenplay_service, project_service=None, visual_style_service=None,
+                 container=None, parent=None):
         super().__init__(parent)
         self._character_service = character_service
         self._text_model_service = text_model_service
@@ -32,6 +33,7 @@ class CharacterBridge(QObject):
         self._screenplay_service = screenplay_service
         self._project_service = project_service
         self._visual_style_service = visual_style_service
+        self._container = container
         self._model = CharacterListModel(self)
         self._workers = []
         self._optimizing = False
@@ -140,6 +142,9 @@ class CharacterBridge(QObject):
                 character_service=self._character_service, character=character, project_id=project_id,
                 user_requirement=user_requirement, visual_style=visual_style,
                 project_name=self._get_project_name(project_id),
+                config_manager=self._container.config_manager() if hasattr(self, '_container') else None,
+                session_manager=self._container.session_manager() if hasattr(self, '_container') else None,
+                ai_request_logger=self._container.ai_request_logger() if hasattr(self, '_container') else None,
             )
             worker.finished.connect(lambda path: self._on_design_done(char_uuid, path))
             worker.failed.connect(self.design_image_failed.emit)
