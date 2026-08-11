@@ -76,8 +76,6 @@ class ProjectService:
             raise
 
     def delete_project(self, project_id: int) -> None:
-        logger.info(f"开始删除项目：project_id={project_id}")
-
         project_repo = self._sm.get_repo(repo_class=ProjectRepository)
 
         self._sm.begin_write()
@@ -93,11 +91,8 @@ class ProjectService:
         if os.path.isdir(proj_dir):
             try:
                 shutil.rmtree(proj_dir)
-                logger.info(f"已删除项目目录：{proj_dir}")
             except OSError as e:
                 logger.warning(f"删除项目目录失败 {proj_dir}: {e}")
-
-        logger.info(f"项目删除完成：project_id={project_id}")
 
     def update_cover_image(self, project_id: int, cover_image: str) -> bool:
         project_repo = self._sm.get_repo(repo_class=ProjectRepository)

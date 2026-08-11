@@ -104,7 +104,6 @@ class CharacterService:
         try:
             character_repo.update(dto=updated_character)
             self._sm.commit_write()
-            logger.info(f"更新角色：uuid={character_uuid}")
         except Exception as e:
             self._sm.rollback_write()
             logger.error(f"更新角色失败：{e}")
@@ -117,7 +116,6 @@ class CharacterService:
         try:
             character_repo.delete(character_uuid)
             self._sm.commit_write()
-            logger.info(f"删除角色：uuid={character_uuid}")
         except Exception as e:
             self._sm.rollback_write()
             logger.error(f"删除角色失败：{e}")
@@ -130,7 +128,6 @@ class CharacterService:
         try:
             character_repo.batch_create(characters=characters)
             self._sm.commit_write()
-            logger.info(f"批量创建 {len(characters)} 个角色")
         except Exception as e:
             self._sm.rollback_write()
             logger.error(f"批量创建角色失败：{e}")
@@ -166,7 +163,6 @@ class CharacterService:
         try:
             history_repo.save(history)
             self._sm.commit_write()
-            logger.info(f"保存角色历史：uuid={character_uuid}")
         except Exception as e:
             self._sm.rollback_write()
             logger.error(f"保存角色历史失败：{e}")

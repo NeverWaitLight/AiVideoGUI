@@ -73,7 +73,6 @@ class StoryboardService:
         try:
             created = repo.create(dto=storyboard)
             self._session_mgr.commit_write()
-            logger.info(f"创建分镜：ID {created.id}，场次 {scene_number}-{shot_number}")
             return created
         except Exception:
             self._session_mgr.rollback_write()
@@ -86,7 +85,6 @@ class StoryboardService:
             for storyboard in storyboards:
                 repo.create(storyboard)
             self._session_mgr.commit_write()
-            logger.info(f"批量创建 {len(storyboards)} 个分镜")
         except Exception:
             self._session_mgr.rollback_write()
             raise
@@ -138,7 +136,6 @@ class StoryboardService:
 
             repo.update(dto=storyboard)
             self._session_mgr.commit_write()
-            logger.info(f"更新分镜：storyboard_id={storyboard_id}")
         except Exception:
             self._session_mgr.rollback_write()
             raise
@@ -149,7 +146,6 @@ class StoryboardService:
         try:
             repo.delete(storyboard_id)
             self._session_mgr.commit_write()
-            logger.info(f"删除分镜：storyboard_id={storyboard_id}")
         except Exception:
             self._session_mgr.rollback_write()
             raise
@@ -195,7 +191,6 @@ class StoryboardService:
                 ))
 
             self._session_mgr.commit_write()
-            logger.info(f"恢复分镜历史：project_id={project_id}, created_at={created_at}")
         except Exception:
             self._session_mgr.rollback_write()
             raise

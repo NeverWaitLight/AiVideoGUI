@@ -70,7 +70,6 @@ class ConfigManager:
         # 如果发生了迁移，自动保存更新后的配置
         if migrated:
             self.save()
-            logger.info("已保存迁移后的配置")
 
     def save(self) -> None:
         data = {
@@ -97,7 +96,6 @@ class ConfigManager:
         os.makedirs(os.path.dirname(self._path), exist_ok=True)
         with open(self._path, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
-        logger.info(f"配置已保存：{self._path}")
 
     def get_provider(self, name: str) -> ProviderConfig | None:
         return self._providers.get(name)

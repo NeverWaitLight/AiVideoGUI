@@ -35,14 +35,12 @@ Item {
         function onSaved() {
             _dirty = false
             _loadedContent = textArea.text
-            alertDialog.info("提示", "大纲已保存")
         }
 
         function onOptimize_finished(result) {
             textArea.text = result
             _dirty = true
             aiOptimizeDialog.finishOptimizing()
-            alertDialog.info("成功", "大纲优化完成")
         }
 
         function onOptimize_failed(error) {

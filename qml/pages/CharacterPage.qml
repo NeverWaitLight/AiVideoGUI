@@ -45,14 +45,12 @@ Item {
             bridge.characters.load_for_project(projectId)
         }
         function onCharacter_saved() {
-            alertDialog.info("成功", "角色已保存")
         }
         function onDesign_image_ready(uuid, path) {
             if (uuid === _editingCharUuid) {
                 _editingDesignImage = path
             }
             characterAIDialog.finishWork()
-            alertDialog.info("成功", "角色设计图已生成")
         }
         function onDesign_image_failed(error) {
             characterAIDialog.finishWork()
@@ -63,7 +61,6 @@ Item {
                 descInput.text = desc
             }
             characterAIDialog.finishWork()
-            alertDialog.info("成功", "形象描述已修改")
         }
         function onDescription_refine_failed(error) {
             characterAIDialog.finishWork()
@@ -71,11 +68,9 @@ Item {
         }
         function onCharacters_generated(count) {
             aiOptimizeDialog.finishOptimizing()
-            alertDialog.info("成功", "角色生成完成，共 " + count + " 个角色")
         }
         function onCharacters_optimized(count) {
             aiOptimizeDialog.finishOptimizing()
-            alertDialog.info("成功", "角色优化完成，共 " + count + " 个角色")
         }
         function onBridge_error(msg) {
             aiOptimizeDialog.finishOptimizing()

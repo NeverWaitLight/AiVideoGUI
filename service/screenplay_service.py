@@ -50,7 +50,6 @@ class ScreenplayService:
         try:
             created_scene = screenplay_repo.save(scene)
             self._sm.commit_write()
-            logger.info(f"创建场次：ID {created_scene.id}，场次号：{scene_number}")
             return created_scene
         except Exception as e:
             self._sm.rollback_write()
@@ -90,7 +89,6 @@ class ScreenplayService:
         try:
             screenplay_repo.save(updated_scene)
             self._sm.commit_write()
-            logger.info(f"更新场次：{scene_id}")
         except Exception as e:
             self._sm.rollback_write()
             logger.error(f"更新场次失败: {e}")
@@ -103,7 +101,6 @@ class ScreenplayService:
         try:
             screenplay_repo.delete(scene_id)
             self._sm.commit_write()
-            logger.info(f"删除场次：{scene_id}")
         except Exception as e:
             self._sm.rollback_write()
             logger.error(f"删除场次失败: {e}")
@@ -134,7 +131,6 @@ class ScreenplayService:
                 history_repo.save(history)
 
             self._sm.commit_write()
-            logger.info(f"保存剧本历史：项目 {project_id}，共 {len(scenes)} 场")
         except Exception as e:
             self._sm.rollback_write()
             logger.error(f"保存剧本历史失败: {e}")
@@ -191,7 +187,6 @@ class ScreenplayService:
                 screenplay_repo.save(scene)
 
             self._sm.commit_write()
-            logger.info(f"恢复剧本历史版本：时间戳 {created_at}，共 {len(history_list)} 场")
         except Exception as e:
             self._sm.rollback_write()
             logger.error(f"恢复剧本历史版本失败: {e}")
@@ -229,7 +224,6 @@ class ScreenplayService:
                 created_scenes.append(created_scene)
 
             self._sm.commit_write()
-            logger.info(f"批量创建场次完成：{len(created_scenes)} 场")
             return created_scenes
         except Exception as e:
             self._sm.rollback_write()

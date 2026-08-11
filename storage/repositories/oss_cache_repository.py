@@ -72,8 +72,6 @@ class OSSFileCacheRepository:
         self.session.add(entity)
         self.session.commit()
 
-        logger.info(f"缓存已保存: {file_path} -> {oss_url} (过期: {expire_at})")
-
         return OSSFileCache(
             id=entity.id,
             local_path=entity.local_path,
@@ -91,9 +89,6 @@ class OSSFileCacheRepository:
             .delete()
         )
         self.session.commit()
-
-        if count > 0:
-            logger.info(f"已删除 {count} 条过期缓存记录")
 
         return count
 

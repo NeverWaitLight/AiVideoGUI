@@ -237,7 +237,6 @@ class MediaService:
         if media.thumbnail_path:
             self._try_remove_file(media.thumbnail_path)
 
-        logger.info(f"删除素材：{media.filename}")
         return True
 
     def delete_files(self, media_ids: list[str]) -> int:

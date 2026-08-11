@@ -674,8 +674,6 @@ class BatchGenerationController(QThread):
                 )
                 self._submitted_task_ids.add(provider_task_id)
                 submitted += 1
-                mode_info = f"(r2v, {len(reference_images)}张)" if reference_images else "(t2v)"
-                logger.info(f"批量生成 [{submitted}/{len(self._shot_list)}] 场{scene_number}镜{shot_number} 已提交 {mode_info}")
 
             except Exception as e:
                 logger.exception(f"批量生成提交失败：场{scene_number}镜{shot_number}")

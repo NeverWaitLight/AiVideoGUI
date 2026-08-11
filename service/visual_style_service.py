@@ -84,15 +84,12 @@ class VisualStyleService:
             raise
 
     def delete_style(self, style_id: int) -> None:
-        logger.info(f"开始删除风格：style_id={style_id}")
-
         style_repo = self._sm.get_repo(repo_class=VisualStyleRepository)
 
         self._sm.begin_write()
         try:
             style_repo.delete(style_id)
             self._sm.commit_write()
-            logger.info(f"风格删除完成：style_id={style_id}")
         except Exception as e:
             self._sm.rollback_write()
             logger.error(f"删除风格失败: {e}")

@@ -44,23 +44,19 @@ Item {
         target: bridge.storyboard
         function onShot_saved() {
             console.log("[StoryboardPage] onShot_saved")
-            alertDialog.info("成功", "分镜已保存")
         }
         function onShot_deleted() {
             console.log("[StoryboardPage] onShot_deleted")
-            alertDialog.info("成功", "分镜已删除")
             _showDetail = false
             _editingShotId = -1
         }
         function onStoryboard_generated(shotCount) {
             console.log("[StoryboardPage] onStoryboard_generated:", shotCount)
             aiOptimizeDialog.finishOptimizing()
-            alertDialog.info("成功", "分镜已生成，共 " + shotCount + " 个镜头")
         }
         function onStoryboard_optimized(shotCount) {
             console.log("[StoryboardPage] onStoryboard_optimized:", shotCount)
             aiOptimizeDialog.finishOptimizing()
-            alertDialog.info("成功", "分镜优化完成，共 " + shotCount + " 个镜头")
         }
         function onStoryboard_generation_failed(error) {
             console.log("[StoryboardPage] onStoryboard_generation_failed:", error)
@@ -70,7 +66,6 @@ Item {
         }
         function onDesign_image_ready(shotId, path) {
             console.log("[StoryboardPage] onDesign_image_ready:", shotId, path)
-            alertDialog.info("成功", "设计图已生成")
             _designImageVersion++
             if (_showDetail) _loadRelatedVideos()
         }
@@ -83,7 +78,6 @@ Item {
         }
         function onBatch_done(successCount, total) {
             console.log("[StoryboardPage] onBatch_done:", successCount, total)
-            alertDialog.info("完成", "批量设计图生成完成：成功 " + successCount + " / 总共 " + total)
         }
         function onBridge_error(msg) {
             console.log("[StoryboardPage] onError:", msg)

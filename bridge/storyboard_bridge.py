@@ -473,7 +473,6 @@ class StoryboardBridge(QObject):
                         style = self._visual_style_service.get_style(style_id)
                         if style:
                             visual_style = style.name
-                            logger.info(f"批量分镜设计图将使用视觉风格: {visual_style}")
                 else:
                     logger.warning(f"未找到项目 ID={project_id}")
             else:

@@ -77,7 +77,6 @@ class StoryOutlineBridge(QObject):
             self._service.update_story_outline(story_outline_id=self._outline_id, content=content)
             self._content = content
             self.saved.emit()
-            logger.info(f"保存故事大纲：{self._outline_id}")
         except Exception as e:
             logger.exception("保存故事大纲失败")
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"

@@ -43,25 +43,20 @@ Item {
         target: bridge.screenplay
 
         function onScene_saved() {
-            alertDialog.info("成功", "场次已保存")
         }
 
         function onHistory_saved() {
-            alertDialog.info("成功", "历史版本已保存")
         }
 
         function onHistory_restored() {
-            alertDialog.info("成功", "已恢复到历史版本")
         }
 
         function onScript_generated(title, sceneCount) {
             aiOptimizeDialog.finishOptimizing()
-            alertDialog.info("成功", "剧本已生成，共 " + sceneCount + " 场")
         }
 
         function onScript_optimized(sceneCount) {
             aiOptimizeDialog.finishOptimizing()
-            alertDialog.info("成功", "剧本优化完成，共 " + sceneCount + " 场")
         }
 
         function onScript_failed(error) {

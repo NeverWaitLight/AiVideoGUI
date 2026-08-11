@@ -30,7 +30,6 @@ class StoryOutlineService:
         try:
             created = outline_repo.create(dto=story_outline)
             self._sm.commit_write()
-            logger.info(f"为项目 {project_id} 创建新故事大纲，ID: {created.id}")
             return created
         except Exception as e:
             self._sm.rollback_write()
@@ -45,7 +44,6 @@ class StoryOutlineService:
         try:
             outline_repo.update_content(story_outline_id=story_outline_id, content=content, updated_at=now_ms)
             self._sm.commit_write()
-            logger.info(f"更新故事大纲 {story_outline_id}")
         except Exception as e:
             self._sm.rollback_write()
             logger.error(f"更新故事大纲失败：{e}")
@@ -69,7 +67,6 @@ class StoryOutlineService:
             outline_repo.update_content(story_outline_id=story_outline_id, content=history.content, updated_at=now_ms)
 
             self._sm.commit_write()
-            logger.info(f"从历史版本 {history_id} 恢复故事大纲 {story_outline_id}")
         except Exception as e:
             self._sm.rollback_write()
             logger.error(f"恢复故事大纲失败：{e}")
