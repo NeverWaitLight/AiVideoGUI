@@ -40,13 +40,14 @@ class BackgroundTaskScheduler(QObject):
     task_crashed = Signal(str, str)
     task_restarted = Signal(str, int)
 
-    def __init__(self, parent: QObject | None = None) -> None:
+    def __init__(self, parent: QObject | None = None, delay_seconds: float = 3.0) -> None:
         super().__init__(parent)
         self._tasks: Dict[str, BackgroundTask] = {}
         self._task_workers: Dict[str, _TaskWorker] = {}
         self._task_status: Dict[str, TaskStatus] = {}
         self._supervisor: Optional[_SupervisorThread] = None
         self._stopped = False
+        self._delay_seconds = delay_seconds
 
     def register_task(self, task: BackgroundTask) -> None:
         if task.name in self._tasks:
@@ -66,9 +67,9 @@ class BackgroundTaskScheduler(QObject):
             return
 
         self._stopped = False
-        self._supervisor = _SupervisorThread(self)
+        self._supervisor = _SupervisorThread(self, delay_seconds=self._delay_seconds)
         self._supervisor.start()
-        logger.info("后台任务调度器已启动（守护模式）")
+        logger.info(f"后台任务调度器已启动（守护模式，延迟 {self._delay_seconds} 秒）")
 
     def shutdown(self) -> None:
         if self._supervisor is None:
@@ -178,15 +179,22 @@ class BackgroundTaskScheduler(QObject):
 
 class _SupervisorThread(QThread):
 
-    def __init__(self, scheduler: BackgroundTaskScheduler, parent: QObject | None = None) -> None:
+    def __init__(self, scheduler: BackgroundTaskScheduler, parent: QObject | None = None, delay_seconds: float = 3.0) -> None:
         super().__init__(parent)
         self._scheduler = scheduler
         self._stopped = False
+        self._delay_seconds = delay_seconds
 
     def stop(self) -> None:
         self._stopped = True
 
     def run(self) -> None:
+        if self._delay_seconds > 0:
+            logger.info(f"后台任务调度器延迟启动中（{self._delay_seconds} 秒）...")
+            self.msleep(int(self._delay_seconds * 1000))
+            if self._stopped:
+                return
+
         logger.info("监督线程进入主循环")
 
         while not self._stopped:

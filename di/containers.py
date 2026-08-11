@@ -7,6 +7,7 @@ from prompts.manager import PromptTemplateManager
 from prompts.chat_prompt_builder import ChatPromptBuilder
 from service.background.enhanced_scheduler import BackgroundTaskScheduler
 from service.background.video_polling_task import VideoTaskPollingTask
+from service.background.update_check_task import UpdateCheckTask
 from service.character_service import CharacterService
 from service.image_service import ImageService
 from service.media_service import MediaService
@@ -110,6 +111,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
 
     background_scheduler = providers.Singleton(
         BackgroundTaskScheduler,
+        delay_seconds=3.0,
     )
 
     video_polling_task = providers.Singleton(
@@ -127,5 +129,11 @@ class ApplicationContainer(containers.DeclarativeContainer):
         current_version=config.app_version,
         workspace_root=config.workspace_root,
         config_manager=config_manager,
+    )
+
+    update_check_task = providers.Singleton(
+        UpdateCheckTask,
+        update_service=update_service,
+        check_interval=3600.0,
     )
 
