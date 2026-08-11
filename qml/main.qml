@@ -106,6 +106,9 @@ ApplicationWindow {
                     root.currentPage = "visualStyles"
                     bridge.visualStyles.load_styles()
                 }
+                onTasksClicked: {
+                    root.currentPage = "tasks"
+                }
                 onTabChanged: {
                     root.currentPage = "project"
                 }

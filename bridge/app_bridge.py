@@ -19,6 +19,7 @@ from bridge.character_bridge import CharacterBridge
 from bridge.settings_bridge import SettingsBridge
 from bridge.visual_style_bridge import VisualStyleBridge
 from bridge.update_bridge import UpdateBridge
+from bridge.task_bridge import TaskBridge
 
 
 class AppBridge(QObject):
@@ -99,6 +100,7 @@ class AppBridge(QObject):
             container.visual_style_service(), self,
         )
         self._update_bridge = UpdateBridge(container.update_service())
+        self._task_bridge = TaskBridge(self._session_manager, self)
         self._video_polling_task = container.video_polling_task()
         signal_emitter = self._video_polling_task.signal_emitter
         signal_emitter.status_changed.connect(self.task_status_changed.emit)
@@ -145,6 +147,10 @@ class AppBridge(QObject):
     @Property(QObject, constant=True)
     def update(self):
         return self._update_bridge
+
+    @Property(QObject, constant=True)
+    def tasks(self):
+        return self._task_bridge
 
     @Slot(str)
     def play_video(self, path: str) -> None:

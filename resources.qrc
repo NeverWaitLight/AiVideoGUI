@@ -39,6 +39,9 @@
         <file>resources/icons/palette.svg</file>
         <file>resources/icons/fullscreen.svg</file>
         <file>resources/icons/fullscreen_exit.svg</file>
+        <file>resources/icons/list.svg</file>
+        <file>resources/icons/refresh.svg</file>
+        <file>resources/icons/history.svg</file>
         <file>resources/logo.ico</file>
     </qresource>
 </RCC>

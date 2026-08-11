@@ -19,6 +19,8 @@ Control {
             if (mainPanel.currentPage === "project") return 0
             if (mainPanel.currentPage === "library") return 1
             if (mainPanel.currentPage === "visualStyles") return 2
+            if (mainPanel.currentPage === "tasks") return 3
+            if (mainPanel.currentPage === "taskDetail") return 4
             return 0
         }
 
@@ -39,9 +41,26 @@ Control {
                 mainPanel.currentPage = "project"
             }
         }
+
+        Pages.TaskListPage {
+            id: taskListPage
+            onTaskClicked: function(taskId) {
+                taskDetailPage.taskId = taskId
+                mainPanel.currentPage = "taskDetail"
+            }
+        }
+
+        Pages.TaskDetailPage {
+            id: taskDetailPage
+            onBackClicked: {
+                mainPanel.currentPage = "tasks"
+            }
+        }
     }
 
     readonly property alias projectModePage: projectModePage
     readonly property alias mediaLibraryPage: globalMediaPage
     readonly property alias visualStylePage: visualStylePage
+    readonly property alias taskListPage: taskListPage
+    readonly property alias taskDetailPage: taskDetailPage
 }

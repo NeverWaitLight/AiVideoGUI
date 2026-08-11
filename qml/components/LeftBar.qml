@@ -10,6 +10,7 @@ Item {
     signal tabChanged(int index)
     signal libraryClicked()
     signal visualStylesClicked()
+    signal tasksClicked()
     signal settingsClicked()
 
     property int currentIndex: 0
@@ -74,6 +75,18 @@ Item {
         }
 
         Item { Layout.fillHeight: true }
+
+        TabButton {
+            Layout.alignment: Qt.AlignHCenter
+            Layout.preferredWidth: 38
+            Layout.preferredHeight: 38
+            icon.source: "qrc:/resources/icons/history.svg"
+            icon.width: 22
+            icon.height: 22
+            onClicked: tabBar.tasksClicked()
+            ToolTip.text: "任务历史"
+            ToolTip.visible: hovered
+        }
 
         TabButton {
             Layout.alignment: Qt.AlignHCenter
