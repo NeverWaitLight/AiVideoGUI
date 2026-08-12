@@ -100,6 +100,7 @@ class ImageService:
                 type=GenerateTaskType.IMAGE,
                 caller_type=caller_type,
                 caller_id=caller_id,
+                project_id=project_id,
                 parent_ids=parent_ids,
             )
             self._sm.commit_write()

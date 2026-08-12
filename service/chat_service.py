@@ -67,6 +67,7 @@ class ChatService:
                 type=GenerateTaskType.CHAT,
                 caller_type=caller_type,
                 caller_id=caller_id,
+                project_id=project_id,
                 parent_ids=parent_ids,
             )
             self._sm.commit_write()
@@ -223,6 +224,7 @@ class ChatService:
                 type=GenerateTaskType.CHAT,
                 caller_type=GenerateTaskCallerType.SCRIPT,
                 caller_id=str(project_id) if project_id else "",
+                project_id=project_id,
             )
             self._sm.commit_write()
         except Exception:
@@ -392,6 +394,7 @@ class ChatService:
                 type=GenerateTaskType.CHAT,
                 caller_type=GenerateTaskCallerType.STORYBOARD,
                 caller_id=str(project_id) if project_id else "",
+                project_id=project_id,
             )
             self._sm.commit_write()
         except Exception:

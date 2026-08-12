@@ -10,7 +10,7 @@ Dialog {
     height: 360
     anchors.centerIn: parent
     padding: 0
-    closePolicy: Popup.NoAutoClose
+    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
     property int currentTab: 0
     property bool isWorking: false
@@ -145,12 +145,12 @@ Dialog {
                     onClicked: {
                         var input = _currentInput()
                         if (input.length === 0) return
-                        root.isWorking = true
                         if (root.currentTab === 0) {
                             root.refineRequested(input)
                         } else {
                             root.generateDesignRequested(input)
                         }
+                        root.close()
                     }
                 }
             }

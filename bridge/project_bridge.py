@@ -125,6 +125,17 @@ class ProjectBridge(QObject):
     def set_workspace_root(self, workspace_root: str):
         self._workspace_root = workspace_root
 
+    @Slot(result=str)
+    def list_projects_for_filter(self) -> str:
+        try:
+            projects = self._project_service.list_projects()
+            return json.dumps([
+                {"id": p.id, "name": p.name}
+                for p in projects
+            ])
+        except Exception as e:
+            return "[]"
+
     @Slot(int, str, str, str, str, str, str)
     def generate_cover_with_characters(
         self, project_id: int, character_names: str, appearances: str,

@@ -99,7 +99,8 @@ class VideoTaskPollingTask(BackgroundTask):
                 self._last_cleanup_time = now
 
             task_repo = self._sm.get_repo(repo_class=GenerateTaskRepository)
-            tasks = task_repo.list_active_tasks()
+            from models.enums import GenerateTaskType
+            tasks = task_repo.list_active_tasks(task_type=GenerateTaskType.VIDEO)
 
             if not tasks:
                 self.interruptible_sleep(self._idle_check_interval)

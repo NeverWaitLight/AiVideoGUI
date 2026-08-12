@@ -388,6 +388,7 @@ class StoryboardBridge(QObject):
                 project_name=self._get_project_name(project_id),
                 config_manager=self._container.config_manager(),
                 session_manager=self._container.session_manager(),
+                workspace_root=self._container.config.workspace_root(),
             )
             worker.finished.connect(lambda path: self._on_design_done(storyboard_id, path))
             worker.failed.connect(self.design_image_failed.emit)
@@ -460,6 +461,7 @@ class StoryboardBridge(QObject):
                 project_name=self._get_project_name(project_id),
                 config_manager=self._container.config_manager(),
                 session_manager=self._container.session_manager(),
+                workspace_root=self._container.config.workspace_root(),
             )
 
             def on_progress(current: int, message: str, count_info: str) -> None:

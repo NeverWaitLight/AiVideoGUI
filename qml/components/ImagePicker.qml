@@ -31,11 +31,6 @@ Item {
                 Layout.alignment: Qt.AlignHCenter
                 Layout.preferredHeight: 34
                 text: "AI 生成"
-                icon.source: "qrc:/resources/icons/auto_awesome.svg"
-                icon.width: 18
-                icon.height: 18
-                display: AbstractButton.TextBesideIcon
-                spacing: 6
                 font.pixelSize: Theme.fontSizeSmall
                 onClicked: root.aiGenerateClicked()
             }
@@ -44,11 +39,6 @@ Item {
                 Layout.alignment: Qt.AlignHCenter
                 Layout.preferredHeight: 34
                 text: "上传"
-                icon.source: "qrc:/resources/icons/image.svg"
-                icon.width: 18
-                icon.height: 18
-                display: AbstractButton.TextBesideIcon
-                spacing: 6
                 font.pixelSize: Theme.fontSizeSmall
                 onClicked: root.uploadClicked()
             }

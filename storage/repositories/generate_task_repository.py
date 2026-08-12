@@ -30,6 +30,7 @@ class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
             error_message=entity.error_message,
             caller_type=GenerateTaskCallerType(entity.caller_type) if entity.caller_type else None,
             caller_id=entity.caller_id,
+            project_id=entity.project_id,
             parent_ids=entity.parent_ids,
             created_at=entity.created_at,
             updated_at=entity.updated_at,
@@ -50,6 +51,7 @@ class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
             error_message=dto.error_message,
             caller_type=dto.caller_type.value if dto.caller_type else None,
             caller_id=dto.caller_id,
+            project_id=dto.project_id,
             parent_ids=dto.parent_ids,
             created_at=dto.created_at,
             updated_at=dto.updated_at,
@@ -65,6 +67,7 @@ class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
         type: GenerateTaskType = GenerateTaskType.VIDEO,
         caller_type: GenerateTaskCallerType | None = None,
         caller_id: str = "",
+        project_id: int | None = None,
         parent_ids: str = "",
     ) -> int:
         entity = GenerateTaskEntity(
@@ -80,6 +83,7 @@ class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
             error_message="",
             caller_type=caller_type.value if caller_type else None,
             caller_id=caller_id,
+            project_id=project_id,
             parent_ids=parent_ids,
             created_at=int(time.time() * 1000),
             updated_at=int(time.time() * 1000),
@@ -88,34 +92,18 @@ class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
         self.session.flush()
         return entity.id
 
-    def list_active_tasks(self) -> List[dict]:
+    def list_active_tasks(self, task_type: GenerateTaskType | None = None) -> List[dict]:
+        conditions = [GenerateTaskEntity.completed == False]
+        if task_type is not None:
+            conditions.append(GenerateTaskEntity.type == task_type.value)
+
         stmt = (
             select(GenerateTaskEntity)
-            .where(GenerateTaskEntity.completed == False)
+            .where(*conditions)
             .order_by(GenerateTaskEntity.created_at.asc())
         )
         entities = self.session.execute(stmt).scalars().all()
-        return [
-            {
-                "id": e.id,
-                "type": e.type,
-                "provider_task_id": e.provider_task_id,
-                "provider_name": e.provider_name,
-                "model_name": e.model_name,
-                "status": e.status,
-                "completed": e.completed,
-                "request_params": e.request_params,
-                "remote_url": e.remote_url,
-                "local_path": e.local_path,
-                "error_message": e.error_message,
-                "caller_type": e.caller_type,
-                "caller_id": e.caller_id,
-                "parent_ids": e.parent_ids,
-                "created_at": e.created_at,
-                "updated_at": e.updated_at,
-            }
-            for e in entities
-        ]
+        return [self._entity_to_dict(e) for e in entities]
 
     def get_by_id(self, task_id: int) -> Optional[dict]:
         entity = self.session.get(GenerateTaskEntity, task_id)
@@ -135,6 +123,7 @@ class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
             "error_message": entity.error_message,
             "caller_type": entity.caller_type,
             "caller_id": entity.caller_id,
+            "project_id": entity.project_id if entity.project_id is not None else -1,
             "parent_ids": entity.parent_ids,
             "created_at": entity.created_at,
             "updated_at": entity.updated_at,
@@ -161,6 +150,7 @@ class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
             "error_message": entity.error_message,
             "caller_type": entity.caller_type,
             "caller_id": entity.caller_id,
+            "project_id": entity.project_id if entity.project_id is not None else -1,
             "parent_ids": entity.parent_ids,
             "created_at": entity.created_at,
             "updated_at": entity.updated_at,
@@ -201,24 +191,48 @@ class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
             .offset(offset)
         )
         entities = self.session.execute(stmt).scalars().all()
-        return [
-            {
-                "id": e.id,
-                "type": e.type,
-                "provider_task_id": e.provider_task_id,
-                "provider_name": e.provider_name,
-                "model_name": e.model_name,
-                "status": e.status,
-                "completed": e.completed,
-                "request_params": e.request_params,
-                "remote_url": e.remote_url,
-                "local_path": e.local_path,
-                "error_message": e.error_message,
-                "caller_type": e.caller_type,
-                "caller_id": e.caller_id,
-                "parent_ids": e.parent_ids,
-                "created_at": e.created_at,
-                "updated_at": e.updated_at,
-            }
-            for e in entities
-        ]
+        return [self._entity_to_dict(e) for e in entities]
+
+    def list_tasks_with_filters(
+        self,
+        project_id: int | None = None,
+        caller_type: str | None = None,
+        limit: int = 150
+    ) -> List[dict]:
+        conditions = []
+
+        if project_id is not None:
+            conditions.append(GenerateTaskEntity.project_id == project_id)
+
+        if caller_type is not None and caller_type != "":
+            conditions.append(GenerateTaskEntity.caller_type == caller_type)
+
+        stmt = (
+            select(GenerateTaskEntity)
+            .where(*conditions) if conditions else select(GenerateTaskEntity)
+        )
+        stmt = stmt.order_by(GenerateTaskEntity.created_at.desc()).limit(limit)
+
+        entities = self.session.execute(stmt).scalars().all()
+        return [self._entity_to_dict(e) for e in entities]
+
+    def _entity_to_dict(self, e: GenerateTaskEntity) -> dict:
+        return {
+            "id": e.id,
+            "type": e.type,
+            "provider_task_id": e.provider_task_id,
+            "provider_name": e.provider_name,
+            "model_name": e.model_name,
+            "status": e.status,
+            "completed": e.completed,
+            "request_params": e.request_params,
+            "remote_url": e.remote_url,
+            "local_path": e.local_path,
+            "error_message": e.error_message,
+            "caller_type": e.caller_type,
+            "caller_id": e.caller_id,
+            "project_id": e.project_id if e.project_id is not None else -1,
+            "parent_ids": e.parent_ids,
+            "created_at": e.created_at,
+            "updated_at": e.updated_at,
+        }

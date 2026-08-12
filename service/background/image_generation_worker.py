@@ -125,7 +125,9 @@ class ImageGenerationWorker(QThread):
                 raise
 
             logger.info(f"图片生成完成：{result_path}")
+            logger.debug(f"发出 finished 信号：provider_task_id={self._provider_task_id}, result_path={result_path}")
             self.finished.emit(self._provider_task_id, result_path)
+            logger.debug(f"finished 信号已发出，等待槽函数响应")
 
         except Exception as e:
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"

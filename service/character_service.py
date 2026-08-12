@@ -104,6 +104,7 @@ class CharacterService:
         try:
             character_repo.update(dto=updated_character)
             self._sm.commit_write()
+            logger.info(f"更新角色成功：uuid={character_uuid}, design_image={final_design_image}")
         except Exception as e:
             self._sm.rollback_write()
             logger.error(f"更新角色失败：{e}")

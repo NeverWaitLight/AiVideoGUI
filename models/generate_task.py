@@ -21,6 +21,7 @@ class GenerateTask:
     error_message: str              # 错误消息
     caller_type: GenerateTaskCallerType | None = None  # 调用者类型（storyboard/character/cover/chat）
     caller_id: str = ""             # 调用者ID（对应类型的ID或UUID）
+    project_id: int | None = None   # 项目ID（关联 projects 表，可为空）
     parent_ids: str = ""            # 父任务ID列表（英文逗号分隔，如 "1,2,3"）
     created_at: int = 0             # 创建时间（毫秒时间戳）
     updated_at: int = 0             # 更新时间（毫秒时间戳）

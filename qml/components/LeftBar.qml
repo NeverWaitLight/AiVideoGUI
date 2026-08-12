@@ -83,7 +83,12 @@ Item {
             icon.source: "qrc:/resources/icons/history.svg"
             icon.width: 22
             icon.height: 22
-            onClicked: tabBar.tasksClicked()
+            checked: tabBar.currentIndex === 3
+            isActive: tabBar.currentIndex === 3
+            onClicked: {
+                tabBar.currentIndex = 3
+                tabBar.tasksClicked()
+            }
             ToolTip.text: "任务历史"
             ToolTip.visible: hovered
         }
@@ -95,7 +100,12 @@ Item {
             icon.source: "qrc:/resources/icons/settings.svg"
             icon.width: 22
             icon.height: 22
-            onClicked: tabBar.settingsClicked()
+            checked: tabBar.currentIndex === 4
+            isActive: tabBar.currentIndex === 4
+            onClicked: {
+                tabBar.currentIndex = 4
+                tabBar.settingsClicked()
+            }
             ToolTip.text: "设置"
             ToolTip.visible: hovered
         }

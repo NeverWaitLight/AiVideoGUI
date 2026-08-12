@@ -9,7 +9,7 @@ from typing import Any
 from PySide6.QtCore import QObject
 
 from config.manager import ConfigManager
-from models.enums import MessageStatus
+from models.enums import MessageStatus, GenerateTaskType, GenerateTaskCallerType
 from providers.video_base import VideoProvider
 from providers.dashscope_video import DashScopeVideoProvider
 from providers.seedance_video import SeedanceVideoProvider
@@ -98,18 +98,23 @@ class VideoService(QObject):
                 model_name=provider._config.default_model,
                 local_path=local_path,
                 request_params=json.dumps(request_details["json"], ensure_ascii=False),
-                storyboard_id=storyboard_id,
+                type=GenerateTaskType.VIDEO,
+                caller_type=GenerateTaskCallerType.STORYBOARD if storyboard_id else None,
+                caller_id=str(storyboard_id) if storyboard_id else "",
+                project_id=project_id,
             )
 
             self._sm.commit_write()
 
             logger.info(
-                "任务已提交 provider_task=%s generate_task=%s provider=%s local_path=%s storyboard_id=%s",
+                "任务已提交 provider_task=%s generate_task=%s provider=%s local_path=%s project_id=%s caller_type=%s caller_id=%s",
                 provider_task_id,
                 generate_task_id,
                 provider_name,
                 local_path,
-                storyboard_id,
+                project_id,
+                "storyboard" if storyboard_id else None,
+                storyboard_id or "",
             )
             return provider_task_id
         except Exception as e:

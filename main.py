@@ -127,21 +127,71 @@ def main():
     database_url = f"sqlite:///{db_path}"
     init_engine(database_url, echo=False)
 
-    # 使用 Alembic 进行数据库迁移
+    # 数据库初始化和迁移
     from alembic.config import Config
     from alembic import command
+    from sqlalchemy import create_engine, inspect
+    from storage.orm.base import Base
     import logging
 
     logging.getLogger("alembic").setLevel(logging.WARNING)
 
-    alembic_cfg = Config(os.path.join(os.path.dirname(__file__), "alembic.ini"))
-    alembic_cfg.set_main_option("sqlalchemy.url", database_url)
-    try:
-        command.upgrade(alembic_cfg, "head")
-        logger.info("数据库迁移完成")
-    except Exception as e:
-        logger.error(f"数据库迁移失败: {e}")
-        raise
+    # 检查核心表是否存在（判断是否为全新安装）
+    temp_engine = create_engine(database_url)
+    inspector = inspect(temp_engine)
+    existing_tables = inspector.get_table_names()
+
+    # 核心表列表（projects 表是必须的）
+    core_tables = ['projects', 'conversations', 'messages']
+    has_core_tables = any(table in existing_tables for table in core_tables)
+
+    if not has_core_tables:
+        # 全新安装：直接创建所有表
+        logger.info("检测到全新安装，初始化数据库...")
+        Base.metadata.create_all(temp_engine)
+        logger.info("数据库表创建完成")
+
+        # 插入预设视觉风格数据（仅保留实际存在的 6 个风格）
+        logger.info("初始化视觉风格数据...")
+        from sqlalchemy import text
+        preset_styles = [
+            ("毛毡风格", 1, "resources/styles/felt.png"),
+            ("3D卡通", 1, "resources/styles/3d_cartoon.png"),
+            ("像素风格", 1, "resources/styles/pixel_art.png"),
+            ("木偶动画", 1, "resources/styles/puppet_animation.png"),
+            ("黏土风格", 1, "resources/styles/claymation.png"),
+            ("黑白动画", 1, "resources/styles/black_and_white_animation.png"),
+        ]
+        with temp_engine.connect() as conn:
+            for name, is_default, image_path in preset_styles:
+                conn.execute(
+                    text(
+                        "INSERT INTO visual_styles (name, is_default, sample_image_path, created_at, updated_at) "
+                        "VALUES (:name, :is_default, :image_path, strftime('%s', 'now') * 1000, strftime('%s', 'now') * 1000)"
+                    ),
+                    {"name": name, "is_default": is_default, "image_path": image_path}
+                )
+            conn.commit()
+        logger.info(f"已插入 {len(preset_styles)} 个预设视觉风格")
+
+        # 标记为最新版本（跳过所有迁移）
+        alembic_cfg = Config(os.path.join(os.path.dirname(__file__), "alembic.ini"))
+        alembic_cfg.set_main_option("sqlalchemy.url", database_url)
+        command.stamp(alembic_cfg, "head")
+        logger.info("数据库版本已标记为最新")
+    else:
+        # 已有数据库：正常运行迁移
+        logger.info("检测到现有数据库，执行迁移...")
+        alembic_cfg = Config(os.path.join(os.path.dirname(__file__), "alembic.ini"))
+        alembic_cfg.set_main_option("sqlalchemy.url", database_url)
+        try:
+            command.upgrade(alembic_cfg, "head")
+            logger.info("数据库迁移完成")
+        except Exception as e:
+            logger.error(f"数据库迁移失败: {e}")
+            raise
+
+    temp_engine.dispose()
 
     engine = QQmlApplicationEngine()
     bridge = AppBridge(container, parent=engine)

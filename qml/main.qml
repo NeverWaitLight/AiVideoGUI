@@ -93,7 +93,7 @@ ApplicationWindow {
                 currentIndex: {
                     if (mainPanel.currentPage === "library") return 1
                     if (mainPanel.currentPage === "visualStyles") return 2
-                    if (mainPanel.currentPage === "tasks" || mainPanel.currentPage === "taskDetail") return -1
+                    if (mainPanel.currentPage === "tasks" || mainPanel.currentPage === "taskDetail") return 3
                     return 0
                 }
                 onSettingsClicked: settingsDialog.open()

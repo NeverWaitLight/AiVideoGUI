@@ -10,7 +10,7 @@ Dialog {
     height: 320
     anchors.centerIn: parent
     padding: 0
-    closePolicy: Popup.NoAutoClose
+    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
     property string dialogTitle: "AI 优化"
     property string placeholderText: "请输入优化要求..."
@@ -91,9 +91,8 @@ Dialog {
                     onClicked: {
                         if (inputArea.text.trim().length > 0) {
                             console.log("[AIOptimizeDialog] optimizeRequested:", inputArea.text.trim())
-                            isOptimizing = true
                             optimizeRequested(inputArea.text.trim())
-                            console.log("[AIOptimizeDialog] signal emitted, isOptimizing =", isOptimizing)
+                            aiOptimizeDialog.close()
                         }
                     }
                 }

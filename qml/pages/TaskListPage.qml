@@ -9,12 +9,15 @@ Item {
 
     signal taskClicked(int taskId)
 
+    property int _filterProjectId: -1
+    property string _filterCallerType: ""
+
     Component.onCompleted: {
         loadTasks()
     }
 
     function loadTasks() {
-        var tasks = bridge.tasks.list_all_tasks()
+        var tasks = bridge.tasks.list_tasks_filtered(_filterProjectId, _filterCallerType)
         taskModel.clear()
         for (var i = 0; i < tasks.length; i++) {
             taskModel.append(tasks[i])
@@ -59,6 +62,108 @@ Item {
                 }
 
                 Item { Layout.fillWidth: true }
+
+                ComboBox {
+                    id: projectFilterCombo
+                    Layout.preferredWidth: 160
+                    Layout.preferredHeight: 34
+
+                    model: ListModel { id: projectFilterModel }
+                    textRole: "name"
+                    displayText: currentIndex >= 0 ? currentText : "全部项目"
+
+                    Component.onCompleted: {
+                        projectFilterModel.append({id: -1, name: "全部项目"})
+                        var projectsJson = bridge.projects.list_projects_for_filter()
+                        var projects = JSON.parse(projectsJson)
+                        for (var i = 0; i < projects.length; i++) {
+                            projectFilterModel.append(projects[i])
+                        }
+                        currentIndex = 0
+                    }
+
+                    onActivated: {
+                        _filterProjectId = projectFilterModel.get(currentIndex).id
+                        loadTasks()
+                    }
+
+                    background: Rectangle {
+                        radius: Theme.radiusSmall
+                        color: Material.background
+                        border.width: 1
+                        border.color: Qt.rgba(Material.foreground.r, Material.foreground.g,
+                                             Material.foreground.b, 0.12)
+                    }
+                }
+
+                ComboBox {
+                    id: callerTypeFilterCombo
+                    Layout.preferredWidth: 140
+                    Layout.preferredHeight: 34
+
+                    model: ListModel {
+                        ListElement { value: ""; label: "全部类型" }
+                        ListElement { value: "cover"; label: "封面" }
+                        ListElement { value: "outline"; label: "大纲" }
+                        ListElement { value: "script"; label: "剧本" }
+                        ListElement { value: "character"; label: "角色" }
+                        ListElement { value: "storyboard"; label: "分镜" }
+                        ListElement { value: "chat"; label: "聊天" }
+                    }
+                    textRole: "label"
+                    displayText: currentIndex >= 0 ? currentText : "全部类型"
+
+                    Component.onCompleted: {
+                        currentIndex = 0
+                    }
+
+                    onActivated: {
+                        _filterCallerType = model.get(currentIndex).value
+                        loadTasks()
+                    }
+
+                    background: Rectangle {
+                        radius: Theme.radiusSmall
+                        color: Material.background
+                        border.width: 1
+                        border.color: Qt.rgba(Material.foreground.r, Material.foreground.g,
+                                             Material.foreground.b, 0.12)
+                    }
+                }
+
+                Button {
+                    visible: _filterProjectId !== -1 || _filterCallerType !== ""
+                    Layout.preferredWidth: 34
+                    Layout.preferredHeight: 34
+                    flat: true
+                    display: AbstractButton.IconOnly
+                    icon.source: "qrc:/resources/icons/close.svg"
+                    icon.width: 16
+                    icon.height: 16
+                    topPadding: 9
+                    bottomPadding: 9
+                    leftPadding: 9
+                    rightPadding: 9
+                    ToolTip.visible: hovered
+                    ToolTip.text: "清除过滤"
+
+                    onClicked: {
+                        projectFilterCombo.currentIndex = 0
+                        callerTypeFilterCombo.currentIndex = 0
+                        _filterProjectId = -1
+                        _filterCallerType = ""
+                        loadTasks()
+                    }
+
+                    background: Rectangle {
+                        anchors.fill: parent
+                        radius: Theme.radiusSmall
+                        color: parent.hovered
+                            ? Qt.rgba(Material.foreground.r, Material.foreground.g,
+                                     Material.foreground.b, 0.08)
+                            : "transparent"
+                    }
+                }
 
                 Button {
                     width: 34

@@ -34,7 +34,11 @@ class CharacterBridge(QObject):
         self._project_service = project_service
         self._visual_style_service = visual_style_service
         self._container = container
-        self._model = CharacterListModel(self)
+
+        # 获取 workspace_root
+        workspace_root = container.config.workspace_root() if container else ""
+        self._model = CharacterListModel(workspace_root=workspace_root, parent=self)
+
         self._workers = []
         self._optimizing = False
         self._character_worker = None
@@ -137,6 +141,10 @@ class CharacterBridge(QObject):
                         if style:
                             visual_style = style.name
 
+            workspace_root = None
+            if hasattr(self, '_container') and self._container:
+                workspace_root = self._container.config.workspace_root()
+
             worker = CharacterDesignImageWorker(
                 text_service=self._text_model_service, image_service=self._image_service,
                 character_service=self._character_service, character=character, project_id=project_id,
@@ -144,10 +152,13 @@ class CharacterBridge(QObject):
                 project_name=self._get_project_name(project_id),
                 config_manager=self._container.config_manager() if hasattr(self, '_container') else None,
                 session_manager=self._container.session_manager() if hasattr(self, '_container') else None,
+                workspace_root=workspace_root,
             )
             worker.finished.connect(lambda path: self._on_design_done(char_uuid, path))
             worker.failed.connect(self.design_image_failed.emit)
             worker.progress_update.connect(self.design_image_progress.emit)
+            worker.finished.connect(worker.deleteLater)
+            worker.failed.connect(worker.deleteLater)
             worker.start()
             self._workers.append(worker)
         except Exception as e:
@@ -155,8 +166,13 @@ class CharacterBridge(QObject):
             self.design_image_failed.emit(error_msg)
 
     def _on_design_done(self, char_uuid: str, path: str) -> None:
-        self._model.update_design_image(char_uuid, path)
-        self.design_image_ready.emit(char_uuid, path)
+        # path 是相对路径，需要转换为绝对路径供模型使用
+        from utils.path_converter import to_absolute_path
+        workspace_root = self._container.config.workspace_root() if self._container else ""
+        absolute_path = to_absolute_path(path, workspace_root)
+
+        self._model.update_design_image(char_uuid, absolute_path)
+        self.design_image_ready.emit(char_uuid, absolute_path)
 
     @Slot(str, str, str)
     def refine_description(self, char_uuid: str, current_description: str, user_requirement: str) -> None:
@@ -182,6 +198,7 @@ class CharacterBridge(QObject):
             worker.finished.connect(lambda desc: self._on_refine_done(char_uuid, desc))
             worker.failed.connect(self.description_refine_failed.emit)
             worker.finished.connect(worker.deleteLater)
+            worker.failed.connect(worker.deleteLater)
             worker.start()
             self._workers.append(worker)
         except Exception as e:

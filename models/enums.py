@@ -17,6 +17,8 @@ class GenerateTaskCallerType(enum.Enum):
     CHARACTER = "character"        # 角色
     COVER = "cover"                # 封面
     CHAT = "chat"                  # 聊天
+    OUTLINE = "outline"            # 大纲
+    SCRIPT = "script"              # 剧本
 
 
 class TaskStatus(enum.Enum):

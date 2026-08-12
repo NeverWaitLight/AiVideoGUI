@@ -3,6 +3,7 @@ from __future__ import annotations
 from PySide6.QtCore import QAbstractListModel, QModelIndex, Property, Qt, Signal
 
 from models.character import Character
+from utils.path_converter import to_absolute_path
 
 
 class CharacterListModel(QAbstractListModel):
@@ -28,9 +29,10 @@ class CharacterListModel(QAbstractListModel):
 
     count_changed = Signal()
 
-    def __init__(self, parent=None):
+    def __init__(self, workspace_root: str, parent=None):
         super().__init__(parent)
         self._data: list[Character] = []
+        self._workspace_root = workspace_root
 
     def roleNames(self):
         return self._ROLE_NAMES
@@ -57,11 +59,12 @@ class CharacterListModel(QAbstractListModel):
         if role == self.DescriptionRole:
             return item.description
         if role == self.DesignImageRole:
-            return item.design_image
+            # 将相对路径转换为绝对路径供 QML 显示
+            return to_absolute_path(item.design_image, self._workspace_root) if item.design_image else ""
         if role == self.VoiceToneRole:
             return item.voice_tone
         if role == self.VoiceReferenceFileRole:
-            return item.voice_reference_file
+            return to_absolute_path(item.voice_reference_file, self._workspace_root) if item.voice_reference_file else ""
         return None
 
     def reset(self, characters: list[Character]) -> None:

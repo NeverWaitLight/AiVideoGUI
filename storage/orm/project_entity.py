@@ -36,6 +36,9 @@ class GenerateTaskEntity(Base):
     __tablename__ = "generate_tasks"
 
     id: Mapped[Optional[int]] = mapped_column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    project_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=True
+    )
 
     type: Mapped[str] = mapped_column(String(20), nullable=False, default="video")
     provider_task_id: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
@@ -60,8 +63,6 @@ class GenerateTaskEntity(Base):
     updated_at: Mapped[int] = mapped_column(Integer, nullable=False)
 
     __table_args__ = (
-        Index("idx_generate_task_completed", "completed"),
-        Index("idx_generate_task_provider_task_id", "provider_task_id"),
-        Index("idx_generate_task_type", "type"),
         Index("idx_generate_task_caller", "caller_type", "caller_id"),
+        Index("idx_generate_task_project_caller", "project_id", "caller_type"),
     )
