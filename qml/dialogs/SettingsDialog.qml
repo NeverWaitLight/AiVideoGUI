@@ -293,10 +293,6 @@ Dialog {
                 })
             }
 
-            var newAiLogging = appearanceLoader.item.aiLoggingSwitch.checked
-            if (bridge.settings.get_enable_ai_request_logging() !== newAiLogging) {
-                bridge.settings.batch_set_bool("enable_ai_request_logging", newAiLogging)
-            }
         }
 
         bridge.settings.commit_batch()
@@ -1036,7 +1032,6 @@ Dialog {
             property alias colorSchemeLight: colorSchemeLight
             property alias colorSchemeDark: colorSchemeDark
             property alias colorSchemeSystem: colorSchemeSystem
-            property alias aiLoggingSwitch: aiLoggingSwitch
 
             ColumnLayout {
                 width: parent.parent.width
@@ -1291,41 +1286,6 @@ Dialog {
                                 Layout.fillWidth: true
                             }
                         }
-
-                        Rectangle {
-                            Layout.fillWidth: true
-                            height: 1
-                            color: Material.frameColor
-                        }
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 12
-
-                            ColumnLayout {
-                                spacing: 2
-                                Layout.fillWidth: true
-
-                                Label {
-                                    text: "启用 AI 请求日志"
-                                    font.pixelSize: Theme.fontSizeNormal
-                                    font.bold: true
-                                }
-
-                                Label {
-                                    text: "自动保存每次 AI 调用的请求参数到项目日志目录下的 .md 文件"
-                                    font.pixelSize: Theme.fontSizeSmall
-                                    color: Material.hintTextColor
-                                    wrapMode: Text.Wrap
-                                    Layout.fillWidth: true
-                                }
-                            }
-
-                            Switch {
-                                id: aiLoggingSwitch
-                                Layout.alignment: Qt.AlignVCenter
-                            }
-                        }
                     }
                 }
 
@@ -1341,7 +1301,6 @@ Dialog {
                 } else {
                     colorSchemeSystem.checked = true
                 }
-                aiLoggingSwitch.checked = bridge.settings.get_enable_ai_request_logging()
             }
         }
     }
