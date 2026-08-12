@@ -99,7 +99,6 @@ Dialog {
         alertType = "info"
         alertDialog.title = title
         alertMessage = message || "(无提示信息)"
-        console.log("[AlertDialog] info:", title, alertMessage)
         open()
     }
 
@@ -107,7 +106,6 @@ Dialog {
         alertType = "warning"
         alertDialog.title = title
         alertMessage = message || "(无提示信息)"
-        console.log("[AlertDialog] warning:", title, alertMessage)
         open()
     }
 
@@ -115,7 +113,6 @@ Dialog {
         alertType = "error"
         alertDialog.title = title
         alertMessage = message || "(无提示信息)"
-        console.log("[AlertDialog] error:", title, alertMessage)
         open()
     }
 }

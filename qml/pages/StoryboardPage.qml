@@ -41,42 +41,33 @@ Item {
     Connections {
         target: bridge.storyboard
         function onShot_saved() {
-            console.log("[StoryboardPage] onShot_saved")
         }
         function onShot_deleted() {
-            console.log("[StoryboardPage] onShot_deleted")
             _showDetail = false
             _editingShotId = -1
         }
         function onStoryboard_generated(shotCount) {
-            console.log("[StoryboardPage] onStoryboard_generated:", shotCount)
             aiOptimizeDialog.finishOptimizing()
         }
         function onStoryboard_optimized(shotCount) {
-            console.log("[StoryboardPage] onStoryboard_optimized:", shotCount)
             aiOptimizeDialog.finishOptimizing()
         }
         function onStoryboard_generation_failed(error) {
-            console.log("[StoryboardPage] onStoryboard_generation_failed:", error)
             aiOptimizeDialog.finishOptimizing()
             var msg = error ? String(error) : "未知错误"
             alertDialog.error("错误", "生成分镜失败：" + msg)
         }
         function onDesign_image_ready(shotId, path) {
-            console.log("[StoryboardPage] onDesign_image_ready:", shotId, path)
         }
         function onDesign_image_failed(error) {
-            console.log("[StoryboardPage] onDesign_image_failed:", error)
             var msg = error ? String(error) : "未知错误"
             alertDialog.error("错误", "设计图生成失败：" + msg)
         }
         function onBatch_progress(current, total, message) {
         }
         function onBatch_done(successCount, total) {
-            console.log("[StoryboardPage] onBatch_done:", successCount, total)
         }
         function onBridge_error(msg) {
-            console.log("[StoryboardPage] onError:", msg)
             aiOptimizeDialog.finishOptimizing()
             var safeMsg = msg ? String(msg) : "未知错误"
             alertDialog.error("错误", safeMsg)

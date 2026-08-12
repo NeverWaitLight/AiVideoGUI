@@ -369,17 +369,10 @@ class StoryboardBridge(QObject):
             visual_style = ""
             if self._visual_style_service:
                 project = self._project_service.get_project(project_id=project_id)
-                if project:
-                    style_id = project.visual_style_id
-                    if not style_id:
-                        default_style = self._visual_style_service.get_default_style()
-                        if default_style:
-                            style_id = default_style.id
-
-                    if style_id:
-                        style = self._visual_style_service.get_style(style_id)
-                        if style:
-                            visual_style = style.name
+                if project and project.visual_style_id:
+                    style = self._visual_style_service.get_style(project.visual_style_id)
+                    if style:
+                        visual_style = style.name
 
             worker = DesignImageWorker(
                 text_service=self._text_model_service, image_service=self._image_service,
@@ -439,17 +432,10 @@ class StoryboardBridge(QObject):
             visual_style = ""
             if self._visual_style_service:
                 project = self._project_service.get_project(project_id=project_id)
-                if project:
-                    style_id = project.visual_style_id
-                    if not style_id:
-                        default_style = self._visual_style_service.get_default_style()
-                        if default_style:
-                            style_id = default_style.id
-
-                    if style_id:
-                        style = self._visual_style_service.get_style(style_id)
-                        if style:
-                            visual_style = style.name
+                if project and project.visual_style_id:
+                    style = self._visual_style_service.get_style(project.visual_style_id)
+                    if style:
+                        visual_style = style.name
 
             worker = BatchDesignImageWorker(
                 text_service=self._text_model_service,
@@ -671,6 +657,7 @@ class StoryboardBridge(QObject):
             return "[]"
 
     def _on_design_done(self, shot_id: int, path: str) -> None:
+        # Worker 内部已经保存到数据库，这里只需更新 Model 和发出信号
         self._model.update_design_image(shot_id, path)
         if self._cur_shot_id == shot_id:
             self._cur_design_image = path

@@ -129,17 +129,10 @@ class CharacterBridge(QObject):
             visual_style = ""
             if self._project_service and self._visual_style_service:
                 project = self._project_service.get_project(project_id=project_id)
-                if project:
-                    style_id = project.visual_style_id
-                    if not style_id:
-                        default_style = self._visual_style_service.get_default_style()
-                        if default_style:
-                            style_id = default_style.id
-
-                    if style_id:
-                        style = self._visual_style_service.get_style(style_id)
-                        if style:
-                            visual_style = style.name
+                if project and project.visual_style_id:
+                    style = self._visual_style_service.get_style(project.visual_style_id)
+                    if style:
+                        visual_style = style.name
 
             workspace_root = None
             if hasattr(self, '_container') and self._container:
@@ -166,6 +159,7 @@ class CharacterBridge(QObject):
             self.design_image_failed.emit(error_msg)
 
     def _on_design_done(self, char_uuid: str, path: str) -> None:
+        # Worker 内部已经保存到数据库，这里只需更新 Model 和发出信号
         # path 是相对路径，需要转换为绝对路径供模型使用
         from utils.path_converter import to_absolute_path
         workspace_root = self._container.config.workspace_root() if self._container else ""

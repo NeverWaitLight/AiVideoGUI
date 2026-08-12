@@ -53,7 +53,6 @@ class CoverGenerationWorker(QObject):
         self._workspace_root = workspace_root
         self._config_manager = config_manager
         self._session_manager = session_manager
-        self._image_worker = None
 
     def run(self):
         try:
@@ -105,43 +104,28 @@ class CoverGenerationWorker(QObject):
                 parent_ids=str(chat_task_id),
             )
 
-            from service.background.image_generation_worker import ImageGenerationWorker
-            self._image_worker = ImageGenerationWorker(
+            from service.background.image_generation_worker import execute_image_generation
+            image_path = execute_image_generation(
                 provider_task_id=provider_task_id,
                 config_manager=self._config_manager,
                 session_manager=self._session_manager,
                 workspace_root=self._workspace_root,
             )
 
-            def on_image_finished(task_id: str, image_path: str):
-                try:
-                    from utils.path_converter import to_relative_path
-                    relative_path = to_relative_path(image_path, self._workspace_root)
+            relative_path = to_relative_path(image_path, self._workspace_root)
 
-                    project = self._project_service.get_project(self._project_id)
-                    if project:
-                        self._project_service.update_project(
-                            project_id=self._project_id,
-                            name=project.name,
-                            resolution=project.resolution,
-                            aspect_ratio=project.aspect_ratio,
-                            cover_image=relative_path,
-                            visual_style_id=project.visual_style_id,
-                        )
+            project = self._project_service.get_project(self._project_id)
+            if project:
+                self._project_service.update_project(
+                    project_id=self._project_id,
+                    name=project.name,
+                    resolution=project.resolution,
+                    aspect_ratio=project.aspect_ratio,
+                    cover_image=relative_path,
+                    visual_style_id=project.visual_style_id,
+                )
 
-                    self.finished.emit(relative_path)
-                except Exception as e:
-                    error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
-                    self.failed.emit(error_msg)
-
-            def on_image_failed(task_id: str, error: str):
-                self.failed.emit(error)
-
-            self._image_worker.finished.connect(on_image_finished)
-            self._image_worker.failed.connect(on_image_failed)
-            self._image_worker.finished.connect(self._image_worker.deleteLater)
-            self._image_worker.failed.connect(self._image_worker.deleteLater)
-            self._image_worker.start()
+            self.finished.emit(relative_path)
 
         except Exception as e:
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
@@ -325,7 +309,6 @@ class DesignImageWorker(QThread):
         self._config_manager = config_manager
         self._session_manager = session_manager
         self._workspace_root = workspace_root
-        self._image_worker = None
 
     def run(self):
         try:
@@ -365,36 +348,20 @@ class DesignImageWorker(QThread):
 
             self.progress_update.emit("图片生成中，请稍候...")
 
-            from service.background.image_generation_worker import ImageGenerationWorker
-            self._image_worker = ImageGenerationWorker(
+            from service.background.image_generation_worker import execute_image_generation
+            image_path = execute_image_generation(
                 provider_task_id=provider_task_id,
                 config_manager=self._config_manager,
                 session_manager=self._session_manager,
                 workspace_root=self._workspace_root,
             )
 
-            def on_image_finished(task_id: str, image_path: str):
-                try:
-                    to_black_and_white(image_path)
-                    from utils.path_converter import to_relative_path
-                    relative_path = to_relative_path(image_path, self._workspace_root)
+            to_black_and_white(image_path)
 
-                    self._storyboard_service.update_storyboard(
-                        storyboard_id=self._storyboard.id, design_image=relative_path,
-                    )
-                    self.finished.emit(relative_path)
-                except Exception as e:
-                    error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
-                    self.failed.emit(error_msg)
-
-            def on_image_failed(task_id: str, error: str):
-                self.failed.emit(error)
-
-            self._image_worker.finished.connect(on_image_finished)
-            self._image_worker.failed.connect(on_image_failed)
-            self._image_worker.finished.connect(self._image_worker.deleteLater)
-            self._image_worker.failed.connect(self._image_worker.deleteLater)
-            self._image_worker.start()
+            self._storyboard_service.update_storyboard(
+                storyboard_id=self._storyboard.id, design_image=image_path,
+            )
+            self.finished.emit(to_relative_path(image_path, self._workspace_root))
 
         except Exception as e:
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
@@ -496,53 +463,24 @@ class BatchDesignImageWorker(QThread):
                     parent_ids=str(chat_task_id),
                 )
 
-                from service.background.image_generation_worker import ImageGenerationWorker
-                image_worker = ImageGenerationWorker(
+                from service.background.image_generation_worker import execute_image_generation
+                image_path = execute_image_generation(
                     provider_task_id=provider_task_id,
                     config_manager=self._config_manager,
                     session_manager=self._session_manager,
                     workspace_root=self._workspace_root,
                 )
 
-                generation_success = [False]
-                result_path_holder = [""]
+                to_black_and_white(image_path)
 
-                def on_image_finished(task_id: str, image_path: str):
-                    try:
-                        to_black_and_white(image_path)
-                        from utils.path_converter import to_relative_path
-                        relative_path = to_relative_path(image_path, self._workspace_root)
+                self._storyboard_service.update_storyboard(
+                    storyboard_id=storyboard_id, design_image=image_path,
+                )
+                relative_path = to_relative_path(image_path, self._workspace_root)
 
-                        self._storyboard_service.update_storyboard(
-                            storyboard_id=storyboard_id, design_image=relative_path,
-                        )
-                        generation_success[0] = True
-                        result_path_holder[0] = relative_path
-                    except Exception:
-                        generation_success[0] = False
-
-                def on_image_failed(task_id: str, error: str):
-                    generation_success[0] = False
-
-                image_worker.finished.connect(on_image_finished)
-                image_worker.failed.connect(on_image_failed)
-                image_worker.finished.connect(image_worker.deleteLater)
-                image_worker.failed.connect(image_worker.deleteLater)
-                image_worker.start()
-
-                # 使用事件循环等待，而不是 wait()
-                from PySide6.QtCore import QEventLoop
-                loop = QEventLoop()
-                image_worker.finished.connect(loop.quit)
-                image_worker.failed.connect(loop.quit)
-                loop.exec()
-
-                if generation_success[0]:
-                    success_count += 1
-                    self.shot_design_done.emit(storyboard_id, result_path_holder[0])
-                    self.progress_update.emit(idx, f"完成 {scene_number}-{shot_number}", f"({idx}/{total})")
-                else:
-                    self.progress_update.emit(idx, f"生成失败", f"({idx}/{total})")
+                success_count += 1
+                self.shot_design_done.emit(storyboard_id, relative_path)
+                self.progress_update.emit(idx, f"完成 {scene_number}-{shot_number}", f"({idx}/{total})")
 
             except Exception:
                 self.progress_update.emit(idx, f"生成失败", f"({idx}/{total})")
@@ -571,7 +509,6 @@ class CharacterDesignImageWorker(QThread):
         self._config_manager = config_manager
         self._session_manager = session_manager
         self._workspace_root = workspace_root
-        self._image_worker = None
 
     def run(self):
         try:
@@ -609,60 +546,24 @@ class CharacterDesignImageWorker(QThread):
 
             self.progress_update.emit("图片生成中，请稍候...")
 
-            from service.background.image_generation_worker import ImageGenerationWorker
-            self._image_worker = ImageGenerationWorker(
+            from service.background.image_generation_worker import execute_image_generation
+            image_path = execute_image_generation(
                 provider_task_id=provider_task_id,
                 config_manager=self._config_manager,
                 session_manager=self._session_manager,
                 workspace_root=self._workspace_root,
             )
 
-            def on_image_finished(task_id: str, image_path: str):
-                try:
-                    from loguru import logger
-
-                    logger.info(f"角色设计图生成完成，开始更新数据库：char_uuid={self._character.uuid}, image_path={image_path}")
-
-                    # 直接传递绝对路径给 Service，让 Service 层处理路径转换
-                    self._character_service.update_character(
-                        character_uuid=self._character.uuid, design_image=image_path,
-                    )
-                    logger.info(f"角色设计图已保存到数据库：{image_path}")
-
-                    # 将绝对路径转换为相对路径后发送信号
-                    from utils.path_converter import to_relative_path
-                    relative_path = to_relative_path(image_path, self._workspace_root)
-                    self.finished.emit(relative_path)
-                except Exception as e:
-                    error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
-                    logger.error(f"保存角色设计图失败：{error_msg}", exc_info=True)
-                    self.failed.emit(error_msg)
-
-            def on_image_failed(task_id: str, error: str):
-                self.failed.emit(error)
-
             from loguru import logger
-            from PySide6.QtCore import QEventLoop
+            logger.info(f"角色设计图生成完成，开始更新数据库：char_uuid={self._character.uuid}, image_path={image_path}")
 
-            logger.info(f"[CharacterDesignImageWorker] 连接 ImageGenerationWorker 信号：char_uuid={self._character.uuid}, provider_task_id={provider_task_id}")
+            self._character_service.update_character(
+                character_uuid=self._character.uuid, design_image=image_path,
+            )
+            logger.info(f"角色设计图已保存到数据库：{image_path}")
 
-            # 使用 QEventLoop 等待子任务完成（允许信号槽正常工作）
-            loop = QEventLoop()
-            self._image_worker.finished.connect(loop.quit)
-            self._image_worker.failed.connect(loop.quit)
-
-            self._image_worker.finished.connect(on_image_finished)
-            self._image_worker.failed.connect(on_image_failed)
-            self._image_worker.finished.connect(self._image_worker.deleteLater)
-            self._image_worker.failed.connect(self._image_worker.deleteLater)
-
-            logger.debug(f"[CharacterDesignImageWorker] 启动 ImageGenerationWorker")
-            self._image_worker.start()
-
-            # 等待图片生成完成（使用事件循环，不阻塞信号处理）
-            logger.debug(f"[CharacterDesignImageWorker] 等待 ImageGenerationWorker 完成")
-            loop.exec()
-            logger.debug(f"[CharacterDesignImageWorker] ImageGenerationWorker 已完成")
+            relative_path = to_relative_path(image_path, self._workspace_root)
+            self.finished.emit(relative_path)
 
         except Exception as e:
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
