@@ -499,22 +499,21 @@ Item {
 
                     delegate: Rectangle {
                         width: ListView.view.width
-                        height: takeCardContent.implicitHeight + 16
+                        height: 80
                         radius: Theme.radiusSmall
                         color: Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.04)
                         border.width: 1
                         border.color: detailPage.borderColor
 
-                        ColumnLayout {
-                            id: takeCardContent
+                        RowLayout {
                             anchors.fill: parent
                             anchors.margins: 8
-                            spacing: 6
+                            spacing: 8
 
                             // Thumbnail
                             Rectangle {
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: width * 9 / 16
+                                Layout.preferredWidth: 112
+                                Layout.fillHeight: true
                                 radius: Theme.radiusSmall
                                 color: "#222"
                                 clip: true
@@ -547,71 +546,64 @@ Item {
                                 text: "第" + modelData.number + "次"
                                 font.pixelSize: Theme.fontSizeSmall
                                 font.bold: true
+                                Layout.preferredWidth: 50
                             }
 
-                            // Status + delete row
-                            RowLayout {
+                            // Status dropdown
+                            ComboBox {
+                                id: statusCombo
                                 Layout.fillWidth: true
-                                spacing: 4
+                                Layout.preferredHeight: 32
+                                model: ["备选", "选用", "放弃"]
+                                currentIndex: modelData.status === "candidate" ? 0 : (modelData.status === "selected" ? 1 : 2)
+                                font.pixelSize: Theme.fontSizeSmall
 
-                                Button {
-                                    Layout.fillWidth: true
-                                    Layout.preferredHeight: 28
-                                    text: modelData.status === "candidate" ? "备选" : (modelData.status === "selected" ? "选用" : "放弃")
-                                    font.pixelSize: Theme.fontSizeSmall
-                                    topPadding: 4
-                                    bottomPadding: 4
-
-                                    background: Rectangle {
-                                        anchors.fill: parent
-                                        radius: Theme.radiusSmall
-                                        color: modelData.status === "selected" ? "#4CAF50" : (modelData.status === "abandoned" ? "#9E9E9E" : "#FF9800")
-                                    }
-
-                                    contentItem: Text {
-                                        text: parent.text
-                                        font: parent.font
-                                        color: "white"
-                                        horizontalAlignment: Text.AlignHCenter
-                                        verticalAlignment: Text.AlignVCenter
-                                    }
-
-                                    onClicked: {
-                                        var nextStatus
-                                        if (modelData.status === "candidate") nextStatus = "selected"
-                                        else if (modelData.status === "selected") nextStatus = "abandoned"
-                                        else nextStatus = "candidate"
-                                        bridge.storyboard.update_take_status(modelData.id, nextStatus)
-                                    }
+                                background: Rectangle {
+                                    radius: Theme.radiusSmall
+                                    color: statusCombo.currentIndex === 1 ? "#4CAF50" : (statusCombo.currentIndex === 2 ? "#9E9E9E" : "#FF9800")
                                 }
 
-                                Button {
-                                    Layout.preferredWidth: 28
-                                    Layout.preferredHeight: 28
-                                    display: AbstractButton.IconOnly
-                                    icon.source: "qrc:/resources/icons/delete.svg"
-                                    icon.width: 16
-                                    icon.height: 16
-                                    topPadding: 6
-                                    bottomPadding: 6
-                                    leftPadding: 6
-                                    rightPadding: 6
-                                    ToolTip.visible: hovered
-                                    ToolTip.text: "删除"
-
-                                    background: Rectangle {
-                                        anchors.fill: parent
-                                        radius: Theme.radiusSmall
-                                        color: parent.hovered
-                                            ? Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.08)
-                                            : "transparent"
-                                    }
-
-                                    onClicked: confirmDialog.confirm(
-                                        "确定要删除第" + modelData.number + "次拍摄记录吗？",
-                                        function() { bridge.storyboard.delete_take(modelData.id) }
-                                    )
+                                contentItem: Text {
+                                    text: statusCombo.displayText
+                                    font: statusCombo.font
+                                    color: "white"
+                                    verticalAlignment: Text.AlignVCenter
+                                    leftPadding: 8
                                 }
+
+                                onActivated: {
+                                    var statusMap = ["candidate", "selected", "abandoned"]
+                                    bridge.storyboard.update_take_status(modelData.id, statusMap[currentIndex])
+                                }
+                            }
+
+                            // Delete button
+                            Button {
+                                Layout.preferredWidth: 32
+                                Layout.preferredHeight: 32
+                                display: AbstractButton.IconOnly
+                                icon.source: "qrc:/resources/icons/delete.svg"
+                                icon.width: 18
+                                icon.height: 18
+                                topPadding: 7
+                                bottomPadding: 7
+                                leftPadding: 7
+                                rightPadding: 7
+                                ToolTip.visible: hovered
+                                ToolTip.text: "删除"
+
+                                background: Rectangle {
+                                    anchors.fill: parent
+                                    radius: Theme.radiusSmall
+                                    color: parent.hovered
+                                        ? Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.08)
+                                        : "transparent"
+                                }
+
+                                onClicked: confirmDialog.confirm(
+                                    "确定要删除第" + modelData.number + "次拍摄记录吗？",
+                                    function() { bridge.storyboard.delete_take(modelData.id) }
+                                )
                             }
                         }
                     }

@@ -259,7 +259,8 @@ class StoryboardBridge(QObject):
             self._cur_background_music = shot.background_music
             self._cur_duration = shot.duration
             self._cur_notes = shot.notes
-            self._cur_design_image = shot.design_image
+            workspace_root = self._container.config.workspace_root()
+            self._cur_design_image = to_absolute_path(shot.design_image, workspace_root)
             self._cur_seed = shot.seed
             self.shot_detail_changed.emit()
         except Exception as e:
@@ -508,11 +509,6 @@ class StoryboardBridge(QObject):
                 visual_style = self._visual_style_service.get_style(project.visual_style_id)
                 if visual_style:
                     visual_style_name = visual_style.name
-
-            if not visual_style_name:
-                default_style = self._visual_style_service.get_default_style()
-                if default_style:
-                    visual_style_name = default_style.name
 
             shot_list_for_prompt = [s for s in shots]
             shot_list = []
