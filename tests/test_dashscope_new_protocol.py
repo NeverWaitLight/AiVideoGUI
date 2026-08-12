@@ -1,6 +1,7 @@
 import unittest
 from providers.dashscope_video import DashScopeVideoProvider
 from models.provider_config import ProviderConfig
+from models.exceptions import MissingConfigError
 
 
 class TestDashScopeNewProtocol(unittest.TestCase):
@@ -11,8 +12,70 @@ class TestDashScopeNewProtocol(unittest.TestCase):
             api_key="test-key",
             base_url="https://dashscope.aliyuncs.com/api/v1",
             default_model="wan2.7-t2v",
+            model_mappings={
+                "t2v": "wan2.7-t2v-2026-06-12",
+                "i2v": "wan2.7-i2v-2026-04-25",
+                "r2v": "wan2.7-r2v-2026-06-12"
+            }
         )
         self.provider = DashScopeVideoProvider(config)
+
+    def test_missing_base_url_raises_error(self):
+        """测试缺少 base_url 时抛出 MissingConfigError"""
+        config = ProviderConfig(
+            provider_name="dashscope",
+            api_key="test-key",
+            base_url="",
+            default_model="wan2.7-t2v",
+        )
+        with self.assertRaises(MissingConfigError) as ctx:
+            DashScopeVideoProvider(config)
+
+        self.assertIn("base_url", str(ctx.exception))
+
+    def test_missing_default_model_raises_error(self):
+        """测试缺少 model_mappings 和 default_model 时抛出 MissingConfigError"""
+        config = ProviderConfig(
+            provider_name="dashscope",
+            api_key="test-key",
+            base_url="https://dashscope.aliyuncs.com/api/v1",
+            default_model="",
+            model_mappings={}
+        )
+        with self.assertRaises(MissingConfigError) as ctx:
+            DashScopeVideoProvider(config)
+
+        self.assertIn("model_mappings", str(ctx.exception))
+
+    def test_missing_api_key_raises_error(self):
+        """测试缺少 api_key 时抛出 MissingConfigError"""
+        config = ProviderConfig(
+            provider_name="dashscope",
+            api_key="",
+            base_url="https://dashscope.aliyuncs.com/api/v1",
+            default_model="wan2.7-t2v",
+        )
+        with self.assertRaises(MissingConfigError) as ctx:
+            DashScopeVideoProvider(config)
+
+        self.assertIn("api_key", str(ctx.exception))
+
+    def test_missing_multiple_fields_raises_error(self):
+        """测试缺少多个字段时抛出 MissingConfigError"""
+        config = ProviderConfig(
+            provider_name="dashscope",
+            api_key="",
+            base_url="",
+            default_model="",
+            model_mappings={}
+        )
+        with self.assertRaises(MissingConfigError) as ctx:
+            DashScopeVideoProvider(config)
+
+        error_msg = str(ctx.exception)
+        self.assertIn("api_key", error_msg)
+        self.assertIn("base_url", error_msg)
+        self.assertIn("model_mappings", error_msg)
 
     def test_basic_parameters_direct_pass_through(self):
         params = {

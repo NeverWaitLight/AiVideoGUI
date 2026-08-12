@@ -56,6 +56,7 @@ class AppBridge(QObject):
         self._text_model_service = container.chat_model_service()
         self._image_service = container.image_service()
         self._media_service = container.media_service()
+        self._take_service = container.storyboard_take_service()
         self._session_manager = container.session_manager()
         self._config = container.config_manager()
         self._scheduler = container.background_scheduler()
@@ -79,7 +80,8 @@ class AppBridge(QObject):
             self._text_model_service, self._image_service,
             self._character_service, self._media_service,
             self._story_outline_service, self._project_service,
-            container.visual_style_service(), self._container, self,
+            container.visual_style_service(), self._container,
+            take_service=self._take_service, parent=self,
         )
         self._story_outline = StoryOutlineBridge(
             self._story_outline_service, self._text_model_service,
@@ -197,4 +199,16 @@ class AppBridge(QObject):
 
     def _on_video_task_finished(self, provider_task_id: str, save_path: str, storyboard_id: int) -> None:
         self._media.files_changed.emit()
+        if storyboard_id > 0:
+            try:
+                media = self._media_service.get_file_by_message_id(provider_task_id)
+                if media:
+                    self._take_service.create_take(
+                        storyboard_id=storyboard_id,
+                        media_file_id=media.id,
+                    )
+                    self._storyboard_bridge.takes_changed.emit()
+            except Exception as e:
+                from loguru import logger
+                logger.warning(f"自动创建拍摄记录失败: {e}")
 

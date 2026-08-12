@@ -69,3 +69,10 @@ class ShotSize(enum.Enum):
     FULL_SHOT = "full_shot"                      # 全景
     LONG_SHOT = "long_shot"                      # 远景
     EXTREME_LONG_SHOT = "extreme_long_shot"      # 大远景
+
+
+class TakeStatus(enum.Enum):
+    """拍摄记录状态"""
+    CANDIDATE = "candidate"    # 备选
+    SELECTED = "selected"      # 选用
+    ABANDONED = "abandoned"    # 放弃

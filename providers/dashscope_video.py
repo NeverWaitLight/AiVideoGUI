@@ -8,6 +8,7 @@ import requests
 
 from models.api_params import DashScopeVideoRequest, MediaItem
 from models.enums import TaskStatus
+from models.exceptions import MissingConfigError
 from models.model_info import ModelInfo
 from models.provider_config import ProviderConfig
 from models.task_result import TaskResult
@@ -18,17 +19,41 @@ from storage.session_manager import SessionManager
 
 class DashScopeVideoProvider(VideoProvider):
 
-    BASE_URL = "https://dashscope.aliyuncs.com/api/v1"
-    SUBMIT_URL = f"{BASE_URL}/services/aigc/video-generation/video-synthesis"
-    TASK_URL = f"{BASE_URL}/tasks"
-    DEFAULT_MODEL = "wan2.7-t2v"
-
     def __init__(self, config: ProviderConfig) -> None:
         super().__init__(config)
-        self._api_key = config.api_key
-        self._base_url = config.base_url or self.BASE_URL
-        self._model = config.default_model or self.DEFAULT_MODEL
+
+        # 验证必需配置
+        missing_fields = []
+        if not config.api_key:
+            missing_fields.append("api_key")
+        if not config.base_url:
+            missing_fields.append("base_url")
+
+        # DashScope 使用 model_mappings 为不同任务类型配置模型
+        # 不强制要求 default_model，但至少需要配置一个任务类型的模型
         self._model_mappings = config.model_mappings or {}
+        if not self._model_mappings and not config.default_model:
+            missing_fields.append("model_mappings 或 default_model")
+
+        if missing_fields:
+            hint = "DashScope 视频生成服务需要配置 API Key、Base URL 和模型映射。\n"
+            hint += "建议在 model_mappings 中配置：\n"
+            hint += '  {"t2v": "wan2.7-t2v-2026-06-12", "i2v": "wan2.7-i2v-2026-04-25", "r2v": "wan2.7-r2v-2026-06-12"}\n'
+            hint += "或至少配置一个 default_model 作为后备"
+            raise MissingConfigError(
+                provider_name=config.provider_name or "dashscope",
+                missing_fields=missing_fields,
+                config_hint=hint
+            )
+
+        self._api_key = config.api_key
+        self._base_url = config.base_url
+        self._model = config.default_model or ""
+
+        # 实例级别 URL 拼接
+        self._submit_url = f"{self._base_url}/api/v1/services/aigc/video-generation/video-synthesis"
+        self._task_url = f"{self._base_url}/api/v1/tasks"
+
         self._oss_uploader = DashScopeOSSUploader(self._api_key)
         self._session_manager = None
 
@@ -111,7 +136,7 @@ class DashScopeVideoProvider(VideoProvider):
         headers = self._headers(async_mode=True)
 
         resp = requests.post(
-            self.SUBMIT_URL,
+            self._submit_url,
             json=payload,
             headers=headers,
             timeout=30,
@@ -136,7 +161,7 @@ class DashScopeVideoProvider(VideoProvider):
         if not task_id:
             raise RuntimeError(f"DashScope 未返回 task_id: {data}")
         logger.info(f"任务已提交，task_id={task_id}")
-        return task_id, {"url": self.SUBMIT_URL, "json": payload, "headers": headers}
+        return task_id, {"url": self._submit_url, "json": payload, "headers": headers}
 
     def t2v(self, prompt: str, params: dict[str, Any] | None = None) -> tuple[str, dict[str, Any]]:
         api_params = params.copy() if params else {}
@@ -311,7 +336,7 @@ class DashScopeVideoProvider(VideoProvider):
         return self._submit_task(payload)
 
     def check_status(self, task_id: str) -> TaskResult:
-        url = f"{self.TASK_URL}/{task_id}"
+        url = f"{self._task_url}/{task_id}"
         resp = requests.get(url, headers=self._headers(), timeout=30)
 
         if not resp.ok:

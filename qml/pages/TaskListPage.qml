@@ -20,7 +20,26 @@ Item {
         var tasks = bridge.tasks.list_tasks_filtered(_filterProjectId, _filterCallerType)
         taskModel.clear()
         for (var i = 0; i < tasks.length; i++) {
-            taskModel.append(tasks[i])
+            var t = tasks[i]
+            taskModel.append({
+                id: t.id || 0,
+                type: t.type || "",
+                provider_task_id: t.provider_task_id || "",
+                provider_name: t.provider_name || "",
+                model_name: t.model_name || "",
+                status: t.status || "",
+                completed: t.completed || false,
+                request_params: t.request_params || "",
+                remote_url: t.remote_url || "",
+                local_path: t.local_path || "",
+                error_message: t.error_message || "",
+                caller_type: t.caller_type || "",
+                caller_id: t.caller_id || "",
+                project_id: t.project_id !== undefined ? t.project_id : -1,
+                parent_ids: t.parent_ids || "",
+                created_at: t.created_at || 0,
+                updated_at: t.updated_at || 0
+            })
         }
     }
 

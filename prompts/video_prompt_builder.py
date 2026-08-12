@@ -175,7 +175,7 @@ class VideoPromptBuilder:
         messages = template.build_messages(original_prompt=original_prompt)
 
         try:
-            cleaned_prompt = chat_service.chat(messages)
+            cleaned_prompt, _ = chat_service.chat(messages)
             logger.debug(f"提示词清理完成，原始长度: {len(original_prompt)}, 清理后长度: {len(cleaned_prompt)}")
             return cleaned_prompt.strip()
         except Exception as e:

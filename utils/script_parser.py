@@ -1,6 +1,7 @@
 import json
-from loguru import logger
 from typing import Any
+
+from loguru import logger
 
 from models.enums import SceneLocation, SceneTime
 

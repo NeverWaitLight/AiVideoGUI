@@ -27,6 +27,7 @@ class StoryboardBridge(QObject):
     storyboard_optimized = Signal(int)  # shot_count
     storyboard_generation_failed = Signal(str)
     isOptimizingChanged = Signal()
+    takes_changed = Signal()
     bridge_error = Signal(str)
 
     _SHOT_SIZE_INDEX_MAP = {
@@ -42,7 +43,7 @@ class StoryboardBridge(QObject):
         self, storyboard_service, screenplay_service,
         text_model_service, image_service, character_service,
         media_service, story_outline_service, project_service,
-        visual_style_service, container, parent=None,
+        visual_style_service, container, take_service=None, parent=None,
     ):
         super().__init__(parent)
         self._storyboard_service = storyboard_service
@@ -54,6 +55,7 @@ class StoryboardBridge(QObject):
         self._story_outline_service = story_outline_service
         self._project_service = project_service
         self._visual_style_service = visual_style_service
+        self._take_service = take_service
         self._container = container
         self._model = StoryboardListModel(
             workspace_root=container.config.workspace_root(), parent=self,
@@ -655,6 +657,65 @@ class StoryboardBridge(QObject):
             return json.dumps(result)
         except Exception:
             return "[]"
+
+    @Slot(int, result=str)
+    def get_takes_for_shot(self, shot_id: int) -> str:
+        """获取分镜的所有拍摄记录，附带关联的媒体文件信息"""
+        try:
+            if not self._take_service:
+                return "[]"
+            takes = self._take_service.list_by_storyboard(shot_id)
+            result = []
+            for t in takes:
+                media = self._media_service.get_file_by_id(t.media_file_id) if hasattr(self._media_service, 'get_file_by_id') else None
+                media_info = {}
+                if media:
+                    media_info = {
+                        "filePath": media.local_path,
+                        "thumbnailPath": media.thumbnail_path or "",
+                        "duration": media.duration,
+                        "width": media.width,
+                        "height": media.height,
+                    }
+                result.append({
+                    "id": t.id,
+                    "storyboardId": t.storyboard_id,
+                    "number": t.number,
+                    "mediaFileId": t.media_file_id,
+                    "status": t.status.value,
+                    "comment": t.comment,
+                    "createdAt": t.created_at,
+                    **media_info,
+                })
+            return json.dumps(result)
+        except Exception:
+            return "[]"
+
+    @Slot(int, str)
+    def update_take_status(self, take_id: int, status: str) -> None:
+        """更新拍摄记录状态"""
+        try:
+            if not self._take_service:
+                return
+            from models.enums import TakeStatus
+            take_status = TakeStatus(status)
+            self._take_service.update_status(take_id, take_status)
+            self.takes_changed.emit()
+        except Exception as e:
+            error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+            self.bridge_error.emit(error_msg)
+
+    @Slot(int)
+    def delete_take(self, take_id: int) -> None:
+        """删除拍摄记录"""
+        try:
+            if not self._take_service:
+                return
+            self._take_service.delete_take(take_id)
+            self.takes_changed.emit()
+        except Exception as e:
+            error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+            self.bridge_error.emit(error_msg)
 
     def _on_design_done(self, shot_id: int, path: str) -> None:
         # Worker 内部已经保存到数据库，这里只需更新 Model 和发出信号

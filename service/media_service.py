@@ -1,20 +1,21 @@
-from loguru import logger
 import os
 import shutil
+import subprocess
 import time
 import uuid
-import subprocess
 from pathlib import Path
+
 from imageio_ffmpeg import get_ffmpeg_exe
+from loguru import logger
 
 from models.enums import MediaType
 from models.media_file import MediaFile
-from storage.session_manager import SessionManager
 from storage.repositories.media_repository import MediaRepository
 from storage.repositories.project_repository import ProjectRepository
+from storage.session_manager import SessionManager
 from utils import paths
-from utils.video_metadata import VideoMetadataExtractor
 from utils.path_converter import to_relative_path
+from utils.video_metadata import VideoMetadataExtractor
 
 _VIDEO_EXTENSIONS = {".mp4", ".avi", ".mov", ".mkv", ".wmv", ".flv", ".webm"}
 _IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg"}
@@ -250,6 +251,14 @@ class MediaService:
         media_repo = self._sm.get_repo(repo_class=MediaRepository)
         return media_repo.list_by_storyboard(storyboard_id)
 
+    def get_file_by_id(self, file_id: str) -> MediaFile | None:
+        media_repo = self._sm.get_repo(repo_class=MediaRepository)
+        return media_repo.get_by_id(file_id)
+
+    def get_file_by_message_id(self, message_id: str) -> MediaFile | None:
+        media_repo = self._sm.get_repo(repo_class=MediaRepository)
+        return media_repo.get_by_message_id(message_id)
+
     def set_featured(self, file_id: str, storyboard_id: int) -> None:
         media_repo = self._sm.get_repo(repo_class=MediaRepository)
 
@@ -270,7 +279,9 @@ class MediaService:
         if not project:
             raise ValueError(f"项目不存在: {project_id}")
 
-        videos = media_repo.list_featured_by_project(project_id)
+        videos = self._get_selected_take_videos(project_id)
+        if not videos:
+            videos = media_repo.list_featured_by_project(project_id)
         if not videos:
             raise ValueError("该项目没有可导出的视频")
 
@@ -335,6 +346,26 @@ class MediaService:
                     os.remove(temp_list_file)
                 except OSError:
                     pass
+
+    def _get_selected_take_videos(self, project_id: int) -> list[MediaFile]:
+        """从 storyboard_takes 获取状态为选用的视频文件"""
+        try:
+            from storage.repositories.storyboard_take_repository import StoryboardTakeRepository
+            take_repo = self._sm.get_repo(repo_class=StoryboardTakeRepository)
+            selected_takes = take_repo.list_selected_by_project(project_id)
+            if not selected_takes:
+                return []
+
+            media_repo = self._sm.get_repo(repo_class=MediaRepository)
+            videos = []
+            for take in selected_takes:
+                media = media_repo.get_by_id(take.media_file_id)
+                if media:
+                    videos.append(media)
+            return videos
+        except Exception as e:
+            logger.warning(f"查询选用拍摄记录失败，回退到旧逻辑: {e}")
+            return []
 
     def _resolve_dest_path(self, filename: str, target_dir: str) -> str:
         dest = os.path.join(target_dir, filename)

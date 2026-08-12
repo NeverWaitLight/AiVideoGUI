@@ -1,11 +1,12 @@
-from loguru import logger
-import os
 import json
-import subprocess
+import os
 import shutil
+import subprocess
 from pathlib import Path
 
 from imageio_ffmpeg import get_ffmpeg_exe
+from loguru import logger
+
 
 class VideoMetadataExtractor:
     @staticmethod

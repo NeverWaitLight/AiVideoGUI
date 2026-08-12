@@ -1,9 +1,11 @@
 import json
-from loguru import logger
 import os
+
+from loguru import logger
 
 from models.app_settings import AppSettings
 from models.provider_config import ProviderConfig
+
 
 class ConfigManager:
     def __init__(self, config_path: str) -> None:
@@ -210,13 +212,21 @@ class ConfigManager:
         if not cfg.api_key:
             errors.append("未设置 API Key")
 
-        if not cfg.default_model:
+        if provider_type == "video":
+            if not cfg.base_url:
+                errors.append("未设置 Base URL")
+
+            # 视频 provider 需要 model_mappings 或 default_model
+            if not cfg.model_mappings and not cfg.default_model:
+                errors.append("未配置模型映射（model_mappings）或默认模型（default_model）")
+
+        if not cfg.default_model and not cfg.model_mappings:
             errors.append("未选择默认模型")
             return errors
 
-        model_lower = cfg.default_model.lower()
+        model_lower = cfg.default_model.lower() if cfg.default_model else ""
 
-        if provider_type == "video":
+        if provider_type == "video" and model_lower:
             video_keywords = ["t2v", "p2v", "r2v", "video", "wan2.7", "seedance", "cogvideo"]
             if not any(kw in model_lower for kw in video_keywords):
                 errors.append(f"模型 '{cfg.default_model}' 看起来不像视频模型（应包含 t2v/video 等关键词）")

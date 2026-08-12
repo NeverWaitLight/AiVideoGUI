@@ -1,20 +1,19 @@
 from __future__ import annotations
 
 import json
-from loguru import logger
-import uuid
-from datetime import datetime
 from typing import Any
 
 from PySide6.QtCore import QObject
+from loguru import logger
 
 from config.manager import ConfigManager
-from models.enums import MessageStatus, GenerateTaskType, GenerateTaskCallerType
-from providers.video_base import VideoProvider
+from models.enums import GenerateTaskType, GenerateTaskCallerType
+from models.exceptions import MissingConfigError
 from providers.dashscope_video import DashScopeVideoProvider
 from providers.seedance_video import SeedanceVideoProvider
-from storage.session_manager import SessionManager
+from providers.video_base import VideoProvider
 from storage.repositories.generate_task_repository import GenerateTaskRepository
+from storage.session_manager import SessionManager
 
 _PROVIDER_REGISTRY: dict[str, type[VideoProvider]] = {
     "dashscope": DashScopeVideoProvider,
@@ -43,7 +42,12 @@ class VideoService(QObject):
         cls = _PROVIDER_REGISTRY.get(name)
         if cls is None:
             raise KeyError(f"未注册的 Provider：{name}")
-        provider = cls(cfg)
+
+        try:
+            provider = cls(cfg)
+        except MissingConfigError as e:
+            logger.error(f"Provider 配置不完整：{e}")
+            raise KeyError(f"Provider '{name}' 配置不完整，请在设置中补全必需字段") from e
 
         if hasattr(provider, "set_session_manager"):
             provider.set_session_manager(self._sm)

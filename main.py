@@ -1,21 +1,20 @@
 import os
 import sys
 
-from loguru import logger
-from PySide6.QtWidgets import QApplication
-from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtCore import QUrl
 from PySide6.QtGui import QIcon
+from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuickControls2 import QQuickStyle
+from PySide6.QtWidgets import QApplication
+from loguru import logger
 
-from di import ApplicationContainer
 from bridge.app_bridge import AppBridge
 from bridge.theme import Theme
+from di import ApplicationContainer
 from storage.orm.base import init_engine
+import resources_rc
 from utils import paths
 from utils.resources import copy_resources_to_workspace
-
-import resources_rc
 
 
 def setup_logging():

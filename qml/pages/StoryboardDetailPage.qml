@@ -12,6 +12,7 @@ Item {
     property string projectName: ""
     property int shotId: -1
     property bool contentFullscreen: false
+    property var takesList: []
 
     signal backClicked()
 
@@ -36,6 +37,14 @@ Item {
     onShotIdChanged: {
         if (shotId > 0) {
             bridge.storyboard.load_shot(shotId)
+            _loadTakes()
+        }
+    }
+
+    Connections {
+        target: bridge.storyboard
+        function onTakes_changed() {
+            _loadTakes()
         }
     }
 
@@ -103,11 +112,15 @@ Item {
             }
         }
 
-        Flickable {
+        Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
             visible: !detailPage.contentFullscreen
             enabled: !detailPage.contentFullscreen
+
+        Flickable {
+            width: parent.width * 2 / 3
+            height: parent.height
             contentHeight: contentColumn.implicitHeight
             clip: true
             boundsBehavior: Flickable.StopAtBounds
@@ -455,6 +468,165 @@ Item {
             }
         }
 
+        // Right panel: takes list
+        Rectangle {
+            x: parent.width * 2 / 3
+            width: parent.width / 3
+            height: parent.height
+            color: "transparent"
+            border.width: 1
+            border.color: detailPage.borderColor
+
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: 12
+                spacing: 8
+
+                Label {
+                    text: "拍摄记录"
+                    font.pixelSize: Theme.fontSizeMedium
+                    font.bold: true
+                    Layout.fillWidth: true
+                }
+
+                ListView {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    model: detailPage.takesList
+                    spacing: 8
+                    clip: true
+                    boundsBehavior: Flickable.StopAtBounds
+
+                    delegate: Rectangle {
+                        width: ListView.view.width
+                        height: takeCardContent.implicitHeight + 16
+                        radius: Theme.radiusSmall
+                        color: Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.04)
+                        border.width: 1
+                        border.color: detailPage.borderColor
+
+                        ColumnLayout {
+                            id: takeCardContent
+                            anchors.fill: parent
+                            anchors.margins: 8
+                            spacing: 6
+
+                            // Thumbnail
+                            Rectangle {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: width * 9 / 16
+                                radius: Theme.radiusSmall
+                                color: "#222"
+                                clip: true
+
+                                Image {
+                                    anchors.fill: parent
+                                    source: modelData.thumbnailPath ? "file:///" + modelData.thumbnailPath : ""
+                                    fillMode: Image.PreserveAspectCrop
+                                    visible: source !== ""
+                                }
+
+                                Label {
+                                    anchors.centerIn: parent
+                                    text: "无封面"
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    color: "#888"
+                                    visible: parent.children[0].source === ""
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    visible: modelData.filePath
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: bridge.play_video(modelData.filePath)
+                                }
+                            }
+
+                            // Take number
+                            Label {
+                                text: "第" + modelData.number + "次"
+                                font.pixelSize: Theme.fontSizeSmall
+                                font.bold: true
+                            }
+
+                            // Status + delete row
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 4
+
+                                Button {
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 28
+                                    text: modelData.status === "candidate" ? "备选" : (modelData.status === "selected" ? "选用" : "放弃")
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    topPadding: 4
+                                    bottomPadding: 4
+
+                                    background: Rectangle {
+                                        anchors.fill: parent
+                                        radius: Theme.radiusSmall
+                                        color: modelData.status === "selected" ? "#4CAF50" : (modelData.status === "abandoned" ? "#9E9E9E" : "#FF9800")
+                                    }
+
+                                    contentItem: Text {
+                                        text: parent.text
+                                        font: parent.font
+                                        color: "white"
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+
+                                    onClicked: {
+                                        var nextStatus
+                                        if (modelData.status === "candidate") nextStatus = "selected"
+                                        else if (modelData.status === "selected") nextStatus = "abandoned"
+                                        else nextStatus = "candidate"
+                                        bridge.storyboard.update_take_status(modelData.id, nextStatus)
+                                    }
+                                }
+
+                                Button {
+                                    Layout.preferredWidth: 28
+                                    Layout.preferredHeight: 28
+                                    display: AbstractButton.IconOnly
+                                    icon.source: "qrc:/resources/icons/delete.svg"
+                                    icon.width: 16
+                                    icon.height: 16
+                                    topPadding: 6
+                                    bottomPadding: 6
+                                    leftPadding: 6
+                                    rightPadding: 6
+                                    ToolTip.visible: hovered
+                                    ToolTip.text: "删除"
+
+                                    background: Rectangle {
+                                        anchors.fill: parent
+                                        radius: Theme.radiusSmall
+                                        color: parent.hovered
+                                            ? Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.08)
+                                            : "transparent"
+                                    }
+
+                                    onClicked: confirmDialog.confirm(
+                                        "确定要删除第" + modelData.number + "次拍摄记录吗？",
+                                        function() { bridge.storyboard.delete_take(modelData.id) }
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Comp.EmptyState {
+                        visible: detailPage.takesList.length === 0
+                        anchors.centerIn: parent
+                        text: "暂无拍摄记录"
+                    }
+                }
+            }
+        }
+
+        } // content area (Item)
+
         // Fullscreen content overlay
         Item {
             Layout.fillWidth: true
@@ -563,6 +735,19 @@ Item {
             "",
             seedInput.text
         )
+    }
+
+    function _loadTakes() {
+        if (detailPage.shotId > 0) {
+            var json = bridge.storyboard.get_takes_for_shot(detailPage.shotId)
+            try {
+                detailPage.takesList = JSON.parse(json)
+            } catch (e) {
+                detailPage.takesList = []
+            }
+        } else {
+            detailPage.takesList = []
+        }
     }
 
 }

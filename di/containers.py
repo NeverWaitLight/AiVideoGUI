@@ -15,6 +15,7 @@ from service.project_service import ProjectService
 from service.screenplay_service import ScreenplayService
 from service.story_outline_service import StoryOutlineService
 from service.storyboard_service import StoryboardService
+from service.storyboard_take_service import StoryboardTakeService
 from service.chat_service import ChatService
 from service.video_service import VideoService, _PROVIDER_REGISTRY
 from service.visual_style_service import VisualStyleService
@@ -83,6 +84,11 @@ class ApplicationContainer(containers.DeclarativeContainer):
         StoryboardService,
         session_mgr=session_manager,
         workspace_root=config.workspace_root,
+    )
+
+    storyboard_take_service = providers.Singleton(
+        StoryboardTakeService,
+        session_mgr=session_manager,
     )
 
     character_service = providers.Singleton(

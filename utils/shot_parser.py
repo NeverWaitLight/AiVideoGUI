@@ -1,8 +1,9 @@
 """分镜数据解析器"""
 
 import json
-from loguru import logger
 from typing import Any
+
+from loguru import logger
 
 from models.enums import ShotSize
 

@@ -14,6 +14,7 @@ from storage.orm.media_entity import MediaFileEntity
 from storage.orm.story_outline_entity import StoryOutlineEntity, StoryOutlineHistoryEntity
 from storage.orm.screenplay_entity import ScreenplayEntity, ScreenplayHistoryEntity
 from storage.orm.storyboard_entity import StoryboardEntity, StoryboardHistoryEntity
+from storage.orm.storyboard_take_entity import StoryboardTakeEntity
 from storage.orm.character_entity import CharacterEntity, CharacterHistoryEntity
 from storage.orm.visual_style_entity import VisualStyleEntity
 from storage.orm.oss_cache_entity import OSSFileCacheEntity
