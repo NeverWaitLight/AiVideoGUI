@@ -92,7 +92,7 @@
 - **界面框架** - PySide6 + Qt Quick (QML)
 - **编程语言** - Python 3.14
 - **数据库** - SQLite + SQLAlchemy 2.0
-- **AI 集成** - litellm（文本模型）、自定义 Provider（视频模型）
+- **AI 集成** - DashScope API（阿里云通义千问）、自定义 Provider（视频模型）
 - **依赖管理** - uv
 - **设计风格** - Material Design
 
