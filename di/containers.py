@@ -52,12 +52,6 @@ class ApplicationContainer(containers.DeclarativeContainer):
         template_manager=prompt_template_manager,
     )
 
-    video_service = providers.Singleton(
-        VideoService,
-        session_manager=session_manager,
-        config=config_manager,
-    )
-
     media_service = providers.Singleton(
         MediaService,
         session_manager=session_manager,
@@ -104,10 +98,18 @@ class ApplicationContainer(containers.DeclarativeContainer):
         text_prompt_builder=text_prompt_builder,
     )
 
+    video_service = providers.Singleton(
+        VideoService,
+        session_manager=session_manager,
+        config=config_manager,
+        chat_service=chat_model_service,
+    )
+
     image_service = providers.Singleton(
         ImageService,
         config_manager=config_manager,
         session_manager=session_manager,
+        chat_service=chat_model_service,
     )
 
     visual_style_service = providers.Singleton(

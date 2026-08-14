@@ -35,9 +35,12 @@ class TestDependencyInjection(unittest.TestCase):
 
     def test_dependency_injection(self):
         video_service = self.container.video_service()
+        image_service = self.container.image_service()
 
         self.assertIsNotNone(video_service._sm, "SessionManager 应该被注入")
         self.assertIsNotNone(video_service._config, "ConfigManager 应该被注入")
+        self.assertIsNotNone(video_service._chat_service, "ChatService 应该被注入到 VideoService")
+        self.assertIsNotNone(image_service._chat_service, "ChatService 应该被注入到 ImageService")
 
     def test_config_propagation(self):
         config_manager = self.container.config_manager()

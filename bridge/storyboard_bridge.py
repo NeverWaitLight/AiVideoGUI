@@ -10,7 +10,6 @@ from bridge.workers import (
     StoryboardGenerateWorker, StoryboardOptimizeWorker,
 )
 from utils.path_converter import to_absolute_path
-from prompts.video_prompt_builder import VideoPromptBuilder
 
 
 class StoryboardBridge(QObject):
@@ -378,7 +377,7 @@ class StoryboardBridge(QObject):
                         visual_style = style.name
 
             worker = DesignImageWorker(
-                text_service=self._text_model_service, image_service=self._image_service,
+                image_service=self._image_service,
                 storyboard_service=self._storyboard_service, storyboard=storyboard, shot_size_text=shot_size_text,
                 character_info=char_info, project_id=project_id, visual_style=visual_style,
                 project_name=self._get_project_name(project_id),
@@ -441,7 +440,6 @@ class StoryboardBridge(QObject):
                         visual_style = style.name
 
             worker = BatchDesignImageWorker(
-                text_service=self._text_model_service,
                 image_service=self._image_service,
                 storyboard_service=self._storyboard_service,
                 character_service=self._character_service,
@@ -544,20 +542,15 @@ class StoryboardBridge(QObject):
                                 "description": ""
                             })
 
-                chat_service = self._container.chat_model_service()
-
-                prompt = VideoPromptBuilder.build_shot_prompt(
-                    shot, scene, prev_shot, next_shot,
-                    reference_images=reference_images_info,
-                    visual_style=visual_style_name,
-                    clean_dialogue_and_sound=True,
-                    chat_service=chat_service,
-                )
-
                 shot_list.append({
                     "scene_number": shot.scene_number,
                     "shot_number": shot.shot_number,
-                    "prompt": prompt,
+                    "storyboard": shot,
+                    "scene": scene,
+                    "prev_shot": prev_shot,
+                    "next_shot": next_shot,
+                    "reference_images_info": reference_images_info,
+                    "visual_style": visual_style_name,
                     "project_id": project_id,
                     "shot_id": shot.id,
                     "reference_images": reference_images_paths,

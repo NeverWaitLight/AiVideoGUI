@@ -139,7 +139,7 @@ class CharacterBridge(QObject):
                 workspace_root = self._container.config.workspace_root()
 
             worker = CharacterDesignImageWorker(
-                text_service=self._text_model_service, image_service=self._image_service,
+                image_service=self._image_service,
                 character_service=self._character_service, character=character, project_id=project_id,
                 user_requirement=user_requirement, visual_style=visual_style,
                 project_name=self._get_project_name(project_id),

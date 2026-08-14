@@ -177,7 +177,6 @@ class ProjectBridge(QObject):
             appearances=appearances,
             design_image_paths=design_image_paths,
             visual_style=visual_style,
-            chat_model_service=self._chat_model_service,
             image_service=self._image_service,
             project_service=self._project_service,
             workspace_root=self._workspace_root,

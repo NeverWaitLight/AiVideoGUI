@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from PySide6.QtCore import QObject
 from loguru import logger
@@ -15,10 +15,16 @@ from providers.video_base import VideoProvider
 from storage.repositories.generate_task_repository import GenerateTaskRepository
 from storage.session_manager import SessionManager
 
+if TYPE_CHECKING:
+    from models.scene import Scene
+    from models.storyboard import Storyboard
+    from service.chat_service import ChatService
+
 _PROVIDER_REGISTRY: dict[str, type[VideoProvider]] = {
     "dashscope": DashScopeVideoProvider,
     "seedance": SeedanceVideoProvider,
 }
+
 
 class VideoService(QObject):
 
@@ -26,11 +32,13 @@ class VideoService(QObject):
         self,
         session_manager: SessionManager,
         config: ConfigManager,
+        chat_service: "ChatService",
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
         self._sm = session_manager
         self._config = config
+        self._chat_service = chat_service
         self._providers: dict[str, VideoProvider] = {}
 
     def get_provider(self, name: str) -> VideoProvider:
@@ -54,6 +62,57 @@ class VideoService(QObject):
 
         self._providers[name] = provider
         return provider
+
+    def submit_shot_video(
+        self,
+        storyboard: "Storyboard",
+        provider_name: str,
+        local_path: str = "",
+        scene: "Scene | None" = None,
+        prev_shot: "Storyboard | None" = None,
+        next_shot: "Storyboard | None" = None,
+        reference_images: list[str] | None = None,
+        reference_images_info: list[dict[str, str]] | None = None,
+        visual_style: str | None = None,
+        params: dict[str, Any] | None = None,
+        project_id: int | None = None,
+        project_name: str | None = None,
+        clean_prompt: bool = True,
+    ) -> str:
+        from prompts.video_prompt_builder import VideoPromptBuilder
+
+        raw_prompt = VideoPromptBuilder.build_shot_prompt(
+            storyboard,
+            scene,
+            prev_shot,
+            next_shot,
+            reference_images=reference_images_info,
+            visual_style=visual_style,
+        )
+
+        prompt = raw_prompt
+        if clean_prompt:
+            try:
+                prompt, _ = self._chat_service.clean_video_prompt(
+                    raw_prompt,
+                    project_id=project_id,
+                    project_name=project_name,
+                )
+                prompt = prompt.strip()
+            except Exception:
+                logger.error("视频提示词清理失败，使用原始提示词")
+                prompt = raw_prompt
+
+        return self.submit_task(
+            prompt=prompt,
+            provider_name=provider_name,
+            params=params,
+            local_path=local_path,
+            storyboard_id=storyboard.id,
+            reference_images=reference_images,
+            project_id=project_id,
+            project_name=project_name,
+        )
 
     def submit_task(
         self,
@@ -79,18 +138,12 @@ class VideoService(QObject):
                 ]
             provider_task_id, request_details = provider.r2v(prompt=prompt, reference_path=main_ref, params=params)
             logger.info(f"使用参考生视频 (r2v)：{len(reference_images)} 张参考图")
-            request_type = "video_generation_r2v"
-            context = f"参考图生成视频 (r2v, {len(reference_images)}张)"
         elif reference_image:
             provider_task_id, request_details = provider.r2v(prompt=prompt, reference_path=reference_image, params=params)
             logger.info(f"使用参考生视频 (r2v)：reference_image={reference_image}")
-            request_type = "video_generation_r2v"
-            context = "参考图生成视频 (r2v)"
         else:
             provider_task_id, request_details = provider.t2v(prompt=prompt, params=params)
-            logger.info(f"使用文生视频 (t2v)")
-            request_type = "video_generation_t2v"
-            context = "文生视频 (t2v)"
+            logger.info("使用文生视频 (t2v)")
 
         task_repo = self._sm.get_repo(GenerateTaskRepository)
 

@@ -1,9 +1,5 @@
 from models.scene import Scene
 from models.storyboard import Storyboard
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from service.chat_service import ChatService
 
 
 class VideoPromptBuilder:
@@ -15,8 +11,6 @@ class VideoPromptBuilder:
         next_shot: Storyboard | None = None,
         reference_images: list[dict[str, str]] | None = None,
         visual_style: str | None = None,
-        clean_dialogue_and_sound: bool = False,
-        chat_service: "ChatService | None" = None,
     ) -> str:
         sections = []
 
@@ -82,14 +76,7 @@ class VideoPromptBuilder:
         if storyboard.notes and storyboard.notes.strip():
             sections.append(f"【备注】{storyboard.notes.strip()}")
 
-        prompt = "\n\n".join(sections)
-
-        if clean_dialogue_and_sound:
-            if not chat_service:
-                raise ValueError("clean_dialogue_and_sound=True 需要提供 chat_service 参数")
-            prompt = VideoPromptBuilder.clean_prompt(prompt, chat_service)
-
-        return prompt
+        return "\n\n".join(sections)
 
     @staticmethod
     def _build_reference_images_desc(reference_images: list[dict[str, str]]) -> str:
@@ -149,18 +136,3 @@ class VideoPromptBuilder:
             scene_lines.append(content_preview)
 
         return "\n".join(scene_lines)
-
-    @staticmethod
-    def clean_prompt(
-        original_prompt: str,
-        chat_service: "ChatService",
-    ) -> str:
-        from loguru import logger
-
-        try:
-            cleaned_prompt, _ = chat_service.clean_video_prompt(original_prompt)
-            logger.debug(f"提示词清理完成，原始长度: {len(original_prompt)}, 清理后长度: {len(cleaned_prompt)}")
-            return cleaned_prompt.strip()
-        except Exception as e:
-            logger.error(f"提示词清理失败: {e}，返回原始提示词")
-            return original_prompt
