@@ -9,6 +9,8 @@ Dialog {
     width: 400
     anchors.centerIn: parent
     padding: 0
+    contentWidth: 400
+    contentHeight: Math.min(Math.max(messageLabel.implicitHeight + 16, 48), 280)
 
     property string confirmMessage: ""
     property bool dangerMode: false
@@ -89,16 +91,19 @@ Dialog {
     }
 
     ScrollView {
-        anchors.fill: parent
-        anchors.leftMargin: 18
-        anchors.rightMargin: 18
-        anchors.topMargin: 8
-        anchors.bottomMargin: 8
+        id: messageScroll
+        width: confirmDialog.availableWidth
+        height: confirmDialog.availableHeight
         contentWidth: availableWidth
         clip: true
+        leftPadding: 18
+        rightPadding: 18
+        topPadding: 8
+        bottomPadding: 8
 
         Label {
-            width: parent.parent.width - 36
+            id: messageLabel
+            width: 364
             text: confirmMessage
             wrapMode: Text.Wrap
             font.pixelSize: Theme.fontSizeNormal
@@ -119,7 +124,7 @@ Dialog {
 
     function confirm(message, callback) {
         title = "确认"
-        confirmMessage = message
+        confirmMessage = message ? String(message) : "请确认是否继续？"
         dangerMode = false
         onConfirm = callback
         open()

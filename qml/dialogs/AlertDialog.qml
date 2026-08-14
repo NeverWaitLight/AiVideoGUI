@@ -9,6 +9,8 @@ Dialog {
     width: 400
     anchors.centerIn: parent
     padding: 0
+    contentWidth: 400
+    contentHeight: Math.min(Math.max(messageLabel.implicitHeight + 16, 48), 280)
 
     property string alertMessage: ""
     property string alertType: "info"
@@ -79,16 +81,19 @@ Dialog {
     }
 
     ScrollView {
-        anchors.fill: parent
-        anchors.leftMargin: 18
-        anchors.rightMargin: 18
-        anchors.topMargin: 8
-        anchors.bottomMargin: 8
+        id: messageScroll
+        width: alertDialog.availableWidth
+        height: alertDialog.availableHeight
         contentWidth: availableWidth
         clip: true
+        leftPadding: 18
+        rightPadding: 18
+        topPadding: 8
+        bottomPadding: 8
 
         Label {
-            width: parent.parent.width - 36
+            id: messageLabel
+            width: 364
             text: alertMessage
             wrapMode: Text.Wrap
             font.pixelSize: Theme.fontSizeNormal

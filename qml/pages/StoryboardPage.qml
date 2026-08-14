@@ -14,6 +14,7 @@ Item {
     property bool _multiSelect: false
     property var _selectedIds: []
     property string _projectName: ""
+    property bool _exporting: false
 
     signal backClicked()
     signal navigateToMediaLibrary(int projectId)
@@ -77,13 +78,18 @@ Item {
     Connections {
         target: bridge.media
         function onExport_progress(percent, message) {
+            if (!page._exporting) return
             exportMessage.text = message + " (" + percent + "%)"
         }
         function onExport_finished(outputPath) {
+            if (!page._exporting) return
+            page._exporting = false
             exportOverlay.visible = false
             alertDialog.info("导出成功", "视频已保存到：\n" + outputPath)
         }
         function onExport_failed(error) {
+            if (!page._exporting) return
+            page._exporting = false
             exportOverlay.visible = false
             alertDialog.error("导出失败", error)
         }
@@ -388,6 +394,7 @@ Item {
             if (path.startsWith("file:///")) path = path.substring(8)
             exportMessage.text = "正在准备导出..."
             exportOverlay.visible = true
+            page._exporting = true
             bridge.media.export_project_video(page.projectId, path)
         }
     }
