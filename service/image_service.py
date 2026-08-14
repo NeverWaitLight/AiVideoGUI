@@ -12,6 +12,7 @@ from providers.dashscope_image import DashScopeImageProvider
 from providers.image_base import ImageProvider
 from storage.session_manager import SessionManager
 from storage.repositories.generate_task_repository import GenerateTaskRepository
+from utils.prompt_sanitize import flatten_prompt_text
 
 if TYPE_CHECKING:
     from service.chat_service import ChatService
@@ -190,6 +191,8 @@ class ImageService:
         """提交图片生成任务到数据库，返回 provider_task_id"""
         config_name = "dashscope_image"
         provider_name = _CONFIG_TO_PROVIDER_NAME.get(config_name, "dashscope")
+        prompt = flatten_prompt_text(prompt)
+        negative_prompt = flatten_prompt_text(negative_prompt)
 
         provider_cfg = self._config.resolve_config_for_type(name=config_name, provider_type="image")
         if not provider_cfg or not provider_cfg.api_key:

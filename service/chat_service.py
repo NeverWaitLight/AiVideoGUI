@@ -10,6 +10,7 @@ from providers.anyllm_chat import AnyLLMChatProvider
 from providers.chat_base import ChatProvider
 from storage.session_manager import SessionManager
 from storage.repositories.generate_task_repository import GenerateTaskRepository
+from utils.prompt_sanitize import sanitize_chat_messages
 
 _PROVIDER_REGISTRY: dict[str, type[ChatProvider]] = {
     "dashscope": AnyLLMChatProvider,
@@ -100,10 +101,12 @@ class ChatService:
         provider = self._get_provider()
         last_error: Exception | None = None
 
+        sanitized_messages = sanitize_chat_messages(messages)
+
         for attempt in range(self._MAX_RETRIES):
             try:
                 logger.info(f"发起请求（第 {attempt + 1}/{self._MAX_RETRIES} 次尝试）")
-                content = provider.chat(messages=messages, model=model, **provider_kwargs)
+                content = provider.chat(messages=sanitized_messages, model=model, **provider_kwargs)
                 if not content:
                     raise RuntimeError("API 返回的内容为空")
                 return content

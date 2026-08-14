@@ -19,6 +19,13 @@ ApplicationWindow {
 
     property int resizeBorderWidth: 5
 
+    Rectangle {
+        anchors.fill: parent
+        color: "transparent"
+        border.width: 1
+        border.color: Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.12)
+        z: 1000
+    }
 
     MouseArea {
         id: resizeMouseArea

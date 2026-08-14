@@ -14,6 +14,7 @@ from providers.seedance_video import SeedanceVideoProvider
 from providers.video_base import VideoProvider
 from storage.repositories.generate_task_repository import GenerateTaskRepository
 from storage.session_manager import SessionManager
+from utils.prompt_sanitize import flatten_prompt_text
 
 if TYPE_CHECKING:
     from models.scene import Scene
@@ -127,6 +128,7 @@ class VideoService(QObject):
         project_name: str | None = None,
     ) -> str:
         provider = self.get_provider(provider_name)
+        prompt = flatten_prompt_text(prompt)
 
         if reference_images:
             main_ref = reference_images[0]
