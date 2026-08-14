@@ -13,7 +13,12 @@ class ChatProvider(ABC):
         return self._config.provider_name
 
     @abstractmethod
-    def chat(self, messages: list[dict[str, str]]) -> str:
+    def chat(
+        self,
+        messages: list[dict[str, str]],
+        model: str | None = None,
+        **kwargs,
+    ) -> str:
         pass
 
     @abstractmethod

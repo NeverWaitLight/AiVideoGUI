@@ -9,8 +9,8 @@ import "dialogs" as Dialogs
 
 ApplicationWindow {
     id: root
-    width: Screen.width / 2
-    height: Screen.height / 2
+    width: Screen.width * 0.75
+    height: Screen.height * 0.75
     minimumWidth: 960
     minimumHeight: 640
     visible: true

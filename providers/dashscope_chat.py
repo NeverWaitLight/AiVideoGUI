@@ -15,11 +15,17 @@ class DashScopeChatProvider(ChatProvider):
             config.base_url.rstrip("/") if config.base_url else _DEFAULT_BASE_URL
         )
 
-    def chat(self, messages: list[dict[str, str]]) -> str:
+    def chat(
+        self,
+        messages: list[dict[str, str]],
+        model: str | None = None,
+        **kwargs,
+    ) -> str:
         url = f"{self._base_url}/chat/completions"
         payload = {
-            "model": self._config.default_model or "qwen-turbo",
+            "model": model or self._config.default_model or "qwen-turbo",
             "messages": messages,
+            **kwargs,
         }
         resp = requests.post(url, json=payload, headers=self._headers(), timeout=30)
         resp.raise_for_status()

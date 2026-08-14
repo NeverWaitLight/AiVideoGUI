@@ -5,7 +5,7 @@ import os
 from PySide6.QtCore import QObject, Signal, Slot
 
 from models.provider_config import ProviderConfig
-from providers.dashscope_chat import DashScopeChatProvider
+from providers.anyllm_chat import AnyLLMChatProvider
 from utils import paths
 
 
@@ -50,7 +50,7 @@ class SettingsBridge(QObject):
                 base_url=base_url,
                 default_model="",
             )
-            provider = DashScopeChatProvider(config=cfg)
+            provider = AnyLLMChatProvider(config=cfg)
             return provider.list_available_models()
         except Exception:
             return []

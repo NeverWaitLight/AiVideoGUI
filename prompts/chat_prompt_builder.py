@@ -185,3 +185,11 @@ class ChatPromptBuilder:
             visual_style=visual_style or "通用电影海报风格",
             visual_style_instruction=style_instruction,
         )
+
+    def build_video_prompt_clean_messages(
+        self,
+        original_prompt: str,
+    ) -> list[dict[str, str]]:
+        """构建视频提示词清理消息"""
+        template = self._template_manager.get_template("video_prompt_clean")
+        return template.build_messages(original_prompt=original_prompt)

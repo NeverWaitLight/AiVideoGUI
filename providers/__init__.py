@@ -1,3 +1,4 @@
+from providers.anyllm_chat import AnyLLMChatProvider
 from providers.chat_base import ChatProvider
 from providers.dashscope_chat import DashScopeChatProvider
 from providers.dashscope_video import DashScopeVideoProvider
@@ -10,4 +11,5 @@ __all__ = [
     "ImageProvider",
     "ChatProvider",
     "DashScopeChatProvider",
+    "AnyLLMChatProvider",
 ]

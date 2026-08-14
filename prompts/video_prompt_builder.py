@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from service.chat_service import ChatService
-    from prompts.manager import PromptTemplateManager
 
 
 class VideoPromptBuilder:
@@ -18,7 +17,6 @@ class VideoPromptBuilder:
         visual_style: str | None = None,
         clean_dialogue_and_sound: bool = False,
         chat_service: "ChatService | None" = None,
-        template_manager: "PromptTemplateManager | None" = None,
     ) -> str:
         sections = []
 
@@ -87,9 +85,9 @@ class VideoPromptBuilder:
         prompt = "\n\n".join(sections)
 
         if clean_dialogue_and_sound:
-            if not chat_service or not template_manager:
-                raise ValueError("clean_dialogue_and_sound=True 需要提供 chat_service 和 template_manager 参数")
-            prompt = VideoPromptBuilder.clean_prompt(prompt, chat_service, template_manager)
+            if not chat_service:
+                raise ValueError("clean_dialogue_and_sound=True 需要提供 chat_service 参数")
+            prompt = VideoPromptBuilder.clean_prompt(prompt, chat_service)
 
         return prompt
 
@@ -156,26 +154,11 @@ class VideoPromptBuilder:
     def clean_prompt(
         original_prompt: str,
         chat_service: "ChatService",
-        template_manager: "PromptTemplateManager",
     ) -> str:
-        """
-        使用 chat 模型清理提示词中的对话和声音描述
-
-        Args:
-            original_prompt: 原始提示词
-            chat_service: 聊天模型服务
-            template_manager: 提示词模板管理器
-
-        Returns:
-            清理后的提示词
-        """
         from loguru import logger
 
-        template = template_manager.get_template("video_prompt_clean")
-        messages = template.build_messages(original_prompt=original_prompt)
-
         try:
-            cleaned_prompt, _ = chat_service.chat(messages)
+            cleaned_prompt, _ = chat_service.clean_video_prompt(original_prompt)
             logger.debug(f"提示词清理完成，原始长度: {len(original_prompt)}, 清理后长度: {len(cleaned_prompt)}")
             return cleaned_prompt.strip()
         except Exception as e:

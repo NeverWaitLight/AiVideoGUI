@@ -3,7 +3,7 @@ from __future__ import annotations
 from PySide6.QtCore import QObject, Property, Signal, Slot
 
 from bridge.models.history_model import HistoryListModel
-from bridge.workers import OptimizeWorker
+from bridge.workers import OutlineOptimizeWorker
 
 
 class StoryOutlineBridge(QObject):
@@ -25,7 +25,7 @@ class StoryOutlineBridge(QObject):
         self._content: str = ""
         self._loading: bool = False
         self._optimizing: bool = False
-        self._worker: OptimizeWorker | None = None
+        self._worker: OutlineOptimizeWorker | None = None
 
     def _get_project_name(self) -> str | None:
         if self._project_service and self._project_id >= 0:
@@ -116,25 +116,14 @@ class StoryOutlineBridge(QObject):
 
         self._content = current_content
 
-        messages = [
-            {
-                "role": "system",
-                "content": "你是一个专业的视频项目策划助手。请根据用户的要求优化视频项目大纲。保持大纲的整体结构和核心内容，直接输出优化后的大纲内容，不要添加任何解释或说明。",
-            },
-            {
-                "role": "user",
-                "content": f"原始大纲：\n{current_content if current_content.strip() else '（空大纲）'}\n\n优化要求：{requirement}\n\n请根据要求优化这份大纲，直接输出优化后的大纲内容。",
-            },
-        ]
-
         self._optimizing = True
         self.isOptimizingChanged.emit()
-        self._worker = OptimizeWorker(
-            text_service=self._text_service, messages=messages,
+        self._worker = OutlineOptimizeWorker(
+            text_service=self._text_service,
+            original_content=current_content,
+            user_requirement=requirement,
             project_id=self._project_id if self._project_id >= 0 else None,
             project_name=self._get_project_name(),
-            module="outline",
-            context="大纲优化",
         )
 
         def on_finished(result: str) -> None:

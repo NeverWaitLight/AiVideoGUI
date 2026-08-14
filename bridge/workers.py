@@ -221,6 +221,40 @@ class CharacterWorker(QThread):
             self.failed.emit(error_msg)
 
 
+class OutlineOptimizeWorker(QThread):
+    finished = Signal(str)
+    failed = Signal(str)
+
+    def __init__(
+        self,
+        text_service,
+        original_content: str,
+        user_requirement: str,
+        project_id: int | None = None,
+        project_name: str | None = None,
+        parent=None,
+    ):
+        super().__init__(parent)
+        self._text_service = text_service
+        self._original_content = original_content
+        self._user_requirement = user_requirement
+        self._project_id = project_id
+        self._project_name = project_name
+
+    def run(self):
+        try:
+            result, _task_id = self._text_service.optimize_story_outline(
+                self._original_content,
+                self._user_requirement,
+                project_id=self._project_id,
+                project_name=self._project_name,
+            )
+            self.finished.emit(result)
+        except Exception as e:
+            error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+            self.failed.emit(error_msg)
+
+
 class ScreenplayOptimizeWorker(QThread):
     finished = Signal(str, list)
     failed = Signal(str)
