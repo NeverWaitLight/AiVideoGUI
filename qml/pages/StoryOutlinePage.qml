@@ -11,9 +11,23 @@ Item {
     property bool _dirty: false
     property string _loadedContent: ""
     property string _projectName: ""
+    property bool _previewMode: false
+    property string _content: ""
 
     signal backClicked()
     signal nextStepClicked(string content)
+
+    function _setContent(value, markDirty) {
+        _content = value
+        if (textArea.text !== value)
+            textArea.text = value
+        if (previewArea.text !== value)
+            previewArea.text = value
+        if (markDirty)
+            _dirty = (_content !== _loadedContent)
+        else
+            _dirty = false
+    }
 
     onProjectIdChanged: {
         if (projectId > 0) {
@@ -27,19 +41,19 @@ Item {
         target: bridge.storyOutline
 
         function onLoaded(content) {
-            textArea.text = content
             _loadedContent = content
-            _dirty = false
+            _setContent(content, false)
+            _previewMode = false
         }
 
         function onSaved() {
+            _loadedContent = _content
             _dirty = false
-            _loadedContent = textArea.text
         }
 
         function onOptimize_finished(result) {
-            textArea.text = result
-            _dirty = true
+            _setContent(result, true)
+            _previewMode = false
             aiOptimizeDialog.finishOptimizing()
         }
 
@@ -69,6 +83,43 @@ Item {
                 Layout.preferredWidth: 34
                 Layout.preferredHeight: 34
                 display: AbstractButton.IconOnly
+                icon.source: _previewMode
+                    ? "qrc:/resources/icons/edit.svg"
+                    : "qrc:/resources/icons/visibility.svg"
+                icon.width: 20
+                icon.height: 20
+                topPadding: 7
+                bottomPadding: 7
+                leftPadding: 7
+                rightPadding: 7
+                ToolTip.visible: hovered
+                ToolTip.text: _previewMode ? "编辑" : "预览"
+
+                background: Rectangle {
+                    anchors.fill: parent
+                    radius: Theme.radiusSmall
+                    color: parent.hovered
+                        ? Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.08)
+                        : "transparent"
+                }
+
+                onClicked: {
+                    if (!_previewMode) {
+                        _content = textArea.text
+                        previewArea.text = _content
+                        _previewMode = true
+                    } else {
+                        _previewMode = false
+                        if (textArea.text !== _content)
+                            textArea.text = _content
+                    }
+                }
+            }
+
+            Button {
+                Layout.preferredWidth: 34
+                Layout.preferredHeight: 34
+                display: AbstractButton.IconOnly
                 icon.source: "qrc:/resources/icons/save.svg"
                 icon.width: 20
                 icon.height: 20
@@ -88,7 +139,11 @@ Item {
                         : "transparent"
                 }
 
-                onClicked: bridge.storyOutline.save(textArea.text)
+                onClicked: {
+                    if (!_previewMode)
+                        _content = textArea.text
+                    bridge.storyOutline.save(_content)
+                }
             }
 
             Button {
@@ -125,7 +180,7 @@ Item {
                 icon.source: "qrc:/resources/icons/arrow_forward.svg"
                 icon.width: 20
                 icon.height: 20
-                enabled: textArea.text.trim().length > 0
+                enabled: _content.trim().length > 0 || textArea.text.trim().length > 0
                 topPadding: 7
                 bottomPadding: 7
                 leftPadding: 7
@@ -142,39 +197,64 @@ Item {
                 }
 
                 onClicked: {
+                    if (!_previewMode)
+                        _content = textArea.text
                     if (_dirty) {
                         confirmDialog.confirm(
                             "检测到大纲内容有变化，是否先保存大纲再继续？",
                             function() {
-                                bridge.storyOutline.save(textArea.text)
-                                page.nextStepClicked(textArea.text.trim())
+                                bridge.storyOutline.save(_content)
+                                page.nextStepClicked(_content.trim())
                             }
                         )
                     } else {
-                        page.nextStepClicked(textArea.text.trim())
+                        page.nextStepClicked(_content.trim())
                     }
                 }
             }
         }
 
-        ScrollView {
+        StackLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.topMargin: 16
             Layout.leftMargin: 16
             Layout.rightMargin: 16
             Layout.bottomMargin: 16
-            clip: true
+            currentIndex: _previewMode ? 1 : 0
 
-            TextArea {
-                id: textArea
-                placeholderText: "请输入项目大纲..."
-                wrapMode: TextArea.Wrap
-                font.pixelSize: Theme.fontSizeMedium
-                padding: 0
-                background: null
-                onTextChanged: {
-                    _dirty = (textArea.text !== _loadedContent)
+            ScrollView {
+                clip: true
+
+                TextArea {
+                    id: textArea
+                    textFormat: TextEdit.PlainText
+                    placeholderText: "请输入项目大纲（支持 Markdown，点预览查看效果）..."
+                    wrapMode: TextArea.Wrap
+                    font.pixelSize: Theme.fontSizeMedium
+                    padding: 0
+                    background: null
+                    onTextChanged: {
+                        if (_previewMode)
+                            return
+                        _content = text
+                        _dirty = (_content !== _loadedContent)
+                    }
+                }
+            }
+
+            ScrollView {
+                clip: true
+
+                TextArea {
+                    id: previewArea
+                    textFormat: TextEdit.MarkdownText
+                    readOnly: true
+                    wrapMode: TextArea.Wrap
+                    font.pixelSize: Theme.fontSizeMedium
+                    padding: 0
+                    background: null
+                    selectByMouse: true
                 }
             }
         }
@@ -184,7 +264,9 @@ Item {
         sequences: [StandardKey.Save]
         enabled: _dirty
         onActivated: {
-            bridge.storyOutline.save(textArea.text)
+            if (!_previewMode)
+                _content = textArea.text
+            bridge.storyOutline.save(_content)
         }
     }
 
@@ -199,7 +281,9 @@ Item {
     Dialogs.AIOptimizeDialog {
         id: aiOptimizeDialog
         onOptimizeRequested: function(userInput) {
-            bridge.storyOutline.optimize(userInput, textArea.text)
+            if (!_previewMode)
+                _content = textArea.text
+            bridge.storyOutline.optimize(userInput, _content)
         }
     }
 }
