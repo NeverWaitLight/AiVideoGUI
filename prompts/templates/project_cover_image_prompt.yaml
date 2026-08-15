@@ -53,11 +53,6 @@ few_shot_examples:
       【角色信息】
       角色1：李明
       形象描述：30 岁左右的男性，短发，身穿深蓝色警服，目光坚毅，身材健壮。
-
-      【视觉风格】现代都市悬疑风格
-
-      【画面风格要求】
-      整体画面采用【现代都市悬疑风格】风格，色调、光影、质感应符合该风格特点
     assistant: |
       Cinematic movie poster, 16:9 widescreen composition. A determined 30-year-old male police officer with short hair, wearing a dark blue police uniform, muscular build, sharp and resolute gaze, standing in the foreground with arms crossed. Background: a bustling modern cityscape at dusk, neon lights reflecting on wet streets, skyscrapers towering in the distance, dramatic backlighting creating a silhouette effect. Moody and suspenseful atmosphere with deep blue and orange color grading. Film noir lighting style, high detail, photorealistic, 8K quality. Urban thriller aesthetic, no text, no watermark.
 
@@ -75,11 +70,6 @@ few_shot_examples:
 
       角色2：小杰
       形象描述：12 岁左右的人类男孩，短棕色头发，穿着简单的冒险服装（棕色背心和短裤），眼神好奇而纯真。
-
-      【视觉风格】奇幻童话风格
-
-      【画面风格要求】
-      整体画面采用【奇幻童话风格】风格，色调、光影、质感应符合该风格特点
     assistant: |
       Vertical fantasy poster, 9:16 aspect ratio. A gentle 16-year-old elf girl with long silver-white hair and pointed ears, wearing a dress woven from green leaves and vines, glowing emerald green eyes radiating soft light, standing gracefully in the center. Beside her, a curious 12-year-old human boy with short brown hair, wearing a simple adventure outfit (brown vest and shorts), gazing at the elf with innocent wonder. Background: an enchanted forest with a massive glowing ancient tree, bioluminescent plants, soft rays of sunlight filtering through the canopy, magical particles floating in the air. Warm and whimsical atmosphere with vibrant green and golden hues. Dreamlike fantasy art style, highly detailed, Studio Ghibli-inspired aesthetic, 8K quality, no text, no watermark.
 
@@ -93,8 +83,4 @@ user_prompt_template: |
 
   【角色信息】
   {character_info}
-
-  【视觉风格】{visual_style}
-
-  【画面风格要求】
-  {visual_style_instruction}
+  {visual_style_block}

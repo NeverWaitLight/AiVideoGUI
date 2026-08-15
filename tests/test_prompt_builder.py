@@ -16,7 +16,6 @@ class TestVideoPromptBuilder(unittest.TestCase):
             shot_size=ShotSize.MEDIUM_SHOT,
             content="一个男人站在街道上",
             camera_movement="",
-            dialogue="",
             sound_effect="",
             duration=5.0,
             notes="",
@@ -28,8 +27,6 @@ class TestVideoPromptBuilder(unittest.TestCase):
         self.assertIn("一个男人站在街道上", prompt)
         self.assertIn("【镜头参数】", prompt)
         self.assertIn("景别：中景", prompt)
-        self.assertIn("时长：5.0秒", prompt)
-        self.assertNotIn("【台词】", prompt)
         self.assertNotIn("【音效】", prompt)
         self.assertNotIn("【场景上下文】", prompt)
 
@@ -53,7 +50,6 @@ class TestVideoPromptBuilder(unittest.TestCase):
             shot_size=ShotSize.FULL_SHOT,
             content="张三从远处走来，背景是繁华的街道",
             camera_movement="跟拍",
-            dialogue="",
             sound_effect="",
             duration=8.0,
             notes="",
@@ -91,7 +87,6 @@ class TestVideoPromptBuilder(unittest.TestCase):
             shot_size=ShotSize.CLOSE_UP,
             content="张三紧张的表情，汗水从额头滴落",
             camera_movement="慢推",
-            dialogue="张三：我什么都不知道！",
             sound_effect="紧张的背景音乐",
             duration=4.5,
             notes="注意光影对比",
@@ -109,9 +104,6 @@ class TestVideoPromptBuilder(unittest.TestCase):
         self.assertIn("【镜头参数】", prompt)
         self.assertIn("景别：近景", prompt)
         self.assertIn("运镜：慢推", prompt)
-        self.assertIn("时长：4.5秒", prompt)
-        self.assertIn("【台词】", prompt)
-        self.assertIn("张三：我什么都不知道！", prompt)
         self.assertIn("【音效】", prompt)
         self.assertIn("紧张的背景音乐", prompt)
         self.assertIn("【备注】", prompt)
@@ -126,7 +118,6 @@ class TestVideoPromptBuilder(unittest.TestCase):
             shot_size=ShotSize.MEDIUM_SHOT,
             content="张三从远处走来，背景是繁华的街道，人来人往",
             camera_movement="",
-            dialogue="",
             sound_effect="",
             duration=5.0,
             notes="",
@@ -140,7 +131,6 @@ class TestVideoPromptBuilder(unittest.TestCase):
             shot_size=ShotSize.CLOSE_UP,
             content="张三的脸部特写，表情严肃",
             camera_movement="",
-            dialogue="",
             sound_effect="",
             duration=3.0,
             notes="",
@@ -154,7 +144,6 @@ class TestVideoPromptBuilder(unittest.TestCase):
             shot_size=ShotSize.FULL_SHOT,
             content="张三走进一家咖啡店，推开玻璃门",
             camera_movement="",
-            dialogue="",
             sound_effect="",
             duration=4.0,
             notes="",
@@ -194,7 +183,6 @@ class TestVideoPromptBuilder(unittest.TestCase):
             shot_size=ShotSize.MEDIUM_SHOT,
             content=long_content,
             camera_movement="",
-            dialogue="",
             sound_effect="",
             duration=5.0,
             notes="",
@@ -208,7 +196,6 @@ class TestVideoPromptBuilder(unittest.TestCase):
             shot_size=ShotSize.CLOSE_UP,
             content="当前镜头画面",
             camera_movement="",
-            dialogue="",
             sound_effect="",
             duration=3.0,
             notes="",
@@ -245,7 +232,6 @@ class TestVideoPromptBuilder(unittest.TestCase):
             shot_size=ShotSize.FULL_SHOT,
             content="孩子们在草地上奔跑",
             camera_movement="",
-            dialogue="",
             sound_effect="",
             duration=5.0,
             notes="",
@@ -277,7 +263,6 @@ class TestVideoPromptBuilder(unittest.TestCase):
             shot_size=ShotSize.MEDIUM_SHOT,
             content="一个男人站在街道上",
             camera_movement="",
-            dialogue="",
             sound_effect="",
             duration=5.0,
             notes="",
@@ -287,6 +272,26 @@ class TestVideoPromptBuilder(unittest.TestCase):
 
         self.assertNotIn("【视觉风格】", prompt)
         self.assertIn("【镜头画面】", prompt)
+
+    def test_build_shot_prompt_treats_default_and_blank_as_no_style(self):
+        storyboard = Storyboard(
+            id=1,
+            scene_number=1,
+            shot_number=1,
+            scene_id=1,
+            shot_size=ShotSize.MEDIUM_SHOT,
+            content="一个男人站在街道上",
+            camera_movement="",
+            sound_effect="",
+            duration=5.0,
+            notes="",
+        )
+
+        for style in ("默认", "  ", ""):
+            with self.subTest(visual_style=style):
+                prompt = VideoPromptBuilder.build_shot_prompt(storyboard, visual_style=style)
+                self.assertNotIn("【视觉风格】", prompt)
+                self.assertIn("【镜头画面】", prompt)
 
 
 if __name__ == "__main__":

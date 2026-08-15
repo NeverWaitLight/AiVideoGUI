@@ -10,7 +10,6 @@ if TYPE_CHECKING:
     from di import ApplicationContainer
 
 from utils import paths
-from utils.image_processor import to_black_and_white
 from utils.path_converter import to_relative_path
 
 
@@ -353,8 +352,6 @@ class DesignImageWorker(QThread):
                 workspace_root=self._workspace_root,
             )
 
-            to_black_and_white(image_path)
-
             self._storyboard_service.update_storyboard(
                 storyboard_id=self._storyboard.id, design_image=image_path,
             )
@@ -459,8 +456,6 @@ class BatchDesignImageWorker(QThread):
                     session_manager=self._session_manager,
                     workspace_root=self._workspace_root,
                 )
-
-                to_black_and_white(image_path)
 
                 self._storyboard_service.update_storyboard(
                     storyboard_id=storyboard_id, design_image=image_path,

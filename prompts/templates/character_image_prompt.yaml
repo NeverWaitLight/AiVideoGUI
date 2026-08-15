@@ -56,11 +56,6 @@ few_shot_examples:
       [裤子] 黑色西裤
       [鞋袜] 黑色皮鞋，深色商务袜
       [帽子] 无
-
-      【画面风格】通用电影概念设计风格
-
-      【画面风格要求】
-      无特殊风格要求
     assistant: |
       Character turnaround sheet, three-view orthographic projection, cinematic concept art. An Asian male character, 25 years old, 178cm tall, athletic build. Square face, thick eyebrows, thin lips. Short black hair with side part (30/70). Deep brown eyes. Wearing dark gray suit jacket, white dress shirt, black dress pants, black leather shoes, dark business socks. Front view, side view, back view horizontally aligned, same height, standing pose. Solid light gray background. Photorealistic with painterly quality, highly detailed, film character design reference.
 
@@ -80,11 +75,6 @@ few_shot_examples:
       [裤子] 浅蓝色牛仔短裤
       [鞋袜] 白色运动鞋，粉色短袜
       [帽子] 无（兔耳作为特征）
-
-      【画面风格】通用电影概念设计风格
-
-      【画面风格要求】
-      无特殊风格要求
     assistant: |
       Character turnaround sheet, three-view orthographic projection, cinematic concept art. An anthropomorphic white rabbit character, cute style, standing upright, 120cm tall, petite and adorable. Big blue eyes, pink nose, long white rabbit ears. Wearing pink hoodie with carrot print on chest, light blue denim shorts, white sneakers, pink short socks. Front view, side view, back view horizontally aligned, same height, standing pose. Solid light gray background. Semi-realistic animation style with detailed fur texture, character design reference for animation production.
 
@@ -95,9 +85,4 @@ user_prompt_template: |
 
   【形象描述】
   {description}
-
-  【画面风格】{visual_style}
-
-  【画面风格要求】
-  {visual_style_instruction}
-  {user_requirement}
+  {visual_style_block}{user_requirement}

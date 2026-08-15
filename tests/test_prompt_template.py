@@ -129,14 +129,12 @@ class TestPromptTemplateManager(unittest.TestCase):
                 "content": "画面",
                 "notes": "备注",
                 "character_info": "角色",
-                "visual_style": "风格",
-                "visual_style_instruction": "风格要求",
+                "visual_style_block": "【画面风格】风格\n\n【画面风格要求】\n风格要求\n",
             },
             "character_image_prompt": {
                 "character_name": "角色名",
                 "description": "描述",
-                "visual_style": "风格",
-                "visual_style_instruction": "风格要求",
+                "visual_style_block": "【画面风格】风格\n\n【画面风格要求】\n风格要求\n",
                 "user_requirement": "要求",
             },
             "project_cover_image_prompt": {
@@ -144,8 +142,7 @@ class TestPromptTemplateManager(unittest.TestCase):
                 "aspect_ratio": "16:9",
                 "outline_content": "大纲",
                 "character_info": "角色",
-                "visual_style": "风格",
-                "visual_style_instruction": "风格要求",
+                "visual_style_block": "【视觉风格】风格\n\n【画面风格要求】\n风格要求\n",
             },
             "storyboard_video_prompt_clean": {"original_prompt": "原始提示词"},
         }
@@ -170,6 +167,96 @@ class TestPromptTemplateManager(unittest.TestCase):
                         messages[-1]["content"],
                         f"模板 {name} 的占位符 {{{key}}} 未被正确替换",
                     )
+
+
+class TestChatPromptBuilderVisualStyle(unittest.TestCase):
+    def setUp(self):
+        from prompts.chat_prompt_builder import ChatPromptBuilder
+
+        templates_dir = Path(__file__).resolve().parent.parent / "prompts" / "templates"
+        self.builder = ChatPromptBuilder(PromptTemplateManager(templates_dir))
+
+    def test_design_image_prompt_includes_style_when_set(self):
+        messages = self.builder.build_design_image_prompt_messages(
+            content="画面",
+            visual_style="3D卡通",
+        )
+        user = messages[-1]["content"]
+        system = messages[0]["content"]
+        self.assertIn("【画面风格】3D卡通", user)
+        self.assertIn("【画面风格要求】", user)
+        self.assertIn("整体画面采用【3D卡通】风格", user)
+        self.assertNotIn("纯黑白", user)
+        self.assertNotIn("pure black and white", system)
+        self.assertIn("中文提示词", system)
+
+    def test_design_image_prompt_omits_style_when_default_or_empty(self):
+        for style in ("", "默认", "  ", None):
+            with self.subTest(visual_style=style):
+                messages = self.builder.build_design_image_prompt_messages(
+                    content="画面",
+                    visual_style=style or "",
+                )
+                user = messages[-1]["content"]
+                self.assertNotIn("【画面风格】", user)
+                self.assertNotIn("【画面风格要求】", user)
+                self.assertNotIn("纯黑白", user)
+                self.assertNotIn("无特殊风格要求", user)
+                self.assertIn("只输出中文提示词", user)
+
+    def test_character_design_image_prompt_includes_style_when_set(self):
+        messages = self.builder.build_character_design_image_prompt_messages(
+            character_name="李明",
+            description="描述",
+            visual_style="水彩插画",
+        )
+        user = messages[-1]["content"]
+        self.assertIn("【画面风格】水彩插画", user)
+        self.assertIn("【画面风格要求】", user)
+        self.assertIn("整体画面采用【水彩插画】风格", user)
+
+    def test_character_design_image_prompt_omits_style_when_default_or_empty(self):
+        for style in ("", "默认", "  ", None):
+            with self.subTest(visual_style=style):
+                messages = self.builder.build_character_design_image_prompt_messages(
+                    character_name="李明",
+                    description="描述",
+                    visual_style=style or "",
+                )
+                user = messages[-1]["content"]
+                self.assertNotIn("【画面风格】", user)
+                self.assertNotIn("【画面风格要求】", user)
+                self.assertNotIn("通用电影概念设计风格", user)
+                self.assertNotIn("无特殊风格要求", user)
+
+    def test_cover_image_prompt_includes_style_when_set(self):
+        messages = self.builder.build_cover_image_prompt_messages(
+            project_name="测试项目",
+            aspect_ratio="16:9",
+            outline_content="大纲",
+            character_info="角色",
+            visual_style="赛博朋克",
+        )
+        user = messages[-1]["content"]
+        self.assertIn("【视觉风格】赛博朋克", user)
+        self.assertIn("【画面风格要求】", user)
+        self.assertIn("整体画面采用【赛博朋克】风格", user)
+
+    def test_cover_image_prompt_omits_style_when_default_or_empty(self):
+        for style in ("", "默认", "  ", None):
+            with self.subTest(visual_style=style):
+                messages = self.builder.build_cover_image_prompt_messages(
+                    project_name="测试项目",
+                    aspect_ratio="16:9",
+                    outline_content="大纲",
+                    character_info="角色",
+                    visual_style=style or "",
+                )
+                user = messages[-1]["content"]
+                self.assertNotIn("【视觉风格】", user)
+                self.assertNotIn("【画面风格要求】", user)
+                self.assertNotIn("通用电影海报风格", user)
+                self.assertNotIn("无特殊风格要求", user)
 
 
 if __name__ == "__main__":

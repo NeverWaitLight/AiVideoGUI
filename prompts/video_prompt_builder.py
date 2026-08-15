@@ -19,8 +19,9 @@ class VideoPromptBuilder:
             if scene_context:
                 sections.append(f"【场景上下文】{scene_context}")
 
-        if visual_style:
-            sections.append(f"【视觉风格】{visual_style}")
+        style = (visual_style or "").strip()
+        if style and style != "默认":
+            sections.append(f"【视觉风格】{style}")
 
         if reference_images:
             ref_desc = VideoPromptBuilder._build_reference_images_desc(reference_images)
