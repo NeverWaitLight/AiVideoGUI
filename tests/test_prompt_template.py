@@ -51,17 +51,16 @@ class TestPromptTemplateManager(unittest.TestCase):
 
         templates = manager.list_templates()
         self.assertGreater(len(templates), 0)
-        self.assertIn("chat", templates)
         self.assertIn("outline_optimize", templates)
-        self.assertIn("image_prompt", templates)
+        self.assertIn("storyboard_image_prompt", templates)
 
     def test_get_template(self):
         templates_dir = Path(__file__).parent.parent / "prompts" / "templates"
         manager = PromptTemplateManager(templates_dir)
 
-        template = manager.get_template("chat")
+        template = manager.get_template("outline_optimize")
         self.assertIsInstance(template, PromptTemplate)
-        self.assertIn("助手", template.system_prompt)
+        self.assertIn("大纲", template.system_prompt)
 
     def test_get_nonexistent_template(self):
         templates_dir = Path(__file__).parent.parent / "prompts" / "templates"
@@ -69,18 +68,6 @@ class TestPromptTemplateManager(unittest.TestCase):
 
         with self.assertRaises(KeyError):
             manager.get_template("nonexistent_template")
-
-    def test_chat_template_build(self):
-        templates_dir = Path(__file__).parent.parent / "prompts" / "templates"
-        manager = PromptTemplateManager(templates_dir)
-
-        template = manager.get_template("chat")
-        messages = template.build_messages(user_input="你好")
-
-        self.assertGreater(len(messages), 1)
-        self.assertEqual(messages[0]["role"], "system")
-        self.assertEqual(messages[-1]["role"], "user")
-        self.assertEqual(messages[-1]["content"].strip(), "你好")
 
     def test_outline_optimization_template(self):
         templates_dir = Path(__file__).parent.parent / "prompts" / "templates"
@@ -93,6 +80,8 @@ class TestPromptTemplateManager(unittest.TestCase):
         )
 
         self.assertGreater(len(messages), 0)
+        self.assertEqual(messages[0]["role"], "system")
+        self.assertEqual(messages[-1]["role"], "user")
         last_message = messages[-1]["content"]
         self.assertIn("这是原始大纲", last_message)
         self.assertIn("增加悬疑元素", last_message)
@@ -103,9 +92,8 @@ class TestPromptTemplateManager(unittest.TestCase):
         manager = PromptTemplateManager(templates_dir)
 
         template_kwargs = {
-            "chat": {"user_input": "你好"},
             "outline_optimize": {"original_content": "大纲", "user_requirement": "要求"},
-            "script_generate": {"outline_content": "大纲"},
+            "screenplay_generate": {"outline_content": "大纲"},
             "screenplay_optimize": {
                 "outline_content": "大纲",
                 "current_script": "剧本",
@@ -135,7 +123,7 @@ class TestPromptTemplateManager(unittest.TestCase):
                 "current_description": "描述",
                 "user_requirement": "要求",
             },
-            "image_prompt": {
+            "storyboard_image_prompt": {
                 "shot_size": "中景",
                 "camera_movement": "固定",
                 "content": "画面",
@@ -151,7 +139,7 @@ class TestPromptTemplateManager(unittest.TestCase):
                 "visual_style_instruction": "风格要求",
                 "user_requirement": "要求",
             },
-            "cover_image_prompt": {
+            "project_cover_image_prompt": {
                 "project_name": "项目名",
                 "aspect_ratio": "16:9",
                 "outline_content": "大纲",
@@ -159,7 +147,7 @@ class TestPromptTemplateManager(unittest.TestCase):
                 "visual_style": "风格",
                 "visual_style_instruction": "风格要求",
             },
-            "video_prompt_clean": {"original_prompt": "原始提示词"},
+            "storyboard_video_prompt_clean": {"original_prompt": "原始提示词"},
         }
 
         loaded = set(manager.list_templates())

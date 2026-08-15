@@ -7,14 +7,6 @@ class ChatPromptBuilder:
     def __init__(self, template_manager: PromptTemplateManager) -> None:
         self._template_manager = template_manager
 
-    def build_chat_messages(
-        self,
-        user_input: str,
-    ) -> list[dict[str, str]]:
-        """构建聊天对话消息"""
-        template = self._template_manager.get_template("chat")
-        return template.build_messages(user_input=user_input)
-
     def build_outline_optimization_messages(
         self,
         original_content: str,
@@ -32,7 +24,7 @@ class ChatPromptBuilder:
         outline_content: str,
     ) -> list[dict[str, str]]:
         """构建剧本生成消息"""
-        template = self._template_manager.get_template("script_generate")
+        template = self._template_manager.get_template("screenplay_generate")
         return template.build_messages(
             outline_content=outline_content if outline_content.strip() else "（空大纲，请根据常规视频创作流程生成一个简单的剧本示例）"
         )
@@ -59,7 +51,7 @@ class ChatPromptBuilder:
         visual_style: str = "",
     ) -> list[dict[str, str]]:
         """构建分镜设计图提示词生成消息"""
-        template = self._template_manager.get_template("image_prompt")
+        template = self._template_manager.get_template("storyboard_image_prompt")
         style_instruction = f"整体画面采用【{visual_style}】风格，在保持纯黑白分镜稿规范（pure black and white, no color）的前提下，画面构图、光影、线条质感应符合该风格特点" if visual_style else "无特殊风格要求，但必须保持纯黑白（pure black and white, no color）"
         return template.build_messages(
             content=content,
@@ -175,7 +167,7 @@ class ChatPromptBuilder:
         visual_style: str = "",
     ) -> list[dict[str, str]]:
         """构建项目封面图提示词生成消息"""
-        template = self._template_manager.get_template("cover_image_prompt")
+        template = self._template_manager.get_template("project_cover_image_prompt")
         style_instruction = f"整体画面采用【{visual_style}】风格，色调、光影、质感应符合该风格特点" if visual_style else "无特殊风格要求，采用通用电影海报风格"
         return template.build_messages(
             project_name=project_name,
@@ -191,5 +183,5 @@ class ChatPromptBuilder:
         original_prompt: str,
     ) -> list[dict[str, str]]:
         """构建视频提示词清理消息"""
-        template = self._template_manager.get_template("video_prompt_clean")
+        template = self._template_manager.get_template("storyboard_video_prompt_clean")
         return template.build_messages(original_prompt=original_prompt)
