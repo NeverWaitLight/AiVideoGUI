@@ -80,6 +80,11 @@ def main():
 
     sys.excepthook = _exception_hook
 
+    if sys.platform == "win32":
+        from utils.windows_app_identity import ensure_windows_toast_identity
+
+        ensure_windows_toast_identity()
+
     root = paths.workspace_root()
     data_dir = paths.data_dir(root)
     cache_dir = paths.cache_dir(root)

@@ -6,18 +6,20 @@ block_cipher = None
 
 # 收集 dependency_injector 的所有文件
 datas_di, binaries_di, hiddenimports_di = collect_all('dependency_injector')
+datas_wt, binaries_wt, hiddenimports_wt = collect_all('windows_toasts')
+datas_winrt, binaries_winrt, hiddenimports_winrt = collect_all('winrt')
 
 a = Analysis(
     ['main.py'],
     pathex=[],
-    binaries=binaries_di,
+    binaries=binaries_di + binaries_wt + binaries_winrt,
     datas=[
         ('qml', 'qml'),
         ('resources', 'resources'),
         ('prompts/templates', 'prompts/templates'),
         ('alembic.ini', '.'),
         ('alembic', 'alembic'),
-    ] + datas_di,
+    ] + datas_di + datas_wt + datas_winrt,
     hiddenimports=[
         'PySide6.QtCore',
         'PySide6.QtGui',
@@ -29,7 +31,13 @@ a = Analysis(
         'logging.config',
         'alembic.script',
         'alembic.runtime.migration',
-    ] + hiddenimports_di,
+        'windows_toasts',
+        'winrt',
+        'winrt.windows.ui.notifications',
+        'winrt.windows.data.xml.dom',
+        'winrt.windows.foundation',
+        'winrt.windows.foundation.collections',
+    ] + hiddenimports_di + hiddenimports_wt + hiddenimports_winrt,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
