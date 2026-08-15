@@ -14,6 +14,10 @@ Item {
     property bool contentFullscreen: false
     property var takesList: []
 
+    ListModel {
+        id: takesListModel
+    }
+
     signal backClicked()
 
     property color borderColor: Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.15)
@@ -44,6 +48,24 @@ Item {
     Connections {
         target: bridge.storyboard
         function onTakes_changed() {
+            _loadTakes()
+        }
+    }
+
+    Connections {
+        target: bridge
+        function onTask_failed(providerTaskId, error) {
+            _loadTakes()
+        }
+        function onTask_finished(providerTaskId, savePath, storyboardId) {
+            if (storyboardId === detailPage.shotId) {
+                _loadTakes()
+            }
+        }
+    }
+
+    Component.onCompleted: {
+        if (detailPage.shotId > 0) {
             _loadTakes()
         }
     }
@@ -492,18 +514,36 @@ Item {
                 ListView {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    model: detailPage.takesList
+                    model: takesListModel
                     spacing: 8
                     clip: true
                     boundsBehavior: Flickable.StopAtBounds
 
                     delegate: Rectangle {
+                        id: takeCard
                         width: ListView.view.width
                         height: 80
                         radius: Theme.radiusSmall
-                        color: Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.04)
-                        border.width: 1
-                        border.color: detailPage.borderColor
+                        color: takeCard.hasMedia
+                            ? Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.04)
+                            : Qt.rgba(Material.accent.r, Material.accent.g, Material.accent.b, takeCard.isFailed ? 0.08 : 0.05)
+                        border.width: takeCard.hasMedia ? 1 : 2
+                        border.color: takeCard.isGenerating
+                            ? Material.accent
+                            : (takeCard.isFailed ? "#F44336" : (takeCard.hasMedia ? detailPage.borderColor : "#FF9800"))
+
+                        readonly property bool hasMedia: model.hasMedia === 1 || model.hasMedia === true
+                        readonly property bool isGenerating: model.generating === 1 || model.generating === true
+                        readonly property bool isFailed: model.failed === 1 || model.failed === true
+                        readonly property string stateLabel: {
+                            if (takeCard.hasMedia)
+                                return ""
+                            if (takeCard.isGenerating)
+                                return "生成中"
+                            if (takeCard.isFailed)
+                                return "生成失败"
+                            return "无视频"
+                        }
 
                         RowLayout {
                             anchors.fill: parent
@@ -515,38 +555,79 @@ Item {
                                 Layout.preferredWidth: 112
                                 Layout.fillHeight: true
                                 radius: Theme.radiusSmall
-                                color: "#222"
+                                color: takeCard.hasMedia ? "#222" : "#2a2a2a"
                                 clip: true
+                                border.width: takeCard.hasMedia ? 0 : 1
+                                border.color: takeCard.isGenerating
+                                    ? Material.accent
+                                    : (takeCard.isFailed ? "#F44336" : "#FF9800")
 
                                 Image {
                                     anchors.fill: parent
-                                    source: modelData.thumbnailPath ? "file:///" + modelData.thumbnailPath : ""
+                                    source: takeCard.hasMedia
+                                            && model.thumbnailPath && model.thumbnailPath !== ""
+                                            ? ("file:///" + model.thumbnailPath) : ""
                                     fillMode: Image.PreserveAspectCrop
                                     visible: source !== ""
                                 }
 
+                                Column {
+                                    anchors.centerIn: parent
+                                    spacing: 4
+                                    visible: takeCard.isGenerating
+
+                                    BusyIndicator {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        width: 28
+                                        height: 28
+                                        running: parent.visible
+                                    }
+
+                                    Label {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        text: "生成中"
+                                        font.pixelSize: Theme.fontSizeSmall
+                                        color: "#ccc"
+                                    }
+                                }
+
                                 Label {
                                     anchors.centerIn: parent
-                                    text: "无封面"
+                                    text: takeCard.isFailed ? "生成失败" : "无视频"
                                     font.pixelSize: Theme.fontSizeSmall
-                                    color: "#888"
-                                    visible: parent.children[0].source === ""
+                                    color: takeCard.isFailed ? "#F44336" : "#888"
+                                    visible: !takeCard.hasMedia && !takeCard.isGenerating
                                 }
 
                                 MouseArea {
                                     anchors.fill: parent
-                                    visible: modelData.filePath
+                                    visible: takeCard.hasMedia
+                                             && model.filePath
+                                             && model.filePath !== ""
                                     cursorShape: Qt.PointingHandCursor
-                                    onClicked: bridge.play_video(modelData.filePath)
+                                    onClicked: bridge.play_video(model.filePath)
                                 }
                             }
 
                             // Take number
-                            Label {
-                                text: "第" + modelData.number + "次"
-                                font.pixelSize: Theme.fontSizeSmall
-                                font.bold: true
-                                Layout.preferredWidth: 50
+                            ColumnLayout {
+                                Layout.preferredWidth: 56
+                                spacing: 2
+
+                                Label {
+                                    text: "第" + model.number + "次"
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    font.bold: true
+                                }
+
+                                Label {
+                                    text: takeCard.stateLabel
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    color: takeCard.isFailed
+                                        ? "#F44336"
+                                        : (takeCard.isGenerating ? Material.accent : "#888")
+                                    visible: takeCard.stateLabel !== ""
+                                }
                             }
 
                             // Status dropdown
@@ -555,7 +636,7 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 32
                                 model: ["备选", "选用", "放弃"]
-                                currentIndex: modelData.status === "candidate" ? 0 : (modelData.status === "selected" ? 1 : 2)
+                                currentIndex: model.status === "candidate" ? 0 : (model.status === "selected" ? 1 : 2)
                                 font.pixelSize: Theme.fontSizeSmall
 
                                 background: Rectangle {
@@ -573,7 +654,7 @@ Item {
 
                                 onActivated: {
                                     var statusMap = ["candidate", "selected", "abandoned"]
-                                    bridge.storyboard.update_take_status(modelData.id, statusMap[currentIndex])
+                                    bridge.storyboard.update_take_status(model.id, statusMap[currentIndex])
                                 }
                             }
 
@@ -601,15 +682,15 @@ Item {
                                 }
 
                                 onClicked: confirmDialog.confirm(
-                                    "确定要删除第" + modelData.number + "次拍摄记录吗？",
-                                    function() { bridge.storyboard.delete_take(modelData.id) }
+                                    "确定要删除第" + model.number + "次拍摄记录吗？",
+                                    function() { bridge.storyboard.delete_take(model.id) }
                                 )
                             }
                         }
                     }
 
                     Comp.EmptyState {
-                        visible: detailPage.takesList.length === 0
+                        visible: takesListModel.count === 0
                         anchors.centerIn: parent
                         text: "暂无拍摄记录"
                     }
@@ -730,14 +811,20 @@ Item {
     }
 
     function _loadTakes() {
-        if (detailPage.shotId > 0) {
-            var json = bridge.storyboard.get_takes_for_shot(detailPage.shotId)
-            try {
-                detailPage.takesList = JSON.parse(json)
-            } catch (e) {
-                detailPage.takesList = []
+        takesListModel.clear()
+        if (detailPage.shotId <= 0) {
+            detailPage.takesList = []
+            return
+        }
+
+        var json = bridge.storyboard.get_takes_for_shot(detailPage.shotId)
+        try {
+            var arr = JSON.parse(json)
+            detailPage.takesList = arr
+            for (var i = 0; i < arr.length; i++) {
+                takesListModel.append(arr[i])
             }
-        } else {
+        } catch (e) {
             detailPage.takesList = []
         }
     }

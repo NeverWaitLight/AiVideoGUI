@@ -10,8 +10,9 @@ class StoryboardTake:
     """分镜拍摄记录数据模型"""
     storyboard_id: int              # 关联的分镜ID
     number: int                     # 第N次拍摄
-    media_file_id: str              # 关联的媒体文件ID
+    media_file_id: str = ""         # 关联的媒体文件ID（提交时为空，完成后回填）
     id: int = 0                     # 主键ID
+    generate_task_id: int = 0       # 关联的生成任务ID
     status: TakeStatus = TakeStatus.CANDIDATE  # 状态
     comment: str = ""               # 备注
     created_at: int = 0             # 创建时间（毫秒时间戳）

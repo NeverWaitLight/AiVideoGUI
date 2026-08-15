@@ -203,12 +203,12 @@ class AppBridge(QObject):
             try:
                 media = self._media_service.get_file_by_message_id(provider_task_id)
                 if media:
-                    self._take_service.create_take(
-                        storyboard_id=storyboard_id,
+                    self._take_service.bind_media_by_provider_task_id(
+                        provider_task_id=provider_task_id,
                         media_file_id=media.id,
                     )
                     self._storyboard_bridge.takes_changed.emit()
             except Exception as e:
                 from loguru import logger
-                logger.warning(f"自动创建拍摄记录失败: {e}")
+                logger.warning(f"回填拍摄记录媒体失败: {e}")
 

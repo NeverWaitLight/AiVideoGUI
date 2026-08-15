@@ -1,19 +1,25 @@
 from __future__ import annotations
 
 import json
+import os
+import time
 from typing import TYPE_CHECKING, Any
 
 from PySide6.QtCore import QObject
 from loguru import logger
 
 from config.manager import ConfigManager
-from models.enums import GenerateTaskType, GenerateTaskCallerType
+from models.enums import GenerateTaskType, GenerateTaskCallerType, TakeStatus
 from models.exceptions import MissingConfigError
+from models.storyboard_take import StoryboardTake
 from providers.dashscope_video import DashScopeVideoProvider
 from providers.seedance_video import SeedanceVideoProvider
 from providers.video_base import VideoProvider
 from storage.repositories.generate_task_repository import GenerateTaskRepository
+from storage.repositories.storyboard_take_repository import StoryboardTakeRepository
 from storage.session_manager import SessionManager
+from utils import paths
+from utils.path_converter import to_relative_path
 from utils.prompt_sanitize import flatten_prompt_text
 
 if TYPE_CHECKING:
@@ -113,6 +119,8 @@ class VideoService(QObject):
             reference_images=reference_images,
             project_id=project_id,
             project_name=project_name,
+            scene_number=storyboard.scene_number,
+            shot_number=storyboard.shot_number,
         )
 
     def submit_task(
@@ -126,6 +134,8 @@ class VideoService(QObject):
         reference_images: list[str] | None = None,
         project_id: int | None = None,
         project_name: str | None = None,
+        scene_number: int = 0,
+        shot_number: int = 0,
     ) -> str:
         provider = self.get_provider(provider_name)
         prompt = flatten_prompt_text(prompt)
@@ -151,6 +161,19 @@ class VideoService(QObject):
 
         self._sm.begin_write()
         try:
+            take_number = None
+            if storyboard_id > 0 and project_id:
+                take_repo = self._sm.get_repo(StoryboardTakeRepository)
+                take_number = take_repo.get_next_number(storyboard_id)
+                local_path = to_relative_path(
+                    os.path.join(
+                        paths.projects_dir(paths.workspace_root()),
+                        str(project_id),
+                        f"{scene_number}-{shot_number}-{take_number}.mp4",
+                    ),
+                    paths.workspace_root(),
+                )
+
             generate_task_id = task_repo.add(
                 provider_task_id=provider_task_id,
                 provider_name=provider_name,
@@ -162,6 +185,25 @@ class VideoService(QObject):
                 caller_id=str(storyboard_id) if storyboard_id else "",
                 project_id=project_id,
             )
+
+            if storyboard_id > 0 and take_number is not None:
+                take_repo = self._sm.get_repo(StoryboardTakeRepository)
+                now_ms = int(time.time() * 1000)
+                take_repo.create(
+                    dto=StoryboardTake(
+                        storyboard_id=storyboard_id,
+                        number=take_number,
+                        media_file_id="",
+                        generate_task_id=generate_task_id,
+                        status=TakeStatus.CANDIDATE,
+                        created_at=now_ms,
+                        updated_at=now_ms,
+                    )
+                )
+                logger.info(
+                    f"提交时创建拍摄记录：storyboard_id={storyboard_id}, number={take_number}, "
+                    f"generate_task_id={generate_task_id}"
+                )
 
             self._sm.commit_write()
 

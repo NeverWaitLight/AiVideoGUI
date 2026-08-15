@@ -359,6 +359,8 @@ class MediaService:
             media_repo = self._sm.get_repo(repo_class=MediaRepository)
             videos = []
             for take in selected_takes:
+                if not take.media_file_id:
+                    continue
                 media = media_repo.get_by_id(take.media_file_id)
                 if media:
                     videos.append(media)

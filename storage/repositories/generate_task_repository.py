@@ -129,6 +129,18 @@ class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
             "updated_at": entity.updated_at,
         }
 
+    def get_completed(self, task_id: int) -> Optional[bool]:
+        entity = self.session.get(GenerateTaskEntity, task_id)
+        if not entity:
+            return None
+        return bool(entity.completed)
+
+    def get_task_info(self, task_id: int) -> Optional[tuple[bool, str]]:
+        entity = self.session.get(GenerateTaskEntity, task_id)
+        if not entity:
+            return None
+        return bool(entity.completed), entity.status or ""
+
     def get_by_provider_task_id(self, provider_task_id: str) -> Optional[dict]:
         stmt = select(GenerateTaskEntity).where(
             GenerateTaskEntity.provider_task_id == provider_task_id

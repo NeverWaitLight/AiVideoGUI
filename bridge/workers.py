@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import glob
 import os
-import re
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QObject, QThread, Signal
@@ -650,6 +649,7 @@ class BatchGenerationController(QThread):
     progress = Signal(int, int, str)
     all_done = Signal(int, int)
     terminated = Signal(int, int)
+    take_created = Signal()
 
     def __init__(
         self, shot_list: list[dict], video_service, signal_emitter: QObject,
@@ -673,8 +673,6 @@ class BatchGenerationController(QThread):
         self._signal_emitter.task_finished.connect(self._on_task_finished)
         self._signal_emitter.task_failed.connect(self._on_task_failed)
 
-        gen_counts = self._scan_existing_gen_counts()
-
         submitted = 0
         for i, shot in enumerate(self._shot_list):
             if self._stopped:
@@ -682,8 +680,6 @@ class BatchGenerationController(QThread):
 
             scene_number = shot["scene_number"]
             shot_number = shot["shot_number"]
-            project_id = shot["project_id"]
-            shot_id = shot.get("shot_id", 0)
             reference_images = shot.get("reference_images", [])
 
             self.progress.emit(submitted, len(self._shot_list), f"正在提交场{scene_number}镜{shot_number}...")
@@ -697,16 +693,6 @@ class BatchGenerationController(QThread):
                 if duration is not None:
                     params["duration"] = int(duration)
 
-                key = (scene_number, shot_number)
-                gen_counts[key] = gen_counts.get(key, 0) + 1
-                local_path = to_relative_path(
-                    os.path.join(
-                        paths.projects_dir(paths.workspace_root()),
-                        str(project_id), f"{scene_number}-{shot_number}-{gen_counts[key]}.mp4",
-                    ),
-                    paths.workspace_root(),
-                )
-
                 provider_task_id = self._service.submit_shot_video(
                     storyboard=shot["storyboard"],
                     scene=shot.get("scene"),
@@ -717,12 +703,12 @@ class BatchGenerationController(QThread):
                     visual_style=shot.get("visual_style"),
                     provider_name=self._provider_name,
                     params=params,
-                    local_path=local_path,
                     project_id=self._project.id,
                     project_name=self._project.name,
                 )
                 self._submitted_task_ids.add(provider_task_id)
                 submitted += 1
+                self.take_created.emit()
 
             except Exception:
                 self._failed += 1
@@ -755,24 +741,6 @@ class BatchGenerationController(QThread):
         except RuntimeError:
             pass
         self.all_done.emit(self._success, self._failed)
-
-    def _scan_existing_gen_counts(self) -> dict[tuple[int, int], int]:
-        """扫描项目目录中已有的视频文件，返回每个 (场次, 镜头) 的最大生成次数。"""
-        counts: dict[tuple[int, int], int] = {}
-        project_dir = os.path.join(
-            paths.projects_dir(paths.workspace_root()),
-            str(self._project.id),
-        )
-        if not os.path.isdir(project_dir):
-            return counts
-        pattern = re.compile(r"^(\d+)-(\d+)-(\d+)\.mp4$")
-        for filename in os.listdir(project_dir):
-            m = pattern.match(filename)
-            if m:
-                key = (int(m.group(1)), int(m.group(2)))
-                gen = int(m.group(3))
-                counts[key] = max(counts.get(key, 0), gen)
-        return counts
 
     def _on_task_finished(self, provider_task_id: str, save_path: str, storyboard_id: int = 0) -> None:
         if provider_task_id not in self._submitted_task_ids:

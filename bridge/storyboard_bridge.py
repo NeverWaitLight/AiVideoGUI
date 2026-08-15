@@ -588,6 +588,7 @@ class StoryboardBridge(QObject):
             controller.progress.connect(on_progress)
             controller.all_done.connect(on_all_done)
             controller.terminated.connect(on_terminated)
+            controller.take_created.connect(self.takes_changed.emit)
             controller.start()
 
         except Exception as e:
@@ -647,35 +648,69 @@ class StoryboardBridge(QObject):
 
     @Slot(int, result=str)
     def get_takes_for_shot(self, shot_id: int) -> str:
-        """获取分镜的所有拍摄记录，附带关联的媒体文件信息"""
+        """获取分镜的所有拍摄记录，附带关联的媒体文件信息。
+        无 media 的生成中 take 也会返回。
+        """
         try:
             if not self._take_service:
                 return "[]"
+            from loguru import logger
+            from storage.repositories.generate_task_repository import GenerateTaskRepository
+
             takes = self._take_service.list_by_storyboard(shot_id)
+            task_repo = self._container.session_manager().get_repo(GenerateTaskRepository)
             result = []
             for t in takes:
-                media = self._media_service.get_file_by_id(t.media_file_id) if hasattr(self._media_service, 'get_file_by_id') else None
-                media_info = {}
-                if media:
-                    media_info = {
-                        "filePath": media.local_path,
-                        "thumbnailPath": media.thumbnail_path or "",
-                        "duration": media.duration,
-                        "width": media.width,
-                        "height": media.height,
-                    }
+                media = None
+                media_file_id = (t.media_file_id or "").strip()
+                if media_file_id and hasattr(self._media_service, "get_file_by_id"):
+                    try:
+                        media = self._media_service.get_file_by_id(media_file_id)
+                    except Exception as e:
+                        logger.warning(f"读取拍摄媒体失败 take_id={t.id}, media_file_id={media_file_id}: {e}")
+
+                has_media = bool(media_file_id)
+                generating = False
+                failed = False
+                if not has_media and t.generate_task_id:
+                    try:
+                        task_info = task_repo.get_task_info(t.generate_task_id)
+                        if task_info is None:
+                            generating = True
+                        else:
+                            completed, status = task_info
+                            if not completed:
+                                generating = True
+                            elif status == "failed":
+                                failed = True
+                    except Exception as e:
+                        logger.warning(
+                            f"读取拍摄任务状态失败 take_id={t.id}, generate_task_id={t.generate_task_id}: {e}"
+                        )
+                        generating = True
+
                 result.append({
                     "id": t.id,
                     "storyboardId": t.storyboard_id,
                     "number": t.number,
-                    "mediaFileId": t.media_file_id,
-                    "status": t.status.value,
-                    "comment": t.comment,
+                    "mediaFileId": media_file_id,
+                    "generateTaskId": t.generate_task_id or 0,
+                    "status": t.status.value if hasattr(t.status, "value") else str(t.status),
+                    "comment": t.comment or "",
                     "createdAt": t.created_at,
-                    **media_info,
+                    "hasMedia": 1 if has_media else 0,
+                    "generating": 1 if generating else 0,
+                    "failed": 1 if failed else 0,
+                    "filePath": media.local_path if media else "",
+                    "thumbnailPath": (media.thumbnail_path or "") if media else "",
+                    "duration": media.duration if media else 0,
+                    "width": media.width if media else 0,
+                    "height": media.height if media else 0,
                 })
-            return json.dumps(result)
-        except Exception:
+            return json.dumps(result, ensure_ascii=False)
+        except Exception as e:
+            from loguru import logger
+            logger.warning(f"获取拍摄记录失败 shot_id={shot_id}: {e}")
             return "[]"
 
     @Slot(int, str)

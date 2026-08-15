@@ -16,13 +16,21 @@ class StoryboardTakeRepository(BaseRepository[StoryboardTakeEntity, StoryboardTa
         self._workspace_root = workspace_root
 
     def _to_dto(self, entity: StoryboardTakeEntity) -> StoryboardTake:
+        status = entity.status
+        if isinstance(status, str):
+            try:
+                status = TakeStatus(status)
+            except ValueError:
+                status = TakeStatus.CANDIDATE
+
         return StoryboardTake(
             id=entity.id,
             storyboard_id=entity.storyboard_id,
             number=entity.number,
-            media_file_id=entity.media_file_id,
-            status=TakeStatus(entity.status) if isinstance(entity.status, str) else entity.status,
-            comment=entity.comment,
+            media_file_id=entity.media_file_id or "",
+            generate_task_id=getattr(entity, "generate_task_id", None) or 0,
+            status=status,
+            comment=entity.comment or "",
             created_at=entity.created_at,
             updated_at=entity.updated_at,
         )
@@ -31,7 +39,8 @@ class StoryboardTakeRepository(BaseRepository[StoryboardTakeEntity, StoryboardTa
         entity = StoryboardTakeEntity(
             storyboard_id=dto.storyboard_id,
             number=dto.number,
-            media_file_id=dto.media_file_id,
+            media_file_id=dto.media_file_id or "",
+            generate_task_id=dto.generate_task_id if dto.generate_task_id > 0 else None,
             status=dto.status.value if isinstance(dto.status, TakeStatus) else dto.status,
             comment=dto.comment,
             created_at=dto.created_at,
@@ -50,13 +59,24 @@ class StoryboardTakeRepository(BaseRepository[StoryboardTakeEntity, StoryboardTa
         entities = self.session.execute(stmt).scalars().all()
         return [self._to_dto(e) for e in entities]
 
-    def get_next_number(self, storyboard_id: int) -> int:
+    def get_max_number(self, storyboard_id: int) -> int:
         stmt = (
             select(func.max(StoryboardTakeEntity.number))
             .where(StoryboardTakeEntity.storyboard_id == storyboard_id)
         )
         max_number = self.session.execute(stmt).scalar_one_or_none()
-        return (max_number or 0) + 1
+        return max_number or 0
+
+    def get_next_number(self, storyboard_id: int) -> int:
+        return self.get_max_number(storyboard_id) + 1
+
+    def get_by_generate_task_id(self, generate_task_id: int) -> Optional[StoryboardTake]:
+        stmt = (
+            select(StoryboardTakeEntity)
+            .where(StoryboardTakeEntity.generate_task_id == generate_task_id)
+        )
+        entity = self.session.execute(stmt).scalar_one_or_none()
+        return self._to_dto(entity) if entity else None
 
     def list_selected_by_project(self, project_id: int) -> List[StoryboardTake]:
         from storage.orm.storyboard_entity import StoryboardEntity
