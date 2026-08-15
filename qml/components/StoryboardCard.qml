@@ -13,6 +13,7 @@ Pane {
     property int shotNumber: 0
     property string visualContent: ""
     property string designImage: ""
+    property bool designImageBusy: false
     property string cameraMovement: ""
     property real duration: 0
     property bool multiSelect: false
@@ -36,6 +37,7 @@ Pane {
         Comp.ImagePreview {
             width: 100; height: 72
             imageSource: designImage
+            busy: designImageBusy
             placeholderIcon: "qrc:/resources/icons/image.svg"
             placeholderIconSize: 32
         }

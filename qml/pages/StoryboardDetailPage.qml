@@ -13,6 +13,7 @@ Item {
     property int shotId: -1
     property bool contentFullscreen: false
     property var takesList: []
+    property var generatingDesignShotIds: []
 
     ListModel {
         id: takesListModel
@@ -276,6 +277,7 @@ Item {
                         width: parent.width / 2 - 30
                         height: formGrid.implicitHeight
                         imageSource: bridge.storyboard.curDesignImage
+                        busy: generatingDesignShotIds.indexOf(String(bridge.storyboard.curShotId)) !== -1
 
                         onAiGenerateClicked: bridge.storyboard.generate_design_image(
                             bridge.storyboard.curShotId, detailPage.projectId)

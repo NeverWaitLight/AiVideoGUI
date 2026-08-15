@@ -13,6 +13,8 @@ class CharacterBridge(QObject):
     data_changed = Signal()
     character_saved = Signal()
     design_image_ready = Signal(str, str)  # char_uuid, image_path
+    design_image_started = Signal(str)  # char_uuid
+    design_image_finished = Signal(str)  # char_uuid
     design_image_progress = Signal(str)
     design_image_failed = Signal(str)
     description_refined = Signal(str, str)  # char_uuid, new_description
@@ -43,6 +45,16 @@ class CharacterBridge(QObject):
         self._optimizing = False
         self._character_worker = None
         self._project_id: int = -1
+        self._generating_design_char_uuids: set[str] = set()
+
+    def _mark_design_generating(self, char_uuid: str) -> None:
+        self._generating_design_char_uuids.add(char_uuid)
+        self.design_image_started.emit(char_uuid)
+
+    def _unmark_design_generating(self, char_uuid: str) -> None:
+        if char_uuid in self._generating_design_char_uuids:
+            self._generating_design_char_uuids.discard(char_uuid)
+            self.design_image_finished.emit(char_uuid)
 
     def _get_project_name(self, project_id: int | None = None) -> str | None:
         pid = project_id if project_id is not None else self._project_id
@@ -148,10 +160,11 @@ class CharacterBridge(QObject):
                 workspace_root=workspace_root,
             )
             worker.finished.connect(lambda path: self._on_design_done(char_uuid, path))
-            worker.failed.connect(self.design_image_failed.emit)
+            worker.failed.connect(lambda err: self._on_design_failed(char_uuid, err))
             worker.progress_update.connect(self.design_image_progress.emit)
             worker.finished.connect(worker.deleteLater)
             worker.failed.connect(worker.deleteLater)
+            self._mark_design_generating(char_uuid)
             worker.start()
             self._workers.append(worker)
         except Exception as e:
@@ -165,8 +178,13 @@ class CharacterBridge(QObject):
         workspace_root = self._container.config.workspace_root() if self._container else ""
         absolute_path = to_absolute_path(path, workspace_root)
 
+        self._unmark_design_generating(char_uuid)
         self._model.update_design_image(char_uuid, absolute_path)
         self.design_image_ready.emit(char_uuid, absolute_path)
+
+    def _on_design_failed(self, char_uuid: str, error: str) -> None:
+        self._unmark_design_generating(char_uuid)
+        self.design_image_failed.emit(error)
 
     @Slot(str, str, str)
     def refine_description(self, char_uuid: str, current_description: str, user_requirement: str) -> None:

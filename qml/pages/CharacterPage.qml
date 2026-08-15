@@ -16,6 +16,7 @@ Item {
     property bool _showDetail: false
     property string _editingDesignImage: ""
     property string _projectName: ""
+    property var generatingDesignCharUuids: []
 
     signal backClicked()
     signal navigateToStoryboard(int projectId)
@@ -51,6 +52,21 @@ Item {
                 _editingDesignImage = path
             }
             characterAIDialog.finishWork()
+        }
+        function onDesign_image_started(uuid) {
+            var ids = page.generatingDesignCharUuids.slice()
+            if (ids.indexOf(uuid) === -1) {
+                ids.push(uuid)
+                page.generatingDesignCharUuids = ids
+            }
+        }
+        function onDesign_image_finished(uuid) {
+            var ids = page.generatingDesignCharUuids.slice()
+            var index = ids.indexOf(uuid)
+            if (index !== -1) {
+                ids.splice(index, 1)
+                page.generatingDesignCharUuids = ids
+            }
         }
         function onDesign_image_failed(error) {
             characterAIDialog.finishWork()
@@ -269,6 +285,7 @@ Item {
                         refCode: model.refCode || ""
                         description: model.description || ""
                         designImage: model.designImagePath || ""
+                        designImageBusy: generatingDesignCharUuids.indexOf(model.characterUuid || "") !== -1
                         multiSelect: _multiSelect
                         isSelected: _selectedIds.indexOf(characterUuid) >= 0
                         onCardClicked: {
@@ -592,6 +609,7 @@ Item {
                                 Layout.fillHeight: true
                                 visible: !_isNewCharacter
                                 imageSource: _editingDesignImage
+                                busy: generatingDesignCharUuids.indexOf(_editingCharUuid) !== -1
                                 onAiGenerateClicked: {
                                     characterAIDialog.openGenerateDesign()
                                 }
@@ -637,6 +655,7 @@ Item {
         property string refCode: ""
         property string description: ""
         property string designImage: ""
+        property bool designImageBusy: false
         property bool multiSelect: false
         property bool isSelected: false
 
@@ -666,21 +685,28 @@ Item {
                     anchors.fill: parent
                     source: designImage ? "file:///" + designImage + "?t=" + Date.now() : ""
                     fillMode: Image.PreserveAspectCrop
-                    visible: designImage !== ""
+                    visible: designImage !== "" && !designImageBusy
                     cache: false
                 }
                 Label {
                     anchors.centerIn: parent
                     text: characterName ? characterName[0] : ""
                     font.pixelSize: 24
-                    visible: !designImage && characterName
+                    visible: !designImage && !designImageBusy && characterName
                 }
                 Image {
                     anchors.centerIn: parent
                     source: "qrc:/resources/icons/person.svg"
                     sourceSize.width: 32
                     sourceSize.height: 32
-                    visible: !designImage && !characterName
+                    visible: !designImage && !designImageBusy && !characterName
+                }
+                BusyIndicator {
+                    anchors.centerIn: parent
+                    width: 40
+                    height: 40
+                    visible: designImageBusy
+                    running: designImageBusy
                 }
             }
 

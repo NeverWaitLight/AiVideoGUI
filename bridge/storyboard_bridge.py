@@ -15,6 +15,8 @@ from utils.path_converter import to_absolute_path
 class StoryboardBridge(QObject):
     data_changed = Signal()
     design_image_ready = Signal(str, str)  # shot_id, image_path
+    design_image_started = Signal(str)  # shot_id
+    design_image_finished = Signal(str)  # shot_id
     design_image_progress = Signal(str)
     design_image_failed = Signal(str)
     batch_progress = Signal(int, int, str)
@@ -77,6 +79,16 @@ class StoryboardBridge(QObject):
         self._cur_notes: str = ""
         self._cur_design_image: str = ""
         self._cur_seed: str = ""
+        self._generating_design_shot_ids: set[int] = set()
+
+    def _mark_design_generating(self, shot_id: int) -> None:
+        self._generating_design_shot_ids.add(shot_id)
+        self.design_image_started.emit(str(shot_id))
+
+    def _unmark_design_generating(self, shot_id: int) -> None:
+        if shot_id in self._generating_design_shot_ids:
+            self._generating_design_shot_ids.discard(shot_id)
+            self.design_image_finished.emit(str(shot_id))
 
     def _get_project_name(self, project_id: int | None = None) -> str | None:
         pid = project_id if project_id is not None else self._project_id
@@ -386,8 +398,9 @@ class StoryboardBridge(QObject):
                 workspace_root=self._container.config.workspace_root(),
             )
             worker.finished.connect(lambda path: self._on_design_done(storyboard_id, path))
-            worker.failed.connect(self.design_image_failed.emit)
+            worker.failed.connect(lambda err: self._on_design_failed(storyboard_id, err))
             worker.progress_update.connect(self.design_image_progress.emit)
+            self._mark_design_generating(storyboard_id)
             worker.start()
             self._workers.append(worker)
 
@@ -458,15 +471,26 @@ class StoryboardBridge(QObject):
                 self.batch_done.emit(success_count, total)
                 self.load_for_project(project_id)
 
+            def on_shot_design_started(shot_id: int) -> None:
+                self._mark_design_generating(shot_id)
+
             def on_shot_design_done(shot_id: int, path: str) -> None:
-                self._model.update_design_image(shot_id, path)
+                self._unmark_design_generating(shot_id)
+                workspace_root = self._container.config.workspace_root()
+                absolute_path = to_absolute_path(path, workspace_root)
+                self._model.update_design_image(shot_id, absolute_path)
                 if self._cur_shot_id == shot_id:
-                    self._cur_design_image = path
+                    self._cur_design_image = absolute_path
                     self.shot_detail_changed.emit()
-                self.design_image_ready.emit(str(shot_id), path)
+                self.design_image_ready.emit(str(shot_id), absolute_path)
+
+            def on_shot_design_failed(shot_id: int) -> None:
+                self._unmark_design_generating(shot_id)
 
             worker.progress_update.connect(on_progress)
+            worker.shot_design_started.connect(on_shot_design_started)
             worker.shot_design_done.connect(on_shot_design_done)
+            worker.shot_design_failed.connect(on_shot_design_failed)
             worker.finished.connect(on_finished)
             worker.failed.connect(self.design_image_failed.emit)
             worker.finished.connect(worker.deleteLater)
@@ -741,11 +765,18 @@ class StoryboardBridge(QObject):
 
     def _on_design_done(self, shot_id: int, path: str) -> None:
         # Worker 内部已经保存到数据库，这里只需更新 Model 和发出信号
-        self._model.update_design_image(shot_id, path)
+        self._unmark_design_generating(shot_id)
+        workspace_root = self._container.config.workspace_root()
+        absolute_path = to_absolute_path(path, workspace_root)
+        self._model.update_design_image(shot_id, absolute_path)
         if self._cur_shot_id == shot_id:
-            self._cur_design_image = path
+            self._cur_design_image = absolute_path
             self.shot_detail_changed.emit()
-        self.design_image_ready.emit(str(shot_id), path)
+        self.design_image_ready.emit(str(shot_id), absolute_path)
+
+    def _on_design_failed(self, shot_id: int, error: str) -> None:
+        self._unmark_design_generating(shot_id)
+        self.design_image_failed.emit(error)
 
     @Slot(str, int)
     def optimize_with_ai(self, user_input: str, project_id: int) -> None:

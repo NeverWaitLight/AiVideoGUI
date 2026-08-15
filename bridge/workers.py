@@ -367,7 +367,9 @@ class DesignImageWorker(QThread):
 
 class BatchDesignImageWorker(QThread):
     progress_update = Signal(int, str, str)
+    shot_design_started = Signal(int)
     shot_design_done = Signal(int, str)
+    shot_design_failed = Signal(int)
     finished = Signal(int, int)
     failed = Signal(str)
 
@@ -398,8 +400,9 @@ class BatchDesignImageWorker(QThread):
         }
 
         for idx, shot_data in enumerate(self._shot_list, start=1):
+            storyboard_id = shot_data["storyboard_id"]
+            self.shot_design_started.emit(storyboard_id)
             try:
-                storyboard_id = shot_data["storyboard_id"]
                 project_id = shot_data["project_id"]
                 scene_number = shot_data["scene_number"]
                 shot_number = shot_data["shot_number"]
@@ -469,6 +472,7 @@ class BatchDesignImageWorker(QThread):
                 self.progress_update.emit(idx, f"完成 {scene_number}-{shot_number}", f"({idx}/{total})")
 
             except Exception:
+                self.shot_design_failed.emit(storyboard_id)
                 self.progress_update.emit(idx, f"生成失败", f"({idx}/{total})")
 
         self.finished.emit(success_count, total)

@@ -15,6 +15,7 @@ Item {
     property var _selectedIds: []
     property string _projectName: ""
     property bool _exporting: false
+    property var generatingDesignShotIds: []
 
     signal backClicked()
     signal navigateToMediaLibrary(int projectId)
@@ -59,6 +60,21 @@ Item {
             alertDialog.error("错误", "生成分镜失败：" + msg)
         }
         function onDesign_image_ready(shotId, path) {
+        }
+        function onDesign_image_started(shotId) {
+            var ids = page.generatingDesignShotIds.slice()
+            if (ids.indexOf(shotId) === -1) {
+                ids.push(shotId)
+                page.generatingDesignShotIds = ids
+            }
+        }
+        function onDesign_image_finished(shotId) {
+            var ids = page.generatingDesignShotIds.slice()
+            var index = ids.indexOf(shotId)
+            if (index !== -1) {
+                ids.splice(index, 1)
+                page.generatingDesignShotIds = ids
+            }
         }
         function onDesign_image_failed(error) {
             var msg = error ? String(error) : "未知错误"
@@ -334,6 +350,7 @@ Item {
                         shotNumber: model.shotNumber || 0
                         visualContent: model.visualContent || ""
                         designImage: model.designImagePath || ""
+                        designImageBusy: generatingDesignShotIds.indexOf(String(model.shotId)) !== -1
                         cameraMovement: model.cameraMovement || ""
                         duration: model.duration || 0
                         multiSelect: _multiSelect
@@ -365,6 +382,7 @@ Item {
             projectId: page.projectId
             projectName: _projectName
             shotId: _editingShotId
+            generatingDesignShotIds: page.generatingDesignShotIds
             onBackClicked: {
                 _showDetail = false
                 _editingShotId = -1
