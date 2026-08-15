@@ -52,8 +52,8 @@ class TestPromptTemplateManager(unittest.TestCase):
         templates = manager.list_templates()
         self.assertGreater(len(templates), 0)
         self.assertIn("chat", templates)
-        self.assertIn("outline_optimization", templates)
-        self.assertIn("image_prompt_generation", templates)
+        self.assertIn("outline_optimize", templates)
+        self.assertIn("image_prompt", templates)
 
     def test_get_template(self):
         templates_dir = Path(__file__).parent.parent / "prompts" / "templates"
@@ -86,7 +86,7 @@ class TestPromptTemplateManager(unittest.TestCase):
         templates_dir = Path(__file__).parent.parent / "prompts" / "templates"
         manager = PromptTemplateManager(templates_dir)
 
-        template = manager.get_template("outline_optimization")
+        template = manager.get_template("outline_optimize")
         messages = template.build_messages(
             original_content="这是原始大纲",
             user_requirement="增加悬疑元素",
@@ -96,6 +96,92 @@ class TestPromptTemplateManager(unittest.TestCase):
         last_message = messages[-1]["content"]
         self.assertIn("这是原始大纲", last_message)
         self.assertIn("增加悬疑元素", last_message)
+
+    def test_all_templates_placeholder_contract(self):
+        """遍历全部模板，用 dummy kwargs 调用 build_messages，验证占位符契约不破坏"""
+        templates_dir = Path(__file__).parent.parent / "prompts" / "templates"
+        manager = PromptTemplateManager(templates_dir)
+
+        template_kwargs = {
+            "chat": {"user_input": "你好"},
+            "outline_optimize": {"original_content": "大纲", "user_requirement": "要求"},
+            "script_generate": {"outline_content": "大纲"},
+            "screenplay_optimize": {
+                "outline_content": "大纲",
+                "current_script": "剧本",
+                "user_requirement": "要求",
+            },
+            "storyboard_generate": {"script_content": "剧本", "art_style": "写实"},
+            "storyboard_optimize": {
+                "outline_content": "大纲",
+                "script_content": "剧本",
+                "character_content": "角色",
+                "current_storyboard": "分镜",
+                "user_requirement": "要求",
+            },
+            "character_generate": {
+                "outline_content": "大纲",
+                "script_content": "剧本",
+                "user_requirement": "要求",
+            },
+            "character_optimize": {
+                "outline_content": "大纲",
+                "script_content": "剧本",
+                "current_characters": "角色",
+                "user_requirement": "要求",
+            },
+            "character_refine": {
+                "character_name": "角色名",
+                "current_description": "描述",
+                "user_requirement": "要求",
+            },
+            "image_prompt": {
+                "shot_size": "中景",
+                "camera_movement": "固定",
+                "content": "画面",
+                "notes": "备注",
+                "character_info": "角色",
+                "visual_style": "风格",
+                "visual_style_instruction": "风格要求",
+            },
+            "character_image_prompt": {
+                "character_name": "角色名",
+                "description": "描述",
+                "visual_style": "风格",
+                "visual_style_instruction": "风格要求",
+                "user_requirement": "要求",
+            },
+            "cover_image_prompt": {
+                "project_name": "项目名",
+                "aspect_ratio": "16:9",
+                "outline_content": "大纲",
+                "character_info": "角色",
+                "visual_style": "风格",
+                "visual_style_instruction": "风格要求",
+            },
+            "video_prompt_clean": {"original_prompt": "原始提示词"},
+        }
+
+        loaded = set(manager.list_templates())
+        self.assertEqual(
+            set(template_kwargs.keys()),
+            loaded,
+            "测试用例的模板集合与实际加载的模板集合不一致",
+        )
+
+        for name, kwargs in template_kwargs.items():
+            with self.subTest(template=name):
+                template = manager.get_template(name)
+                messages = template.build_messages(**kwargs)
+                self.assertGreater(len(messages), 1)
+                self.assertEqual(messages[0]["role"], "system")
+                self.assertEqual(messages[-1]["role"], "user")
+                for key, value in kwargs.items():
+                    self.assertIn(
+                        value,
+                        messages[-1]["content"],
+                        f"模板 {name} 的占位符 {{{key}}} 未被正确替换",
+                    )
 
 
 if __name__ == "__main__":
