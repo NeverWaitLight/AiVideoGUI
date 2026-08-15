@@ -188,7 +188,8 @@ class TestChatPromptBuilderVisualStyle(unittest.TestCase):
         self.assertIn("整体画面采用【3D卡通】风格", user)
         self.assertNotIn("纯黑白", user)
         self.assertNotIn("pure black and white", system)
-        self.assertIn("中文提示词", system)
+        self.assertNotIn("英文提示词", system)
+        self.assertIn("提示词", system)
 
     def test_design_image_prompt_omits_style_when_default_or_empty(self):
         for style in ("", "默认", "  ", None):
@@ -202,7 +203,8 @@ class TestChatPromptBuilderVisualStyle(unittest.TestCase):
                 self.assertNotIn("【画面风格要求】", user)
                 self.assertNotIn("纯黑白", user)
                 self.assertNotIn("无特殊风格要求", user)
-                self.assertIn("只输出中文提示词", user)
+                self.assertNotIn("只输出中文提示词", user)
+                self.assertNotIn("不要输出英文", user)
 
     def test_character_design_image_prompt_includes_style_when_set(self):
         messages = self.builder.build_character_design_image_prompt_messages(
