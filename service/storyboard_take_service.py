@@ -97,8 +97,21 @@ class StoryboardTakeService:
             if not take:
                 raise ValueError(f"拍摄记录不存在：{take_id}")
 
+            now_ms = int(time.time() * 1000)
+            if status == TakeStatus.SELECTED:
+                demoted = repo.demote_other_selected(
+                    storyboard_id=take.storyboard_id,
+                    keep_take_id=take_id,
+                    updated_at=now_ms,
+                )
+                if demoted:
+                    logger.info(
+                        f"分镜 {take.storyboard_id} 已有选用拍摄，"
+                        f"已将 {demoted} 条记录改回备选"
+                    )
+
             take.status = status
-            take.updated_at = int(time.time() * 1000)
+            take.updated_at = now_ms
             repo.update(dto=take)
             self._session_mgr.commit_write()
             logger.info(f"更新拍摄记录状态：take_id={take_id}, status={status.value}")

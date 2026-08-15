@@ -535,6 +535,9 @@ Item {
                         readonly property bool hasMedia: model.hasMedia === 1 || model.hasMedia === true
                         readonly property bool isGenerating: model.generating === 1 || model.generating === true
                         readonly property bool isFailed: model.failed === 1 || model.failed === true
+                        readonly property int takeId: model.id
+                        readonly property int takeNumber: model.number
+                        readonly property string takeStatus: model.status
                         readonly property string stateLabel: {
                             if (takeCard.hasMedia)
                                 return ""
@@ -615,7 +618,7 @@ Item {
                                 spacing: 2
 
                                 Label {
-                                    text: "第" + model.number + "次"
+                                    text: "第" + takeCard.takeNumber + "次"
                                     font.pixelSize: Theme.fontSizeSmall
                                     font.bold: true
                                 }
@@ -636,7 +639,7 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 32
                                 model: ["备选", "选用", "放弃"]
-                                currentIndex: model.status === "candidate" ? 0 : (model.status === "selected" ? 1 : 2)
+                                currentIndex: takeCard.takeStatus === "candidate" ? 0 : (takeCard.takeStatus === "selected" ? 1 : 2)
                                 font.pixelSize: Theme.fontSizeSmall
 
                                 background: Rectangle {
@@ -654,7 +657,7 @@ Item {
 
                                 onActivated: {
                                     var statusMap = ["candidate", "selected", "abandoned"]
-                                    bridge.storyboard.update_take_status(model.id, statusMap[currentIndex])
+                                    bridge.storyboard.update_take_status(takeCard.takeId, statusMap[currentIndex])
                                 }
                             }
 
@@ -682,8 +685,8 @@ Item {
                                 }
 
                                 onClicked: confirmDialog.confirm(
-                                    "确定要删除第" + model.number + "次拍摄记录吗？",
-                                    function() { bridge.storyboard.delete_take(model.id) }
+                                    "确定要删除第" + takeCard.takeNumber + "次拍摄记录吗？",
+                                    function() { bridge.storyboard.delete_take(takeCard.takeId) }
                                 )
                             }
                         }

@@ -78,6 +78,21 @@ class StoryboardTakeRepository(BaseRepository[StoryboardTakeEntity, StoryboardTa
         entity = self.session.execute(stmt).scalar_one_or_none()
         return self._to_dto(entity) if entity else None
 
+    def demote_other_selected(self, storyboard_id: int, keep_take_id: int, updated_at: int) -> int:
+        stmt = (
+            select(StoryboardTakeEntity)
+            .where(
+                StoryboardTakeEntity.storyboard_id == storyboard_id,
+                StoryboardTakeEntity.status == TakeStatus.SELECTED.value,
+                StoryboardTakeEntity.id != keep_take_id,
+            )
+        )
+        entities = self.session.execute(stmt).scalars().all()
+        for entity in entities:
+            entity.status = TakeStatus.CANDIDATE.value
+            entity.updated_at = updated_at
+        return len(entities)
+
     def list_selected_by_project(self, project_id: int) -> List[StoryboardTake]:
         from storage.orm.storyboard_entity import StoryboardEntity
         from storage.orm.screenplay_entity import ScreenplayEntity
