@@ -14,6 +14,7 @@ Item {
     signal settingsClicked()
 
     property int currentIndex: 0
+    property bool settingsActive: false
 
     ColumnLayout {
         anchors.fill: parent
@@ -100,12 +101,9 @@ Item {
             icon.source: "qrc:/resources/icons/settings.svg"
             icon.width: 22
             icon.height: 22
-            checked: tabBar.currentIndex === 4
-            isActive: tabBar.currentIndex === 4
-            onClicked: {
-                tabBar.currentIndex = 4
-                tabBar.settingsClicked()
-            }
+            checked: tabBar.settingsActive
+            isActive: tabBar.settingsActive
+            onClicked: tabBar.settingsClicked()
             ToolTip.text: "设置"
             ToolTip.visible: hovered
         }

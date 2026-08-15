@@ -1,59 +1,78 @@
-import json
 import os
+import re
 import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 
 from imageio_ffmpeg import get_ffmpeg_exe
 from loguru import logger
+from PIL import Image, ImageStat
 
 
 class VideoMetadataExtractor:
+    _THUMBNAIL_SCALE = "scale=320:-1"
+    _MEAN_THRESHOLD = 12.0
+    _STD_THRESHOLD = 8.0
+
+    @staticmethod
+    def _resolve_ffmpeg_exe() -> str:
+        ffmpeg_exe = get_ffmpeg_exe()
+        if not os.path.exists(ffmpeg_exe):
+            ffmpeg_exe = shutil.which("ffmpeg")
+            if not ffmpeg_exe:
+                raise RuntimeError("找不到 ffmpeg 可执行文件，请安装 ffmpeg 到系统 PATH")
+        return ffmpeg_exe
+
+    @staticmethod
+    def _run_ffmpeg(cmd: list[str]) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+
+    @staticmethod
+    def _parse_duration(text: str) -> float:
+        match = re.search(r"Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)", text)
+        if not match:
+            return 0.0
+        hours, minutes, seconds = match.groups()
+        return int(hours) * 3600 + int(minutes) * 60 + float(seconds)
+
+    @staticmethod
+    def _parse_video_size(text: str) -> tuple[int, int]:
+        match = re.search(r"Video:.*?\b(\d{2,5})x(\d{2,5})\b", text, re.DOTALL)
+        if not match:
+            return 0, 0
+        return int(match.group(1)), int(match.group(2))
+
+    @staticmethod
+    def _probe_with_ffmpeg(video_path: str) -> str:
+        """imageio-ffmpeg 只内置 ffmpeg 不带 ffprobe 用 ffmpeg -i 解析元数据。"""
+        ffmpeg_exe = VideoMetadataExtractor._resolve_ffmpeg_exe()
+        result = VideoMetadataExtractor._run_ffmpeg([ffmpeg_exe, "-i", video_path])
+        # ffmpeg -i 在没有输出目标时通常返回非 0 但 stderr 仍含媒体信息
+        probe_text = (result.stderr or "") + "\n" + (result.stdout or "")
+        if "Duration:" not in probe_text and "Video:" not in probe_text:
+            raise RuntimeError(f"ffmpeg 读取媒体信息失败: {result.stderr}")
+        return probe_text
+
     @staticmethod
     def extract_metadata(video_path: str) -> dict:
         if not os.path.exists(video_path):
             raise FileNotFoundError(f"视频文件不存在: {video_path}")
 
         try:
-            ffmpeg_exe = get_ffmpeg_exe()
-            ffprobe_exe = ffmpeg_exe.replace("ffmpeg", "ffprobe")
+            probe_text = VideoMetadataExtractor._probe_with_ffmpeg(video_path)
+            duration = VideoMetadataExtractor._parse_duration(probe_text)
+            width, height = VideoMetadataExtractor._parse_video_size(probe_text)
+            file_size = os.path.getsize(video_path)
 
-            if not os.path.exists(ffprobe_exe):
-                ffprobe_exe = shutil.which("ffprobe")
-                if not ffprobe_exe:
-                    raise RuntimeError("找不到 ffprobe 可执行文件，请安装 ffmpeg 到系统 PATH")
-
-            cmd = [
-                ffprobe_exe,
-                "-v", "quiet",
-                "-print_format", "json",
-                "-show_format",
-                "-show_streams",
-                video_path
-            ]
-
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace"
-            )
-
-            if result.returncode != 0:
-                raise RuntimeError(f"ffprobe 失败: {result.stderr}")
-
-            probe = json.loads(result.stdout)
-            video_stream = next(
-                (s for s in probe["streams"] if s["codec_type"] == "video"), None
-            )
-            if not video_stream:
-                raise RuntimeError("未找到视频流")
-
-            duration = float(probe["format"].get("duration", 0))
-            width = int(video_stream.get("width", 0))
-            height = int(video_stream.get("height", 0))
-            file_size = int(probe["format"].get("size", 0))
+            if width <= 0 or height <= 0:
+                raise RuntimeError("未找到视频流分辨率信息")
 
             logger.info(
                 f"提取视频元数据: {video_path} ({duration:.1f}s, {width}x{height}, {file_size} bytes)"
@@ -70,44 +89,166 @@ class VideoMetadataExtractor:
             raise RuntimeError(f"无法提取视频元数据: {e}") from e
 
     @staticmethod
-    def generate_thumbnail(video_path: str, output_path: str, time_offset: float = 1.0) -> str:
+    def _probe_duration(video_path: str) -> float:
+        probe_text = VideoMetadataExtractor._probe_with_ffmpeg(video_path)
+        return VideoMetadataExtractor._parse_duration(probe_text)
+
+    @staticmethod
+    def _is_informative_frame(
+        image_path: str,
+        *,
+        mean_threshold: float | None = None,
+        std_threshold: float | None = None,
+    ) -> bool:
+        if not os.path.exists(image_path) or os.path.getsize(image_path) == 0:
+            return False
+
+        mean_threshold = mean_threshold or VideoMetadataExtractor._MEAN_THRESHOLD
+        std_threshold = std_threshold or VideoMetadataExtractor._STD_THRESHOLD
+
+        with Image.open(image_path) as img:
+            stat = ImageStat.Stat(img.convert("L"))
+            mean = stat.mean[0]
+            std = stat.stddev[0]
+            return mean >= mean_threshold and std >= std_threshold
+
+    @staticmethod
+    def _detect_leading_black_end(video_path: str) -> float:
+        ffmpeg_exe = VideoMetadataExtractor._resolve_ffmpeg_exe()
+        cmd = [
+            ffmpeg_exe,
+            "-i", video_path,
+            "-vf", "blackdetect=d=0.08:pix_th=0.10",
+            "-an",
+            "-f", "null",
+            "-",
+        ]
+        result = VideoMetadataExtractor._run_ffmpeg(cmd)
+        if result.returncode != 0:
+            logger.debug(f"blackdetect 未检测到黑场: {result.stderr[-200:]}")
+            return 0.0
+
+        match = re.search(r"black_start:0(?:\.0+)?\s+black_end:(\d+(?:\.\d+)?)", result.stderr)
+        if not match:
+            return 0.0
+        return float(match.group(1))
+
+    @staticmethod
+    def _extract_frame(
+        video_path: str,
+        output_path: str,
+        *,
+        time_offset: float | None = None,
+        first_keyframe: bool = False,
+        accurate_seek: bool = False,
+    ) -> None:
+        ffmpeg_exe = VideoMetadataExtractor._resolve_ffmpeg_exe()
+        cmd = [ffmpeg_exe]
+        if first_keyframe:
+            cmd.extend(["-skip_frame", "nokey"])
+        elif time_offset is not None and not accurate_seek:
+            cmd.extend(["-ss", str(time_offset)])
+        cmd.extend(["-i", video_path])
+        if time_offset is not None and not first_keyframe and accurate_seek:
+            cmd.extend(["-ss", str(time_offset)])
+        cmd.extend([
+            "-vf", VideoMetadataExtractor._THUMBNAIL_SCALE,
+            "-vframes", "1",
+            "-f", "image2",
+            "-c:v", "mjpeg",
+            "-y",
+            output_path,
+        ])
+
+        result = VideoMetadataExtractor._run_ffmpeg(cmd)
+        if result.returncode != 0:
+            raise RuntimeError(f"ffmpeg 失败: {result.stderr}")
+
+    @staticmethod
+    def _build_thumbnail_candidates(duration: float, black_end: float) -> list[tuple[str, float | None]]:
+        candidates: list[tuple[str, float | None]] = [("first_keyframe", None)]
+
+        if black_end > 0:
+            candidates.append(("post_black", min(black_end + 0.05, max(duration - 0.05, 0))))
+
+        seen: set[float] = set()
+        for offset in (0.1, 0.25, 0.5, 1.0, 1.5, 2.0, 3.0, 5.0):
+            if duration > 0 and offset >= duration:
+                continue
+            if offset in seen:
+                continue
+            seen.add(offset)
+            candidates.append(("scan", offset))
+
+        return candidates
+
+    @staticmethod
+    def generate_thumbnail(
+        video_path: str,
+        output_path: str,
+        time_offset: float | None = 1.0,
+        duration: float | None = None,
+    ) -> str:
         if not os.path.exists(video_path):
             raise FileNotFoundError(f"视频文件不存在: {video_path}")
 
         Path(output_path).parent.mkdir(parents=True, exist_ok=True)
 
         try:
-            ffmpeg_exe = get_ffmpeg_exe()
+            if time_offset is not None:
+                VideoMetadataExtractor._extract_frame(
+                    video_path,
+                    output_path,
+                    time_offset=time_offset,
+                )
+                logger.info(f"生成视频缩略图: {video_path} -> {output_path} (固定时间点 {time_offset}s)")
+                return output_path
 
-            if not os.path.exists(ffmpeg_exe):
-                ffmpeg_exe = shutil.which("ffmpeg")
-                if not ffmpeg_exe:
-                    raise RuntimeError("找不到 ffmpeg 可执行文件，请安装 ffmpeg 到系统 PATH")
-            cmd = [
-                ffmpeg_exe,
-                "-ss", str(time_offset),
-                "-i", video_path,
-                "-vf", "scale=320:-1",
-                "-vframes", "1",
-                "-f", "image2",
-                "-c:v", "mjpeg",
-                "-y",
-                output_path
-            ]
+            if duration is None:
+                duration = VideoMetadataExtractor._probe_duration(video_path)
 
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace"
-            )
+            black_end = VideoMetadataExtractor._detect_leading_black_end(video_path)
+            candidates = VideoMetadataExtractor._build_thumbnail_candidates(duration, black_end)
 
-            if result.returncode != 0:
-                raise RuntimeError(f"ffmpeg 失败: {result.stderr}")
+            with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
+                temp_path = tmp.name
 
-            logger.info(f"生成视频缩略图: {video_path} -> {output_path}")
-            return output_path
+            try:
+                for source, candidate_time in candidates:
+                    if source == "first_keyframe":
+                        VideoMetadataExtractor._extract_frame(
+                            video_path,
+                            temp_path,
+                            first_keyframe=True,
+                        )
+                    else:
+                        VideoMetadataExtractor._extract_frame(
+                            video_path,
+                            temp_path,
+                            time_offset=candidate_time,
+                        )
+
+                    if VideoMetadataExtractor._is_informative_frame(temp_path):
+                        shutil.move(temp_path, output_path)
+                        if source == "first_keyframe":
+                            detail = "第一关键帧"
+                        elif source == "post_black":
+                            detail = f"黑场结束后 {candidate_time:.2f}s"
+                        else:
+                            detail = f"扫描时间点 {candidate_time:.2f}s"
+                        logger.info(f"生成视频缩略图: {video_path} -> {output_path} ({detail})")
+                        return output_path
+
+                VideoMetadataExtractor._extract_frame(
+                    video_path,
+                    output_path,
+                    first_keyframe=True,
+                )
+                logger.warning(f"未找到有效内容帧，回退到第一关键帧: {output_path}")
+                return output_path
+            finally:
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
         except Exception as e:
             logger.error(f"生成缩略图失败: {e}")
             raise RuntimeError(f"无法生成缩略图: {e}") from e
@@ -120,7 +261,12 @@ class VideoMetadataExtractor:
         thumbnail_path = os.path.join(thumbnail_dir, f"{video_name}_thumb.jpg")
 
         try:
-            VideoMetadataExtractor.generate_thumbnail(video_path, thumbnail_path)
+            VideoMetadataExtractor.generate_thumbnail(
+                video_path,
+                thumbnail_path,
+                time_offset=None,
+                duration=metadata.get("duration", 0.0),
+            )
             metadata["thumbnail_path"] = thumbnail_path
         except Exception as e:
             logger.warning(f"生成缩略图失败，跳过: {e}")

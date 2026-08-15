@@ -103,7 +103,10 @@ ApplicationWindow {
                     if (mainPanel.currentPage === "tasks" || mainPanel.currentPage === "taskDetail") return 3
                     return 0
                 }
-                onSettingsClicked: settingsDialog.open()
+                onSettingsClicked: {
+                    tabBar.settingsActive = true
+                    settingsDialog.open()
+                }
                 onLibraryClicked: {
                     mainPanel.currentPage = "library"
                     mainPanel.mediaLibraryPage.projectId = -1
@@ -146,6 +149,7 @@ ApplicationWindow {
 
     Dialogs.SettingsDialog {
         id: settingsDialog
+        onClosed: tabBar.settingsActive = false
     }
 
     Dialogs.ConfirmDialog {
