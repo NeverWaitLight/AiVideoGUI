@@ -249,6 +249,18 @@ class CharacterBridge(QObject):
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
             self.bridge_error.emit(error_msg)
 
+    @Slot(str)
+    def delete_design_image(self, char_uuid: str) -> None:
+        try:
+            self._character_service.update_character(
+                character_uuid=char_uuid, design_image="",
+            )
+            self._model.update_design_image(char_uuid, "")
+            self.design_image_ready.emit(char_uuid, "")
+        except Exception as e:
+            error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+            self.bridge_error.emit(error_msg)
+
     @Slot(list)
     def batch_delete(self, char_ids: list) -> None:
         for cid in char_ids:

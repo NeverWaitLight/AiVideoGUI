@@ -292,16 +292,26 @@ class StoryboardBridge(QObject):
         except ValueError:
             ss = ShotSize.MEDIUM_SHOT
         try:
+            # design_image 为空时保留库中已有路径，避免手动保存冲掉异步生成结果
+            design_image_arg = design_image if design_image else None
+            if design_image_arg is None and self._cur_shot_id == shot_id and self._cur_design_image:
+                design_image_arg = self._cur_design_image
             self._storyboard_service.update_storyboard(
                 storyboard_id=shot_id, shot_size=ss,
                 camera_movement=camera_movement, content=content,
                 duration=duration, sound_effect=sound_effect,
                 ambient_sound=ambient_sound, background_music=background_music,
-                notes=notes, design_image=design_image, seed=seed,
+                notes=notes, design_image=design_image_arg, seed=seed,
             )
+            if design_image_arg is not None and self._cur_shot_id == shot_id:
+                workspace_root = self._container.config.workspace_root()
+                self._cur_design_image = to_absolute_path(design_image_arg, workspace_root)
+                self._model.update_design_image(shot_id, self._cur_design_image)
             self.shot_saved.emit()
             if self._project_id >= 0:
                 self.load_for_project(self._project_id)
+            if self._cur_shot_id == shot_id:
+                self.load_shot(shot_id)
         except Exception as e:
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
             self.bridge_error.emit(error_msg)

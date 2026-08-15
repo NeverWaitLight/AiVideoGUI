@@ -614,7 +614,11 @@ Item {
                                     characterAIDialog.openGenerateDesign()
                                 }
                                 onUploadClicked: charDesignDialog.open()
-                                onDeleteClicked: _editingDesignImage = ""
+                                onDeleteClicked: {
+                                    _editingDesignImage = ""
+                                    if (_editingCharUuid)
+                                        bridge.characters.delete_design_image(_editingCharUuid)
+                                }
                             }
                         }
                     }

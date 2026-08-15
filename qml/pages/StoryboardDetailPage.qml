@@ -810,7 +810,7 @@ Item {
             ambientSoundInput.text,
             bgMusicInput.text,
             notesInput.text,
-            "",
+            bridge.storyboard.curDesignImage,
             seedInput.text
         )
     }
