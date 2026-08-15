@@ -40,6 +40,26 @@ Item {
         }
     }
 
+    function openCharacterDetail(uuid) {
+        if (!uuid) {
+            return
+        }
+        var info = bridge.characters.get_character_info(uuid)
+        if (!info || !info.characterUuid) {
+            _showDetail = false
+            return
+        }
+        _isNewCharacter = false
+        _editingCharUuid = info.characterUuid || ""
+        _editingDesignImage = info.designImagePath || ""
+        nameInput.text = info.name || ""
+        refCodeInput.text = info.refCode || ""
+        descInput.text = info.description || ""
+        voiceToneInput.text = info.voiceTone || ""
+        voiceRefFileInput.text = info.voiceReferenceFile || ""
+        _showDetail = true
+    }
+
     Connections {
         target: bridge.characters
         function onData_changed() {

@@ -77,6 +77,27 @@ class CharacterBridge(QObject):
         chars = self._character_service.list_characters(project_id=project_id)
         self._model.reset(chars)
 
+    @Slot(str, result="QVariantMap")
+    def get_character_info(self, char_uuid: str) -> dict:
+        from utils.path_converter import to_absolute_path
+
+        for i in range(self._model.count):
+            c = self._model.get_by_index(i)
+            if c and c.uuid == char_uuid:
+                workspace_root = (
+                    self._container.config.workspace_root() if self._container else ""
+                )
+                return {
+                    "characterUuid": c.uuid,
+                    "name": c.name or "",
+                    "refCode": c.ref_code or "",
+                    "description": c.description or "",
+                    "designImagePath": to_absolute_path(c.design_image, workspace_root) if c.design_image else "",
+                    "voiceTone": c.voice_tone or "",
+                    "voiceReferenceFile": to_absolute_path(c.voice_reference_file, workspace_root) if c.voice_reference_file else "",
+                }
+        return {}
+
     @Slot(int, str, str, str, str, str)
     def create_character(self, project_id: int, name: str, ref_code: str, description: str, voice_tone: str = "", voice_reference_file: str = "") -> None:
         self._character_service.create_character(

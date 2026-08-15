@@ -40,6 +40,15 @@ Item {
         }
     }
 
+    function openShotDetail(shotId) {
+        if (shotId > 0) {
+            _editingShotId = shotId
+            _showDetail = true
+            _multiSelect = false
+            _selectedIds = []
+        }
+    }
+
     Connections {
         target: bridge.storyboard
         function onShot_saved() {

@@ -89,6 +89,7 @@ Item {
         }
 
         StoryboardPage {
+            id: storyboardPage
             projectId: projectMode.currentProjectId
             onBackClicked: projectMode.currentPage = "detail"
             onNavigateToMediaLibrary: function(pid) {
@@ -97,6 +98,7 @@ Item {
         }
 
         CharacterPage {
+            id: characterPage
             projectId: projectMode.currentProjectId
             onBackClicked: projectMode.currentPage = "detail"
             onNavigateToStoryboard: function(pid) {
@@ -114,6 +116,35 @@ Item {
     function openProject(projectId) {
         currentProjectId = projectId
         currentPage = "detail"
+    }
+
+    function openDataPage(projectId, module, entityId) {
+        currentProjectId = projectId
+        var target = module || "detail"
+        var allowed = {
+            "project_info": true,
+            "outline": true,
+            "screenplay": true,
+            "storyboard": true,
+            "character": true,
+            "media": true,
+            "detail": true
+        }
+        currentPage = allowed[target] ? target : "detail"
+        if (target === "project_info") {
+            projectInfoPage.isCreate = false
+        }
+
+        Qt.callLater(function() {
+            if (target === "storyboard" && entityId) {
+                var shotId = parseInt(entityId)
+                if (!isNaN(shotId) && shotId > 0) {
+                    storyboardPage.openShotDetail(shotId)
+                }
+            } else if (target === "character" && entityId) {
+                characterPage.openCharacterDetail(entityId)
+            }
+        })
     }
 
     function openCreateDialog() {

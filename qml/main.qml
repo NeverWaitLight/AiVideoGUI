@@ -164,6 +164,16 @@ ApplicationWindow {
         id: updateDialog
     }
 
+    Connections {
+        target: bridge
+        function onNavigate_requested(projectId, module, entityId) {
+            mainPanel.currentPage = "project"
+            if (projectId > 0) {
+                mainPanel.projectModePage.openDataPage(projectId, module, entityId || "")
+            }
+        }
+    }
+
     Component.onCompleted: {
         x = (Screen.width - width) / 2
         y = (Screen.height - height) / 2

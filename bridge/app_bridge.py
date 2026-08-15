@@ -20,6 +20,8 @@ from bridge.settings_bridge import SettingsBridge
 from bridge.visual_style_bridge import VisualStyleBridge
 from bridge.update_bridge import UpdateBridge
 from bridge.task_bridge import TaskBridge
+from service.desktop_notification_service import DesktopNotificationService
+from service.background.image_generation_worker import get_image_signal_emitter
 
 
 class AppBridge(QObject):
@@ -39,7 +41,7 @@ class AppBridge(QObject):
     design_image_failed = Signal(str)
     batch_design_progress = Signal(int, str, str)
     batch_design_done = Signal(int, int)
-    navigate_requested = Signal(str, str)
+    navigate_requested = Signal(int, str, str)  # projectId, module, entityId
     cover_generation_started = Signal()
     cover_generation_finished = Signal(str)
     cover_generation_failed = Signal(str)
@@ -113,6 +115,14 @@ class AppBridge(QObject):
         self._storyboard_bridge.design_image_ready.connect(self.design_image_ready.emit)
         self._storyboard_bridge.design_image_progress.connect(self.design_image_progress.emit)
         self._storyboard_bridge.design_image_failed.connect(self.design_image_failed.emit)
+
+        self._notifications = DesktopNotificationService(self._session_manager, self)
+        self._notifications.navigate_requested.connect(self.navigate_requested.emit)
+        signal_emitter.task_finished.connect(self._on_notify_video_finished)
+        signal_emitter.task_failed.connect(self._on_notify_video_failed)
+        image_emitter = get_image_signal_emitter()
+        image_emitter.task_finished.connect(self._on_notify_image_finished)
+        image_emitter.task_failed.connect(self._on_notify_image_failed)
 
     @Property(QObject, constant=True)
     def projects(self):
@@ -211,4 +221,16 @@ class AppBridge(QObject):
             except Exception as e:
                 from loguru import logger
                 logger.warning(f"回填拍摄记录媒体失败: {e}")
+
+    def _on_notify_video_finished(self, provider_task_id: str, save_path: str, storyboard_id: int) -> None:
+        self._notifications.notify_generate_task(provider_task_id, True)
+
+    def _on_notify_video_failed(self, provider_task_id: str, error: str) -> None:
+        self._notifications.notify_generate_task(provider_task_id, False, error)
+
+    def _on_notify_image_finished(self, provider_task_id: str) -> None:
+        self._notifications.notify_generate_task(provider_task_id, True)
+
+    def _on_notify_image_failed(self, provider_task_id: str, error: str) -> None:
+        self._notifications.notify_generate_task(provider_task_id, False, error)
 
