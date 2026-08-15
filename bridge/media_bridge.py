@@ -64,6 +64,10 @@ class MediaBridge(QObject):
         self._media_service.delete_file(media_id=file_id)
         self._model.remove_by_id(file_id)
         self.files_changed.emit()
+        parent = self.parent()
+        storyboard = getattr(parent, "storyboard", None) if parent else None
+        if storyboard is not None and hasattr(storyboard, "takes_changed"):
+            storyboard.takes_changed.emit()
 
     @Slot(str, int)
     def set_featured(self, file_id: str, storyboard_id: int) -> None:

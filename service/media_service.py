@@ -12,6 +12,7 @@ from models.enums import MediaType
 from models.media_file import MediaFile
 from storage.repositories.media_repository import MediaRepository
 from storage.repositories.project_repository import ProjectRepository
+from storage.repositories.storyboard_take_repository import StoryboardTakeRepository
 from storage.session_manager import SessionManager
 from utils import paths
 from utils.path_converter import to_relative_path
@@ -220,6 +221,7 @@ class MediaService:
 
     def delete_file(self, media_id: str) -> bool:
         media_repo = self._sm.get_repo(repo_class=MediaRepository)
+        take_repo = self._sm.get_repo(repo_class=StoryboardTakeRepository)
 
         media = media_repo.get_by_id(media_id)
         if not media:
@@ -227,6 +229,7 @@ class MediaService:
 
         self._sm.begin_write()
         try:
+            take_repo.delete_by_media_file_id(media_id)
             media_repo.delete(media_id)
             self._sm.commit_write()
         except Exception as e:

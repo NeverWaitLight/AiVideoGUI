@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from models.enums import TakeStatus
@@ -109,3 +109,12 @@ class StoryboardTakeRepository(BaseRepository[StoryboardTakeEntity, StoryboardTa
         )
         entities = self.session.execute(stmt).scalars().all()
         return [self._to_dto(e) for e in entities]
+
+    def delete_by_media_file_id(self, media_file_id: str) -> int:
+        if not media_file_id:
+            return 0
+        stmt = delete(StoryboardTakeEntity).where(
+            StoryboardTakeEntity.media_file_id == media_file_id
+        )
+        result = self.session.execute(stmt)
+        return result.rowcount or 0

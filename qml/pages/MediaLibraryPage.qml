@@ -364,6 +364,29 @@ Item {
             }
         }
 
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.RightButton
+            onClicked: function(mouse) {
+                if (fileType === "video")
+                    contextMenu.popup()
+            }
+        }
+
+        Menu {
+            id: contextMenu
+
+            MenuItem {
+                text: "打开"
+                onTriggered: playRequested()
+            }
+
+            MenuItem {
+                text: "删除"
+                onTriggered: deleteRequested()
+            }
+        }
+
         HoverHandler { id: cardHover }
     }
 
