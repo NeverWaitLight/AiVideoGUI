@@ -605,7 +605,7 @@ class StoryboardBridge(QObject):
         except Exception:
             return json.dumps({"storyboardDesigns": [], "characterDesigns": []})
 
-    @Slot(int, str, bool, bool, bool)
+    @Slot(int, str, bool, bool, bool, str)
     def batch_generate_videos(
         self,
         project_id: int,
@@ -613,6 +613,7 @@ class StoryboardBridge(QObject):
         prompt_extend: bool = True,
         use_storyboard_design: bool = True,
         use_character_design: bool = True,
+        negative_prompt: str = "",
     ) -> None:
         try:
             selected_ids = json.loads(shot_ids_json) if shot_ids_json else []
@@ -690,6 +691,7 @@ class StoryboardBridge(QObject):
                 shot_list=shot_list, video_service=video_service, signal_emitter=signal_emitter,
                 provider_name=provider_name, project=project, provider_cfg=provider_cfg,
                 prompt_extend=prompt_extend,
+                negative_prompt=negative_prompt,
             )
 
             def on_progress(current: int, total: int, message: str) -> None:

@@ -11,6 +11,7 @@ if TYPE_CHECKING:
 
 from utils import paths
 from utils.path_converter import to_relative_path
+from utils.prompt_sanitize import flatten_prompt_text
 
 
 class CoverGenerationWorker(QObject):
@@ -654,6 +655,7 @@ class BatchGenerationController(QThread):
         self, shot_list: list[dict], video_service, signal_emitter: QObject,
         provider_name: str, project, provider_cfg,
         prompt_extend: bool = True,
+        negative_prompt: str = "",
         parent: QObject | None = None,
     ):
         super().__init__(parent)
@@ -664,6 +666,7 @@ class BatchGenerationController(QThread):
         self._project = project
         self._provider_cfg = provider_cfg
         self._prompt_extend = prompt_extend
+        self._negative_prompt = negative_prompt
         self._success = 0
         self._failed = 0
         self._submitted_task_ids: set[str] = set()
@@ -695,6 +698,10 @@ class BatchGenerationController(QThread):
                     params["duration"] = int(duration)
 
                 params["prompt_extend"] = self._prompt_extend
+
+                cleaned_negative_prompt = flatten_prompt_text(self._negative_prompt)
+                if cleaned_negative_prompt:
+                    params["negative_prompt"] = cleaned_negative_prompt
 
                 provider_task_id = self._service.submit_shot_video(
                     storyboard=shot["storyboard"],

@@ -2,13 +2,12 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Controls.Material 2.15
 import QtQuick.Layouts 1.15
-import "../components" as Comp
 
 Dialog {
     id: videoGenerateDialog
     modal: true
-    width: 520
-    height: Math.min(contentColumn.implicitHeight + header.implicitHeight + footer.implicitHeight + 24, 580)
+    width: 480
+    height: Math.min(contentColumn.implicitHeight + header.implicitHeight + footer.implicitHeight + 24, 420)
     anchors.centerIn: parent
     padding: 0
 
@@ -16,17 +15,11 @@ Dialog {
     property bool promptExtendEnabled: true
     property bool useStoryboardDesign: true
     property bool useCharacterDesign: true
+    property bool hasStoryboardDesign: false
+    property bool hasCharacterDesign: false
     property var onGenerate: null
 
     title: ""
-
-    ListModel {
-        id: storyboardDesignModel
-    }
-
-    ListModel {
-        id: characterDesignModel
-    }
 
     background: Rectangle {
         color: Material.dialogColor
@@ -97,7 +90,12 @@ Dialog {
                     Layout.preferredWidth: 100
                     onClicked: {
                         if (onGenerate)
-                            onGenerate(promptExtendEnabled, useStoryboardDesign, useCharacterDesign)
+                            onGenerate(
+                                promptExtendEnabled,
+                                useStoryboardDesign,
+                                useCharacterDesign,
+                                negativePromptInput.text.trim()
+                            )
                         videoGenerateDialog.close()
                     }
                 }
@@ -162,84 +160,51 @@ Dialog {
 
             ColumnLayout {
                 Layout.fillWidth: true
-                spacing: 8
+                spacing: 4
 
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 12
-
-                    Label {
-                        Layout.fillWidth: true
-                        text: "引用分镜设计图"
-                        font.pixelSize: Theme.fontSizeNormal
-                        color: Material.foreground
-                    }
-
-                    CheckBox {
-                        id: storyboardDesignCheck
-                        checked: useStoryboardDesign
-                        enabled: storyboardDesignModel.count > 0
-                        onCheckedChanged: useStoryboardDesign = checked
-                    }
+                CheckBox {
+                    id: storyboardDesignCheck
+                    text: "引用分镜设计图"
+                    checked: useStoryboardDesign
+                    enabled: hasStoryboardDesign
+                    onCheckedChanged: useStoryboardDesign = checked
                 }
 
                 Label {
                     Layout.fillWidth: true
-                    text: "使用当前分镜的设计图作为构图与氛围参考"
+                    Layout.leftMargin: 32
+                    text: hasStoryboardDesign
+                        ? "使用当前分镜的设计图作为构图与氛围参考"
+                        : "暂无分镜设计图"
                     font.pixelSize: Theme.fontSizeSmall
-                    color: Material.foreground
-                    opacity: 0.7
+                    color: hasStoryboardDesign ? Material.foreground : Material.hintTextColor
+                    opacity: hasStoryboardDesign ? 0.7 : 1.0
                     wrapMode: Text.Wrap
                 }
+            }
 
-                GridLayout {
-                    Layout.fillWidth: true
-                    columns: 2
-                    columnSpacing: 12
-                    rowSpacing: 12
-                    visible: storyboardDesignModel.count > 0
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 4
 
-                    Repeater {
-                        model: storyboardDesignModel
-
-                        Item {
-                            Layout.fillWidth: true
-                            Layout.preferredWidth: (contentColumn.width - 12) / 2
-                            implicitHeight: thumbColumn.implicitHeight
-                            opacity: useStoryboardDesign ? 1.0 : 0.45
-
-                            ColumnLayout {
-                                id: thumbColumn
-                                anchors.fill: parent
-                                spacing: 6
-
-                                Comp.ImagePreview {
-                                    Layout.fillWidth: true
-                                    Layout.preferredHeight: Math.max(72, Math.round(width * 9 / 16))
-                                    imageSource: model.imagePath
-                                    placeholderIcon: "qrc:/resources/icons/image.svg"
-                                    placeholderIconSize: 28
-                                }
-
-                                Label {
-                                    Layout.fillWidth: true
-                                    text: model.label
-                                    font.pixelSize: Theme.fontSizeSmall
-                                    horizontalAlignment: Text.AlignHCenter
-                                    wrapMode: Text.Wrap
-                                    maximumLineCount: 2
-                                }
-                            }
-                        }
-                    }
+                CheckBox {
+                    id: characterDesignCheck
+                    text: "引用角色设计图"
+                    checked: useCharacterDesign
+                    enabled: hasCharacterDesign
+                    onCheckedChanged: useCharacterDesign = checked
                 }
 
                 Label {
                     Layout.fillWidth: true
-                    visible: storyboardDesignModel.count === 0
-                    text: "暂无分镜设计图"
+                    Layout.leftMargin: 32
+                    text: hasCharacterDesign
+                        ? "使用分镜内容中出现的角色设计图作为外观参考"
+                        : "暂无匹配的角色设计图"
                     font.pixelSize: Theme.fontSizeSmall
-                    color: Material.hintTextColor
+                    color: hasCharacterDesign ? Material.foreground : Material.hintTextColor
+                    opacity: hasCharacterDesign ? 0.7 : 1.0
+                    wrapMode: Text.Wrap
                 }
             }
 
@@ -247,90 +212,37 @@ Dialog {
                 Layout.fillWidth: true
                 spacing: 8
 
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 12
-
-                    Label {
-                        Layout.fillWidth: true
-                        text: "引用角色设计图"
-                        font.pixelSize: Theme.fontSizeNormal
-                        color: Material.foreground
-                    }
-
-                    CheckBox {
-                        id: characterDesignCheck
-                        checked: useCharacterDesign
-                        enabled: characterDesignModel.count > 0
-                        onCheckedChanged: useCharacterDesign = checked
-                    }
+                Label {
+                    text: "负向提示词"
+                    font.pixelSize: Theme.fontSizeNormal
+                    color: Material.foreground
                 }
 
                 Label {
                     Layout.fillWidth: true
-                    text: "使用分镜内容中出现的角色设计图作为外观参考"
+                    text: "描述不希望出现在视频中的内容，批量生成时所有分镜共用"
                     font.pixelSize: Theme.fontSizeSmall
                     color: Material.foreground
                     opacity: 0.7
                     wrapMode: Text.Wrap
                 }
 
-                GridLayout {
+                TextArea {
+                    id: negativePromptInput
                     Layout.fillWidth: true
-                    columns: 2
-                    columnSpacing: 12
-                    rowSpacing: 12
-                    visible: characterDesignModel.count > 0
-
-                    Repeater {
-                        model: characterDesignModel
-
-                        Item {
-                            Layout.fillWidth: true
-                            Layout.preferredWidth: (contentColumn.width - 12) / 2
-                            implicitHeight: charThumbColumn.implicitHeight
-                            opacity: useCharacterDesign ? 1.0 : 0.45
-
-                            ColumnLayout {
-                                id: charThumbColumn
-                                anchors.fill: parent
-                                spacing: 6
-
-                                Comp.ImagePreview {
-                                    Layout.fillWidth: true
-                                    Layout.preferredHeight: Math.max(72, Math.round(width * 9 / 16))
-                                    imageSource: model.imagePath
-                                    placeholderIcon: "qrc:/resources/icons/person.svg"
-                                    placeholderIconSize: 28
-                                }
-
-                                Label {
-                                    Layout.fillWidth: true
-                                    text: model.characterName
-                                    font.pixelSize: Theme.fontSizeSmall
-                                    horizontalAlignment: Text.AlignHCenter
-                                    wrapMode: Text.Wrap
-                                    maximumLineCount: 2
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Label {
-                    Layout.fillWidth: true
-                    visible: characterDesignModel.count === 0
-                    text: "暂无匹配的角色设计图"
-                    font.pixelSize: Theme.fontSizeSmall
-                    color: Material.hintTextColor
+                    Layout.preferredHeight: 72
+                    placeholderText: "低质量、模糊、水印、文字…"
+                    wrapMode: TextArea.Wrap
+                    font.pixelSize: Theme.fontSizeNormal
+                    selectByMouse: true
                 }
             }
         }
     }
 
-    function _loadPreview(projectId, shotIds) {
-        storyboardDesignModel.clear()
-        characterDesignModel.clear()
+    function _loadDesignAvailability(projectId, shotIds) {
+        hasStoryboardDesign = false
+        hasCharacterDesign = false
 
         var previewJson = bridge.storyboard.get_video_generate_preview(
             projectId,
@@ -340,28 +252,22 @@ Dialog {
             return
 
         var preview = JSON.parse(previewJson)
-        var storyboardDesigns = preview.storyboardDesigns || []
-        var characterDesigns = preview.characterDesigns || []
-
-        for (var i = 0; i < storyboardDesigns.length; i++)
-            storyboardDesignModel.append(storyboardDesigns[i])
-        for (var j = 0; j < characterDesigns.length; j++)
-            characterDesignModel.append(characterDesigns[j])
+        hasStoryboardDesign = (preview.storyboardDesigns || []).length > 0
+        hasCharacterDesign = (preview.characterDesigns || []).length > 0
     }
 
     function show(projectId, shotIds, callback) {
         var ids = shotIds || []
         shotCount = ids.length > 0 ? ids.length : 1
         promptExtendEnabled = true
-        useStoryboardDesign = true
-        useCharacterDesign = true
         promptExtendSwitch.checked = true
+        negativePromptInput.text = ""
         onGenerate = callback
 
-        _loadPreview(projectId, ids)
+        _loadDesignAvailability(projectId, ids)
 
-        useStoryboardDesign = storyboardDesignModel.count > 0
-        useCharacterDesign = characterDesignModel.count > 0
+        useStoryboardDesign = hasStoryboardDesign
+        useCharacterDesign = hasCharacterDesign
         storyboardDesignCheck.checked = useStoryboardDesign
         characterDesignCheck.checked = useCharacterDesign
 

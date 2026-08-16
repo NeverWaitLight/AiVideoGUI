@@ -40,7 +40,12 @@ class TestBatchVideoGeneration(unittest.TestCase):
     def setUpClass(cls):
         cls._app = QCoreApplication.instance() or QCoreApplication([])
 
-    def _make_controller(self, prompt_extend: bool, video_service: MagicMock) -> BatchGenerationController:
+    def _make_controller(
+        self,
+        prompt_extend: bool,
+        video_service: MagicMock,
+        negative_prompt: str = "",
+    ) -> BatchGenerationController:
         project = MagicMock()
         project.id = 1
         project.name = "测试项目"
@@ -70,6 +75,7 @@ class TestBatchVideoGeneration(unittest.TestCase):
             project=project,
             provider_cfg=provider_cfg,
             prompt_extend=prompt_extend,
+            negative_prompt=negative_prompt,
         )
 
     def test_prompt_extend_false_passed_to_submit_shot_video(self):
@@ -92,6 +98,34 @@ class TestBatchVideoGeneration(unittest.TestCase):
         params = video_service.submit_shot_video.call_args.kwargs["params"]
         self.assertTrue(params["prompt_extend"])
 
+    def test_negative_prompt_passed_when_non_empty(self):
+        video_service = MagicMock()
+        video_service.submit_shot_video.return_value = "task-1"
+
+        controller = self._make_controller(
+            prompt_extend=True,
+            video_service=video_service,
+            negative_prompt="低质量\n模糊",
+        )
+        controller.run()
+
+        params = video_service.submit_shot_video.call_args.kwargs["params"]
+        self.assertEqual(params["negative_prompt"], "低质量 模糊")
+
+    def test_negative_prompt_omitted_when_empty(self):
+        video_service = MagicMock()
+        video_service.submit_shot_video.return_value = "task-1"
+
+        controller = self._make_controller(
+            prompt_extend=True,
+            video_service=video_service,
+            negative_prompt="   ",
+        )
+        controller.run()
+
+        params = video_service.submit_shot_video.call_args.kwargs["params"]
+        self.assertNotIn("negative_prompt", params)
+
     def test_batch_generate_videos_slot_accepts_prompt_extend(self):
         import inspect
         from bridge.storyboard_bridge import StoryboardBridge
@@ -100,7 +134,9 @@ class TestBatchVideoGeneration(unittest.TestCase):
         self.assertIn("prompt_extend", sig.parameters)
         self.assertIn("use_storyboard_design", sig.parameters)
         self.assertIn("use_character_design", sig.parameters)
+        self.assertIn("negative_prompt", sig.parameters)
         self.assertTrue(sig.parameters["prompt_extend"].default)
+        self.assertEqual(sig.parameters["negative_prompt"].default, "")
 
 
 if __name__ == "__main__":
