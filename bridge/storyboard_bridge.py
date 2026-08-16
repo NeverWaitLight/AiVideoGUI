@@ -511,8 +511,109 @@ class StoryboardBridge(QObject):
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
             self.bridge_error.emit(error_msg)
 
-    @Slot(int, str)
-    def batch_generate_videos(self, project_id: int, shot_ids_json: str) -> None:
+    @staticmethod
+    def _build_shot_reference_images(
+        shot,
+        characters: list,
+        workspace_root: str,
+        use_storyboard_design: bool = True,
+        use_character_design: bool = True,
+    ) -> tuple[list[str], list[dict]]:
+        reference_images_paths: list[str] = []
+        reference_images_info: list[dict] = []
+
+        if use_storyboard_design and shot.design_image:
+            abs_path = to_absolute_path(shot.design_image, workspace_root)
+            if abs_path:
+                reference_images_paths.append(abs_path)
+                reference_images_info.append({
+                    "type": "design",
+                    "description": "",
+                })
+
+        if use_character_design:
+            content = shot.content or ""
+            for c in characters:
+                if len(reference_images_paths) >= 5:
+                    break
+                if c.design_image and (c.name in content or c.ref_code in content):
+                    abs_path = to_absolute_path(c.design_image, workspace_root)
+                    if abs_path:
+                        reference_images_paths.append(abs_path)
+                        reference_images_info.append({
+                            "type": "character",
+                            "character_name": c.name,
+                            "description": "",
+                        })
+
+        return reference_images_paths, reference_images_info
+
+    @staticmethod
+    def _collect_video_generate_preview(
+        selected_shots: list,
+        characters: list,
+        workspace_root: str,
+    ) -> dict:
+        storyboard_designs: list[dict] = []
+        character_designs: list[dict] = []
+        seen_char_uuids: set[str] = set()
+
+        for shot in selected_shots:
+            if shot.design_image:
+                abs_path = to_absolute_path(shot.design_image, workspace_root)
+                if abs_path:
+                    storyboard_designs.append({
+                        "shotId": shot.id,
+                        "label": f"{shot.scene_number}场{shot.shot_number}镜",
+                        "imagePath": abs_path,
+                    })
+
+            content = shot.content or ""
+            for c in characters:
+                if c.uuid in seen_char_uuids:
+                    continue
+                if c.design_image and (c.name in content or c.ref_code in content):
+                    abs_path = to_absolute_path(c.design_image, workspace_root)
+                    if abs_path:
+                        seen_char_uuids.add(c.uuid)
+                        character_designs.append({
+                            "characterName": c.name,
+                            "imagePath": abs_path,
+                        })
+
+        return {
+            "storyboardDesigns": storyboard_designs,
+            "characterDesigns": character_designs,
+        }
+
+    @Slot(int, str, result=str)
+    def get_video_generate_preview(self, project_id: int, shot_ids_json: str) -> str:
+        try:
+            selected_ids = json.loads(shot_ids_json) if shot_ids_json else []
+            if not selected_ids:
+                return json.dumps({"storyboardDesigns": [], "characterDesigns": []})
+
+            shots = self._storyboard_service.list_storyboards(project_id=project_id)
+            selected_shots = [s for s in shots if s.id in selected_ids]
+            characters = self._character_service.list_characters(project_id=project_id)
+            workspace_root = self._container.config.workspace_root()
+
+            preview = self._collect_video_generate_preview(
+                selected_shots, characters, workspace_root,
+            )
+            return json.dumps(preview, ensure_ascii=False)
+        except Exception:
+            return json.dumps({"storyboardDesigns": [], "characterDesigns": []})
+
+    @Slot(int, str, bool, bool, bool)
+    def batch_generate_videos(
+        self,
+        project_id: int,
+        shot_ids_json: str,
+        prompt_extend: bool = True,
+        use_storyboard_design: bool = True,
+        use_character_design: bool = True,
+    ) -> None:
         try:
             selected_ids = json.loads(shot_ids_json) if shot_ids_json else []
             if not selected_ids:
@@ -550,31 +651,13 @@ class StoryboardBridge(QObject):
                 prev_shot = shot_list_for_prompt[idx - 1] if idx > 0 else None
                 next_shot = shot_list_for_prompt[idx + 1] if idx < len(shot_list_for_prompt) - 1 else None
 
-                reference_images_paths = []
-                reference_images_info = []
-
-                if shot.design_image:
-                    abs_path = to_absolute_path(shot.design_image, workspace_root)
-                    if abs_path:
-                        reference_images_paths.append(abs_path)
-                        reference_images_info.append({
-                            "type": "design",
-                            "description": ""
-                        })
-
-                content = shot.content or ""
-                for c in characters:
-                    if len(reference_images_paths) >= 5:
-                        break
-                    if c.design_image and (c.name in content or c.ref_code in content):
-                        abs_path = to_absolute_path(c.design_image, workspace_root)
-                        if abs_path:
-                            reference_images_paths.append(abs_path)
-                            reference_images_info.append({
-                                "type": "character",
-                                "character_name": c.name,
-                                "description": ""
-                            })
+                reference_images_paths, reference_images_info = self._build_shot_reference_images(
+                    shot,
+                    characters,
+                    workspace_root,
+                    use_storyboard_design=use_storyboard_design,
+                    use_character_design=use_character_design,
+                )
 
                 shot_list.append({
                     "scene_number": shot.scene_number,
@@ -606,6 +689,7 @@ class StoryboardBridge(QObject):
             controller = BatchGenerationController(
                 shot_list=shot_list, video_service=video_service, signal_emitter=signal_emitter,
                 provider_name=provider_name, project=project, provider_cfg=provider_cfg,
+                prompt_extend=prompt_extend,
             )
 
             def on_progress(current: int, total: int, message: str) -> None:

@@ -653,6 +653,7 @@ class BatchGenerationController(QThread):
     def __init__(
         self, shot_list: list[dict], video_service, signal_emitter: QObject,
         provider_name: str, project, provider_cfg,
+        prompt_extend: bool = True,
         parent: QObject | None = None,
     ):
         super().__init__(parent)
@@ -662,6 +663,7 @@ class BatchGenerationController(QThread):
         self._provider_name = provider_name
         self._project = project
         self._provider_cfg = provider_cfg
+        self._prompt_extend = prompt_extend
         self._success = 0
         self._failed = 0
         self._submitted_task_ids: set[str] = set()
@@ -691,6 +693,8 @@ class BatchGenerationController(QThread):
                 duration = shot.get("duration")
                 if duration is not None:
                     params["duration"] = int(duration)
+
+                params["prompt_extend"] = self._prompt_extend
 
                 provider_task_id = self._service.submit_shot_video(
                     storyboard=shot["storyboard"],

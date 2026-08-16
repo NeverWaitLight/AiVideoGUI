@@ -179,12 +179,15 @@ Item {
                         rightPadding: 12
                         onClicked: {
                             var selectedIdsCopy = _selectedIds.slice()
-                            confirmDialog.confirm(
-                                "确定要为选中的 " + selectedIdsCopy.length + " 个分镜生成视频吗？",
-                                function() {
-                                    bridge.storyboard.batch_generate_videos(page.projectId, JSON.stringify(selectedIdsCopy))
-                                }
-                            )
+                            videoGenerateDialog.show(page.projectId, selectedIdsCopy, function(promptExtendEnabled, useStoryboardDesign, useCharacterDesign) {
+                                bridge.storyboard.batch_generate_videos(
+                                    page.projectId,
+                                    JSON.stringify(selectedIdsCopy),
+                                    promptExtendEnabled,
+                                    useStoryboardDesign,
+                                    useCharacterDesign
+                                )
+                            })
                         }
                     }
 
@@ -402,6 +405,7 @@ Item {
 
     Dialogs.AlertDialog { id: alertDialog }
     Dialogs.ConfirmDialog { id: confirmDialog }
+    Dialogs.VideoGenerateDialog { id: videoGenerateDialog }
     Dialogs.ImagePreviewDialog { id: imagePreviewDialog }
     Dialogs.AIOptimizeDialog {
         id: aiOptimizeDialog

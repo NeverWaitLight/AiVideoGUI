@@ -103,10 +103,15 @@ Item {
                     color: parent.pressed ? "#C62828" : (parent.hovered ? "#E53935" : "#F44336")
                 }
 
-                onClicked: confirmDialog.confirm(
-                    "确定要为此分镜生成视频吗？",
-                    function() { bridge.storyboard.batch_generate_videos(detailPage.projectId, JSON.stringify([bridge.storyboard.curShotId])) }
-                )
+                onClicked: videoGenerateDialog.show(detailPage.projectId, [bridge.storyboard.curShotId], function(promptExtendEnabled, useStoryboardDesign, useCharacterDesign) {
+                    bridge.storyboard.batch_generate_videos(
+                        detailPage.projectId,
+                        JSON.stringify([bridge.storyboard.curShotId]),
+                        promptExtendEnabled,
+                        useStoryboardDesign,
+                        useCharacterDesign
+                    )
+                })
             }
 
             Button {
@@ -786,6 +791,7 @@ Item {
     }
 
     Dialogs.ConfirmDialog { id: confirmDialog }
+    Dialogs.VideoGenerateDialog { id: videoGenerateDialog }
 
     QtDialogs.FileDialog {
         id: uploadImageDialog

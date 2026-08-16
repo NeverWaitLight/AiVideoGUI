@@ -54,7 +54,7 @@ class StoryboardTakeRepository(BaseRepository[StoryboardTakeEntity, StoryboardTa
         stmt = (
             select(StoryboardTakeEntity)
             .where(StoryboardTakeEntity.storyboard_id == storyboard_id)
-            .order_by(StoryboardTakeEntity.number.asc())
+            .order_by(StoryboardTakeEntity.number.desc())
         )
         entities = self.session.execute(stmt).scalars().all()
         return [self._to_dto(e) for e in entities]
