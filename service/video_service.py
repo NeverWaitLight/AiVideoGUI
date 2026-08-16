@@ -13,7 +13,6 @@ from models.enums import GenerateTaskType, GenerateTaskCallerType, TakeStatus
 from models.exceptions import MissingConfigError
 from models.storyboard_take import StoryboardTake
 from providers.dashscope_video import DashScopeVideoProvider
-from providers.seedance_video import SeedanceVideoProvider
 from providers.video_base import VideoProvider
 from storage.repositories.generate_task_repository import GenerateTaskRepository
 from storage.repositories.storyboard_take_repository import StoryboardTakeRepository
@@ -29,7 +28,6 @@ if TYPE_CHECKING:
 
 _PROVIDER_REGISTRY: dict[str, type[VideoProvider]] = {
     "dashscope": DashScopeVideoProvider,
-    "seedance": SeedanceVideoProvider,
 }
 
 

@@ -14,12 +14,14 @@ from utils.prompt_sanitize import sanitize_chat_messages
 
 _PROVIDER_REGISTRY: dict[str, type[ChatProvider]] = {
     "dashscope": AnyLLMChatProvider,
+    "deepseek": AnyLLMChatProvider,
+    "openai": AnyLLMChatProvider,
 }
 
 
 class ChatService:
 
-    DEFAULT_MODEL = "qwen-max"
+    DEFAULT_MODEL = "qwen3.5-plus"
     _MAX_RETRIES = 2
     _TIMEOUT_SECONDS = 1800
 

@@ -1,15 +1,24 @@
 import json
 import os
+from typing import TYPE_CHECKING
 
 from loguru import logger
 
 from models.app_settings import AppSettings
 from models.provider_config import ProviderConfig
 
+if TYPE_CHECKING:
+    from config.providers_catalog import ProvidersCatalog
+
 
 class ConfigManager:
-    def __init__(self, config_path: str) -> None:
+    def __init__(
+        self,
+        config_path: str,
+        providers_catalog: "ProvidersCatalog | None" = None,
+    ) -> None:
         self._path = config_path
+        self._catalog = providers_catalog
         self._providers: dict[str, ProviderConfig] = {}
         self._settings = AppSettings()
         self._load()
@@ -26,6 +35,11 @@ class ConfigManager:
             return
 
         _renamed = {"bailian": "dashscope", "bailian_image": "dashscope_image"}
+        _image_setting_renamed = {
+            "bailian": "dashscope",
+            "bailian_image": "dashscope",
+            "dashscope_image": "dashscope",
+        }
         migrated = False
 
         for item in data.get("providers", []):
@@ -59,10 +73,14 @@ class ConfigManager:
                 self._providers[cfg.provider_name] = cfg
 
         s = data.get("app_settings", {})
+        raw_image_provider = s.get("default_image_provider", "")
+        image_provider = _image_setting_renamed.get(raw_image_provider, raw_image_provider)
+        if image_provider != raw_image_provider:
+            migrated = True
         self._settings = AppSettings(
             default_provider=_renamed.get(s.get("default_provider", ""), s.get("default_provider", "")),
             default_chat_provider=_renamed.get(s.get("default_chat_provider", ""), s.get("default_chat_provider", "")),
-            default_image_provider=_renamed.get(s.get("default_image_provider", ""), s.get("default_image_provider", "")),
+            default_image_provider=image_provider,
             workspace_dir=s.get("workspace_dir", ""),
             color_scheme=s.get("color_scheme", "System"),
             ignored_update_version=s.get("ignored_update_version", ""),
@@ -108,6 +126,8 @@ class ConfigManager:
             return f"{name}_video"
         if provider_type == "chat" and not name.endswith("_chat"):
             return f"{name}_chat"
+        if provider_type == "image" and not name.endswith("_image"):
+            return f"{name}_image"
         return name
 
     def get_provider_config(self, name: str, provider_type: str | None = None) -> ProviderConfig | None:
@@ -115,24 +135,47 @@ class ConfigManager:
 
         - video: 先查 {name}_video，回退到 {name}（旧配置）
         - chat:  先查 {name}_chat，回退到 {name}（旧配置）
-        - image: 先查 {name}，回退到去掉 _image 后缀的基础配置
+        - image: 先查 {name}_image，回退到 {name} / {name}_image 旧配置
         - None:  直接查 {name}
         """
-        if provider_type in ("video", "chat"):
+        if provider_type in ("video", "chat", "image"):
             typed = self._typed_name(name, provider_type)
             cfg = self._providers.get(typed)
             if cfg:
-                return cfg
-            return self._providers.get(name)
-        if provider_type == "image":
+                return self._apply_catalog_defaults(cfg, provider_type)
             cfg = self._providers.get(name)
             if cfg:
-                return cfg
-            if name.endswith("_image"):
-                base_name = name[:-6]
-                return self._providers.get(base_name)
+                return self._apply_catalog_defaults(cfg, provider_type)
             return None
         return self._providers.get(name)
+
+    @staticmethod
+    def _base_provider_name(name: str, provider_type: str) -> str:
+        if provider_type == "video" and name.endswith("_video"):
+            return name[:-6]
+        if provider_type == "chat" and name.endswith("_chat"):
+            return name[:-5]
+        if provider_type == "image" and name.endswith("_image"):
+            return name[:-6]
+        return name
+
+    def _apply_catalog_defaults(
+        self, cfg: ProviderConfig, provider_type: str
+    ) -> ProviderConfig:
+        if cfg.base_url or not self._catalog:
+            return cfg
+        lookup_name = self._base_provider_name(cfg.provider_name, provider_type)
+        base_url = self._catalog.get_base_url(provider_type, lookup_name)
+        if not base_url:
+            return cfg
+        return ProviderConfig(
+            provider_name=cfg.provider_name,
+            api_key=cfg.api_key,
+            base_url=base_url,
+            default_model=cfg.default_model,
+            default_params=cfg.default_params,
+            model_mappings=cfg.model_mappings,
+        )
 
     def resolve_config_for_type(self, name: str, provider_type: str) -> ProviderConfig | None:
         """获取指定类型的完整配置（含 API key 继承）。"""
@@ -213,12 +256,25 @@ class ConfigManager:
             errors.append("未设置 API Key")
 
         if provider_type == "video":
-            if not cfg.base_url:
+            effective_url = cfg.base_url
+            if not effective_url and self._catalog:
+                lookup_name = self._base_provider_name(cfg.provider_name, provider_type)
+                effective_url = self._catalog.get_base_url(provider_type, lookup_name)
+            if not effective_url:
                 errors.append("未设置 Base URL")
 
             # 视频 provider 需要 model_mappings 或 default_model
             if not cfg.model_mappings and not cfg.default_model:
                 errors.append("未配置模型映射（model_mappings）或默认模型（default_model）")
+
+        if provider_type == "chat":
+            lookup_name = self._base_provider_name(cfg.provider_name, provider_type)
+            if lookup_name == "openai":
+                effective_url = cfg.base_url
+                if not effective_url and self._catalog:
+                    effective_url = self._catalog.get_base_url(provider_type, lookup_name)
+                if not effective_url:
+                    errors.append("未设置 Base URL")
 
         if not cfg.default_model and not cfg.model_mappings:
             errors.append("未选择默认模型")

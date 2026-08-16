@@ -13,13 +13,9 @@ _DEFAULT_TIMEOUT = 1800.0
 _PROVIDER_ALIASES: dict[str, str] = {
     "dashscope": "openai",
     "bailian": "openai",
+    "deepseek": "openai",
+    "openai": "openai",
 }
-
-_DEFAULT_BASE_URLS: dict[str, str] = {
-    "dashscope": "https://dashscope.aliyuncs.com/compatible-mode/v1",
-    "bailian": "https://dashscope.aliyuncs.com/compatible-mode/v1",
-}
-
 
 class AnyLLMChatProvider(ChatProvider):
     """基于 any-llm-sdk 的统一文本模型 ChatProvider 实现"""
@@ -75,7 +71,7 @@ class AnyLLMChatProvider(ChatProvider):
     def _resolve_api_base(self) -> str:
         if self._config.base_url:
             return self._config.base_url.rstrip("/")
-        return _DEFAULT_BASE_URLS.get(self._config.provider_name, "")
+        return ""
 
     def _resolve_model(self, model: str | None = None) -> str:
         model_name = model or self._config.default_model

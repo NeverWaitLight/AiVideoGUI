@@ -18,12 +18,10 @@ if TYPE_CHECKING:
     from service.chat_service import ChatService
 
 _PROVIDER_REGISTRY: dict[str, type[ImageProvider]] = {
+    "dashscope": DashScopeImageProvider,
     "dashscope_image": DashScopeImageProvider,
 }
 
-_CONFIG_TO_PROVIDER_NAME: dict[str, str] = {
-    "dashscope_image": "dashscope",
-}
 
 _ASPECT_RATIO_SIZE_MAP: dict[str, str] = {
     "16:9": "1696*960",
@@ -48,11 +46,11 @@ class ImageService:
         self._providers: dict[str, ImageProvider] = {}
 
     def _get_provider(self) -> ImageProvider:
-        provider_name = self._config.settings.default_image_provider or "dashscope_image"
+        provider_name = self._config.settings.default_image_provider or "dashscope"
 
         if provider_name not in _PROVIDER_REGISTRY:
-            logger.warning(f"未知的图片供应商 {provider_name}，回退到 dashscope_image")
-            provider_name = "dashscope_image"
+            logger.warning(f"未知的图片供应商 {provider_name}，回退到 dashscope")
+            provider_name = "dashscope"
 
         if provider_name in self._providers:
             return self._providers[provider_name]
@@ -189,14 +187,13 @@ class ImageService:
         parent_ids: str = "",
     ) -> str:
         """提交图片生成任务到数据库，返回 provider_task_id"""
-        config_name = "dashscope_image"
-        provider_name = _CONFIG_TO_PROVIDER_NAME.get(config_name, "dashscope")
+        provider_name = self._config.settings.default_image_provider or "dashscope"
         prompt = flatten_prompt_text(prompt)
         negative_prompt = flatten_prompt_text(negative_prompt)
 
-        provider_cfg = self._config.resolve_config_for_type(name=config_name, provider_type="image")
+        provider_cfg = self._config.resolve_config_for_type(name=provider_name, provider_type="image")
         if not provider_cfg or not provider_cfg.api_key:
-            raise RuntimeError(f"未配置图片生成供应商 {config_name} 的 API Key，请在设置中配置")
+            raise RuntimeError(f"未配置图片生成供应商 {provider_name} 的 API Key，请在设置中配置")
 
         provider_task_id = str(uuid.uuid4())
 
@@ -207,7 +204,7 @@ class ImageService:
             "n": n,
             "module": module,
             "context": context,
-            "config_name": config_name,
+            "config_name": provider_name,
         }, ensure_ascii=False)
 
         task_repo = self._sm.get_repo(repo_class=GenerateTaskRepository)

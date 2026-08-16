@@ -10,18 +10,19 @@ from providers.image_base import ImageProvider
 
 class DashScopeImageProvider(ImageProvider):
 
-    BASE_URL = "https://dashscope.aliyuncs.com/api/v1"
-    SUBMIT_URL = f"{BASE_URL}/services/aigc/multimodal-generation/generation"
     DEFAULT_MODEL = "wan2.6-t2i"
 
     def __init__(self, config: ProviderConfig) -> None:
         super().__init__(config)
+        if not config.base_url:
+            raise RuntimeError("DashScope 图片 provider 未配置 base_url")
         self._api_key = config.api_key
+        self._base_url = config.base_url.rstrip("/")
         self._model = config.default_model or self.DEFAULT_MODEL
 
     @property
     def submit_url(self) -> str:
-        return self.SUBMIT_URL
+        return f"{self._base_url}/services/aigc/multimodal-generation/generation"
 
     def build_headers(self) -> dict[str, str]:
         return {
@@ -60,7 +61,7 @@ class DashScopeImageProvider(ImageProvider):
             try:
                 logger.info(f"发起请求（第 {attempt + 1}/{max_retries} 次尝试）")
                 resp = requests.post(
-                    self.SUBMIT_URL,
+                    self.submit_url,
                     json=payload,
                     headers=self.build_headers(),
                     timeout=timeout,

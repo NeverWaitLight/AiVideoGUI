@@ -28,13 +28,32 @@ Dialog {
     property string videoModelR2V: ""
     property string chatProvider: "dashscope"
     property string chatModel: ""
-    property var chatModelList: []
-    property bool chatModelsLoading: false
-    property string imageProvider: "dashscope_image"
+    property string imageProvider: "dashscope"
     property string imageModel: ""
-    property var imageModelList: []
-    property bool imageModelsLoading: false
+    property string imageModelT2I: ""
+    property string imageModelI2I: ""
+    property string imageModelR2I: ""
     property string workspacePath: ""
+
+    function providerIdFromCombo(combo) {
+        if (!combo || combo.currentIndex < 0 || !combo.model)
+            return ""
+        var item = combo.model[combo.currentIndex]
+        if (!item)
+            return ""
+        return item.id || ""
+    }
+
+    function findProviderIndex(combo, providerId) {
+        if (!combo || !combo.model || !providerId)
+            return -1
+        for (var i = 0; i < combo.count; i++) {
+            var item = combo.model[i]
+            if (item && item.id === providerId)
+                return i
+        }
+        return -1
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -197,7 +216,11 @@ Dialog {
         chatModel = bridge.settings.get_default_model(chatProvider, "chat")
 
         imageProvider = bridge.settings.get_default_image_provider()
-        imageModel = bridge.settings.get_default_model(imageProvider, "image")
+        imageModelT2I = bridge.settings.get_model_for_task_type(imageProvider, "image", "t2i")
+            || bridge.settings.get_default_model(imageProvider, "image")
+        imageModelI2I = bridge.settings.get_model_for_task_type(imageProvider, "image", "i2i")
+        imageModelR2I = bridge.settings.get_model_for_task_type(imageProvider, "image", "r2i")
+        imageModel = imageModelT2I
 
         workspacePath = bridge.settings.get_workspace_dir()
     }
@@ -210,9 +233,9 @@ Dialog {
         // Validate chat
         if (chat) {
             var chatError = bridge.settings.validate_provider_config(
-                "chat", chat.chatProviderCombo.currentText,
+                "chat", providerIdFromCombo(chat.chatProviderCombo),
                 chat.chatApiKeyField.text, chat.chatBaseUrlField.text,
-                chat.chatModelCombo.currentText || chat.chatModelCombo.editText)
+                chat.getChatModelValue())
             if (chatError) {
                 alertDialog.warning("文本配置错误", chatError)
                 tabBar.currentIndex = 0
@@ -222,10 +245,17 @@ Dialog {
 
         // Validate image
         if (img) {
+            var imageDefaultModel = ""
+            if (img.imageModelT2ICombo.visible)
+                imageDefaultModel = img.imageModelT2ICombo.currentText || img.imageModelT2ICombo.editText
+            else if (img.imageModelI2ICombo.visible)
+                imageDefaultModel = img.imageModelI2ICombo.currentText || img.imageModelI2ICombo.editText
+            else if (img.imageModelR2ICombo.visible)
+                imageDefaultModel = img.imageModelR2ICombo.currentText || img.imageModelR2ICombo.editText
             var imageError = bridge.settings.validate_provider_config(
-                "image", img.imageProviderCombo.currentText,
+                "image", providerIdFromCombo(img.imageProviderCombo),
                 img.imageApiKeyField.text, img.imageBaseUrlField.text,
-                img.imageModelCombo.currentText || img.imageModelCombo.editText)
+                imageDefaultModel)
             if (imageError) {
                 alertDialog.warning("图片配置错误", imageError)
                 tabBar.currentIndex = 1
@@ -235,10 +265,17 @@ Dialog {
 
         // Validate video
         if (vid) {
+            var videoDefaultModel = ""
+            if (vid.videoModelT2VCombo.visible)
+                videoDefaultModel = vid.videoModelT2VCombo.currentText || vid.videoModelT2VCombo.editText
+            else if (vid.videoModelI2VCombo.visible)
+                videoDefaultModel = vid.videoModelI2VCombo.currentText || vid.videoModelI2VCombo.editText
+            else if (vid.videoModelR2VCombo.visible)
+                videoDefaultModel = vid.videoModelR2VCombo.currentText || vid.videoModelR2VCombo.editText
             var videoError = bridge.settings.validate_provider_config(
-                "video", vid.videoProviderCombo.currentText,
+                "video", providerIdFromCombo(vid.videoProviderCombo),
                 vid.videoApiKeyField.text, vid.videoBaseUrlField.text,
-                vid.videoModelT2VCombo.currentText || vid.videoModelT2VCombo.editText)
+                videoDefaultModel)
             if (videoError) {
                 alertDialog.warning("视频配置错误", videoError)
                 tabBar.currentIndex = 2
@@ -253,27 +290,53 @@ Dialog {
 
         if (chat) {
             bridge.settings.batch_save_provider("chat",
-                chat.chatProviderCombo.currentText,
+                providerIdFromCombo(chat.chatProviderCombo),
                 chat.chatApiKeyField.text, chat.chatBaseUrlField.text,
-                chat.chatModelCombo.currentText, {})
+                chat.getChatModelValue(), {})
         }
         if (img) {
+            var imageMappings = {}
+            var imageDefault = ""
+            if (img.imageModelT2ICombo.visible) {
+                imageMappings["t2i"] = img.imageModelT2ICombo.currentText || img.imageModelT2ICombo.editText
+                imageDefault = imageMappings["t2i"]
+            }
+            if (img.imageModelI2ICombo.visible) {
+                imageMappings["i2i"] = img.imageModelI2ICombo.currentText || img.imageModelI2ICombo.editText
+                if (!imageDefault)
+                    imageDefault = imageMappings["i2i"]
+            }
+            if (img.imageModelR2ICombo.visible) {
+                imageMappings["r2i"] = img.imageModelR2ICombo.currentText || img.imageModelR2ICombo.editText
+                if (!imageDefault)
+                    imageDefault = imageMappings["r2i"]
+            }
             bridge.settings.batch_save_provider("image",
-                img.imageProviderCombo.currentText,
+                providerIdFromCombo(img.imageProviderCombo),
                 img.imageApiKeyField.text, img.imageBaseUrlField.text,
-                img.imageModelCombo.currentText || img.imageModelCombo.editText, {})
+                imageDefault, imageMappings)
         }
         if (vid) {
-            var modelMappings = {
-                "t2v": vid.videoModelT2VCombo.currentText || vid.videoModelT2VCombo.editText,
-                "i2v": vid.videoModelI2VCombo.currentText || vid.videoModelI2VCombo.editText,
-                "r2v": vid.videoModelR2VCombo.currentText || vid.videoModelR2VCombo.editText
+            var modelMappings = {}
+            var videoDefault = ""
+            if (vid.videoModelT2VCombo.visible) {
+                modelMappings["t2v"] = vid.videoModelT2VCombo.currentText || vid.videoModelT2VCombo.editText
+                videoDefault = modelMappings["t2v"]
+            }
+            if (vid.videoModelI2VCombo.visible) {
+                modelMappings["i2v"] = vid.videoModelI2VCombo.currentText || vid.videoModelI2VCombo.editText
+                if (!videoDefault)
+                    videoDefault = modelMappings["i2v"]
+            }
+            if (vid.videoModelR2VCombo.visible) {
+                modelMappings["r2v"] = vid.videoModelR2VCombo.currentText || vid.videoModelR2VCombo.editText
+                if (!videoDefault)
+                    videoDefault = modelMappings["r2v"]
             }
             bridge.settings.batch_save_provider("video",
-                vid.videoProviderCombo.currentText,
+                providerIdFromCombo(vid.videoProviderCombo),
                 vid.videoApiKeyField.text, vid.videoBaseUrlField.text,
-                vid.videoModelT2VCombo.currentText || vid.videoModelT2VCombo.editText,
-                modelMappings)
+                videoDefault, modelMappings)
         }
 
         // Workspace
@@ -312,34 +375,37 @@ Dialog {
             property alias chatApiKeyField: chatApiKeyField
             property alias chatBaseUrlField: chatBaseUrlField
             property alias chatModelCombo: chatModelCombo
+            property alias chatModelField: chatModelField
 
-            Timer {
-                id: chatFetchTimer
-                interval: 50
-                repeat: false
-                onTriggered: {
-                    var models = bridge.settings.list_chat_models(
-                        chatApiKeyField.text, chatBaseUrlField.text,
-                        chatProviderCombo.currentText)
-                    settingsDialog.chatModelList = models
-                    settingsDialog.chatModelsLoading = false
-                    if (settingsDialog.chatModel) {
-                        var idx = chatModelCombo.find(settingsDialog.chatModel)
-                        if (idx >= 0) {
-                            chatModelCombo.currentIndex = idx
-                        } else {
-                            chatModelCombo.editText = settingsDialog.chatModel
-                        }
-                        settingsDialog.chatModel = ""
-                    }
-                }
+            function isOpenAICompatible(provider) {
+                return provider === "openai"
             }
 
-            function fetchChatModels() {
-                var apiKey = chatApiKeyField.text
-                if (!apiKey) return
-                settingsDialog.chatModelsLoading = true
-                chatFetchTimer.start()
+            function getChatModelValue() {
+                if (chatModelField.visible)
+                    return chatModelField.text
+                return chatModelCombo.currentText || chatModelCombo.editText
+            }
+
+            function loadChatProviderState() {
+                var provider = settingsDialog.providerIdFromCombo(chatProviderCombo)
+                if (!provider)
+                    return
+                chatBaseUrlField.placeholderText = bridge.settings.get_provider_base_url("chat", provider) || "API 基础地址（可选）"
+                chatApiKeyField.text = bridge.settings.get_api_key(provider, "chat")
+                chatBaseUrlField.text = bridge.settings.get_base_url(provider, "chat")
+
+                var useTextField = isOpenAICompatible(provider)
+                chatModelCombo.visible = !useTextField
+                chatModelField.visible = useTextField
+
+                if (useTextField) {
+                    chatModelField.text = bridge.settings.get_default_model(provider, "chat") || ""
+                } else {
+                    chatModelCombo.model = bridge.settings.list_models("chat", provider)
+                    if (chatModelCombo.count > 0)
+                        chatModelCombo.currentIndex = 0
+                }
             }
 
             ColumnLayout {
@@ -403,10 +469,12 @@ Dialog {
                             }
                             ComboBox {
                                 id: chatProviderCombo
-                                model: ["dashscope"]
+                                model: bridge.settings.list_providers("chat")
+                                textRole: "name"
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 36
                                 Material.elevation: 0
+                                onActivated: loadChatProviderState()
                             }
 
                             Label {
@@ -443,42 +511,22 @@ Dialog {
                                 Layout.alignment: Qt.AlignTop
                                 topPadding: 6
                             }
-                            RowLayout {
+                            Item {
                                 Layout.fillWidth: true
-                                spacing: 8
+                                Layout.preferredHeight: 36
 
                                 ComboBox {
                                     id: chatModelCombo
-                                    Layout.fillWidth: true
-                                    Layout.preferredHeight: 36
+                                    anchors.fill: parent
                                     editable: true
-                                    enabled: !settingsDialog.chatModelsLoading
-                                    model: settingsDialog.chatModelList
                                     Material.elevation: 0
+                                    visible: true
                                 }
-
-                                Button {
-                                    implicitHeight: 36
-                                    implicitWidth: 36
-                                    enabled: chatApiKeyField.text.length > 0 && !settingsDialog.chatModelsLoading
-                                    Material.elevation: 0
-                                    padding: 6
-                                    onClicked: fetchChatModels()
-
-                                    Image {
-                                        anchors.centerIn: parent
-                                        width: 20; height: 20
-                                        source: "qrc:/resources/icons/autorenew.svg"
-                                        sourceSize: Qt.size(20, 20)
-                                        fillMode: Image.PreserveAspectFit
-
-                                        RotationAnimation on rotation {
-                                            running: settingsDialog.chatModelsLoading
-                                            from: 0; to: 360
-                                            duration: 1000
-                                            loops: Animation.Infinite
-                                        }
-                                    }
+                                Comp.AppTextField {
+                                    id: chatModelField
+                                    anchors.fill: parent
+                                    placeholderText: "输入模型名称"
+                                    visible: false
                                 }
                             }
                         }
@@ -489,20 +537,30 @@ Dialog {
             }
 
             Component.onCompleted: {
+                var pIdx = settingsDialog.findProviderIndex(chatProviderCombo, settingsDialog.chatProvider)
+                if (pIdx >= 0)
+                    chatProviderCombo.currentIndex = pIdx
                 chatApiKeyField.text = bridge.settings.get_api_key(settingsDialog.chatProvider, "chat")
                 chatBaseUrlField.text = bridge.settings.get_base_url(settingsDialog.chatProvider, "chat")
-                if (settingsDialog.chatModelList.length > 0) {
-                    var idx = chatModelCombo.find(settingsDialog.chatModel)
-                    if (idx >= 0) {
-                        chatModelCombo.currentIndex = idx
-                    } else if (settingsDialog.chatModel) {
-                        chatModelCombo.editText = settingsDialog.chatModel
+                chatBaseUrlField.placeholderText = bridge.settings.get_provider_base_url("chat", settingsDialog.chatProvider) || "API 基础地址（可选）"
+
+                var useTextField = isOpenAICompatible(settingsDialog.chatProvider)
+                chatModelCombo.visible = !useTextField
+                chatModelField.visible = useTextField
+
+                if (useTextField) {
+                    chatModelField.text = settingsDialog.chatModel || bridge.settings.get_default_model(settingsDialog.chatProvider, "chat") || ""
+                    settingsDialog.chatModel = ""
+                } else {
+                    chatModelCombo.model = bridge.settings.list_models("chat", settingsDialog.chatProvider)
+                    if (settingsDialog.chatModel) {
+                        var idx = chatModelCombo.find(settingsDialog.chatModel)
+                        if (idx >= 0)
+                            chatModelCombo.currentIndex = idx
+                        else
+                            chatModelCombo.editText = settingsDialog.chatModel
+                        settingsDialog.chatModel = ""
                     }
-                } else if (settingsDialog.chatModel) {
-                    chatModelCombo.editText = settingsDialog.chatModel
-                }
-                if (chatApiKeyField.text.length > 0) {
-                    fetchChatModels()
                 }
             }
         }
@@ -519,35 +577,53 @@ Dialog {
             property alias imageProviderCombo: imageProviderCombo
             property alias imageApiKeyField: imageApiKeyField
             property alias imageBaseUrlField: imageBaseUrlField
-            property alias imageModelCombo: imageModelCombo
+            property alias imageModelT2ICombo: imageModelT2ICombo
+            property alias imageModelI2ICombo: imageModelI2ICombo
+            property alias imageModelR2ICombo: imageModelR2ICombo
 
-            Timer {
-                id: imageFetchTimer
-                interval: 50
-                repeat: false
-                onTriggered: {
-                    var models = bridge.settings.list_image_models(
-                        imageApiKeyField.text, imageBaseUrlField.text,
-                        imageProviderCombo.currentText)
-                    settingsDialog.imageModelList = models
-                    settingsDialog.imageModelsLoading = false
-                    if (settingsDialog.imageModel) {
-                        var idx = imageModelCombo.find(settingsDialog.imageModel)
-                        if (idx >= 0) {
-                            imageModelCombo.currentIndex = idx
-                        } else {
-                            imageModelCombo.editText = settingsDialog.imageModel
-                        }
-                        settingsDialog.imageModel = ""
-                    }
-                }
+            function selectModelInCombo(combo, value) {
+                if (!value)
+                    return
+                var idx = combo.find(value)
+                if (idx >= 0)
+                    combo.currentIndex = idx
+                else
+                    combo.editText = value
             }
 
-            function fetchImageModels() {
-                var provider = imageProviderCombo.currentText
-                if (!provider) return
-                settingsDialog.imageModelsLoading = true
-                imageFetchTimer.start()
+            function loadImageProviderState(preserveModels) {
+                var provider = settingsDialog.providerIdFromCombo(imageProviderCombo)
+                if (!provider)
+                    return
+                imageBaseUrlField.placeholderText = bridge.settings.get_provider_base_url("image", provider) || "API 基础地址（可选）"
+                imageApiKeyField.text = bridge.settings.get_api_key(provider, "image")
+                imageBaseUrlField.text = bridge.settings.get_base_url(provider, "image")
+
+                var t2iModels = bridge.settings.list_image_models(provider, "t2i")
+                var i2iModels = bridge.settings.list_image_models(provider, "i2i")
+                var r2iModels = bridge.settings.list_image_models(provider, "r2i")
+                imageModelT2ICombo.model = t2iModels
+                imageModelI2ICombo.model = i2iModels
+                imageModelR2ICombo.model = r2iModels
+                imageModelT2ICombo.visible = t2iModels.length > 0
+                imageModelI2ICombo.visible = i2iModels.length > 0
+                imageModelR2ICombo.visible = r2iModels.length > 0
+
+                if (preserveModels) {
+                    if (imageModelT2ICombo.visible)
+                        selectModelInCombo(imageModelT2ICombo, settingsDialog.imageModelT2I || t2iModels[0])
+                    if (imageModelI2ICombo.visible)
+                        selectModelInCombo(imageModelI2ICombo, settingsDialog.imageModelI2I || i2iModels[0])
+                    if (imageModelR2ICombo.visible)
+                        selectModelInCombo(imageModelR2ICombo, settingsDialog.imageModelR2I || r2iModels[0])
+                } else {
+                    if (imageModelT2ICombo.visible && imageModelT2ICombo.count > 0)
+                        imageModelT2ICombo.currentIndex = 0
+                    if (imageModelI2ICombo.visible && imageModelI2ICombo.count > 0)
+                        imageModelI2ICombo.currentIndex = 0
+                    if (imageModelR2ICombo.visible && imageModelR2ICombo.count > 0)
+                        imageModelR2ICombo.currentIndex = 0
+                }
             }
 
             ColumnLayout {
@@ -611,10 +687,12 @@ Dialog {
                             }
                             ComboBox {
                                 id: imageProviderCombo
-                                model: ["dashscope_image"]
+                                model: bridge.settings.list_providers("image")
+                                textRole: "name"
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 36
                                 Material.elevation: 0
+                                onActivated: loadImageProviderState(false)
                             }
 
                             Label {
@@ -646,49 +724,51 @@ Dialog {
                             }
 
                             Label {
-                                text: "默认模型"
+                                text: "文生图模型"
                                 font.pixelSize: Theme.fontSizeNormal
                                 Layout.alignment: Qt.AlignTop
                                 topPadding: 6
+                                visible: imageModelT2ICombo.visible
                             }
-                            RowLayout {
+                            ComboBox {
+                                id: imageModelT2ICombo
                                 Layout.fillWidth: true
-                                spacing: 8
+                                Layout.preferredHeight: 36
+                                editable: true
+                                Material.elevation: 0
+                                visible: false
+                            }
 
-                                ComboBox {
-                                    id: imageModelCombo
-                                    Layout.fillWidth: true
-                                    Layout.preferredHeight: 36
-                                    editable: true
-                                    enabled: !settingsDialog.imageModelsLoading
-                                    model: settingsDialog.imageModelList
-                                    Material.elevation: 0
-                                }
+                            Label {
+                                text: "图生图模型"
+                                font.pixelSize: Theme.fontSizeNormal
+                                Layout.alignment: Qt.AlignTop
+                                topPadding: 6
+                                visible: imageModelI2ICombo.visible
+                            }
+                            ComboBox {
+                                id: imageModelI2ICombo
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 36
+                                editable: true
+                                Material.elevation: 0
+                                visible: false
+                            }
 
-                                Button {
-                                    implicitHeight: 36
-                                    implicitWidth: 36
-                                    enabled: imageProviderCombo.currentText.length > 0 && !settingsDialog.imageModelsLoading
-                                    Material.elevation: 0
-                                    padding: 6
-                                    onClicked: fetchImageModels()
-
-                                    contentItem: Image {
-                                        anchors.centerIn: parent
-                                        width: 20
-                                        height: 20
-                                        source: "qrc:/resources/icons/autorenew.svg"
-                                        sourceSize: Qt.size(20, 20)
-                                        fillMode: Image.PreserveAspectFit
-
-                                        RotationAnimation on rotation {
-                                            running: settingsDialog.imageModelsLoading
-                                            from: 0; to: 360
-                                            duration: 1000
-                                            loops: Animation.Infinite
-                                        }
-                                    }
-                                }
+                            Label {
+                                text: "依赖生图模型"
+                                font.pixelSize: Theme.fontSizeNormal
+                                Layout.alignment: Qt.AlignTop
+                                topPadding: 6
+                                visible: imageModelR2ICombo.visible
+                            }
+                            ComboBox {
+                                id: imageModelR2ICombo
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 36
+                                editable: true
+                                Material.elevation: 0
+                                visible: false
                             }
                         }
                     }
@@ -698,19 +778,14 @@ Dialog {
             }
 
             Component.onCompleted: {
-                imageApiKeyField.text = bridge.settings.get_api_key(settingsDialog.imageProvider, "image")
-                imageBaseUrlField.text = bridge.settings.get_base_url(settingsDialog.imageProvider, "image")
-                if (settingsDialog.imageModelList.length > 0) {
-                    var idx = imageModelCombo.find(settingsDialog.imageModel)
-                    if (idx >= 0) {
-                        imageModelCombo.currentIndex = idx
-                    } else if (settingsDialog.imageModel) {
-                        imageModelCombo.editText = settingsDialog.imageModel
-                    }
-                } else if (settingsDialog.imageModel) {
-                    imageModelCombo.editText = settingsDialog.imageModel
-                }
-                fetchImageModels()
+                var pIdx = settingsDialog.findProviderIndex(imageProviderCombo, settingsDialog.imageProvider)
+                if (pIdx >= 0)
+                    imageProviderCombo.currentIndex = pIdx
+                loadImageProviderState(true)
+                settingsDialog.imageModelT2I = ""
+                settingsDialog.imageModelI2I = ""
+                settingsDialog.imageModelR2I = ""
+                settingsDialog.imageModel = ""
             }
         }
     }
@@ -729,6 +804,51 @@ Dialog {
             property alias videoModelT2VCombo: videoModelT2VCombo
             property alias videoModelI2VCombo: videoModelI2VCombo
             property alias videoModelR2VCombo: videoModelR2VCombo
+
+            function selectModelInCombo(combo, value) {
+                if (!value)
+                    return
+                var idx = combo.find(value)
+                if (idx >= 0)
+                    combo.currentIndex = idx
+                else
+                    combo.editText = value
+            }
+
+            function loadVideoProviderState(preserveModels) {
+                var provider = settingsDialog.providerIdFromCombo(videoProviderCombo)
+                if (!provider)
+                    return
+                videoBaseUrlField.placeholderText = bridge.settings.get_provider_base_url("video", provider) || "API 基础地址（可选）"
+                videoApiKeyField.text = bridge.settings.get_api_key(provider, "video")
+                videoBaseUrlField.text = bridge.settings.get_base_url(provider, "video")
+
+                var t2vModels = bridge.settings.list_video_models(provider, "t2v")
+                var i2vModels = bridge.settings.list_video_models(provider, "i2v")
+                var r2vModels = bridge.settings.list_video_models(provider, "r2v")
+                videoModelT2VCombo.model = t2vModels
+                videoModelI2VCombo.model = i2vModels
+                videoModelR2VCombo.model = r2vModels
+                videoModelT2VCombo.visible = t2vModels.length > 0
+                videoModelI2VCombo.visible = i2vModels.length > 0
+                videoModelR2VCombo.visible = r2vModels.length > 0
+
+                if (preserveModels) {
+                    if (videoModelT2VCombo.visible)
+                        selectModelInCombo(videoModelT2VCombo, settingsDialog.videoModelT2V || t2vModels[0])
+                    if (videoModelI2VCombo.visible)
+                        selectModelInCombo(videoModelI2VCombo, settingsDialog.videoModelI2V || i2vModels[0])
+                    if (videoModelR2VCombo.visible)
+                        selectModelInCombo(videoModelR2VCombo, settingsDialog.videoModelR2V || r2vModels[0])
+                } else {
+                    if (videoModelT2VCombo.visible && videoModelT2VCombo.count > 0)
+                        videoModelT2VCombo.currentIndex = 0
+                    if (videoModelI2VCombo.visible && videoModelI2VCombo.count > 0)
+                        videoModelI2VCombo.currentIndex = 0
+                    if (videoModelR2VCombo.visible && videoModelR2VCombo.count > 0)
+                        videoModelR2VCombo.currentIndex = 0
+                }
+            }
 
             ColumnLayout {
                 width: parent.parent.width
@@ -791,10 +911,12 @@ Dialog {
                             }
                             ComboBox {
                                 id: videoProviderCombo
-                                model: ["dashscope", "seedance"]
+                                model: bridge.settings.list_providers("video")
+                                textRole: "name"
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 36
                                 Material.elevation: 0
+                                onActivated: loadVideoProviderState(false)
                             }
 
                             Label {
@@ -830,14 +952,15 @@ Dialog {
                                 font.pixelSize: Theme.fontSizeNormal
                                 Layout.alignment: Qt.AlignTop
                                 topPadding: 6
+                                visible: videoModelT2VCombo.visible
                             }
                             ComboBox {
                                 id: videoModelT2VCombo
-                                model: ["wan2.7-t2v-2026-06-12"]
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 36
                                 Material.elevation: 0
                                 editable: true
+                                visible: false
                             }
 
                             Label {
@@ -845,14 +968,15 @@ Dialog {
                                 font.pixelSize: Theme.fontSizeNormal
                                 Layout.alignment: Qt.AlignTop
                                 topPadding: 6
+                                visible: videoModelI2VCombo.visible
                             }
                             ComboBox {
                                 id: videoModelI2VCombo
-                                model: ["wan2.7-i2v-2026-04-25"]
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 36
                                 Material.elevation: 0
                                 editable: true
+                                visible: false
                             }
 
                             Label {
@@ -860,14 +984,15 @@ Dialog {
                                 font.pixelSize: Theme.fontSizeNormal
                                 Layout.alignment: Qt.AlignTop
                                 topPadding: 6
+                                visible: videoModelR2VCombo.visible
                             }
                             ComboBox {
                                 id: videoModelR2VCombo
-                                model: ["wan2.7-r2v-2026-06-12"]
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 36
                                 Material.elevation: 0
                                 editable: true
+                                visible: false
                             }
                         }
                     }
@@ -877,35 +1002,13 @@ Dialog {
             }
 
             Component.onCompleted: {
-                videoApiKeyField.text = bridge.settings.get_api_key(settingsDialog.videoProvider, "video")
-                videoBaseUrlField.text = bridge.settings.get_base_url(settingsDialog.videoProvider, "video")
-
-                // 如果配置为空，使用 ComboBox model 中的第一个选项作为默认值
-                var t2v = settingsDialog.videoModelT2V || videoModelT2VCombo.model[0]
-                var i2v = settingsDialog.videoModelI2V || videoModelI2VCombo.model[0]
-                var r2v = settingsDialog.videoModelR2V || videoModelR2VCombo.model[0]
-
-                // 尝试在 model 中查找匹配项，找不到则设置 editText（手动输入）
-                var t2vIndex = videoModelT2VCombo.find(t2v)
-                if (t2vIndex >= 0) {
-                    videoModelT2VCombo.currentIndex = t2vIndex
-                } else {
-                    videoModelT2VCombo.editText = t2v
-                }
-
-                var i2vIndex = videoModelI2VCombo.find(i2v)
-                if (i2vIndex >= 0) {
-                    videoModelI2VCombo.currentIndex = i2vIndex
-                } else {
-                    videoModelI2VCombo.editText = i2v
-                }
-
-                var r2vIndex = videoModelR2VCombo.find(r2v)
-                if (r2vIndex >= 0) {
-                    videoModelR2VCombo.currentIndex = r2vIndex
-                } else {
-                    videoModelR2VCombo.editText = r2v
-                }
+                var pIdx = settingsDialog.findProviderIndex(videoProviderCombo, settingsDialog.videoProvider)
+                if (pIdx >= 0)
+                    videoProviderCombo.currentIndex = pIdx
+                loadVideoProviderState(true)
+                settingsDialog.videoModelT2V = ""
+                settingsDialog.videoModelI2V = ""
+                settingsDialog.videoModelR2V = ""
             }
         }
     }

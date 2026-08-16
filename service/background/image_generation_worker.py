@@ -11,12 +11,8 @@ from storage.session_manager import SessionManager
 from storage.repositories.generate_task_repository import GenerateTaskRepository
 
 _PROVIDER_REGISTRY: dict[str, type[ImageProvider]] = {
+    "dashscope": DashScopeImageProvider,
     "dashscope_image": DashScopeImageProvider,
-}
-
-# Provider 名称映射到配置名称（与 ImageService 相反）
-_PROVIDER_TO_CONFIG_NAME: dict[str, str] = {
-    "dashscope": "dashscope_image",
 }
 
 
@@ -94,13 +90,13 @@ def execute_image_generation(
             raise
 
         if not config_name:
-            config_name = _PROVIDER_TO_CONFIG_NAME.get(provider_name, provider_name)
+            config_name = provider_name
 
         provider_cfg = config_manager.resolve_config_for_type(name=config_name, provider_type="image")
         if not provider_cfg or not provider_cfg.api_key:
             raise RuntimeError(f"未配置图片生成供应商 {config_name} 的 API Key")
 
-        cls = _PROVIDER_REGISTRY.get(config_name)
+        cls = _PROVIDER_REGISTRY.get(config_name) or _PROVIDER_REGISTRY.get(provider_name)
         if not cls:
             raise RuntimeError(f"未知的图片供应商：{config_name}")
 
@@ -164,7 +160,7 @@ class ImageGenerationWorker(QThread):
     def _get_provider(self, provider_name: str, config_name: str | None = None) -> ImageProvider:
         """根据 provider_name 或 config_name 获取 Provider 实例"""
         if not config_name:
-            config_name = _PROVIDER_TO_CONFIG_NAME.get(provider_name, provider_name)
+            config_name = provider_name
 
         cache_key = config_name
         if cache_key in self._providers:
@@ -174,7 +170,7 @@ class ImageGenerationWorker(QThread):
         if not provider_cfg or not provider_cfg.api_key:
             raise RuntimeError(f"未配置图片生成供应商 {config_name} 的 API Key")
 
-        cls = _PROVIDER_REGISTRY.get(config_name)
+        cls = _PROVIDER_REGISTRY.get(config_name) or _PROVIDER_REGISTRY.get(provider_name)
         if not cls:
             raise RuntimeError(f"未知的图片供应商：{config_name}")
 

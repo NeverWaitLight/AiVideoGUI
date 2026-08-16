@@ -99,7 +99,9 @@ class AppBridge(QObject):
             self._screenplay_service, self._project_service,
             container.visual_style_service(), container, self,
         )
-        self._settings_bridge = SettingsBridge(self._config, self)
+        self._settings_bridge = SettingsBridge(
+            self._config, container.providers_catalog(), self
+        )
         self._visual_styles = VisualStyleBridge(
             container.visual_style_service(), self,
         )

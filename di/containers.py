@@ -3,6 +3,7 @@ from pathlib import Path
 import os
 
 from config.manager import ConfigManager
+from config.providers_catalog import ProvidersCatalog
 from prompts.manager import PromptTemplateManager
 from prompts.chat_prompt_builder import ChatPromptBuilder
 from service.background.enhanced_scheduler import BackgroundTaskScheduler
@@ -26,6 +27,12 @@ from prompts.video_prompt_builder import VideoPromptBuilder
 
 def _get_project_root() -> Path:
     return Path(__file__).parent.parent
+
+
+def _get_bundled_providers_path() -> str:
+    return str(_get_project_root() / "resources" / "providers.json")
+
+
 class ApplicationContainer(containers.DeclarativeContainer):
 
     config = providers.Configuration()
@@ -35,9 +42,16 @@ class ApplicationContainer(containers.DeclarativeContainer):
         workspace_root=config.workspace_root,
     )
 
+    providers_catalog = providers.Singleton(
+        ProvidersCatalog,
+        catalog_path=config.providers_catalog_path,
+        fallback_path=providers.Object(_get_bundled_providers_path()),
+    )
+
     config_manager = providers.Singleton(
         ConfigManager,
         config_path=config.config_path,
+        providers_catalog=providers_catalog,
     )
 
     video_prompt_builder = providers.Singleton(VideoPromptBuilder)

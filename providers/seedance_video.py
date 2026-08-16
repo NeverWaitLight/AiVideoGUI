@@ -13,16 +13,23 @@ from providers.video_base import VideoProvider
 
 class SeedanceVideoProvider(VideoProvider):
 
-    BASE_URL = "https://api.evolink.ai/v1"
-    SUBMIT_URL = f"{BASE_URL}/videos/generations"
-    TASK_URL = f"{BASE_URL}/tasks"
     DEFAULT_MODEL = "seedance-2.0-text-to-video"
 
     def __init__(self, config: ProviderConfig) -> None:
         super().__init__(config)
+        if not config.base_url:
+            raise RuntimeError("Seedance 视频 provider 未配置 base_url")
         self._api_key = config.api_key
-        self._base_url = config.base_url or self.BASE_URL
+        self._base_url = config.base_url.rstrip("/")
         self._model = config.default_model or self.DEFAULT_MODEL
+
+    @property
+    def submit_url(self) -> str:
+        return f"{self._base_url}/videos/generations"
+
+    @property
+    def task_url(self) -> str:
+        return f"{self._base_url}/tasks"
 
     def _headers(self) -> dict[str, str]:
         return {
@@ -61,7 +68,7 @@ class SeedanceVideoProvider(VideoProvider):
         headers = self._headers()
 
         resp = requests.post(
-            self.SUBMIT_URL,
+            self.submit_url,
             json=payload,
             headers=headers,
             timeout=30,
@@ -83,7 +90,7 @@ class SeedanceVideoProvider(VideoProvider):
         if not task_id:
             raise RuntimeError(f"Seedance 未返回 task_id: {data}")
         logger.info(f"任务已提交，task_id={task_id}")
-        return task_id, {"url": self.SUBMIT_URL, "json": payload, "headers": headers}
+        return task_id, {"url": self.submit_url, "json": payload, "headers": headers}
 
     def t2v(self, prompt: str, params: dict[str, Any] | None = None) -> tuple[str, dict[str, Any]]:
         api_params = params.copy() if params else {}
@@ -118,7 +125,7 @@ class SeedanceVideoProvider(VideoProvider):
         raise NotImplementedError("Seedance extend 尚未实现")
 
     def check_status(self, task_id: str) -> TaskResult:
-        url = f"{self.TASK_URL}/{task_id}"
+        url = f"{self.task_url}/{task_id}"
         resp = requests.get(url, headers=self._headers(), timeout=30)
 
         if not resp.ok:

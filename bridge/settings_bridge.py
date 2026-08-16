@@ -4,17 +4,52 @@ import os
 
 from PySide6.QtCore import QObject, Signal, Slot
 
+from config.providers_catalog import ProvidersCatalog
 from models.provider_config import ProviderConfig
-from providers.anyllm_chat import AnyLLMChatProvider
 from utils import paths
 
 
 class SettingsBridge(QObject):
     settings_saved = Signal()
 
-    def __init__(self, config_manager, parent=None):
+    def __init__(
+        self,
+        config_manager,
+        providers_catalog: ProvidersCatalog,
+        parent=None,
+    ):
         super().__init__(parent)
         self._config = config_manager
+        self._catalog = providers_catalog
+
+    @Slot(str, result=list)
+    def list_providers(self, provider_type: str) -> list:
+        """返回 [{id, name}, ...]"""
+        return self._catalog.list_providers(provider_type)
+
+    @Slot(str, str, result=str)
+    def get_provider_name(self, provider_type: str, provider_id: str) -> str:
+        return self._catalog.get_name(provider_type, provider_id)
+
+    @Slot(str, str, result=list)
+    def list_models(self, provider_type: str, provider_id: str) -> list:
+        return self._catalog.list_models(provider_type, provider_id)
+
+    @Slot(str, str, str, result=list)
+    def list_models_for_task(self, provider_type: str, provider_id: str, task_type: str) -> list:
+        return self._catalog.list_models_for_task(provider_type, provider_id, task_type)
+
+    @Slot(str, str, result=list)
+    def list_video_models(self, provider_id: str, task_type: str) -> list:
+        return self._catalog.list_models_for_task("video", provider_id, task_type)
+
+    @Slot(str, str, result=list)
+    def list_image_models(self, provider_id: str, task_type: str) -> list:
+        return self._catalog.list_models_for_task("image", provider_id, task_type)
+
+    @Slot(str, str, result=str)
+    def get_provider_base_url(self, provider_type: str, provider_id: str) -> str:
+        return self._catalog.get_base_url(provider_type, provider_id)
 
     @Slot(str, str, result=str)
     def get_api_key(self, provider_name: str, provider_type: str = "") -> str:
@@ -39,22 +74,6 @@ class SettingsBridge(QObject):
             return ""
         return cfg.model_mappings.get(task_type, cfg.default_model or "")
 
-    @Slot(str, str, str, result=list)
-    def list_chat_models(self, api_key: str, base_url: str, provider_name: str) -> list:
-        if not api_key:
-            return []
-        try:
-            cfg = ProviderConfig(
-                provider_name=provider_name or "dashscope",
-                api_key=api_key,
-                base_url=base_url,
-                default_model="",
-            )
-            provider = AnyLLMChatProvider(config=cfg)
-            return provider.list_available_models()
-        except Exception:
-            return []
-
     @Slot(result=str)
     def get_default_video_provider(self) -> str:
         return self._config.settings.default_provider or "dashscope"
@@ -65,7 +84,7 @@ class SettingsBridge(QObject):
 
     @Slot(result=str)
     def get_default_image_provider(self) -> str:
-        return self._config.settings.default_image_provider or "dashscope_image"
+        return self._config.settings.default_image_provider or "dashscope"
 
     @Slot(str, str, str, str, str)
     def save_provider(self, provider_type: str, provider_name: str, api_key: str,
@@ -169,27 +188,3 @@ class SettingsBridge(QObject):
         )
         errors = self._config.validate_provider_config(cfg=cfg, provider_type=provider_type)
         return "\n".join(errors) if errors else ""
-
-    @Slot(str, str, str, result=list)
-    def list_image_models(self, api_key: str, base_url: str, provider_name: str) -> list:
-        """获取图片模型列表"""
-        if not provider_name:
-            return []
-        try:
-            cfg = ProviderConfig(
-                provider_name=provider_name,
-                api_key=api_key or "dummy",
-                base_url=base_url,
-                default_model="",
-            )
-
-            if provider_name == "dashscope_image" or provider_name == "dashscope":
-                from providers.dashscope_image import DashScopeImageProvider
-                provider = DashScopeImageProvider(config=cfg)
-            else:
-                return []
-
-            return provider.list_available_models()
-        except Exception:
-            return []
-

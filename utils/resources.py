@@ -19,6 +19,26 @@ def copy_resources_to_workspace(workspace_root: str) -> None:
 
     workspace_resources.mkdir(parents=True, exist_ok=True)
 
+    root_files = ["providers.json"]
+
+    for filename in root_files:
+        src_file = project_resources / filename
+        if not src_file.is_file():
+            logger.debug(f"跳过不存在的根目录文件: {src_file}")
+            continue
+
+        dst_file = workspace_resources / filename
+        if dst_file.exists():
+            src_mtime = src_file.stat().st_mtime
+            dst_mtime = dst_file.stat().st_mtime
+            if src_mtime <= dst_mtime:
+                continue
+            logger.debug(f"更新资源文件: {filename}")
+        else:
+            logger.debug(f"复制资源文件: {filename}")
+
+        shutil.copy2(src_file, dst_file)
+
     subdirs = ["styles", "covers"]
 
     for subdir in subdirs:
