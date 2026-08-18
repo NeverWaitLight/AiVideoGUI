@@ -61,6 +61,66 @@ class TestVideoMetadataExtractor(unittest.TestCase):
                 first_keyframe=True,
             )
 
+    def test_extract_first_last_frames_uses_full_resolution(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            video_path = str(Path(tmp_dir) / "demo.mp4")
+            Path(video_path).write_bytes(b"fake")
+
+            with patch.object(VideoMetadataExtractor, "_extract_frame") as mock_extract:
+                result = VideoMetadataExtractor.extract_first_last_frames(
+                    video_path,
+                    tmp_dir,
+                    duration=5.0,
+                )
+
+            self.assertEqual(mock_extract.call_count, 2)
+            mock_extract.assert_any_call(
+                video_path,
+                str(Path(tmp_dir) / "demo_first.jpg"),
+                first_keyframe=True,
+                scale=False,
+            )
+            mock_extract.assert_any_call(
+                video_path,
+                str(Path(tmp_dir) / "demo_last.jpg"),
+                from_end=True,
+                scale=False,
+            )
+            self.assertEqual(result["first_frame_path"], str(Path(tmp_dir) / "demo_first.jpg"))
+            self.assertEqual(result["last_frame_path"], str(Path(tmp_dir) / "demo_last.jpg"))
+
+    def test_extract_all_includes_first_and_last_frame_paths(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            video_path = str(Path(tmp_dir) / "demo.mp4")
+            Path(video_path).write_bytes(b"fake-video")
+            stderr = (
+                "Duration: 00:00:03.50, start: 0.000000, bitrate: 800 kb/s\n"
+                "Stream #0:0: Video: h264, yuv420p, 640x360, 25 fps\n"
+            )
+            first_path = str(Path(tmp_dir) / "demo_first.jpg")
+            last_path = str(Path(tmp_dir) / "demo_last.jpg")
+
+            with patch.object(VideoMetadataExtractor, "_run_ffmpeg") as mock_run, patch.object(
+                VideoMetadataExtractor,
+                "_resolve_ffmpeg_exe",
+                return_value="ffmpeg",
+            ), patch.object(
+                VideoMetadataExtractor,
+                "generate_thumbnail",
+                return_value=str(Path(tmp_dir) / "demo_thumb.jpg"),
+            ), patch.object(
+                VideoMetadataExtractor,
+                "extract_first_last_frames",
+                return_value={"first_frame_path": first_path, "last_frame_path": last_path},
+            ):
+                mock_run.return_value.returncode = 1
+                mock_run.return_value.stderr = stderr
+                mock_run.return_value.stdout = ""
+                metadata = VideoMetadataExtractor.extract_all(video_path, tmp_dir)
+
+            self.assertEqual(metadata["first_frame_path"], first_path)
+            self.assertEqual(metadata["last_frame_path"], last_path)
+
 
 if __name__ == "__main__":
     unittest.main()

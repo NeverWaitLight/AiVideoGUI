@@ -11,6 +11,8 @@ class MediaFileListModel(QAbstractListModel):
     FileTypeRole = Qt.UserRole + 3
     FilePathRole = Qt.UserRole + 4
     ThumbnailRole = Qt.UserRole + 5
+    FirstFrameRole = Qt.UserRole + 11
+    LastFrameRole = Qt.UserRole + 12
     DurationRole = Qt.UserRole + 6
     WidthRole = Qt.UserRole + 7
     HeightRole = Qt.UserRole + 8
@@ -23,6 +25,8 @@ class MediaFileListModel(QAbstractListModel):
         FileTypeRole: b"fileType",
         FilePathRole: b"filePath",
         ThumbnailRole: b"thumbnailPath",
+        FirstFrameRole: b"firstFramePath",
+        LastFrameRole: b"lastFramePath",
         DurationRole: b"duration",
         WidthRole: b"videoWidth",
         HeightRole: b"videoHeight",
@@ -60,6 +64,10 @@ class MediaFileListModel(QAbstractListModel):
             return item.local_path
         if role == self.ThumbnailRole:
             return item.thumbnail_path
+        if role == self.FirstFrameRole:
+            return item.first_frame_path
+        if role == self.LastFrameRole:
+            return item.last_frame_path
         if role == self.DurationRole:
             return item.duration
         if role == self.WidthRole:

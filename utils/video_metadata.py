@@ -92,18 +92,23 @@ class VideoMetadataExtractor:
         time_offset: float | None = None,
         first_keyframe: bool = False,
         accurate_seek: bool = False,
+        scale: bool = True,
+        from_end: bool = False,
     ) -> None:
         ffmpeg_exe = VideoMetadataExtractor._resolve_ffmpeg_exe()
         cmd = [ffmpeg_exe]
+        if from_end:
+            cmd.extend(["-sseof", "-0.1"])
         if first_keyframe:
             cmd.extend(["-skip_frame", "nokey"])
-        elif time_offset is not None and not accurate_seek:
+        elif time_offset is not None and not accurate_seek and not from_end:
             cmd.extend(["-ss", str(time_offset)])
         cmd.extend(["-i", video_path])
-        if time_offset is not None and not first_keyframe and accurate_seek:
+        if time_offset is not None and not first_keyframe and accurate_seek and not from_end:
             cmd.extend(["-ss", str(time_offset)])
+        if scale:
+            cmd.extend(["-vf", VideoMetadataExtractor._THUMBNAIL_SCALE])
         cmd.extend([
-            "-vf", VideoMetadataExtractor._THUMBNAIL_SCALE,
             "-vframes", "1",
             "-f", "image2",
             "-c:v", "mjpeg",
@@ -149,6 +154,47 @@ class VideoMetadataExtractor:
             raise RuntimeError(f"无法生成缩略图: {e}") from e
 
     @staticmethod
+    def extract_first_last_frames(
+        video_path: str,
+        output_dir: str,
+        duration: float = 0.0,
+    ) -> dict[str, str]:
+        if not os.path.exists(video_path):
+            raise FileNotFoundError(f"视频文件不存在: {video_path}")
+
+        Path(output_dir).mkdir(parents=True, exist_ok=True)
+        video_name = Path(video_path).stem
+        first_frame_path = os.path.join(output_dir, f"{video_name}_first.jpg")
+        last_frame_path = os.path.join(output_dir, f"{video_name}_last.jpg")
+        result: dict[str, str] = {"first_frame_path": "", "last_frame_path": ""}
+
+        try:
+            VideoMetadataExtractor._extract_frame(
+                video_path,
+                first_frame_path,
+                first_keyframe=True,
+                scale=False,
+            )
+            result["first_frame_path"] = first_frame_path
+            logger.info(f"提取视频首帧: {video_path} -> {first_frame_path}")
+        except Exception as e:
+            logger.warning(f"提取首帧失败，跳过: {e}")
+
+        try:
+            VideoMetadataExtractor._extract_frame(
+                video_path,
+                last_frame_path,
+                from_end=True,
+                scale=False,
+            )
+            result["last_frame_path"] = last_frame_path
+            logger.info(f"提取视频末帧: {video_path} -> {last_frame_path}")
+        except Exception as e:
+            logger.warning(f"提取末帧失败，跳过: {e}")
+
+        return result
+
+    @staticmethod
     def extract_all(video_path: str, thumbnail_dir: str) -> dict:
         metadata = VideoMetadataExtractor.extract_metadata(video_path)
 
@@ -166,5 +212,18 @@ class VideoMetadataExtractor:
         except Exception as e:
             logger.warning(f"生成缩略图失败，跳过: {e}")
             metadata["thumbnail_path"] = ""
+
+        try:
+            frame_paths = VideoMetadataExtractor.extract_first_last_frames(
+                video_path,
+                thumbnail_dir,
+                duration=metadata.get("duration", 0.0),
+            )
+            metadata["first_frame_path"] = frame_paths.get("first_frame_path", "")
+            metadata["last_frame_path"] = frame_paths.get("last_frame_path", "")
+        except Exception as e:
+            logger.warning(f"提取首尾帧失败，跳过: {e}")
+            metadata["first_frame_path"] = ""
+            metadata["last_frame_path"] = ""
 
         return metadata

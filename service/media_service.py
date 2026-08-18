@@ -64,6 +64,8 @@ class MediaService:
         os.makedirs(thumb_dir, exist_ok=True)
 
         thumbnail_path = ""
+        first_frame_path = ""
+        last_frame_path = ""
         duration = 0.0
         width = 0
         height = 0
@@ -72,6 +74,8 @@ class MediaService:
             try:
                 metadata = VideoMetadataExtractor.extract_all(local_path, thumb_dir)
                 thumbnail_path = metadata.get("thumbnail_path", "")
+                first_frame_path = metadata.get("first_frame_path", "")
+                last_frame_path = metadata.get("last_frame_path", "")
                 duration = metadata.get("duration", 0.0)
                 width = metadata.get("width", 0)
                 height = metadata.get("height", 0)
@@ -89,6 +93,8 @@ class MediaService:
 
         relative_local_path = to_relative_path(local_path, self._root)
         relative_thumbnail_path = to_relative_path(thumbnail_path, self._root) if thumbnail_path else ""
+        relative_first_frame_path = to_relative_path(first_frame_path, self._root) if first_frame_path else ""
+        relative_last_frame_path = to_relative_path(last_frame_path, self._root) if last_frame_path else ""
 
         media = MediaFile(
             id=uuid.uuid4().hex,
@@ -101,6 +107,8 @@ class MediaService:
             message_id=task_id,
             created_at=int(time.time() * 1000),
             thumbnail_path=relative_thumbnail_path,
+            first_frame_path=relative_first_frame_path,
+            last_frame_path=relative_last_frame_path,
             duration=duration,
             width=width,
             height=height,
@@ -143,6 +151,8 @@ class MediaService:
             os.makedirs(thumb_dir, exist_ok=True)
 
             thumbnail_path = ""
+            first_frame_path = ""
+            last_frame_path = ""
             duration = 0.0
             width = 0
             height = 0
@@ -151,6 +161,8 @@ class MediaService:
                 try:
                     metadata = VideoMetadataExtractor.extract_all(dest_path, thumb_dir)
                     thumbnail_path = metadata.get("thumbnail_path", "")
+                    first_frame_path = metadata.get("first_frame_path", "")
+                    last_frame_path = metadata.get("last_frame_path", "")
                     duration = metadata.get("duration", 0.0)
                     width = metadata.get("width", 0)
                     height = metadata.get("height", 0)
@@ -168,6 +180,8 @@ class MediaService:
 
             relative_dest_path = to_relative_path(dest_path, self._root)
             relative_thumbnail_path = to_relative_path(thumbnail_path, self._root) if thumbnail_path else ""
+            relative_first_frame_path = to_relative_path(first_frame_path, self._root) if first_frame_path else ""
+            relative_last_frame_path = to_relative_path(last_frame_path, self._root) if last_frame_path else ""
 
             media = MediaFile(
                 id=uuid.uuid4().hex,
@@ -178,6 +192,8 @@ class MediaService:
                 source="import",
                 created_at=int(time.time() * 1000),
                 thumbnail_path=relative_thumbnail_path,
+                first_frame_path=relative_first_frame_path,
+                last_frame_path=relative_last_frame_path,
                 duration=duration,
                 width=width,
                 height=height,
@@ -196,6 +212,10 @@ class MediaService:
                 self._try_remove_file(dest_path)
                 if thumbnail_path:
                     self._try_remove_file(thumbnail_path)
+                if first_frame_path:
+                    self._try_remove_file(first_frame_path)
+                if last_frame_path:
+                    self._try_remove_file(last_frame_path)
                 raise
 
         return imported
@@ -240,6 +260,10 @@ class MediaService:
         self._try_remove_file(media.local_path)
         if media.thumbnail_path:
             self._try_remove_file(media.thumbnail_path)
+        if media.first_frame_path:
+            self._try_remove_file(media.first_frame_path)
+        if media.last_frame_path:
+            self._try_remove_file(media.last_frame_path)
 
         return True
 

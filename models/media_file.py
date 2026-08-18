@@ -18,6 +18,8 @@ class MediaFile:
     message_id: str = ""        # 关联的消息ID
     created_at: int = 0         # 创建时间（毫秒时间戳）
     thumbnail_path: str = ""    # 缩略图路径
+    first_frame_path: str = ""  # 首帧图片相对路径
+    last_frame_path: str = ""   # 末帧图片相对路径
     duration: float = 0.0       # 时长（秒，仅视频）
     width: int = 0              # 宽度（像素）
     height: int = 0             # 高度（像素）

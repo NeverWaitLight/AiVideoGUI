@@ -18,6 +18,8 @@ class MediaFileEntity(Base):
     created_at: Mapped[int] = mapped_column(Integer, nullable=False)
 
     thumbnail_path: Mapped[str] = mapped_column(String(500), nullable=False, default="")
+    first_frame_path: Mapped[str] = mapped_column(String(500), nullable=False, default="")
+    last_frame_path: Mapped[str] = mapped_column(String(500), nullable=False, default="")
     duration: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     width: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     height: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
