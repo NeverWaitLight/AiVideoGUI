@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QObject, Property, Signal, Slot, Qt
 from PySide6.QtGui import QGuiApplication
+from PySide6.QtWidgets import QApplication
 
 if TYPE_CHECKING:
     from di import ApplicationContainer
@@ -42,6 +43,7 @@ class AppBridge(QObject):
     batch_design_progress = Signal(int, str, str)
     batch_design_done = Signal(int, int)
     navigate_requested = Signal(int, str, str)  # projectId, module, entityId
+    close_choice_requested = Signal()
     cover_generation_started = Signal()
     cover_generation_finished = Signal(str)
     cover_generation_failed = Signal(str)
@@ -120,6 +122,8 @@ class AppBridge(QObject):
 
         self._notifications = DesktopNotificationService(self._session_manager, self)
         self._notifications.navigate_requested.connect(self.navigate_requested.emit)
+        self._notifications.restore_requested.connect(self.restore_window)
+        self._notifications.quit_requested.connect(self.quit_application)
         signal_emitter.task_finished.connect(self._on_notify_video_finished)
         signal_emitter.task_failed.connect(self._on_notify_video_failed)
         image_emitter = get_image_signal_emitter()
@@ -205,9 +209,35 @@ class AppBridge(QObject):
 
     @Slot()
     def close_window(self) -> None:
+        action = self._config.settings.close_window_action or ""
+        if action == "minimize":
+            self.hide_to_tray()
+        elif action == "quit":
+            self.quit_application()
+        else:
+            self.close_choice_requested.emit()
+
+    @Slot()
+    def hide_to_tray(self) -> None:
         w = self._window()
         if w:
-            w.close()
+            w.hide()
+
+    @Slot()
+    def restore_window(self) -> None:
+        w = self._window()
+        if not w:
+            return
+        if w.windowStates() & Qt.WindowMinimized:
+            w.showNormal()
+        else:
+            w.show()
+        w.raise_()
+        w.requestActivate()
+
+    @Slot()
+    def quit_application(self) -> None:
+        QApplication.quit()
 
     def _on_video_task_finished(self, provider_task_id: str, save_path: str, storyboard_id: int) -> None:
         self._media.files_changed.emit()

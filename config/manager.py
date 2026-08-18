@@ -84,6 +84,7 @@ class ConfigManager:
             workspace_dir=s.get("workspace_dir", ""),
             color_scheme=s.get("color_scheme", "System"),
             ignored_update_version=s.get("ignored_update_version", ""),
+            close_window_action=s.get("close_window_action", ""),
         )
         logger.info(f"配置已加载，providers={list(self._providers.keys())}")
 
@@ -111,6 +112,7 @@ class ConfigManager:
                 "workspace_dir": self._settings.workspace_dir,
                 "color_scheme": self._settings.color_scheme,
                 "ignored_update_version": self._settings.ignored_update_version,
+                "close_window_action": self._settings.close_window_action,
             },
         }
         os.makedirs(os.path.dirname(self._path), exist_ok=True)

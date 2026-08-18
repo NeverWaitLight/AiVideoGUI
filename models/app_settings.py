@@ -12,3 +12,4 @@ class AppSettings:
     workspace_dir: str = ""                 # 工作区目录路径
     color_scheme: str = "System"            # 配色方案（System/Light/Dark）
     ignored_update_version: str = ""        # 已忽略的更新版本
+    close_window_action: str = ""          # 关闭窗口行为（""/minimize/quit）

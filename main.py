@@ -126,6 +126,7 @@ def main():
     app.setApplicationName("AiVideoGUI")
     app.setApplicationVersion(app_version)
     app.setWindowIcon(QIcon(":/resources/logo.ico"))
+    app.setQuitOnLastWindowClosed(False)
 
     QQuickStyle.setStyle("Material")
     logger.info("应用样式: Material")

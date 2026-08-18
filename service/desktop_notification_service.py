@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING
 
 from loguru import logger
 from PySide6.QtCore import QObject, Qt, Signal, Slot
-from PySide6.QtGui import QGuiApplication, QIcon
-from PySide6.QtWidgets import QSystemTrayIcon
+from PySide6.QtGui import QAction, QGuiApplication, QIcon
+from PySide6.QtWidgets import QMenu, QSystemTrayIcon
 
 if TYPE_CHECKING:
     from storage.session_manager import SessionManager
@@ -28,6 +28,8 @@ _TYPE_LABELS: dict[str, str] = {
 
 class DesktopNotificationService(QObject):
     navigate_requested = Signal(int, str, str)  # project_id, module, entity_id
+    restore_requested = Signal()
+    quit_requested = Signal()
     _notify_requested = Signal(str, bool, str)  # provider_task_id, success, error
     _activation_requested = Signal(str)  # provider_task_id
 
@@ -41,6 +43,17 @@ class DesktopNotificationService(QObject):
         self._tray.setIcon(QIcon(":/resources/logo.ico"))
         self._tray.setToolTip("AI Video GUI")
         self._tray.messageClicked.connect(self._on_tray_message_clicked)
+        self._tray.activated.connect(self._on_tray_activated)
+
+        self._tray_menu = QMenu()
+        open_action = QAction("打开", self._tray_menu)
+        open_action.triggered.connect(lambda _checked=False: self.restore_requested.emit())
+        quit_action = QAction("退出", self._tray_menu)
+        quit_action.triggered.connect(lambda _checked=False: self.quit_requested.emit())
+        self._tray_menu.addAction(open_action)
+        self._tray_menu.addAction(quit_action)
+        self._tray.setContextMenu(self._tray_menu)
+
         self._tray.show()
 
         self._notify_requested.connect(self._notify_on_main_thread, Qt.ConnectionType.QueuedConnection)
@@ -49,6 +62,14 @@ class DesktopNotificationService(QObject):
 
         if sys.platform == "win32":
             self._init_windows_toaster()
+
+    @Slot(QSystemTrayIcon.ActivationReason)
+    def _on_tray_activated(self, reason: QSystemTrayIcon.ActivationReason) -> None:
+        if reason in (
+            QSystemTrayIcon.ActivationReason.Trigger,
+            QSystemTrayIcon.ActivationReason.DoubleClick,
+        ):
+            self.restore_requested.emit()
 
     def _init_windows_toaster(self) -> None:
         try:

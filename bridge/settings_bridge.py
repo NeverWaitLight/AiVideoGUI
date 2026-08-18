@@ -174,6 +174,16 @@ class SettingsBridge(QObject):
             self._config.update_settings(color_scheme=scheme)
             self.settings_saved.emit()
 
+    @Slot(result=str)
+    def get_close_window_action(self) -> str:
+        return self._config.settings.close_window_action or ""
+
+    @Slot(str)
+    def set_close_window_action(self, action: str) -> None:
+        if action in ("", "minimize", "quit"):
+            self._config.update_settings(close_window_action=action)
+            self.settings_saved.emit()
+
     @Slot(str, str, str, str, str, result=str)
     def validate_provider_config(
         self, provider_type: str, provider_name: str,

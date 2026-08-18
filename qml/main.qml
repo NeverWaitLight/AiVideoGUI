@@ -156,6 +156,10 @@ ApplicationWindow {
         id: confirmDialog
     }
 
+    Dialogs.CloseChoiceDialog {
+        id: closeChoiceDialog
+    }
+
     Dialogs.AlertDialog {
         id: alertDialog
     }
@@ -171,6 +175,9 @@ ApplicationWindow {
             if (projectId > 0) {
                 mainPanel.projectModePage.openDataPage(projectId, module, entityId || "")
             }
+        }
+        function onClose_choice_requested() {
+            closeChoiceDialog.open()
         }
     }
 
