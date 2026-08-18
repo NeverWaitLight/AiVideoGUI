@@ -19,7 +19,7 @@ def copy_resources_to_workspace(workspace_root: str) -> None:
 
     workspace_resources.mkdir(parents=True, exist_ok=True)
 
-    root_files = ["providers.json"]
+    root_files = ["settings.json"]
 
     for filename in root_files:
         src_file = project_resources / filename
@@ -38,6 +38,14 @@ def copy_resources_to_workspace(workspace_root: str) -> None:
             logger.debug(f"复制资源文件: {filename}")
 
         shutil.copy2(src_file, dst_file)
+
+    legacy_providers = workspace_resources / "providers.json"
+    if legacy_providers.is_file():
+        try:
+            legacy_providers.unlink()
+            logger.debug("已移除旧版 providers.json")
+        except OSError as e:
+            logger.warning(f"移除旧版 providers.json 失败: {e}")
 
     subdirs = ["styles", "covers"]
 

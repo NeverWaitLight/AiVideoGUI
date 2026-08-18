@@ -54,7 +54,7 @@ class DashScopeVideoProvider(VideoProvider):
         self._submit_url = f"{self._base_url}/api/v1/services/aigc/video-generation/video-synthesis"
         self._task_url = f"{self._base_url}/api/v1/tasks"
 
-        self._oss_uploader = DashScopeOSSUploader(self._api_key)
+        self._oss_uploader = DashScopeOSSUploader(self._api_key, base_url=self._base_url)
         self._session_manager = None
 
     def set_session_manager(self, session_manager: SessionManager) -> None:

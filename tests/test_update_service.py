@@ -7,7 +7,12 @@ from service.update_service import UpdateService
 
 class TestUpdateService(unittest.TestCase):
     def setUp(self):
-        self.service = UpdateService(current_version="0.0.1", workspace_root="C:/test")
+        self.service = UpdateService(
+            current_version="0.0.1",
+            workspace_root="C:/test",
+            github_api_url="https://api.github.com/repos/NeverWaitLight/AiVideoGUI/releases/latest",
+            github_repo="NeverWaitLight/AiVideoGUI",
+        )
 
     @patch("service.update_service.requests.get")
     def test_check_update_new_version_available(self, mock_get):

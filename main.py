@@ -98,8 +98,8 @@ def main():
     container = ApplicationContainer()
     container.config.workspace_root.from_value(root)
     container.config.config_path.from_value(os.path.join(data_dir, "config.json"))
-    container.config.providers_catalog_path.from_value(
-        os.path.join(resources_dir, "providers.json")
+    container.config.settings_path.from_value(
+        os.path.join(resources_dir, "settings.json")
     )
 
     # 读取版本号

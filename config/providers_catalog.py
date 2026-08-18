@@ -29,29 +29,34 @@ class ProviderTypeCatalog:
 
 
 class ProvidersCatalog:
-    """从 providers.json 加载 chat/image/video 可选项与默认 URL。"""
+    """从 settings.json 加载 chat/image/video 可选项、默认 URL 与更新配置。"""
 
     _VALID_TYPES = ("chat", "image", "video")
 
-    def __init__(self, catalog_path: str, fallback_path: str | None = None) -> None:
+    def __init__(self, catalog_path: str | None, fallback_path: str | None = None) -> None:
         self._catalog: dict[str, ProviderTypeCatalog] = {
             t: ProviderTypeCatalog() for t in self._VALID_TYPES
         }
+        self._github_repo: str = ""
+        self._github_api_url: str = ""
         path = self._resolve_path(catalog_path, fallback_path)
         if path:
             self._load(path)
 
     @staticmethod
-    def _resolve_path(catalog_path: str, fallback_path: str | None) -> Path | None:
-        primary = Path(catalog_path)
-        if primary.exists():
-            return primary
+    def _resolve_path(
+        catalog_path: str | None, fallback_path: str | None
+    ) -> Path | None:
+        if catalog_path:
+            primary = Path(catalog_path)
+            if primary.exists():
+                return primary
         if fallback_path:
             fallback = Path(fallback_path)
             if fallback.exists():
-                logger.warning(f"工作区 providers.json 不存在，使用内置：{fallback}")
+                logger.warning(f"工作区 settings.json 不存在，使用内置：{fallback}")
                 return fallback
-        logger.warning(f"providers.json 不存在：{catalog_path}")
+        logger.warning(f"settings.json 不存在：{catalog_path}")
         return None
 
     @staticmethod
@@ -103,7 +108,7 @@ class ProvidersCatalog:
             with open(path, encoding="utf-8") as f:
                 data = json.load(f)
         except (OSError, json.JSONDecodeError) as e:
-            logger.error(f"解析 providers.json 失败：{e}")
+            logger.error(f"解析 settings.json 失败：{e}")
             return
 
         for provider_type in self._VALID_TYPES:
@@ -130,8 +135,13 @@ class ProvidersCatalog:
                 providers=entries, order=order
             )
 
+        update = data.get("update", {})
+        if isinstance(update, dict):
+            self._github_repo = str(update.get("github_repo", "") or "").strip()
+            self._github_api_url = str(update.get("github_api_url", "") or "").strip()
+
         logger.info(
-            "providers.json 已加载："
+            "settings.json 已加载："
             + ", ".join(
                 f"{t}={self._catalog[t].order}"
                 for t in self._VALID_TYPES
@@ -184,3 +194,9 @@ class ProvidersCatalog:
         if task_type in entry.task_models:
             return list(entry.task_models[task_type])
         return list(entry.models)
+
+    def get_update_github_repo(self) -> str:
+        return self._github_repo
+
+    def get_update_github_api_url(self) -> str:
+        return self._github_api_url

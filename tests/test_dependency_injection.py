@@ -20,6 +20,10 @@ class TestDependencyInjection(unittest.TestCase):
         self.container = ApplicationContainer()
         self.container.config.workspace_root.from_value(self.workspace_root)
         self.container.config.config_path.from_value(self.config_path)
+        self.container.config.settings_path.from_value(
+            os.path.join(os.path.dirname(__file__), "..", "resources", "settings.json")
+        )
+        self.container.config.app_version.from_value("0.0.1")
 
     def tearDown(self):
         import shutil

@@ -45,5 +45,9 @@
         "r2v_models": ["wan2.7-r2v-2026-06-12"]
       }
     ]
+  },
+  "update": {
+    "github_repo": "NeverWaitLight/AiVideoGUI",
+    "github_api_url": "https://api.github.com/repos/NeverWaitLight/AiVideoGUI/releases/latest"
   }
 }

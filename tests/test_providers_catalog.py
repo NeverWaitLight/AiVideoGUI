@@ -56,13 +56,17 @@ SAMPLE_CATALOG = {
             },
         ]
     },
+    "update": {
+        "github_repo": "NeverWaitLight/AiVideoGUI",
+        "github_api_url": "https://api.github.com/repos/NeverWaitLight/AiVideoGUI/releases/latest",
+    },
 }
 
 
 class TestProvidersCatalog(unittest.TestCase):
     def setUp(self) -> None:
         self._tmpdir = tempfile.mkdtemp()
-        self._catalog_path = os.path.join(self._tmpdir, "providers.json")
+        self._catalog_path = os.path.join(self._tmpdir, "settings.json")
         with open(self._catalog_path, "w", encoding="utf-8") as f:
             json.dump(SAMPLE_CATALOG, f)
 
@@ -151,12 +155,20 @@ class TestProvidersCatalog(unittest.TestCase):
             ["wan2.6-t2i"],
         )
 
+    def test_get_update_config(self) -> None:
+        catalog = ProvidersCatalog(self._catalog_path)
+        self.assertEqual(catalog.get_update_github_repo(), "NeverWaitLight/AiVideoGUI")
+        self.assertEqual(
+            catalog.get_update_github_api_url(),
+            "https://api.github.com/repos/NeverWaitLight/AiVideoGUI/releases/latest",
+        )
+
 
 class TestConfigManagerCatalogIntegration(unittest.TestCase):
     def setUp(self) -> None:
         self._tmpdir = tempfile.mkdtemp()
         self._config_path = os.path.join(self._tmpdir, "config.json")
-        self._catalog_path = os.path.join(self._tmpdir, "providers.json")
+        self._catalog_path = os.path.join(self._tmpdir, "settings.json")
         with open(self._catalog_path, "w", encoding="utf-8") as f:
             json.dump(SAMPLE_CATALOG, f)
         self._catalog = ProvidersCatalog(self._catalog_path)

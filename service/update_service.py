@@ -11,12 +11,18 @@ from typing import Optional, Dict, Any, Callable
 class UpdateService:
     """GitHub Release 更新检查服务"""
 
-    GITHUB_REPO = "NeverWaitLight/AiVideoGUI"
-    GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
-
-    def __init__(self, current_version: str, workspace_root: str, config_manager=None):
+    def __init__(
+        self,
+        current_version: str,
+        workspace_root: str,
+        github_api_url: str,
+        config_manager=None,
+        github_repo: str = "",
+    ):
         self.current_version = current_version
         self.workspace_root = workspace_root
+        self._github_api_url = github_api_url
+        self._github_repo = github_repo
         self._config_manager = config_manager
 
     def check_update(self) -> Optional[Dict[str, Any]]:
@@ -31,11 +37,15 @@ class UpdateService:
             - published_at: 发布时间
             如果没有新版本或检查失败，返回 None
         """
+        if not self._github_api_url:
+            logger.warning("未配置 github_api_url，跳过更新检查")
+            return None
+
         try:
             logger.info(f"检查更新：当前版本 {self.current_version}")
 
             response = requests.get(
-                self.GITHUB_API_URL,
+                self._github_api_url,
                 timeout=10,
                 headers={"Accept": "application/vnd.github+json"}
             )

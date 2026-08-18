@@ -26,10 +26,11 @@ class DashScopeUploadPolicy:
 
 class DashScopeOSSUploader:
 
-    POLICY_API_URL = "https://dashscope.aliyuncs.com/api/v1/uploads"
-
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str, base_url: str):
+        if not base_url:
+            raise ValueError("DashScope OSS 上传需要配置 base_url")
         self.api_key = api_key
+        self._policy_api_url = f"{base_url.rstrip('/')}/uploads"
 
     def get_upload_policy(self, model_name: str) -> DashScopeUploadPolicy:
         headers = {
@@ -42,7 +43,7 @@ class DashScopeOSSUploader:
 
         try:
             response = requests.get(
-                self.POLICY_API_URL, headers=headers, params=params, timeout=10
+                self._policy_api_url, headers=headers, params=params, timeout=10
             )
             response.raise_for_status()
         except requests.RequestException as e:
@@ -117,7 +118,7 @@ class DashScopeOSSUploader:
         return oss_url, expire_time
 
 def upload_file(
-    api_key: str, model_name: str, file_path: str
+    api_key: str, model_name: str, file_path: str, base_url: str
 ) -> tuple[str, datetime]:
-    uploader = DashScopeOSSUploader(api_key)
+    uploader = DashScopeOSSUploader(api_key, base_url=base_url)
     return uploader.upload(file_path=file_path, model_name=model_name)

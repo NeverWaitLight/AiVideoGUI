@@ -29,8 +29,8 @@ def _get_project_root() -> Path:
     return Path(__file__).parent.parent
 
 
-def _get_bundled_providers_path() -> str:
-    return str(_get_project_root() / "resources" / "providers.json")
+def _get_bundled_settings_path() -> str:
+    return str(_get_project_root() / "resources" / "settings.json")
 
 
 class ApplicationContainer(containers.DeclarativeContainer):
@@ -44,8 +44,8 @@ class ApplicationContainer(containers.DeclarativeContainer):
 
     providers_catalog = providers.Singleton(
         ProvidersCatalog,
-        catalog_path=config.providers_catalog_path,
-        fallback_path=providers.Object(_get_bundled_providers_path()),
+        catalog_path=config.settings_path,
+        fallback_path=providers.Object(_get_bundled_settings_path()),
     )
 
     config_manager = providers.Singleton(
@@ -151,6 +151,14 @@ class ApplicationContainer(containers.DeclarativeContainer):
         current_version=config.app_version,
         workspace_root=config.workspace_root,
         config_manager=config_manager,
+        github_api_url=providers.Callable(
+            lambda catalog: catalog.get_update_github_api_url(),
+            providers_catalog,
+        ),
+        github_repo=providers.Callable(
+            lambda catalog: catalog.get_update_github_repo(),
+            providers_catalog,
+        ),
     )
 
     update_check_task = providers.Singleton(
