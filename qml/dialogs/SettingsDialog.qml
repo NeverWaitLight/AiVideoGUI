@@ -478,20 +478,6 @@ Dialog {
                             }
 
                             Label {
-                                text: "API Key"
-                                font.pixelSize: Theme.fontSizeNormal
-                                Layout.alignment: Qt.AlignTop
-                                topPadding: 6
-                            }
-                            Comp.AppTextField {
-                                id: chatApiKeyField
-                                echoMode: TextInput.Password
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 36
-                                placeholderText: "输入 API Key"
-                            }
-
-                            Label {
                                 text: "Base URL"
                                 font.pixelSize: Theme.fontSizeNormal
                                 color: Material.hintTextColor
@@ -503,6 +489,20 @@ Dialog {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 36
                                 placeholderText: "API 基础地址（可选）"
+                            }
+
+                            Label {
+                                text: "API Key"
+                                font.pixelSize: Theme.fontSizeNormal
+                                Layout.alignment: Qt.AlignTop
+                                topPadding: 6
+                            }
+                            Comp.AppTextField {
+                                id: chatApiKeyField
+                                echoMode: TextInput.Password
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 36
+                                placeholderText: "输入 API Key"
                             }
 
                             Label {
@@ -696,20 +696,6 @@ Dialog {
                             }
 
                             Label {
-                                text: "API Key"
-                                font.pixelSize: Theme.fontSizeNormal
-                                Layout.alignment: Qt.AlignTop
-                                topPadding: 6
-                            }
-                            Comp.AppTextField {
-                                id: imageApiKeyField
-                                echoMode: TextInput.Password
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 36
-                                placeholderText: "输入 API Key"
-                            }
-
-                            Label {
                                 text: "Base URL"
                                 font.pixelSize: Theme.fontSizeNormal
                                 color: Material.hintTextColor
@@ -721,6 +707,20 @@ Dialog {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 36
                                 placeholderText: "API 基础地址（可选）"
+                            }
+
+                            Label {
+                                text: "API Key"
+                                font.pixelSize: Theme.fontSizeNormal
+                                Layout.alignment: Qt.AlignTop
+                                topPadding: 6
+                            }
+                            Comp.AppTextField {
+                                id: imageApiKeyField
+                                echoMode: TextInput.Password
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 36
+                                placeholderText: "输入 API Key"
                             }
 
                             Label {
@@ -920,20 +920,6 @@ Dialog {
                             }
 
                             Label {
-                                text: "API Key"
-                                font.pixelSize: Theme.fontSizeNormal
-                                Layout.alignment: Qt.AlignTop
-                                topPadding: 6
-                            }
-                            Comp.AppTextField {
-                                id: videoApiKeyField
-                                echoMode: TextInput.Password
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 36
-                                placeholderText: "输入 API Key"
-                            }
-
-                            Label {
                                 text: "Base URL"
                                 font.pixelSize: Theme.fontSizeNormal
                                 color: Material.hintTextColor
@@ -945,6 +931,20 @@ Dialog {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 36
                                 placeholderText: "API 基础地址（可选）"
+                            }
+
+                            Label {
+                                text: "API Key"
+                                font.pixelSize: Theme.fontSizeNormal
+                                Layout.alignment: Qt.AlignTop
+                                topPadding: 6
+                            }
+                            Comp.AppTextField {
+                                id: videoApiKeyField
+                                echoMode: TextInput.Password
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 36
+                                placeholderText: "输入 API Key"
                             }
 
                             Label {
