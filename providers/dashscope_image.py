@@ -52,7 +52,8 @@ class DashScopeImageProvider(ImageProvider):
         )
 
         logger.info(f"提交图片生成任务，模型：{self._model}，尺寸：{size}，数量：{n}")
-        logger.debug(f"请求体：{payload}")
+        logger.info(f"图片生成请求 URL：{self.submit_url}")
+        logger.info(f"图片生成请求体：{payload}")
 
         max_retries = 2
         timeout = 1800
@@ -66,6 +67,8 @@ class DashScopeImageProvider(ImageProvider):
                     headers=self.build_headers(),
                     timeout=timeout,
                 )
+                logger.info(f"图片生成响应状态码：{resp.status_code}")
+                logger.info(f"图片生成响应体：{resp.text}")
                 break
             except requests.exceptions.Timeout as e:
                 if attempt < max_retries - 1:
@@ -90,7 +93,7 @@ class DashScopeImageProvider(ImageProvider):
             raise RuntimeError(f"DashScope 图片 API 错误 ({resp.status_code}): {error_detail}")
 
         data = resp.json()
-        logger.debug(f"响应：{data}")
+        logger.info(f"图片生成响应解析：{data}")
 
         output = data.get("output", {})
         choices = output.get("choices", [])
@@ -122,6 +125,7 @@ class DashScopeImageProvider(ImageProvider):
 
         try:
             with requests.get(image_url, stream=True, timeout=60) as resp:
+                logger.info(f"图片下载响应状态码：{resp.status_code}")
                 resp.raise_for_status()
                 with open(save_path, "wb") as f:
                     for chunk in resp.iter_content(chunk_size=8192):
