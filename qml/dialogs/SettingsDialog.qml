@@ -480,7 +480,7 @@ Dialog {
                             Label {
                                 text: "Base URL"
                                 font.pixelSize: Theme.fontSizeNormal
-                                color: Material.hintTextColor
+                                color: chatBaseUrlField.text.length > 0 ? Material.foreground : Material.hintTextColor
                                 Layout.alignment: Qt.AlignTop
                                 topPadding: 6
                             }
@@ -698,7 +698,7 @@ Dialog {
                             Label {
                                 text: "Base URL"
                                 font.pixelSize: Theme.fontSizeNormal
-                                color: Material.hintTextColor
+                                color: imageBaseUrlField.text.length > 0 ? Material.foreground : Material.hintTextColor
                                 Layout.alignment: Qt.AlignTop
                                 topPadding: 6
                             }
@@ -922,7 +922,7 @@ Dialog {
                             Label {
                                 text: "Base URL"
                                 font.pixelSize: Theme.fontSizeNormal
-                                color: Material.hintTextColor
+                                color: videoBaseUrlField.text.length > 0 ? Material.foreground : Material.hintTextColor
                                 Layout.alignment: Qt.AlignTop
                                 topPadding: 6
                             }
