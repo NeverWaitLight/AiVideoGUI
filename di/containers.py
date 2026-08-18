@@ -12,6 +12,7 @@ from service.background.update_check_task import UpdateCheckTask
 from service.character_service import CharacterService
 from service.image_service import ImageService
 from service.media_service import MediaService
+from service.prev_shot_frame_service import PrevShotFrameService
 from service.project_service import ProjectService
 from service.screenplay_service import ScreenplayService
 from service.story_outline_service import StoryOutlineService
@@ -97,6 +98,13 @@ class ApplicationContainer(containers.DeclarativeContainer):
     storyboard_take_service = providers.Singleton(
         StoryboardTakeService,
         session_mgr=session_manager,
+    )
+
+    prev_shot_frame_service = providers.Singleton(
+        PrevShotFrameService,
+        session_manager=session_manager,
+        take_service=storyboard_take_service,
+        media_service=media_service,
     )
 
     character_service = providers.Singleton(

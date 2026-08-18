@@ -179,14 +179,16 @@ Item {
                         rightPadding: 12
                         onClicked: {
                             var selectedIdsCopy = _selectedIds.slice()
-                            videoGenerateDialog.show(page.projectId, selectedIdsCopy, function(promptExtendEnabled, useStoryboardDesign, useCharacterDesign, negativePrompt) {
+                            videoGenerateDialog.show(page.projectId, selectedIdsCopy, function(promptExtendEnabled, useStoryboardDesign, useCharacterDesign, negativePrompt, usePrevShotLastFrame, crossScenePrevFrame) {
                                 bridge.storyboard.batch_generate_videos(
                                     page.projectId,
                                     JSON.stringify(selectedIdsCopy),
                                     promptExtendEnabled,
                                     useStoryboardDesign,
                                     useCharacterDesign,
-                                    negativePrompt
+                                    negativePrompt,
+                                    usePrevShotLastFrame,
+                                    crossScenePrevFrame
                                 )
                             })
                         }

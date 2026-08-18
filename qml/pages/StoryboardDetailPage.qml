@@ -103,14 +103,16 @@ Item {
                     color: parent.pressed ? "#C62828" : (parent.hovered ? "#E53935" : "#F44336")
                 }
 
-                onClicked: videoGenerateDialog.show(detailPage.projectId, [bridge.storyboard.curShotId], function(promptExtendEnabled, useStoryboardDesign, useCharacterDesign, negativePrompt) {
+                onClicked: videoGenerateDialog.show(detailPage.projectId, [bridge.storyboard.curShotId], function(promptExtendEnabled, useStoryboardDesign, useCharacterDesign, negativePrompt, usePrevShotLastFrame, crossScenePrevFrame) {
                     bridge.storyboard.batch_generate_videos(
                         detailPage.projectId,
                         JSON.stringify([bridge.storyboard.curShotId]),
                         promptExtendEnabled,
                         useStoryboardDesign,
                         useCharacterDesign,
-                        negativePrompt
+                        negativePrompt,
+                        usePrevShotLastFrame,
+                        crossScenePrevFrame
                     )
                 })
             }

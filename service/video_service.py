@@ -83,6 +83,7 @@ class VideoService(QObject):
         project_id: int | None = None,
         project_name: str | None = None,
         clean_prompt: bool = True,
+        prev_shot_last_frame: str = "",
     ) -> str:
         from prompts.video_prompt_builder import VideoPromptBuilder
 
@@ -119,6 +120,7 @@ class VideoService(QObject):
             project_name=project_name,
             scene_number=storyboard.scene_number,
             shot_number=storyboard.shot_number,
+            prev_shot_last_frame=prev_shot_last_frame,
         )
 
     def submit_task(
@@ -134,20 +136,27 @@ class VideoService(QObject):
         project_name: str | None = None,
         scene_number: int = 0,
         shot_number: int = 0,
+        prev_shot_last_frame: str = "",
     ) -> str:
         provider = self.get_provider(provider_name)
         prompt = flatten_prompt_text(prompt)
+        params = (params or {}).copy()
+        prev_last = prev_shot_last_frame or params.pop("first_frame_path", None)
 
         if reference_images:
             main_ref = reference_images[0]
             if len(reference_images) > 1:
-                params = (params or {}).copy()
                 params["reference_media"] = [
                     {"path": p, "type": "reference_image"}
                     for p in reference_images[1:]
                 ]
+            if prev_last:
+                params["first_frame_path"] = prev_last
             provider_task_id, request_details = provider.r2v(prompt=prompt, reference_path=main_ref, params=params)
             logger.info(f"使用参考生视频 (r2v)：{len(reference_images)} 张参考图")
+        elif prev_last:
+            provider_task_id, request_details = provider.p2v(prompt=prompt, image_path=prev_last, params=params)
+            logger.info(f"使用图生视频 (p2v)：上一镜尾帧={prev_last}")
         elif reference_image:
             provider_task_id, request_details = provider.r2v(prompt=prompt, reference_path=reference_image, params=params)
             logger.info(f"使用参考生视频 (r2v)：reference_image={reference_image}")

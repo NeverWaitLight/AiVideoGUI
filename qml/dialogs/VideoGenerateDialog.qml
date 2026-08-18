@@ -7,7 +7,7 @@ Dialog {
     id: videoGenerateDialog
     modal: true
     width: 480
-    height: Math.min(contentColumn.implicitHeight + header.implicitHeight + footer.implicitHeight + 24, 420)
+    height: Math.min(contentColumn.implicitHeight + header.implicitHeight + footer.implicitHeight + 24, 520)
     anchors.centerIn: parent
     padding: 0
 
@@ -17,6 +17,8 @@ Dialog {
     property bool useCharacterDesign: true
     property bool hasStoryboardDesign: false
     property bool hasCharacterDesign: false
+    property bool usePrevShotLastFrame: true
+    property bool crossScenePrevFrame: false
     property var onGenerate: null
 
     title: ""
@@ -94,7 +96,9 @@ Dialog {
                                 promptExtendEnabled,
                                 useStoryboardDesign,
                                 useCharacterDesign,
-                                negativePromptInput.text.trim()
+                                negativePromptInput.text.trim(),
+                                usePrevShotLastFrame,
+                                crossScenePrevFrame
                             )
                         videoGenerateDialog.close()
                     }
@@ -210,6 +214,53 @@ Dialog {
 
             ColumnLayout {
                 Layout.fillWidth: true
+                spacing: 4
+
+                CheckBox {
+                    id: prevShotLastFrameCheck
+                    text: "引用上一镜尾帧"
+                    checked: usePrevShotLastFrame
+                    onCheckedChanged: usePrevShotLastFrame = checked
+                }
+
+                Label {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 32
+                    text: usePrevShotLastFrame
+                        ? "使用上一镜头的末帧作为本镜首帧参考，批量生成将按镜头顺序依次执行"
+                        : "不使用上一镜尾帧参考"
+                    font.pixelSize: Theme.fontSizeSmall
+                    color: Material.foreground
+                    opacity: 0.7
+                    wrapMode: Text.Wrap
+                }
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 4
+
+                CheckBox {
+                    id: crossScenePrevFrameCheck
+                    text: "跨场次依赖尾帧"
+                    checked: crossScenePrevFrame
+                    enabled: usePrevShotLastFrame
+                    onCheckedChanged: crossScenePrevFrame = checked
+                }
+
+                Label {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 32
+                    text: "开启后上一镜即使属于不同场次也使用其尾帧"
+                    font.pixelSize: Theme.fontSizeSmall
+                    color: usePrevShotLastFrame ? Material.foreground : Material.hintTextColor
+                    opacity: usePrevShotLastFrame ? 0.7 : 1.0
+                    wrapMode: Text.Wrap
+                }
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
                 spacing: 8
 
                 Label {
@@ -268,8 +319,12 @@ Dialog {
 
         useStoryboardDesign = hasStoryboardDesign
         useCharacterDesign = hasCharacterDesign
+        usePrevShotLastFrame = true
+        crossScenePrevFrame = false
         storyboardDesignCheck.checked = useStoryboardDesign
         characterDesignCheck.checked = useCharacterDesign
+        prevShotLastFrameCheck.checked = usePrevShotLastFrame
+        crossScenePrevFrameCheck.checked = crossScenePrevFrame
 
         open()
     }

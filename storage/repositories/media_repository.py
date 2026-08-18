@@ -90,6 +90,8 @@ class MediaRepository(BaseRepository[MediaFileEntity, MediaFile]):
         self,
         file_id: str,
         thumbnail_path: str = "",
+        first_frame_path: str = "",
+        last_frame_path: str = "",
         duration: float = 0.0,
         width: int = 0,
         height: int = 0,
@@ -100,6 +102,10 @@ class MediaRepository(BaseRepository[MediaFileEntity, MediaFile]):
 
         if thumbnail_path:
             entity.thumbnail_path = thumbnail_path
+        if first_frame_path:
+            entity.first_frame_path = first_frame_path
+        if last_frame_path:
+            entity.last_frame_path = last_frame_path
         if duration > 0:
             entity.duration = duration
         if width > 0:

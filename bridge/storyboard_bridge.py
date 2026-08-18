@@ -605,7 +605,7 @@ class StoryboardBridge(QObject):
         except Exception:
             return json.dumps({"storyboardDesigns": [], "characterDesigns": []})
 
-    @Slot(int, str, bool, bool, bool, str)
+    @Slot(int, str, bool, bool, bool, str, bool, bool)
     def batch_generate_videos(
         self,
         project_id: int,
@@ -614,6 +614,8 @@ class StoryboardBridge(QObject):
         use_storyboard_design: bool = True,
         use_character_design: bool = True,
         negative_prompt: str = "",
+        use_prev_shot_last_frame: bool = True,
+        cross_scene_prev_frame: bool = False,
     ) -> None:
         try:
             selected_ids = json.loads(shot_ids_json) if shot_ids_json else []
@@ -686,12 +688,16 @@ class StoryboardBridge(QObject):
 
             signal_emitter = self._container.video_polling_task().signal_emitter
             video_service = self._container.video_service()
+            prev_shot_frame_service = self._container.prev_shot_frame_service()
 
             controller = BatchGenerationController(
                 shot_list=shot_list, video_service=video_service, signal_emitter=signal_emitter,
                 provider_name=provider_name, project=project, provider_cfg=provider_cfg,
                 prompt_extend=prompt_extend,
                 negative_prompt=negative_prompt,
+                use_prev_shot_last_frame=use_prev_shot_last_frame,
+                cross_scene_prev_frame=cross_scene_prev_frame,
+                prev_shot_frame_service=prev_shot_frame_service,
             )
 
             def on_progress(current: int, total: int, message: str) -> None:

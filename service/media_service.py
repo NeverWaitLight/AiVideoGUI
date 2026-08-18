@@ -286,6 +286,54 @@ class MediaService:
         media_repo = self._sm.get_repo(repo_class=MediaRepository)
         return media_repo.get_by_message_id(message_id)
 
+    def ensure_last_frame(self, media_id: str) -> str:
+        media = self.get_file_by_id(media_id)
+        if not media:
+            return ""
+
+        if media.last_frame_path and os.path.exists(media.last_frame_path):
+            return media.last_frame_path
+
+        if not media.local_path or not os.path.exists(media.local_path):
+            return ""
+
+        thumb_dir = paths.thumbnail_dir(os.path.dirname(media.local_path))
+        os.makedirs(thumb_dir, exist_ok=True)
+
+        try:
+            frame_paths = VideoMetadataExtractor.extract_first_last_frames(
+                media.local_path,
+                thumb_dir,
+                duration=media.duration,
+            )
+        except Exception as e:
+            logger.warning(f"提取末帧失败 media_id={media_id}: {e}")
+            return ""
+
+        last_frame = frame_paths.get("last_frame_path", "")
+        first_frame = frame_paths.get("first_frame_path", "")
+        if not last_frame:
+            return ""
+
+        relative_last = to_relative_path(last_frame, self._root)
+        relative_first = to_relative_path(first_frame, self._root) if first_frame else ""
+
+        media_repo = self._sm.get_repo(repo_class=MediaRepository)
+        self._sm.begin_write()
+        try:
+            media_repo.update_metadata(
+                media_id,
+                first_frame_path=relative_first,
+                last_frame_path=relative_last,
+            )
+            self._sm.commit_write()
+        except Exception as e:
+            self._sm.rollback_write()
+            logger.error(f"回写末帧路径失败 media_id={media_id}: {e}")
+            raise
+
+        return last_frame
+
     def set_featured(self, file_id: str, storyboard_id: int) -> None:
         media_repo = self._sm.get_repo(repo_class=MediaRepository)
 

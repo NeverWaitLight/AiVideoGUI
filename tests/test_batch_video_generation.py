@@ -45,6 +45,8 @@ class TestBatchVideoGeneration(unittest.TestCase):
         prompt_extend: bool,
         video_service: MagicMock,
         negative_prompt: str = "",
+        use_prev_shot_last_frame: bool = False,
+        prev_shot_frame_service: MagicMock | None = None,
     ) -> BatchGenerationController:
         project = MagicMock()
         project.id = 1
@@ -76,6 +78,9 @@ class TestBatchVideoGeneration(unittest.TestCase):
             provider_cfg=provider_cfg,
             prompt_extend=prompt_extend,
             negative_prompt=negative_prompt,
+            use_prev_shot_last_frame=use_prev_shot_last_frame,
+            cross_scene_prev_frame=False,
+            prev_shot_frame_service=prev_shot_frame_service,
         )
 
     def test_prompt_extend_false_passed_to_submit_shot_video(self):
@@ -135,8 +140,35 @@ class TestBatchVideoGeneration(unittest.TestCase):
         self.assertIn("use_storyboard_design", sig.parameters)
         self.assertIn("use_character_design", sig.parameters)
         self.assertIn("negative_prompt", sig.parameters)
+        self.assertIn("use_prev_shot_last_frame", sig.parameters)
+        self.assertIn("cross_scene_prev_frame", sig.parameters)
         self.assertTrue(sig.parameters["prompt_extend"].default)
+        self.assertTrue(sig.parameters["use_prev_shot_last_frame"].default)
+        self.assertFalse(sig.parameters["cross_scene_prev_frame"].default)
         self.assertEqual(sig.parameters["negative_prompt"].default, "")
+
+    def test_serial_mode_passes_prev_last_frame_to_submit(self):
+        video_service = MagicMock()
+        video_service.submit_shot_video.return_value = "task-1"
+
+        prev_service = MagicMock()
+        prev_service.should_use_prev_frame.return_value = False
+
+        controller = self._make_controller(
+            prompt_extend=True,
+            video_service=video_service,
+            use_prev_shot_last_frame=True,
+            prev_shot_frame_service=prev_service,
+        )
+        controller._wait_for_task = MagicMock(return_value=True)
+        controller.run()
+
+        video_service.submit_shot_video.assert_called_once()
+        self.assertEqual(
+            video_service.submit_shot_video.call_args.kwargs.get("prev_shot_last_frame"),
+            "",
+        )
+        controller._wait_for_task.assert_called_once_with("task-1")
 
 
 if __name__ == "__main__":
