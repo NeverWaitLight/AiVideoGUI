@@ -5,22 +5,22 @@ import os
 import re
 import shutil
 
-from PySide6.QtCore import QObject, Property, Signal, Slot, QThread
+from PySide6.QtCore import QObject, Property, Signal, Slot
 
 from bridge.models.project_model import ProjectListModel
-from bridge.workers import CoverGenerationWorker
-from models.enums import MediaType
+from models.enums import GenerateTaskCallerType, MediaType
 from storage.repositories.media_repository import MediaRepository
 from utils import paths
+from utils.path_converter import to_relative_path
 
 
 class ProjectBridge(QObject):
     project_created = Signal(int)
     project_updated = Signal(int)
     project_deleted = Signal(int)
-    cover_generation_started = Signal()
-    cover_generation_finished = Signal(str)
-    cover_generation_failed = Signal(str)
+    cover_generation_started = Signal(int)
+    cover_generation_finished = Signal(int, str)
+    cover_generation_failed = Signal(int, str)
 
     def __init__(self, project_service, session_manager, visual_style_service, chat_model_service, image_service,
                  container=None, parent=None):
@@ -34,8 +34,11 @@ class ProjectBridge(QObject):
         self._grid_model = ProjectListModel(visual_style_service, self)
         self._list_model = ProjectListModel(visual_style_service, self)
         self._workspace_root = None
-        self._cover_worker = None
-        self._cover_thread = None
+        self._generating_cover_project_ids: set[int] = set()
+
+        emitter = self._image_service.signal_emitter
+        emitter.task_finished.connect(self._on_image_task_finished)
+        emitter.task_failed.connect(self._on_image_task_failed)
 
     @Property(QObject, constant=True)
     def gridModel(self):
@@ -136,6 +139,25 @@ class ProjectBridge(QObject):
         except Exception as e:
             return "[]"
 
+    def _on_image_task_finished(
+        self, _provider_task_id: str, caller_type: str, caller_id: str, relative_path: str,
+    ) -> None:
+        if caller_type != GenerateTaskCallerType.COVER.value:
+            return
+        project_id = int(caller_id)
+        self._generating_cover_project_ids.discard(project_id)
+        self.cover_generation_finished.emit(project_id, relative_path)
+        self.load_projects()
+
+    def _on_image_task_failed(
+        self, _provider_task_id: str, caller_type: str, caller_id: str, error: str,
+    ) -> None:
+        if caller_type != GenerateTaskCallerType.COVER.value:
+            return
+        project_id = int(caller_id)
+        self._generating_cover_project_ids.discard(project_id)
+        self.cover_generation_failed.emit(project_id, error)
+
     @Slot(int, str, str, str, str, str, str)
     def generate_cover_with_characters(
         self, project_id: int, character_names: str, appearances: str,
@@ -153,12 +175,12 @@ class ProjectBridge(QObject):
             outline_content: 大纲内容
             design_image_paths: 设计图路径，多个用 "|" 分隔
         """
-        if self._cover_worker and self._cover_thread and self._cover_thread.isRunning():
+        if project_id in self._generating_cover_project_ids:
             return
 
         project = self._project_service.get_project(project_id=project_id)
         if not project:
-            self.cover_generation_failed.emit("项目不存在")
+            self.cover_generation_failed.emit(project_id, "项目不存在")
             return
 
         visual_style = ""
@@ -167,50 +189,28 @@ class ProjectBridge(QObject):
             if style:
                 visual_style = style.name
 
-        self._cover_thread = QThread()
-        self._cover_worker = CoverGenerationWorker(
-            project_id=project_id,
-            project_name=project_name,
-            aspect_ratio=aspect_ratio,
-            outline_content=outline_content,
-            character_names=character_names,
-            appearances=appearances,
-            design_image_paths=design_image_paths,
-            visual_style=visual_style,
-            image_service=self._image_service,
-            project_service=self._project_service,
-            workspace_root=self._workspace_root,
-            config_manager=self._container.config_manager() if self._container else None,
-            session_manager=self._container.session_manager() if self._container else None,
-        )
-        self._cover_worker.moveToThread(self._cover_thread)
+        names_list = [n.strip() for n in character_names.split(",")]
+        descriptions_list = [d.strip() for d in appearances.split("\n\n")]
+        character_info_parts = []
+        for i, (name, desc) in enumerate(zip(names_list, descriptions_list), start=1):
+            character_info_parts.append(f"角色{i}：{name}\n形象描述：{desc}")
+        character_info = "\n\n".join(character_info_parts)
 
-        self._cover_thread.started.connect(self._cover_worker.run)
-        self._cover_worker.finished.connect(self._on_cover_finished)
-        self._cover_worker.failed.connect(self._on_cover_failed)
-        self._cover_worker.finished.connect(self._cover_thread.quit)
-        self._cover_worker.failed.connect(self._cover_thread.quit)
-        self._cover_thread.finished.connect(self._cleanup_cover_worker)
-
-        self.cover_generation_started.emit()
-        self._cover_thread.start()
-
-    def _on_cover_finished(self, relative_path: str):
-        """封面生成成功"""
-        self.cover_generation_finished.emit(relative_path)
-
-    def _on_cover_failed(self, error_msg: str):
-        """封面生成失败"""
-        self.cover_generation_failed.emit(error_msg)
-
-    def _cleanup_cover_worker(self):
-        """清理 Worker 和线程"""
-        if self._cover_worker:
-            self._cover_worker.deleteLater()
-            self._cover_worker = None
-        if self._cover_thread:
-            self._cover_thread.deleteLater()
-            self._cover_thread = None
+        try:
+            self._generating_cover_project_ids.add(project_id)
+            self.cover_generation_started.emit(project_id)
+            self._image_service.start_cover_image(
+                project_id=project_id,
+                project_name=project_name,
+                aspect_ratio=aspect_ratio,
+                outline_content=outline_content,
+                character_info=character_info,
+                visual_style=visual_style,
+            )
+        except Exception as e:
+            self._generating_cover_project_ids.discard(project_id)
+            error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+            self.cover_generation_failed.emit(project_id, error_msg)
 
     @Slot(str, result=str)
     def resolve_cover_path(self, absolute_path: str) -> str:

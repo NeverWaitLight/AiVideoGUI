@@ -134,6 +134,11 @@ class ApplicationContainer(containers.DeclarativeContainer):
         config_manager=config_manager,
         session_manager=session_manager,
         chat_service=chat_model_service,
+        prompt_builder=text_prompt_builder,
+        storyboard_service=storyboard_service,
+        character_service=character_service,
+        project_service=project_service,
+        workspace_root=config.workspace_root,
     )
 
     visual_style_service = providers.Singleton(

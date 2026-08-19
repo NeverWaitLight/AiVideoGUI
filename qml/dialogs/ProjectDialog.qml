@@ -23,16 +23,16 @@ Dialog {
     Connections {
         target: bridge.projects
 
-        function onCover_generation_started() {
+        function onCover_generation_started(projectId) {
             isGeneratingCover = true
         }
 
-        function onCover_generation_finished(relativePath) {
+        function onCover_generation_finished(projectId, relativePath) {
             isGeneratingCover = false
             coverImagePath = relativePath
         }
 
-        function onCover_generation_failed(errorMsg) {
+        function onCover_generation_failed(projectId, errorMsg) {
             isGeneratingCover = false
             console.error("封面生成失败:", errorMsg)
         }

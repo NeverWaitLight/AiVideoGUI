@@ -6,9 +6,10 @@ from PySide6.QtCore import QObject, Property, Signal, Slot
 
 from bridge.models.storyboard_model import StoryboardListModel
 from bridge.workers import (
-    DesignImageWorker, BatchDesignImageWorker, BatchGenerationController,
+    BatchGenerationController,
     StoryboardGenerateWorker, StoryboardOptimizeWorker,
 )
+from models.enums import GenerateTaskCallerType
 from utils.path_converter import to_absolute_path
 
 
@@ -80,6 +81,40 @@ class StoryboardBridge(QObject):
         self._cur_design_image: str = ""
         self._cur_seed: str = ""
         self._generating_design_shot_ids: set[int] = set()
+
+        emitter = self._image_service.signal_emitter
+        emitter.task_finished.connect(self._on_image_task_finished)
+        emitter.task_failed.connect(self._on_image_task_failed)
+        emitter.task_progress.connect(self._on_image_task_progress)
+
+    def _on_image_task_finished(
+        self, _provider_task_id: str, caller_type: str, caller_id: str, relative_path: str,
+    ) -> None:
+        if caller_type != GenerateTaskCallerType.STORYBOARD.value:
+            return
+        self._on_design_done(int(caller_id), relative_path)
+
+    def _on_image_task_failed(
+        self, _provider_task_id: str, caller_type: str, caller_id: str, error: str,
+    ) -> None:
+        if caller_type != GenerateTaskCallerType.STORYBOARD.value:
+            return
+        self._on_design_failed(int(caller_id), error)
+
+    def _on_image_task_progress(self, _provider_task_id: str, message: str) -> None:
+        self.design_image_progress.emit(message)
+
+    def _build_character_info(self, project_id: int, content: str) -> str:
+        characters = self._character_service.list_characters(project_id=project_id)
+        matched = [c for c in characters if c.name in content or c.ref_code in content]
+        if not matched:
+            return ""
+        parts = []
+        for c in matched:
+            traits = self._character_service.extract_fixed_traits(c.description)
+            if traits:
+                parts.append(f"{c.name}（{c.ref_code}）：{traits}")
+        return "\n".join(parts)
 
     def _mark_design_generating(self, shot_id: int) -> None:
         self._generating_design_shot_ids.add(shot_id)
@@ -373,16 +408,7 @@ class StoryboardBridge(QObject):
                 self.bridge_error.emit("该分镜没有画面内容描述，无法生成设计图")
                 return
 
-            characters = self._character_service.list_characters(project_id=project_id)
-            matched = [c for c in characters if c.name in storyboard.content or c.ref_code in storyboard.content]
-            char_info = ""
-            if matched:
-                parts = []
-                for c in matched:
-                    traits = self._character_service.extract_fixed_traits(c.description)
-                    if traits:
-                        parts.append(f"{c.name}（{c.ref_code}）：{traits}")
-                char_info = "\n".join(parts)
+            char_info = self._build_character_info(project_id, storyboard.content)
 
             shot_size_map = {
                 "extreme_close_up": "特写", "close_up": "近景", "medium_shot": "中景",
@@ -398,21 +424,24 @@ class StoryboardBridge(QObject):
                     if style:
                         visual_style = style.name
 
-            worker = DesignImageWorker(
-                image_service=self._image_service,
-                storyboard_service=self._storyboard_service, storyboard=storyboard, shot_size_text=shot_size_text,
-                character_info=char_info, project_id=project_id, visual_style=visual_style,
-                project_name=self._get_project_name(project_id),
-                config_manager=self._container.config_manager(),
-                session_manager=self._container.session_manager(),
-                workspace_root=self._container.config.workspace_root(),
-            )
-            worker.finished.connect(lambda path: self._on_design_done(storyboard_id, path))
-            worker.failed.connect(lambda err: self._on_design_failed(storyboard_id, err))
-            worker.progress_update.connect(self.design_image_progress.emit)
             self._mark_design_generating(storyboard_id)
-            worker.start()
-            self._workers.append(worker)
+            try:
+                self._image_service.start_storyboard_design_image(
+                    content=storyboard.content,
+                    storyboard_id=storyboard_id,
+                    project_id=project_id,
+                    scene_number=storyboard.scene_number,
+                    shot_number=storyboard.shot_number,
+                    shot_size=shot_size_text,
+                    camera_movement=storyboard.camera_movement,
+                    notes=storyboard.notes,
+                    character_info=char_info,
+                    visual_style=visual_style,
+                    project_name=self._get_project_name(project_id),
+                )
+            except Exception:
+                self._unmark_design_generating(storyboard_id)
+                raise
 
         except Exception as e:
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
@@ -438,22 +467,6 @@ class StoryboardBridge(QObject):
                     self.bridge_error.emit("未找到选中的分镜")
                     return
 
-            shot_list = []
-            for shot in shots:
-                shot_list.append({
-                    "storyboard_id": shot.id,
-                    "project_id": project_id,
-                    "scene_number": shot.scene_number,
-                    "shot_number": shot.shot_number,
-                    "content": shot.content,
-                    "shot_size": shot.shot_size,
-                    "camera_movement": shot.camera_movement,
-                    "sound_effect": shot.sound_effect,
-                    "ambient_sound": shot.ambient_sound,
-                    "background_music": shot.background_music,
-                    "notes": shot.notes,
-                })
-
             visual_style = ""
             if self._visual_style_service:
                 project = self._project_service.get_project(project_id=project_id)
@@ -462,16 +475,32 @@ class StoryboardBridge(QObject):
                     if style:
                         visual_style = style.name
 
-            worker = BatchDesignImageWorker(
-                image_service=self._image_service,
-                storyboard_service=self._storyboard_service,
-                character_service=self._character_service,
+            shot_list = []
+            project_name = self._get_project_name(project_id)
+            for shot in shots:
+                if not shot.content or not shot.content.strip():
+                    continue
+                shot_list.append({
+                    "storyboard_id": shot.id,
+                    "project_id": project_id,
+                    "scene_number": shot.scene_number,
+                    "shot_number": shot.shot_number,
+                    "content": shot.content,
+                    "shot_size": shot.shot_size,
+                    "camera_movement": shot.camera_movement,
+                    "notes": shot.notes,
+                    "character_info": self._build_character_info(project_id, shot.content),
+                    "visual_style": visual_style,
+                    "project_name": project_name,
+                })
+
+            if not shot_list:
+                self.bridge_error.emit("没有有效分镜可以生成设计图")
+                return
+
+            worker = self._image_service.start_batch_storyboard_design_images(
                 shot_list=shot_list,
-                visual_style=visual_style,
-                project_name=self._get_project_name(project_id),
-                config_manager=self._container.config_manager(),
-                session_manager=self._container.session_manager(),
-                workspace_root=self._container.config.workspace_root(),
+                parent=self,
             )
 
             def on_progress(current: int, message: str, count_info: str) -> None:
@@ -505,7 +534,6 @@ class StoryboardBridge(QObject):
             worker.failed.connect(self.design_image_failed.emit)
             worker.finished.connect(worker.deleteLater)
             self._workers.append(worker)
-            worker.start()
 
         except Exception as e:
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"

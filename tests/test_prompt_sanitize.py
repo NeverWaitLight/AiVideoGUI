@@ -132,6 +132,11 @@ class TestImageServicePromptSanitize(unittest.TestCase):
             config_manager=self.config_manager,
             session_manager=self.session_manager,
             chat_service=Mock(),
+            prompt_builder=Mock(),
+            storyboard_service=Mock(),
+            character_service=Mock(),
+            project_service=Mock(),
+            workspace_root="/tmp/workspace",
         )
 
     @patch("service.image_service.uuid.uuid4", return_value="task-id-123")

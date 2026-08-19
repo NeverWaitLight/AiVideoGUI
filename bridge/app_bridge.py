@@ -44,9 +44,9 @@ class AppBridge(QObject):
     batch_design_done = Signal(int, int)
     navigate_requested = Signal(int, str, str)  # projectId, module, entityId
     close_choice_requested = Signal()
-    cover_generation_started = Signal()
-    cover_generation_finished = Signal(str)
-    cover_generation_failed = Signal(str)
+    cover_generation_started = Signal(int)
+    cover_generation_finished = Signal(int, str)
+    cover_generation_failed = Signal(int, str)
 
     def __init__(self, container, parent: QObject | None = None):
         super().__init__(parent)
@@ -127,8 +127,12 @@ class AppBridge(QObject):
         signal_emitter.task_finished.connect(self._on_notify_video_finished)
         signal_emitter.task_failed.connect(self._on_notify_video_failed)
         image_emitter = get_image_signal_emitter()
-        image_emitter.task_finished.connect(self._on_notify_image_finished)
-        image_emitter.task_failed.connect(self._on_notify_image_failed)
+        image_emitter.task_finished.connect(
+            lambda pid, _ct, _cid, _path: self._on_notify_image_finished(pid)
+        )
+        image_emitter.task_failed.connect(
+            lambda pid, _ct, _cid, err: self._on_notify_image_failed(pid, err)
+        )
 
     @Property(QObject, constant=True)
     def projects(self):

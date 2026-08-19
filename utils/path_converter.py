@@ -41,3 +41,10 @@ def normalize_path_for_storage(path: str, workspace_root: str) -> str:
 
 def normalize_path_for_use(path: str, workspace_root: str) -> str:
     return to_absolute_path(path, workspace_root)
+
+
+def to_qml_local_path(path: str) -> str:
+    """将本地绝对路径转为 QML file URL 可用的正斜杠形式"""
+    if not path:
+        return ""
+    return path.replace("\\", "/")

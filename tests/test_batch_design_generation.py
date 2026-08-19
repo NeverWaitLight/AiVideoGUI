@@ -44,10 +44,10 @@ class TestBatchDesignGeneration(unittest.TestCase):
         self.assertTrue(hasattr(CharacterBridge, 'design_image_finished'))
 
     def test_batch_worker_signals_exist(self):
-        from bridge.workers import BatchDesignImageWorker
+        from service.background.image_generation_worker import BatchImageGenerationWorker
 
-        self.assertTrue(hasattr(BatchDesignImageWorker, 'shot_design_started'))
-        self.assertTrue(hasattr(BatchDesignImageWorker, 'shot_design_failed'))
+        self.assertTrue(hasattr(BatchImageGenerationWorker, 'shot_design_started'))
+        self.assertTrue(hasattr(BatchImageGenerationWorker, 'shot_design_failed'))
 
     def test_storyboard_design_generating_mark_unmark(self):
         bridge = _make_storyboard_bridge()

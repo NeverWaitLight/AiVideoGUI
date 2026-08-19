@@ -15,7 +15,7 @@ from storage.repositories.project_repository import ProjectRepository
 from storage.repositories.storyboard_take_repository import StoryboardTakeRepository
 from storage.session_manager import SessionManager
 from utils import paths
-from utils.path_converter import to_relative_path
+from utils.path_converter import to_relative_path, to_qml_local_path
 from utils.video_metadata import VideoMetadataExtractor
 
 _VIDEO_EXTENSIONS = {".mp4", ".avi", ".mov", ".mkv", ".wmv", ".flv", ".webm"}
@@ -81,6 +81,15 @@ class MediaService:
                 height = metadata.get("height", 0)
                 if metadata.get("file_size", 0) > 0:
                     file_size = metadata["file_size"]
+                if not thumbnail_path:
+                    video_name = Path(local_path).stem
+                    thumbnail_path = os.path.join(thumb_dir, f"{video_name}_thumb.jpg")
+                    VideoMetadataExtractor.generate_thumbnail(
+                        local_path,
+                        thumbnail_path,
+                        time_offset=None,
+                        duration=duration,
+                    )
                 logger.info(
                     "视频元数据提取成功：%s (%.1fs, %dx%d)",
                     filename,
@@ -168,6 +177,15 @@ class MediaService:
                     height = metadata.get("height", 0)
                     if metadata.get("file_size", 0) > 0:
                         file_size = metadata["file_size"]
+                    if not thumbnail_path:
+                        video_name = Path(dest_path).stem
+                        thumbnail_path = os.path.join(thumb_dir, f"{video_name}_thumb.jpg")
+                        VideoMetadataExtractor.generate_thumbnail(
+                            dest_path,
+                            thumbnail_path,
+                            time_offset=None,
+                            duration=duration,
+                        )
                     logger.info(
                         "导入视频元数据提取成功：%s (%.1fs, %dx%d)",
                         filename,
@@ -232,12 +250,61 @@ class MediaService:
         if media_type:
             media_type_enum = MediaType(media_type)
 
-        return media_repo.list_with_filters(
+        files = media_repo.list_with_filters(
             media_type=media_type_enum,
             keyword=keyword,
             conversation_ids=None,
             project_id=project_id,
         )
+        return [self._ensure_media_thumbnail(f) for f in files]
+
+    def _ensure_media_thumbnail(self, media: MediaFile) -> MediaFile:
+        """确保缩略图路径有效：图片用原图，视频缺失时补生成"""
+        if media.media_type == MediaType.IMAGE:
+            if media.local_path and os.path.exists(media.local_path):
+                media.thumbnail_path = media.local_path
+            else:
+                media.thumbnail_path = ""
+            return media
+
+        if media.media_type != MediaType.VIDEO:
+            return media
+
+        if media.thumbnail_path and os.path.exists(media.thumbnail_path):
+            return media
+
+        if not media.local_path or not os.path.exists(media.local_path):
+            media.thumbnail_path = ""
+            return media
+
+        thumb_dir = paths.thumbnail_dir(os.path.dirname(media.local_path))
+        os.makedirs(thumb_dir, exist_ok=True)
+        video_name = Path(media.local_path).stem
+        thumbnail_abs = os.path.join(thumb_dir, f"{video_name}_thumb.jpg")
+
+        try:
+            VideoMetadataExtractor.generate_thumbnail(
+                media.local_path,
+                thumbnail_abs,
+                time_offset=None,
+                duration=media.duration,
+            )
+            relative_thumbnail = to_relative_path(thumbnail_abs, self._root)
+            media_repo = self._sm.get_repo(repo_class=MediaRepository)
+            self._sm.begin_write()
+            try:
+                media_repo.update_metadata(media.id, thumbnail_path=relative_thumbnail)
+                self._sm.commit_write()
+            except Exception:
+                self._sm.rollback_write()
+                raise
+            media.thumbnail_path = to_qml_local_path(thumbnail_abs)
+            logger.info(f"已补生成视频缩略图：{media.filename}")
+        except Exception as e:
+            logger.warning(f"补生成缩略图失败 {media.filename}: {e}")
+            media.thumbnail_path = ""
+
+        return media
 
     def delete_file(self, media_id: str) -> bool:
         media_repo = self._sm.get_repo(repo_class=MediaRepository)
@@ -276,15 +343,18 @@ class MediaService:
 
     def list_by_storyboard(self, storyboard_id: int) -> list[MediaFile]:
         media_repo = self._sm.get_repo(repo_class=MediaRepository)
-        return media_repo.list_by_storyboard(storyboard_id)
+        files = media_repo.list_by_storyboard(storyboard_id)
+        return [self._ensure_media_thumbnail(f) for f in files]
 
     def get_file_by_id(self, file_id: str) -> MediaFile | None:
         media_repo = self._sm.get_repo(repo_class=MediaRepository)
-        return media_repo.get_by_id(file_id)
+        media = media_repo.get_by_id(file_id)
+        return self._ensure_media_thumbnail(media) if media else None
 
     def get_file_by_message_id(self, message_id: str) -> MediaFile | None:
         media_repo = self._sm.get_repo(repo_class=MediaRepository)
-        return media_repo.get_by_message_id(message_id)
+        media = media_repo.get_by_message_id(message_id)
+        return self._ensure_media_thumbnail(media) if media else None
 
     def ensure_last_frame(self, media_id: str) -> str:
         media = self.get_file_by_id(media_id)

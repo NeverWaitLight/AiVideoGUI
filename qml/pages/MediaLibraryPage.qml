@@ -275,10 +275,24 @@ Item {
                 radius: Theme.radiusSmall; clip: true
 
                 Image {
+                    id: thumbImage
                     anchors.fill: parent
-                    source: thumbnailPath ? "file:///" + thumbnailPath : ""
+                    source: thumbnailPath ? ("file:///" + thumbnailPath.replace(/\\/g, "/")) : ""
                     fillMode: Image.PreserveAspectCrop
-                    visible: source !== ""
+                    visible: status === Image.Ready
+                }
+
+                Rectangle {
+                    anchors.fill: parent
+                    visible: !thumbImage.visible && fileType === "video"
+                    color: Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.06)
+                    Image {
+                        anchors.centerIn: parent
+                        source: "qrc:/resources/icons/movie.svg"
+                        sourceSize.width: 48
+                        sourceSize.height: 48
+                        opacity: 0.35
+                    }
                 }
 
                 Rectangle {

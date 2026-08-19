@@ -25,7 +25,7 @@ Item {
             }
         }
 
-        function onCover_generation_finished(projectId) {
+        function onCover_generation_finished(projectId, relativePath) {
             var ids = projectGridPage.generatingCoverIds.slice()
             var index = ids.indexOf(projectId)
             if (index !== -1) {

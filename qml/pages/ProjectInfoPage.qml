@@ -39,20 +39,20 @@ Item {
     Connections {
         target: bridge.projects
 
-        function onCover_generation_started() {
+        function onCover_generation_started(projectId) {
             isGeneratingCover = true
         }
 
-        function onCover_generation_finished(relativePath) {
+        function onCover_generation_finished(projectId, relativePath) {
             isGeneratingCover = false
             _coverRelativePath = relativePath
-            if (projectId > 0) {
-                var info = JSON.parse(bridge.projects.get_project_info(projectId))
+            if (page.projectId > 0) {
+                var info = JSON.parse(bridge.projects.get_project_info(page.projectId))
                 _coverDisplayPath = info.coverImagePath || ""
             }
         }
 
-        function onCover_generation_failed(errorMsg) {
+        function onCover_generation_failed(projectId, errorMsg) {
             isGeneratingCover = false
             alertDialog.error("错误", "封面生成失败: " + errorMsg)
         }

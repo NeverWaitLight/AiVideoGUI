@@ -6,7 +6,8 @@ from datetime import datetime
 from PySide6.QtCore import QObject, Property, Signal, Slot
 
 from bridge.models.character_model import CharacterListModel
-from bridge.workers import CharacterDesignImageWorker, CharacterRefineWorker, CharacterWorker
+from bridge.workers import CharacterRefineWorker, CharacterWorker
+from models.enums import GenerateTaskCallerType
 
 
 class CharacterBridge(QObject):
@@ -46,6 +47,28 @@ class CharacterBridge(QObject):
         self._character_worker = None
         self._project_id: int = -1
         self._generating_design_char_uuids: set[str] = set()
+
+        emitter = self._image_service.signal_emitter
+        emitter.task_finished.connect(self._on_image_task_finished)
+        emitter.task_failed.connect(self._on_image_task_failed)
+        emitter.task_progress.connect(self._on_image_task_progress)
+
+    def _on_image_task_progress(self, _provider_task_id: str, message: str) -> None:
+        self.design_image_progress.emit(message)
+
+    def _on_image_task_finished(
+        self, _provider_task_id: str, caller_type: str, caller_id: str, relative_path: str,
+    ) -> None:
+        if caller_type != GenerateTaskCallerType.CHARACTER.value:
+            return
+        self._on_design_done(caller_id, relative_path)
+
+    def _on_image_task_failed(
+        self, _provider_task_id: str, caller_type: str, caller_id: str, error: str,
+    ) -> None:
+        if caller_type != GenerateTaskCallerType.CHARACTER.value:
+            return
+        self._on_design_failed(caller_id, error)
 
     def _mark_design_generating(self, char_uuid: str) -> None:
         self._generating_design_char_uuids.add(char_uuid)
@@ -167,27 +190,20 @@ class CharacterBridge(QObject):
                     if style:
                         visual_style = style.name
 
-            workspace_root = None
-            if hasattr(self, '_container') and self._container:
-                workspace_root = self._container.config.workspace_root()
-
-            worker = CharacterDesignImageWorker(
-                image_service=self._image_service,
-                character_service=self._character_service, character=character, project_id=project_id,
-                user_requirement=user_requirement, visual_style=visual_style,
-                project_name=self._get_project_name(project_id),
-                config_manager=self._container.config_manager() if hasattr(self, '_container') else None,
-                session_manager=self._container.session_manager() if hasattr(self, '_container') else None,
-                workspace_root=workspace_root,
-            )
-            worker.finished.connect(lambda path: self._on_design_done(char_uuid, path))
-            worker.failed.connect(lambda err: self._on_design_failed(char_uuid, err))
-            worker.progress_update.connect(self.design_image_progress.emit)
-            worker.finished.connect(worker.deleteLater)
-            worker.failed.connect(worker.deleteLater)
             self._mark_design_generating(char_uuid)
-            worker.start()
-            self._workers.append(worker)
+            try:
+                self._image_service.start_character_design_image(
+                    character_uuid=char_uuid,
+                    character_name=character.name,
+                    description=character.description,
+                    project_id=project_id,
+                    user_requirement=user_requirement,
+                    visual_style=visual_style,
+                    project_name=self._get_project_name(project_id),
+                )
+            except Exception:
+                self._unmark_design_generating(char_uuid)
+                raise
         except Exception as e:
             error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
             self.design_image_failed.emit(error_msg)
