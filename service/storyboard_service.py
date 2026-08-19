@@ -5,13 +5,15 @@ from models.enums import ShotSize
 from models.storyboard import Storyboard, StoryboardHistory
 from storage.session_manager import SessionManager
 from storage.repositories.storyboard_repository import StoryboardRepository, StoryboardHistoryRepository
+from storage.orm.storyboard_entity import StoryboardEntity
 from utils.path_converter import to_relative_path
 
 class StoryboardService:
 
-    def __init__(self, session_mgr: SessionManager, workspace_root: str) -> None:
+    def __init__(self, session_mgr: SessionManager, workspace_root: str, take_service=None) -> None:
         self._session_mgr = session_mgr
         self._workspace_root = workspace_root
+        self._take_service = take_service
 
     def list_storyboards(self, scene_id: int | None = None, project_id: int | None = None, scene_number: int | None = None) -> list[Storyboard]:
         repo = self._session_mgr.get_repo(repo_class=StoryboardRepository)
@@ -144,7 +146,14 @@ class StoryboardService:
         repo = self._session_mgr.get_repo(repo_class=StoryboardRepository)
         self._session_mgr.begin_write()
         try:
-            repo.delete(storyboard_id)
+            if self._take_service:
+                deleted = self._take_service.delete_by_storyboard(storyboard_id)
+                if deleted:
+                    logger.info(f"删除分镜关联拍摄记录：storyboard_id={storyboard_id}, count={deleted}")
+
+            entity = repo.session.get(StoryboardEntity, storyboard_id)
+            if entity:
+                repo.session.delete(entity)
             self._session_mgr.commit_write()
         except Exception:
             self._session_mgr.rollback_write()
@@ -164,6 +173,11 @@ class StoryboardService:
 
         self._session_mgr.begin_write()
         try:
+            if self._take_service:
+                deleted = self._take_service.delete_by_project(project_id)
+                if deleted:
+                    logger.info(f"恢复分镜历史前清理拍摄记录：project_id={project_id}, count={deleted}")
+
             history_items = history_repo.list_by_project_and_timestamp(project_id=project_id, created_at=created_at)
             if not history_items:
                 self._session_mgr.rollback_write()

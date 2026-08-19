@@ -1,20 +1,16 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-from models.provider_config import ProviderConfig
 from providers.dashscope_video import DashScopeVideoProvider
+from tests.test_providers_catalog import make_video_config
 
 
 class TestDashScopeP2VExtend(unittest.TestCase):
 
     def setUp(self):
-        config = ProviderConfig(
-            provider_name="dashscope",
-            api_key="test-api-key",
-            base_url="https://dashscope.aliyuncs.com/api/v1",
-            default_model="wan2.7-i2v-2026-04-25",
+        self.provider = DashScopeVideoProvider(
+            make_video_config(default_model="wan2.7-i2v-2026-04-25")
         )
-        self.provider = DashScopeVideoProvider(config)
 
     @patch("providers.dashscope_video.requests.post")
     def test_p2v_first_frame_only(self, mock_post):

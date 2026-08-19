@@ -1,11 +1,12 @@
 from loguru import logger
-import os
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional
 
 import requests
+
+from config.url_resolver import get_oss_policy_params, get_oss_policy_url
+from models.oss_config import OssConfig
 
 @dataclass
 class DashScopeUploadPolicy:
@@ -26,18 +27,19 @@ class DashScopeUploadPolicy:
 
 class DashScopeOSSUploader:
 
-    def __init__(self, api_key: str, base_url: str):
-        if not base_url:
-            raise ValueError("DashScope OSS 上传需要配置 base_url")
+    def __init__(self, api_key: str, oss_config: OssConfig):
+        if not oss_config or not oss_config.get_policy_url:
+            raise ValueError("DashScope OSS 上传需要配置 get_policy_url")
         self.api_key = api_key
-        self._policy_api_url = f"{base_url.rstrip('/')}/uploads"
+        self._oss_config = oss_config
+        self._policy_api_url = get_oss_policy_url(oss_config)
 
     def get_upload_policy(self, model_name: str) -> DashScopeUploadPolicy:
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
-        params = {"action": "getPolicy", "model": model_name}
+        params = {**get_oss_policy_params(self._oss_config), "model": model_name}
 
         logger.debug(f"获取上传凭证: model={model_name}")
 
@@ -118,7 +120,7 @@ class DashScopeOSSUploader:
         return oss_url, expire_time
 
 def upload_file(
-    api_key: str, model_name: str, file_path: str, base_url: str
+    api_key: str, model_name: str, file_path: str, oss_config: OssConfig
 ) -> tuple[str, datetime]:
-    uploader = DashScopeOSSUploader(api_key, base_url=base_url)
+    uploader = DashScopeOSSUploader(api_key, oss_config=oss_config)
     return uploader.upload(file_path=file_path, model_name=model_name)

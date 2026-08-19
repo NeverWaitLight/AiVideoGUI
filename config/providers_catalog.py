@@ -6,6 +6,8 @@ from pathlib import Path
 
 from loguru import logger
 
+from models.oss_config import OssConfig
+
 
 _TASK_MODEL_KEYS: dict[str, tuple[str, ...]] = {
     "image": ("t2i", "i2i", "r2i"),
@@ -18,8 +20,18 @@ class ProviderEntry:
     id: str
     name: str
     base_url: str = ""
+    submit_base_url: str = ""
+    task_base_url: str = ""
     models: list[str] = field(default_factory=list)
     task_models: dict[str, list[str]] = field(default_factory=dict)
+
+
+@dataclass
+class OssEntry:
+    id: str
+    name: str
+    get_policy_url: str = ""
+    get_policy_params: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -29,7 +41,7 @@ class ProviderTypeCatalog:
 
 
 class ProvidersCatalog:
-    """从 settings.json 加载 chat/image/video 可选项、默认 URL 与更新配置。"""
+    """从 settings.json 加载 chat/image/video/oss 可选项、默认 URL 与更新配置。"""
 
     _VALID_TYPES = ("chat", "image", "video")
 
@@ -37,6 +49,8 @@ class ProvidersCatalog:
         self._catalog: dict[str, ProviderTypeCatalog] = {
             t: ProviderTypeCatalog() for t in self._VALID_TYPES
         }
+        self._oss_providers: dict[str, OssEntry] = {}
+        self._oss_order: list[str] = []
         self._github_repo: str = ""
         self._github_api_url: str = ""
         path = self._resolve_path(catalog_path, fallback_path)
@@ -88,20 +102,52 @@ class ProvidersCatalog:
             return [str(value)]
         return []
 
+    @staticmethod
+    def _parse_string_dict(value) -> dict[str, str]:
+        if not isinstance(value, dict):
+            return {}
+        return {str(k): str(v) for k, v in value.items()}
+
+    @staticmethod
+    def _parse_provider_urls(provider_type: str, item: dict) -> tuple[str, str, str]:
+        """返回 (base_url, submit_base_url, task_base_url)。"""
+        legacy_base = str(item.get("base_url", "") or "").strip()
+        submit_base_url = str(item.get("submit_base_url", "") or "").strip()
+        task_base_url = str(item.get("task_base_url", "") or "").strip()
+
+        if provider_type == "video":
+            if not submit_base_url:
+                submit_base_url = legacy_base
+            return "", submit_base_url, task_base_url
+
+        return legacy_base, "", ""
+
     def _parse_task_models(self, provider_type: str, item: dict) -> dict[str, list[str]]:
         task_models: dict[str, list[str]] = {}
         for task_key in _TASK_MODEL_KEYS.get(provider_type, ()):
             field_name = f"{task_key}_models"
             if field_name in item:
-                task_models[task_key] = self._parse_model_list(item.get(field_name))
+                models = self._parse_model_list(item.get(field_name))
+                if models:
+                    task_models[task_key] = models
 
-        # 兼容旧版 model_mappings
         legacy = item.get("model_mappings")
         if isinstance(legacy, dict):
             for task_key, models in legacy.items():
-                task_models.setdefault(task_key, self._parse_model_list(models))
+                parsed = self._parse_model_list(models)
+                if parsed:
+                    task_models.setdefault(task_key, parsed)
 
         return task_models
+
+    def _fallback_oss_policy_url(self, provider_id: str) -> str:
+        video_entry = self._catalog["video"].providers.get(provider_id)
+        if not video_entry:
+            return ""
+        legacy_base = video_entry.submit_base_url.rstrip("/")
+        if not legacy_base:
+            return ""
+        return f"{legacy_base}/uploads"
 
     def _load(self, path: Path) -> None:
         try:
@@ -123,10 +169,15 @@ class ProvidersCatalog:
                     )
                     continue
                 name = str(item.get("name", "")).strip() or provider_id
+                base_url, submit_base_url, task_base_url = self._parse_provider_urls(
+                    provider_type, item
+                )
                 entries[provider_id] = ProviderEntry(
                     id=provider_id,
                     name=name,
-                    base_url=item.get("base_url", ""),
+                    base_url=base_url,
+                    submit_base_url=submit_base_url,
+                    task_base_url=task_base_url,
                     models=self._parse_model_list(item.get("models", [])),
                     task_models=self._parse_task_models(provider_type, item),
                 )
@@ -134,6 +185,26 @@ class ProvidersCatalog:
             self._catalog[provider_type] = ProviderTypeCatalog(
                 providers=entries, order=order
             )
+
+        oss_data = data.get("oss", {})
+        oss_providers = oss_data.get("providers", []) if isinstance(oss_data, dict) else []
+        self._oss_providers = {}
+        self._oss_order = []
+        for provider_id, item in self._iter_provider_items(oss_providers):
+            if provider_id in self._oss_providers:
+                logger.warning(f"重复的 oss provider id 已忽略：id={provider_id}")
+                continue
+            name = str(item.get("name", "")).strip() or provider_id
+            get_policy_url = str(item.get("get_policy_url", "") or "").strip()
+            if not get_policy_url:
+                get_policy_url = self._fallback_oss_policy_url(provider_id)
+            self._oss_providers[provider_id] = OssEntry(
+                id=provider_id,
+                name=name,
+                get_policy_url=get_policy_url,
+                get_policy_params=self._parse_string_dict(item.get("get_policy_params")),
+            )
+            self._oss_order.append(provider_id)
 
         update = data.get("update", {})
         if isinstance(update, dict):
@@ -146,6 +217,7 @@ class ProvidersCatalog:
                 f"{t}={self._catalog[t].order}"
                 for t in self._VALID_TYPES
             )
+            + f", oss={self._oss_order}"
         )
 
     def _get_entry(self, provider_type: str, provider_id: str) -> ProviderEntry | None:
@@ -175,7 +247,38 @@ class ProvidersCatalog:
 
     def get_base_url(self, provider_type: str, provider_id: str) -> str:
         entry = self._get_entry(provider_type, provider_id)
-        return entry.base_url if entry else ""
+        if not entry:
+            return ""
+        if provider_type == "video":
+            return entry.submit_base_url
+        return entry.base_url
+
+    def get_submit_base_url(self, provider_type: str, provider_id: str) -> str:
+        if provider_type != "video":
+            return self.get_base_url(provider_type, provider_id)
+        entry = self._get_entry(provider_type, provider_id)
+        return entry.submit_base_url if entry else ""
+
+    def get_task_base_url(self, provider_id: str) -> str:
+        entry = self._get_entry("video", provider_id)
+        return entry.task_base_url if entry else ""
+
+    def get_oss_config(self, provider_id: str) -> OssConfig | None:
+        entry = self._oss_providers.get(provider_id)
+        if not entry:
+            fallback_url = self._fallback_oss_policy_url(provider_id)
+            if not fallback_url:
+                return None
+            return OssConfig(
+                provider_id=provider_id,
+                get_policy_url=fallback_url,
+                get_policy_params={"action": "getPolicy"},
+            )
+        return OssConfig(
+            provider_id=entry.id,
+            get_policy_url=entry.get_policy_url,
+            get_policy_params=dict(entry.get_policy_params),
+        )
 
     def list_models(self, provider_type: str, provider_id: str) -> list[str]:
         """chat 等扁平 models 列表。"""

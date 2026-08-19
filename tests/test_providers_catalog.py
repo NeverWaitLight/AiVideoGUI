@@ -5,8 +5,15 @@ import unittest
 
 from config.manager import ConfigManager
 from config.providers_catalog import ProvidersCatalog
+from models.oss_config import OssConfig
 from models.provider_config import ProviderConfig
 
+
+SAMPLE_OSS = OssConfig(
+    provider_id="dashscope",
+    get_policy_url="https://dashscope.aliyuncs.com/api/v1/uploads",
+    get_policy_params={"action": "getPolicy"},
+)
 
 SAMPLE_CATALOG = {
     "version": 1,
@@ -37,10 +44,8 @@ SAMPLE_CATALOG = {
             {
                 "id": "dashscope",
                 "name": "DashScope",
-                "base_url": "https://dashscope.aliyuncs.com/api/v1",
+                "base_url": "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation",
                 "t2i_models": ["wan2.6-t2i"],
-                "i2i_models": ["wan2.6-t2i"],
-                "r2i_models": ["wan2.6-t2i"],
             }
         ]
     },
@@ -49,11 +54,22 @@ SAMPLE_CATALOG = {
             {
                 "id": "dashscope",
                 "name": "DashScope",
-                "base_url": "https://dashscope.aliyuncs.com/api/v1",
+                "submit_base_url": "https://dashscope.aliyuncs.com/api/v1/services/aigc/video-generation/video-synthesis",
+                "task_base_url": "https://dashscope.aliyuncs.com/api/v1/tasks",
                 "t2v_models": ["wan2.7-t2v-2026-06-12"],
                 "i2v_models": ["wan2.7-i2v-2026-04-25"],
                 "r2v_models": ["wan2.7-r2v-2026-06-12"],
             },
+        ]
+    },
+    "oss": {
+        "providers": [
+            {
+                "id": "dashscope",
+                "name": "DashScope OSS",
+                "get_policy_url": "https://dashscope.aliyuncs.com/api/v1/uploads",
+                "get_policy_params": {"action": "getPolicy"},
+            }
         ]
     },
     "update": {
@@ -61,6 +77,24 @@ SAMPLE_CATALOG = {
         "github_api_url": "https://api.github.com/repos/NeverWaitLight/AiVideoGUI/releases/latest",
     },
 }
+
+
+def make_video_config(**overrides) -> ProviderConfig:
+    data = {
+        "provider_name": "dashscope",
+        "api_key": "test-key",
+        "submit_base_url": "https://dashscope.aliyuncs.com/api/v1/services/aigc/video-generation/video-synthesis",
+        "task_base_url": "https://dashscope.aliyuncs.com/api/v1/tasks",
+        "default_model": "wan2.7-t2v",
+        "model_mappings": {
+            "t2v": "wan2.7-t2v-2026-06-12",
+            "i2v": "wan2.7-i2v-2026-04-25",
+            "r2v": "wan2.7-r2v-2026-06-12",
+        },
+        "oss": SAMPLE_OSS,
+    }
+    data.update(overrides)
+    return ProviderConfig(**data)
 
 
 class TestProvidersCatalog(unittest.TestCase):
@@ -113,8 +147,30 @@ class TestProvidersCatalog(unittest.TestCase):
         self.assertEqual(catalog.get_base_url("chat", "openai"), "")
         self.assertEqual(
             catalog.get_base_url("video", "dashscope"),
-            "https://dashscope.aliyuncs.com/api/v1",
+            "https://dashscope.aliyuncs.com/api/v1/services/aigc/video-generation/video-synthesis",
         )
+        self.assertEqual(
+            catalog.get_base_url("image", "dashscope"),
+            "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation",
+        )
+
+    def test_get_task_base_url(self) -> None:
+        catalog = ProvidersCatalog(self._catalog_path)
+        self.assertEqual(
+            catalog.get_task_base_url("dashscope"),
+            "https://dashscope.aliyuncs.com/api/v1/tasks",
+        )
+
+    def test_get_oss_config(self) -> None:
+        catalog = ProvidersCatalog(self._catalog_path)
+        oss = catalog.get_oss_config("dashscope")
+        self.assertIsNotNone(oss)
+        assert oss is not None
+        self.assertEqual(
+            oss.get_policy_url,
+            "https://dashscope.aliyuncs.com/api/v1/uploads",
+        )
+        self.assertEqual(oss.get_policy_params, {"action": "getPolicy"})
 
     def test_list_models(self) -> None:
         catalog = ProvidersCatalog(self._catalog_path)
@@ -146,14 +202,6 @@ class TestProvidersCatalog(unittest.TestCase):
             catalog.list_models_for_task("image", "dashscope", "t2i"),
             ["wan2.6-t2i"],
         )
-        self.assertEqual(
-            catalog.list_models_for_task("image", "dashscope", "i2i"),
-            ["wan2.6-t2i"],
-        )
-        self.assertEqual(
-            catalog.list_models_for_task("image", "dashscope", "r2i"),
-            ["wan2.6-t2i"],
-        )
 
     def test_get_update_config(self) -> None:
         catalog = ProvidersCatalog(self._catalog_path)
@@ -173,13 +221,12 @@ class TestConfigManagerCatalogIntegration(unittest.TestCase):
             json.dump(SAMPLE_CATALOG, f)
         self._catalog = ProvidersCatalog(self._catalog_path)
 
-    def test_resolve_fills_base_url_from_catalog(self) -> None:
+    def test_resolve_fills_video_urls_from_catalog(self) -> None:
         manager = ConfigManager(self._config_path, providers_catalog=self._catalog)
         manager.upsert_provider(
             ProviderConfig(
                 provider_name="dashscope_video",
                 api_key="sk-test",
-                base_url="",
                 default_model="wan2.7-t2v-2026-06-12",
                 model_mappings={"t2v": "wan2.7-t2v-2026-06-12"},
             ),
@@ -189,19 +236,46 @@ class TestConfigManagerCatalogIntegration(unittest.TestCase):
         cfg = manager.get_provider_config("dashscope", "video")
         self.assertIsNotNone(cfg)
         assert cfg is not None
-        self.assertEqual(cfg.base_url, "https://dashscope.aliyuncs.com/api/v1")
+        self.assertEqual(
+            cfg.submit_base_url,
+            "https://dashscope.aliyuncs.com/api/v1/services/aigc/video-generation/video-synthesis",
+        )
+        self.assertEqual(cfg.task_base_url, "https://dashscope.aliyuncs.com/api/v1/tasks")
+        self.assertIsNotNone(cfg.oss)
 
-    def test_validate_allows_empty_base_url_when_catalog_has_default(self) -> None:
+    def test_validate_allows_empty_submit_when_catalog_has_default(self) -> None:
         manager = ConfigManager(self._config_path, providers_catalog=self._catalog)
         cfg = ProviderConfig(
             provider_name="dashscope",
             api_key="sk-test",
-            base_url="",
             default_model="wan2.7-t2v-2026-06-12",
             model_mappings={"t2v": "wan2.7-t2v-2026-06-12"},
         )
         errors = manager.validate_provider_config(cfg, "video")
         self.assertNotIn("未设置 Base URL", errors)
+
+    def test_validate_video_accepts_model_mappings_without_default_model(self) -> None:
+        manager = ConfigManager(self._config_path, providers_catalog=self._catalog)
+        cfg = ProviderConfig(
+            provider_name="dashscope",
+            api_key="sk-test",
+            model_mappings={
+                "t2v": "wan2.7-t2v-2026-06-12",
+                "i2v": "wan2.7-i2v-2026-04-25",
+            },
+        )
+        errors = manager.validate_provider_config(cfg, "video")
+        self.assertNotIn("未选择默认模型", errors)
+        self.assertNotIn("未配置模型映射（model_mappings）或默认模型（default_model）", errors)
+
+    def test_validate_image_accepts_catalog_fallback_model(self) -> None:
+        manager = ConfigManager(self._config_path, providers_catalog=self._catalog)
+        cfg = ProviderConfig(
+            provider_name="dashscope",
+            api_key="sk-test",
+        )
+        errors = manager.validate_provider_config(cfg, "image")
+        self.assertNotIn("未选择默认模型", errors)
 
     def test_validate_openai_chat_requires_base_url(self) -> None:
         manager = ConfigManager(self._config_path, providers_catalog=self._catalog)

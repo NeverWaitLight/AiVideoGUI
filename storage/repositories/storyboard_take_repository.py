@@ -118,3 +118,41 @@ class StoryboardTakeRepository(BaseRepository[StoryboardTakeEntity, StoryboardTa
         )
         result = self.session.execute(stmt)
         return result.rowcount or 0
+
+    def delete_by_storyboard(self, storyboard_id: int) -> int:
+        stmt = delete(StoryboardTakeEntity).where(
+            StoryboardTakeEntity.storyboard_id == storyboard_id
+        )
+        result = self.session.execute(stmt)
+        return result.rowcount or 0
+
+    def delete_by_scene(self, scene_id: int) -> int:
+        from storage.orm.storyboard_entity import StoryboardEntity
+
+        stmt = (
+            delete(StoryboardTakeEntity)
+            .where(
+                StoryboardTakeEntity.storyboard_id.in_(
+                    select(StoryboardEntity.id).where(StoryboardEntity.scene_id == scene_id)
+                )
+            )
+        )
+        result = self.session.execute(stmt)
+        return result.rowcount or 0
+
+    def delete_by_project(self, project_id: int) -> int:
+        from storage.orm.storyboard_entity import StoryboardEntity
+        from storage.orm.screenplay_entity import ScreenplayEntity
+
+        stmt = (
+            delete(StoryboardTakeEntity)
+            .where(
+                StoryboardTakeEntity.storyboard_id.in_(
+                    select(StoryboardEntity.id)
+                    .join(ScreenplayEntity, StoryboardEntity.scene_id == ScreenplayEntity.id)
+                    .where(ScreenplayEntity.project_id == project_id)
+                )
+            )
+        )
+        result = self.session.execute(stmt)
+        return result.rowcount or 0

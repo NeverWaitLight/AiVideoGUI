@@ -6,6 +6,7 @@ from typing import Any, Callable
 
 import requests
 
+from config.url_resolver import get_task_base_url, get_video_submit_url
 from models.api_params import DashScopeVideoRequest, MediaItem
 from models.enums import TaskStatus
 from models.exceptions import MissingConfigError
@@ -26,8 +27,14 @@ class DashScopeVideoProvider(VideoProvider):
         missing_fields = []
         if not config.api_key:
             missing_fields.append("api_key")
-        if not config.base_url:
-            missing_fields.append("base_url")
+        submit_url = get_video_submit_url(config)
+        task_url = get_task_base_url(config)
+        if not submit_url:
+            missing_fields.append("submit_base_url")
+        if not task_url:
+            missing_fields.append("task_base_url")
+        if not config.oss:
+            missing_fields.append("oss")
 
         # DashScope 使用 model_mappings 为不同任务类型配置模型
         # 不强制要求 default_model，但至少需要配置一个任务类型的模型
@@ -47,14 +54,11 @@ class DashScopeVideoProvider(VideoProvider):
             )
 
         self._api_key = config.api_key
-        self._base_url = config.base_url
+        self._submit_url = submit_url
+        self._task_url = task_url
         self._model = config.default_model or ""
 
-        # 实例级别 URL 拼接
-        self._submit_url = f"{self._base_url}/api/v1/services/aigc/video-generation/video-synthesis"
-        self._task_url = f"{self._base_url}/api/v1/tasks"
-
-        self._oss_uploader = DashScopeOSSUploader(self._api_key, base_url=self._base_url)
+        self._oss_uploader = DashScopeOSSUploader(self._api_key, oss_config=config.oss)
         self._session_manager = None
 
     def set_session_manager(self, session_manager: SessionManager) -> None:
@@ -131,7 +135,8 @@ class DashScopeVideoProvider(VideoProvider):
 
     def _submit_task(self, payload: dict[str, Any]) -> tuple[str, dict[str, Any]]:
         logger.info(f"提交 DashScope 任务，模型：{self._model}")
-        logger.debug(f"请求体：{payload}")
+        logger.info(f"视频生成请求 URL：{self._submit_url}")
+        logger.info(f"视频生成请求体：{payload}")
 
         headers = self._headers(async_mode=True)
 
@@ -141,6 +146,8 @@ class DashScopeVideoProvider(VideoProvider):
             headers=headers,
             timeout=30,
         )
+        logger.info(f"视频生成响应状态码：{resp.status_code}")
+        logger.info(f"视频生成响应体：{resp.text}")
 
         if not resp.ok:
             try:
@@ -154,7 +161,7 @@ class DashScopeVideoProvider(VideoProvider):
             raise RuntimeError(f"DashScope API 错误 ({resp.status_code}): {error_detail}")
 
         data = resp.json()
-        logger.debug(f"提交响应：{data}")
+        logger.info(f"视频生成提交响应解析：{data}")
 
         output = data.get("output", {})
         task_id = output.get("task_id", "")
@@ -337,7 +344,10 @@ class DashScopeVideoProvider(VideoProvider):
 
     def check_status(self, task_id: str) -> TaskResult:
         url = f"{self._task_url}/{task_id}"
+        logger.info(f"查询 DashScope 任务状态：{url}")
         resp = requests.get(url, headers=self._headers(), timeout=30)
+        logger.info(f"状态查询响应状态码：{resp.status_code}")
+        logger.info(f"状态查询响应体：{resp.text}")
 
         if not resp.ok:
             try:
@@ -349,7 +359,7 @@ class DashScopeVideoProvider(VideoProvider):
             raise RuntimeError(f"DashScope 状态查询错误 ({resp.status_code}): {error_detail}")
 
         data = resp.json()
-        logger.debug(f"状态查询响应：{data}")
+        logger.info(f"状态查询响应解析：{data}")
 
         output = data.get("output", {})
         task_status = output.get("task_status", "")
@@ -387,6 +397,7 @@ class DashScopeVideoProvider(VideoProvider):
         logger.info(f"开始下载视频：{video_url} -> {save_path}")
 
         with requests.get(video_url, stream=True, timeout=60) as resp:
+            logger.info(f"视频下载响应状态码：{resp.status_code}")
             resp.raise_for_status()
             total = int(resp.headers.get("content-length", 0))
             downloaded = 0

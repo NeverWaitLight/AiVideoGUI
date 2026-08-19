@@ -55,6 +55,59 @@ Dialog {
         return -1
     }
 
+    function comboModelValue(combo) {
+        if (!combo || !combo.visible)
+            return ""
+        var value = combo.currentText || combo.editText
+        if (value)
+            return value
+        if (combo.count > 0 && combo.currentIndex >= 0)
+            return combo.model[combo.currentIndex]
+        if (combo.count > 0)
+            return combo.model[0]
+        return ""
+    }
+
+    function collectImageModelMappings(img) {
+        var mappings = {}
+        var defaultModel = ""
+        if (img.imageModelT2ICombo.visible) {
+            mappings["t2i"] = comboModelValue(img.imageModelT2ICombo)
+            defaultModel = mappings["t2i"]
+        }
+        if (img.imageModelI2ICombo.visible) {
+            mappings["i2i"] = comboModelValue(img.imageModelI2ICombo)
+            if (!defaultModel)
+                defaultModel = mappings["i2i"]
+        }
+        if (img.imageModelR2ICombo.visible) {
+            mappings["r2i"] = comboModelValue(img.imageModelR2ICombo)
+            if (!defaultModel)
+                defaultModel = mappings["r2i"]
+        }
+        return { mappings: mappings, defaultModel: defaultModel }
+    }
+
+    function collectVideoModelMappings(vid) {
+        var mappings = {}
+        var defaultModel = ""
+        if (vid.videoModelT2VCombo.visible) {
+            mappings["t2v"] = comboModelValue(vid.videoModelT2VCombo)
+            defaultModel = mappings["t2v"]
+        }
+        if (vid.videoModelI2VCombo.visible) {
+            mappings["i2v"] = comboModelValue(vid.videoModelI2VCombo)
+            if (!defaultModel)
+                defaultModel = mappings["i2v"]
+        }
+        if (vid.videoModelR2VCombo.visible) {
+            mappings["r2v"] = comboModelValue(vid.videoModelR2VCombo)
+            if (!defaultModel)
+                defaultModel = mappings["r2v"]
+        }
+        return { mappings: mappings, defaultModel: defaultModel }
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
@@ -235,7 +288,7 @@ Dialog {
             var chatError = bridge.settings.validate_provider_config(
                 "chat", providerIdFromCombo(chat.chatProviderCombo),
                 chat.chatApiKeyField.text, chat.chatBaseUrlField.text,
-                chat.getChatModelValue())
+                chat.getChatModelValue(), {})
             if (chatError) {
                 alertDialog.warning("文本配置错误", chatError)
                 tabBar.currentIndex = 0
@@ -245,17 +298,11 @@ Dialog {
 
         // Validate image
         if (img) {
-            var imageDefaultModel = ""
-            if (img.imageModelT2ICombo.visible)
-                imageDefaultModel = img.imageModelT2ICombo.currentText || img.imageModelT2ICombo.editText
-            else if (img.imageModelI2ICombo.visible)
-                imageDefaultModel = img.imageModelI2ICombo.currentText || img.imageModelI2ICombo.editText
-            else if (img.imageModelR2ICombo.visible)
-                imageDefaultModel = img.imageModelR2ICombo.currentText || img.imageModelR2ICombo.editText
+            var imageModelState = collectImageModelMappings(img)
             var imageError = bridge.settings.validate_provider_config(
                 "image", providerIdFromCombo(img.imageProviderCombo),
                 img.imageApiKeyField.text, img.imageBaseUrlField.text,
-                imageDefaultModel)
+                imageModelState.defaultModel, imageModelState.mappings)
             if (imageError) {
                 alertDialog.warning("图片配置错误", imageError)
                 tabBar.currentIndex = 1
@@ -265,17 +312,11 @@ Dialog {
 
         // Validate video
         if (vid) {
-            var videoDefaultModel = ""
-            if (vid.videoModelT2VCombo.visible)
-                videoDefaultModel = vid.videoModelT2VCombo.currentText || vid.videoModelT2VCombo.editText
-            else if (vid.videoModelI2VCombo.visible)
-                videoDefaultModel = vid.videoModelI2VCombo.currentText || vid.videoModelI2VCombo.editText
-            else if (vid.videoModelR2VCombo.visible)
-                videoDefaultModel = vid.videoModelR2VCombo.currentText || vid.videoModelR2VCombo.editText
+            var videoModelState = collectVideoModelMappings(vid)
             var videoError = bridge.settings.validate_provider_config(
                 "video", providerIdFromCombo(vid.videoProviderCombo),
                 vid.videoApiKeyField.text, vid.videoBaseUrlField.text,
-                videoDefaultModel)
+                videoModelState.defaultModel, videoModelState.mappings)
             if (videoError) {
                 alertDialog.warning("视频配置错误", videoError)
                 tabBar.currentIndex = 2
@@ -295,48 +336,18 @@ Dialog {
                 chat.getChatModelValue(), {})
         }
         if (img) {
-            var imageMappings = {}
-            var imageDefault = ""
-            if (img.imageModelT2ICombo.visible) {
-                imageMappings["t2i"] = img.imageModelT2ICombo.currentText || img.imageModelT2ICombo.editText
-                imageDefault = imageMappings["t2i"]
-            }
-            if (img.imageModelI2ICombo.visible) {
-                imageMappings["i2i"] = img.imageModelI2ICombo.currentText || img.imageModelI2ICombo.editText
-                if (!imageDefault)
-                    imageDefault = imageMappings["i2i"]
-            }
-            if (img.imageModelR2ICombo.visible) {
-                imageMappings["r2i"] = img.imageModelR2ICombo.currentText || img.imageModelR2ICombo.editText
-                if (!imageDefault)
-                    imageDefault = imageMappings["r2i"]
-            }
+            var imageSaveState = collectImageModelMappings(img)
             bridge.settings.batch_save_provider("image",
                 providerIdFromCombo(img.imageProviderCombo),
                 img.imageApiKeyField.text, img.imageBaseUrlField.text,
-                imageDefault, imageMappings)
+                imageSaveState.defaultModel, imageSaveState.mappings)
         }
         if (vid) {
-            var modelMappings = {}
-            var videoDefault = ""
-            if (vid.videoModelT2VCombo.visible) {
-                modelMappings["t2v"] = vid.videoModelT2VCombo.currentText || vid.videoModelT2VCombo.editText
-                videoDefault = modelMappings["t2v"]
-            }
-            if (vid.videoModelI2VCombo.visible) {
-                modelMappings["i2v"] = vid.videoModelI2VCombo.currentText || vid.videoModelI2VCombo.editText
-                if (!videoDefault)
-                    videoDefault = modelMappings["i2v"]
-            }
-            if (vid.videoModelR2VCombo.visible) {
-                modelMappings["r2v"] = vid.videoModelR2VCombo.currentText || vid.videoModelR2VCombo.editText
-                if (!videoDefault)
-                    videoDefault = modelMappings["r2v"]
-            }
+            var videoSaveState = collectVideoModelMappings(vid)
             bridge.settings.batch_save_provider("video",
                 providerIdFromCombo(vid.videoProviderCombo),
                 vid.videoApiKeyField.text, vid.videoBaseUrlField.text,
-                videoDefault, modelMappings)
+                videoSaveState.defaultModel, videoSaveState.mappings)
         }
 
         // Workspace
@@ -560,6 +571,8 @@ Dialog {
                         else
                             chatModelCombo.editText = settingsDialog.chatModel
                         settingsDialog.chatModel = ""
+                    } else if (chatModelCombo.count > 0) {
+                        chatModelCombo.currentIndex = 0
                     }
                 }
             }

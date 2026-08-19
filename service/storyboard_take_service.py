@@ -131,6 +131,14 @@ class StoryboardTakeService:
             self._session_mgr.rollback_write()
             raise
 
+    def delete_by_storyboard(self, storyboard_id: int) -> int:
+        repo = self._session_mgr.get_repo(repo_class=StoryboardTakeRepository)
+        return repo.delete_by_storyboard(storyboard_id)
+
+    def delete_by_project(self, project_id: int) -> int:
+        repo = self._session_mgr.get_repo(repo_class=StoryboardTakeRepository)
+        return repo.delete_by_project(project_id)
+
     def list_selected_by_project(self, project_id: int) -> list[StoryboardTake]:
         repo = self._session_mgr.get_repo(repo_class=StoryboardTakeRepository)
         return repo.list_selected_by_project(project_id)

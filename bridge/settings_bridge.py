@@ -184,17 +184,22 @@ class SettingsBridge(QObject):
             self._config.update_settings(close_window_action=action)
             self.settings_saved.emit()
 
-    @Slot(str, str, str, str, str, result=str)
+    @Slot(str, str, str, str, str, "QVariantMap", result=str)
     def validate_provider_config(
         self, provider_type: str, provider_name: str,
-        api_key: str, base_url: str, default_model: str
+        api_key: str, base_url: str, default_model: str,
+        model_mappings: dict | None = None,
     ) -> str:
         """验证配置，返回错误消息（空字符串表示无错误）"""
+        mappings = model_mappings or {}
+        submit_base_url = base_url if provider_type == "video" else ""
         cfg = ProviderConfig(
             provider_name=provider_name,
             api_key=api_key,
             base_url=base_url,
+            submit_base_url=submit_base_url,
             default_model=default_model,
+            model_mappings=mappings,
         )
         errors = self._config.validate_provider_config(cfg=cfg, provider_type=provider_type)
         return "\n".join(errors) if errors else ""

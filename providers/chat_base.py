@@ -20,7 +20,3 @@ class ChatProvider(ABC):
         **kwargs,
     ) -> str:
         pass
-
-    @abstractmethod
-    def list_available_models(self) -> list[str]:
-        pass

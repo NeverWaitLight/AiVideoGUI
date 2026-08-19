@@ -73,10 +73,16 @@ class ApplicationContainer(containers.DeclarativeContainer):
         workspace_root=config.workspace_root,
     )
 
+    storyboard_take_service = providers.Singleton(
+        StoryboardTakeService,
+        session_mgr=session_manager,
+    )
+
     project_service = providers.Singleton(
         ProjectService,
         session_manager=session_manager,
         workspace_root=config.workspace_root,
+        take_service=storyboard_take_service,
     )
 
     story_outline_service = providers.Singleton(
@@ -93,11 +99,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
         StoryboardService,
         session_mgr=session_manager,
         workspace_root=config.workspace_root,
-    )
-
-    storyboard_take_service = providers.Singleton(
-        StoryboardTakeService,
-        session_mgr=session_manager,
+        take_service=storyboard_take_service,
     )
 
     prev_shot_frame_service = providers.Singleton(

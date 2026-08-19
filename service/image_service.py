@@ -229,7 +229,7 @@ class ImageService:
 
         logger.info(
             f"图片生成任务已提交：task_id={provider_task_id}, provider={provider_name}, "
-            f"config={config_name}, size={size}, caller_type={caller_type}, "
+            f"size={size}, caller_type={caller_type}, "
             f"caller_id={caller_id}, parent_ids={parent_ids}"
         )
         return provider_task_id

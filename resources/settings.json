@@ -6,13 +6,20 @@
         "id": "dashscope",
         "name": "DashScope",
         "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
-        "models": ["qwen3.7-max", "qwen3.7-plus", "qwen3.7-flash"]
+        "models": [
+          "qwen3.7-max",
+          "qwen3.7-plus",
+          "qwen3.7-flash"
+        ]
       },
       {
         "id": "deepseek",
         "name": "DeepSeek",
         "base_url": "https://api.deepseek.com",
-        "models": ["deepseek-v4-pro", "deepseek-v4-flash"]
+        "models": [
+          "deepseek-v4-pro",
+          "deepseek-v4-flash"
+        ]
       },
       {
         "id": "openai",
@@ -27,10 +34,10 @@
       {
         "id": "dashscope",
         "name": "DashScope",
-        "base_url": "https://dashscope.aliyuncs.com/api/v1",
-        "t2i_models": ["wan2.6-t2i"],
-        "i2i_models": [],
-        "r2i_models": []
+        "base_url": "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation",
+        "t2i_models": [
+          "wan2.6-t2i"
+        ]
       }
     ]
   },
@@ -39,10 +46,29 @@
       {
         "id": "dashscope",
         "name": "DashScope",
-        "base_url": "https://dashscope.aliyuncs.com/api/v1",
-        "t2v_models": ["wan2.7-t2v-2026-06-12"],
-        "i2v_models": ["wan2.7-i2v-2026-04-25"],
-        "r2v_models": ["wan2.7-r2v-2026-06-12"]
+        "submit_base_url": "https://dashscope.aliyuncs.com/api/v1/services/aigc/video-generation/video-synthesis",
+        "task_base_url": "https://dashscope.aliyuncs.com/api/v1/tasks",
+        "t2v_models": [
+          "wan2.7-t2v-2026-06-12"
+        ],
+        "i2v_models": [
+          "wan2.7-i2v-2026-04-25"
+        ],
+        "r2v_models": [
+          "wan2.7-r2v-2026-06-12"
+        ]
+      }
+    ]
+  },
+  "oss": {
+    "providers": [
+      {
+        "id": "dashscope",
+        "name": "DashScope OSS",
+        "get_policy_url": "https://dashscope.aliyuncs.com/api/v1/uploads",
+        "get_policy_params": {
+          "action": "getPolicy"
+        }
       }
     ]
   },

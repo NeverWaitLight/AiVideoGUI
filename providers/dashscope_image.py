@@ -4,6 +4,7 @@ from typing import Any
 
 import requests
 
+from config.url_resolver import get_image_url
 from models.provider_config import ProviderConfig
 from prompts.image_prompt_builder import ImagePromptBuilder
 from providers.image_base import ImageProvider
@@ -14,15 +15,16 @@ class DashScopeImageProvider(ImageProvider):
 
     def __init__(self, config: ProviderConfig) -> None:
         super().__init__(config)
-        if not config.base_url:
+        submit_url = get_image_url(config)
+        if not submit_url:
             raise RuntimeError("DashScope 图片 provider 未配置 base_url")
         self._api_key = config.api_key
-        self._base_url = config.base_url.rstrip("/")
+        self._submit_url = submit_url
         self._model = config.default_model or self.DEFAULT_MODEL
 
     @property
     def submit_url(self) -> str:
-        return f"{self._base_url}/services/aigc/multimodal-generation/generation"
+        return self._submit_url
 
     def build_headers(self) -> dict[str, str]:
         return {

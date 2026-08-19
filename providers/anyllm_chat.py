@@ -1,10 +1,9 @@
 from loguru import logger
 
-import requests
-
 import any_llm
 from any_llm.provider import ProviderFactory
 
+from config.url_resolver import get_chat_base_url
 from models.provider_config import ProviderConfig
 from providers.chat_base import ChatProvider
 
@@ -22,7 +21,7 @@ class AnyLLMChatProvider(ChatProvider):
 
     def __init__(self, config: ProviderConfig) -> None:
         super().__init__(config)
-        self._api_base = self._resolve_api_base()
+        self._api_base = get_chat_base_url(config)
 
     def chat(
         self,
@@ -53,26 +52,6 @@ class AnyLLMChatProvider(ChatProvider):
             logger.exception(f"文本模型调用失败：{e}")
             raise RuntimeError(f"文本模型调用失败：{e}") from e
 
-    def list_available_models(self) -> list[str]:
-        if not self._api_base:
-            return []
-        url = f"{self._api_base.rstrip('/')}/models"
-        try:
-            resp = requests.get(url, headers=self._headers(), timeout=15)
-            resp.raise_for_status()
-            data = resp.json()
-            models = [item["id"] for item in data.get("data", [])]
-            models.sort()
-            return models
-        except Exception as e:
-            logger.warning(f"获取模型列表失败：{e}")
-            return []
-
-    def _resolve_api_base(self) -> str:
-        if self._config.base_url:
-            return self._config.base_url.rstrip("/")
-        return ""
-
     def _resolve_model(self, model: str | None = None) -> str:
         model_name = model or self._config.default_model
         if not model_name:
@@ -91,9 +70,3 @@ class AnyLLMChatProvider(ChatProvider):
             )
             provider_key = "openai"
         return f"{provider_key}/{model_name}"
-
-    def _headers(self) -> dict[str, str]:
-        return {
-            "Authorization": f"Bearer {self._config.api_key}",
-            "Content-Type": "application/json",
-        }

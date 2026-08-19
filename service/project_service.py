@@ -13,9 +13,10 @@ from utils import paths
 
 class ProjectService:
 
-    def __init__(self, session_manager: SessionManager, workspace_root: str):
+    def __init__(self, session_manager: SessionManager, workspace_root: str, take_service=None):
         self._sm = session_manager
         self._root = workspace_root
+        self._take_service = take_service
 
     def create_project(self, name: str, resolution: str = "720P", aspect_ratio: str = "16:9", cover_image: str = "", visual_style_id: int | None = None) -> Project | None:
         project_repo = self._sm.get_repo(repo_class=ProjectRepository)
@@ -80,7 +81,14 @@ class ProjectService:
 
         self._sm.begin_write()
         try:
-            project_repo.delete(project_id)
+            if self._take_service:
+                deleted = self._take_service.delete_by_project(project_id)
+                if deleted:
+                    logger.info(f"删除项目关联拍摄记录：project_id={project_id}, count={deleted}")
+
+            entity = project_repo.session.get(project_repo.entity_class, project_id)
+            if entity:
+                project_repo.session.delete(entity)
             self._sm.commit_write()
         except Exception as e:
             self._sm.rollback_write()
