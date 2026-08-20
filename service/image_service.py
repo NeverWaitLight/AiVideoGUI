@@ -37,13 +37,21 @@ _PROVIDER_REGISTRY: dict[str, type[ImageProvider]] = {
     "dashscope_image": DashScopeImageProvider,
 }
 
+# 与项目视频比例对应的 wan 推荐尺寸（width*height）
 _ASPECT_RATIO_SIZE_MAP: dict[str, str] = {
-    "16:9": "1696*960",
-    "9:16": "960*1696",
     "1:1": "1280*1280",
-    "4:3": "1472*1104",
     "3:4": "1104*1472",
+    "4:3": "1472*1104",
+    "9:16": "960*1696",
+    "16:9": "1696*960",
 }
+
+_DEFAULT_IMAGE_SIZE = "1696*960"
+
+
+def resolve_image_size(aspect_ratio: str) -> str:
+    ratio = (aspect_ratio or "").strip()
+    return _ASPECT_RATIO_SIZE_MAP.get(ratio, _DEFAULT_IMAGE_SIZE)
 
 
 class ImageService:
@@ -145,7 +153,8 @@ class ImageService:
         character_info: str = "",
         visual_style: str = "",
         project_name: str | None = None,
-        size: str = "1696*960",
+        aspect_ratio: str = "",
+        size: str = "",
         wait: bool = False,
     ) -> str:
         caller_type = GenerateTaskCallerType.STORYBOARD
@@ -153,6 +162,13 @@ class ImageService:
         caller_key = self._caller_key(caller_type, caller_id)
         if self._coordinator.is_caller_active(caller_key):
             raise RuntimeError("该分镜已有图片生成任务进行中")
+
+        if not size:
+            if not aspect_ratio:
+                project = self._project_service.get_project(project_id=project_id)
+                raw_ratio = getattr(project, "aspect_ratio", "") if project is not None else ""
+                aspect_ratio = raw_ratio if isinstance(raw_ratio, str) else ""
+            size = resolve_image_size(aspect_ratio)
 
         local_path = to_relative_path(
             os.path.join(
@@ -170,6 +186,7 @@ class ImageService:
             project_id=project_id,
             project_name=project_name,
             size=size,
+            aspect_ratio=aspect_ratio,
             module="storyboard",
             context="分镜设计图生成",
             content=content,
@@ -193,7 +210,8 @@ class ImageService:
         user_requirement: str = "",
         visual_style: str = "",
         project_name: str | None = None,
-        size: str = "1280*1280",
+        aspect_ratio: str = "",
+        size: str = "",
         wait: bool = False,
     ) -> str:
         caller_type = GenerateTaskCallerType.CHARACTER
@@ -201,6 +219,13 @@ class ImageService:
         caller_key = self._caller_key(caller_type, caller_id)
         if self._coordinator.is_caller_active(caller_key):
             raise RuntimeError("该角色已有图片生成任务进行中")
+
+        if not size:
+            if not aspect_ratio:
+                project = self._project_service.get_project(project_id=project_id)
+                raw_ratio = getattr(project, "aspect_ratio", "") if project is not None else ""
+                aspect_ratio = raw_ratio if isinstance(raw_ratio, str) else ""
+            size = resolve_image_size(aspect_ratio)
 
         local_path = to_relative_path(
             os.path.join(
@@ -218,6 +243,7 @@ class ImageService:
             project_id=project_id,
             project_name=project_name,
             size=size,
+            aspect_ratio=aspect_ratio,
             module="character",
             context=f"角色设计图生成 - {character_name}",
             character_name=character_name,
@@ -246,7 +272,7 @@ class ImageService:
         if self._coordinator.is_caller_active(caller_key):
             raise RuntimeError("该项目已有封面生成任务进行中")
 
-        size = _ASPECT_RATIO_SIZE_MAP.get(aspect_ratio, "1696*960")
+        size = resolve_image_size(aspect_ratio)
         local_path = to_relative_path(
             os.path.join(
                 paths.projects_dir(self._workspace_root),
@@ -430,7 +456,7 @@ class ImageService:
         self,
         prompt: str,
         local_path: str,
-        size: str = "1696*960",
+        size: str = "",
         negative_prompt: str = "",
         n: int = 1,
         project_id: int | None = None,
@@ -440,8 +466,11 @@ class ImageService:
         caller_type: GenerateTaskCallerType | None = None,
         caller_id: str = "",
         parent_ids: str = "",
+        aspect_ratio: str = "",
     ) -> str:
         """兼容旧测试：直接落库带 prompt 的 IMAGE 任务"""
+        if not size:
+            size = resolve_image_size(aspect_ratio)
         provider_name = self._resolve_provider_name()
         provider_cfg = self._config.resolve_config_for_type(name=provider_name, provider_type="image")
         if not provider_cfg or not provider_cfg.api_key:

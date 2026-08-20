@@ -163,6 +163,7 @@ class BatchImageGenerationWorker(QThread):
                     character_info=shot_data.get("character_info", ""),
                     visual_style=shot_data.get("visual_style", ""),
                     project_name=shot_data.get("project_name"),
+                    aspect_ratio=shot_data.get("aspect_ratio", ""),
                     wait=True,
                 )
                 task_repo = self._image_service._sm.get_repo(repo_class=GenerateTaskRepository)

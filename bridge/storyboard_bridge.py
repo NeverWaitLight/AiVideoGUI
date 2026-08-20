@@ -582,12 +582,11 @@ class StoryboardBridge(QObject):
             shot_size_text = shot_size_map.get(storyboard.shot_size.value, "中景")
 
             visual_style = ""
-            if self._visual_style_service:
-                project = self._project_service.get_project(project_id=project_id)
-                if project and project.visual_style_id:
-                    style = self._visual_style_service.get_style(project.visual_style_id)
-                    if style:
-                        visual_style = style.name
+            project = self._project_service.get_project(project_id=project_id)
+            if self._visual_style_service and project and project.visual_style_id:
+                style = self._visual_style_service.get_style(project.visual_style_id)
+                if style:
+                    visual_style = style.name
 
             self._mark_design_generating(storyboard_id)
             try:
@@ -603,6 +602,7 @@ class StoryboardBridge(QObject):
                     character_info=char_info,
                     visual_style=visual_style,
                     project_name=self._get_project_name(project_id),
+                    aspect_ratio=project.aspect_ratio if project else "",
                 )
             except Exception:
                 self._unmark_design_generating(storyboard_id)
@@ -633,15 +633,15 @@ class StoryboardBridge(QObject):
                     return
 
             visual_style = ""
-            if self._visual_style_service:
-                project = self._project_service.get_project(project_id=project_id)
-                if project and project.visual_style_id:
-                    style = self._visual_style_service.get_style(project.visual_style_id)
-                    if style:
-                        visual_style = style.name
+            project = self._project_service.get_project(project_id=project_id) if self._project_service else None
+            if self._visual_style_service and project and project.visual_style_id:
+                style = self._visual_style_service.get_style(project.visual_style_id)
+                if style:
+                    visual_style = style.name
 
             shot_list = []
             project_name = self._get_project_name(project_id)
+            aspect_ratio = project.aspect_ratio if project else ""
             for shot in shots:
                 if not shot.content or not shot.content.strip():
                     continue
@@ -657,6 +657,7 @@ class StoryboardBridge(QObject):
                     "character_info": self._build_character_info(project_id, shot.content),
                     "visual_style": visual_style,
                     "project_name": project_name,
+                    "aspect_ratio": aspect_ratio,
                 })
 
             if not shot_list:
