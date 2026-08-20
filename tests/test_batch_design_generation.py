@@ -111,6 +111,70 @@ class TestBatchDesignGeneration(unittest.TestCase):
         self.assertEqual(ready_paths[0][0], "9")
         self.assertTrue(os.path.isabs(ready_paths[0][1]))
 
+    def test_batch_generate_design_images_uses_project_aspect_ratio(self):
+        from models.enums import ShotSize
+        from models.storyboard import Storyboard
+        from bridge.storyboard_bridge import StoryboardBridge
+
+        storyboard_service = MagicMock()
+        storyboard_service.list_storyboards.return_value = [
+            Storyboard(
+                id=1,
+                scene_id=101,
+                scene_number=1,
+                shot_number=1,
+                shot_size=ShotSize.MEDIUM_SHOT,
+                camera_movement="固定",
+                content="主角站在窗前",
+                duration=5.0,
+                created_at=1000000,
+                updated_at=1000000,
+            ),
+        ]
+
+        project = MagicMock()
+        project.aspect_ratio = "9:16"
+        project.visual_style_id = None
+
+        project_service = MagicMock()
+        project_service.get_project.return_value = project
+
+        image_service = MagicMock()
+        image_service.signal_emitter = MagicMock()
+        worker = MagicMock()
+        captured_shot_list: list[dict] = []
+
+        def capture_shot_list(shot_list, parent=None):
+            captured_shot_list.extend(shot_list)
+            return worker
+
+        image_service.start_batch_storyboard_design_images.side_effect = capture_shot_list
+
+        container = MagicMock()
+        container.config.workspace_root.return_value = "/tmp/workspace"
+        container.video_service.return_value.signal_emitter = MagicMock()
+        container.video_polling_task.return_value.signal_emitter = MagicMock()
+
+        bridge = StoryboardBridge(
+            storyboard_service,
+            MagicMock(),
+            MagicMock(),
+            image_service,
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+            project_service,
+            MagicMock(),
+            container,
+        )
+        bridge._get_project_name = MagicMock(return_value="测试项目")
+        bridge._build_character_info = MagicMock(return_value="")
+
+        bridge.batch_generate_design_images(1, "[]")
+
+        self.assertEqual(len(captured_shot_list), 1)
+        self.assertEqual(captured_shot_list[0]["aspect_ratio"], "9:16")
+
     def test_collect_shot_data_for_batch_generation(self):
         storyboards = [
             Storyboard(
@@ -121,7 +185,6 @@ class TestBatchDesignGeneration(unittest.TestCase):
                 shot_size=ShotSize.MEDIUM_SHOT,
                 camera_movement="固定",
                 content="主角站在窗前，阳光洒在脸上",
-                dialogue="",
                 sound_effect="",
                 duration=5.0,
                 notes="",
@@ -137,7 +200,6 @@ class TestBatchDesignGeneration(unittest.TestCase):
                 shot_size=ShotSize.CLOSE_UP,
                 camera_movement="慢推",
                 content="特写主角眼神坚定的表情",
-                dialogue="",
                 sound_effect="",
                 duration=3.0,
                 notes="",
@@ -153,7 +215,6 @@ class TestBatchDesignGeneration(unittest.TestCase):
                 shot_size=ShotSize.FULL_SHOT,
                 camera_movement="跟拍",
                 content="",
-                dialogue="",
                 sound_effect="",
                 duration=4.0,
                 notes="",
@@ -165,6 +226,7 @@ class TestBatchDesignGeneration(unittest.TestCase):
 
         shot_list = []
         project_id = 1
+        aspect_ratio = "9:16"
         for sb in storyboards:
             content = sb.content
             if not content.strip():
@@ -176,15 +238,16 @@ class TestBatchDesignGeneration(unittest.TestCase):
                 "content": content,
                 "shot_size": sb.shot_size,
                 "camera_movement": sb.camera_movement,
-                "dialogue": sb.dialogue,
                 "notes": sb.notes,
                 "project_id": project_id,
+                "aspect_ratio": aspect_ratio,
             })
 
         self.assertEqual(len(shot_list), 2)
         self.assertEqual(shot_list[0]["storyboard_id"], 1)
         self.assertEqual(shot_list[1]["storyboard_id"], 2)
-        print(f"Successfully collected {len(shot_list)} valid shots (filtered empty content)")
+        self.assertEqual(shot_list[0]["aspect_ratio"], "9:16")
+        self.assertEqual(shot_list[1]["aspect_ratio"], "9:16")
 
     def test_batch_generation_data_structure(self):
         shot_data = {
@@ -194,14 +257,14 @@ class TestBatchDesignGeneration(unittest.TestCase):
             "content": "主角站在窗前",
             "shot_size": ShotSize.MEDIUM_SHOT,
             "camera_movement": "固定",
-            "dialogue": "这是一个美好的早晨",
             "notes": "柔和光线",
             "project_id": 1,
+            "aspect_ratio": "16:9",
         }
 
         required_fields = [
             "storyboard_id", "scene_number", "shot_number",
-            "content", "shot_size", "project_id"
+            "content", "shot_size", "project_id", "aspect_ratio",
         ]
         for field in required_fields:
             self.assertIn(field, shot_data)

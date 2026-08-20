@@ -94,6 +94,22 @@ class TestImageServicePipeline(unittest.TestCase):
         self.assertEqual(request_params["scene"], ImageScene.STORYBOARD_DESIGN.value)
         self.assertNotIn("prompt", request_params)
 
+    @patch("service.image_service.uuid.uuid4", return_value="image-task-456")
+    def test_start_storyboard_uses_aspect_ratio_for_size(self, _mock_uuid):
+        self.image_service._coordinator.start = Mock()
+        self.image_service.start_storyboard_design_image(
+            content="主角站在窗前",
+            storyboard_id=42,
+            project_id=1,
+            scene_number=1,
+            shot_number=1,
+            aspect_ratio="9:16",
+        )
+
+        request_params = json.loads(self.task_repo.add.call_args.kwargs["request_params"])
+        self.assertEqual(request_params["aspect_ratio"], "9:16")
+        self.assertEqual(request_params["size"], "960*1696")
+
     @patch("service.image_service._get_image_provider")
     def test_execute_pipeline_chat_parent_ids_and_status_flow(self, mock_get_provider):
         provider = Mock()

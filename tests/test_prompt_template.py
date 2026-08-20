@@ -126,6 +126,7 @@ class TestPromptTemplateManager(unittest.TestCase):
             "storyboard_image_prompt": {
                 "shot_size": "中景",
                 "camera_movement": "固定",
+                "aspect_ratio": "16:9",
                 "content": "画面",
                 "notes": "备注",
                 "character_info": "角色",
@@ -230,6 +231,22 @@ class TestChatPromptBuilderVisualStyle(unittest.TestCase):
                 self.assertNotIn("【画面风格要求】", user)
                 self.assertNotIn("通用电影概念设计风格", user)
                 self.assertNotIn("无特殊风格要求", user)
+
+    def test_design_image_prompt_includes_aspect_ratio(self):
+        messages = self.builder.build_design_image_prompt_messages(
+            content="画面",
+            aspect_ratio="9:16",
+        )
+        user = messages[-1]["content"]
+        system = messages[0]["content"]
+        self.assertIn("【画面比例】9:16", user)
+        self.assertIn("【画面比例】", system)
+        self.assertNotIn("必须包含「分镜风格」「16:9 电影感构图」", system)
+
+    def test_design_image_prompt_defaults_aspect_ratio_to_16_9(self):
+        messages = self.builder.build_design_image_prompt_messages(content="画面")
+        user = messages[-1]["content"]
+        self.assertIn("【画面比例】16:9", user)
 
     def test_cover_image_prompt_includes_style_when_set(self):
         messages = self.builder.build_cover_image_prompt_messages(

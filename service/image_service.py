@@ -418,6 +418,7 @@ class ImageService:
                 notes=request.notes,
                 character_info=request.character_info,
                 visual_style=request.visual_style,
+                aspect_ratio=request.aspect_ratio,
             )
         if request.scene == ImageScene.CHARACTER_DESIGN:
             return self._prompt_builder.build_character_design_image_prompt_messages(

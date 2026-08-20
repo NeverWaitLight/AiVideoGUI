@@ -78,6 +78,7 @@ class ChatPromptBuilder:
         notes: str = "",
         character_info: str = "",
         visual_style: str = "",
+        aspect_ratio: str = "16:9",
     ) -> list[dict[str, str]]:
         """构建分镜设计图提示词生成消息"""
         template = self._template_manager.get_template("storyboard_image_prompt")
@@ -94,6 +95,7 @@ class ChatPromptBuilder:
             notes=notes or "无特殊要求",
             character_info=character_info or "无额外角色信息",
             visual_style_block=self._build_visual_style_block(style, style_instruction),
+            aspect_ratio=aspect_ratio or "16:9",
         )
 
     def build_character_design_image_prompt_messages(
