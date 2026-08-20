@@ -13,6 +13,7 @@ Pane {
     property int shotNumber: 0
     property string visualContent: ""
     property string designImage: ""
+    property int designImageRevision: 0
     property bool designImageBusy: false
     property bool videoGenerationBusy: false
     property string cameraMovement: ""
@@ -38,6 +39,7 @@ Pane {
         Comp.ImagePreview {
             width: 100; height: 72
             imageSource: designImage
+            cacheKey: designImageRevision
             busy: designImageBusy || videoGenerationBusy
             placeholderIcon: "qrc:/resources/icons/image.svg"
             placeholderIconSize: 32

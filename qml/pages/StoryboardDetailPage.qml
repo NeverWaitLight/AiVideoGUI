@@ -14,6 +14,7 @@ Item {
     property bool contentFullscreen: false
     property var takesList: []
     property var generatingDesignShotIds: []
+    property int designImageCacheKey: 0
 
     ListModel {
         id: takesListModel
@@ -50,6 +51,11 @@ Item {
         target: bridge.storyboard
         function onTakes_changed() {
             _loadTakes()
+        }
+        function onDesign_image_ready(shotId, path) {
+            if (parseInt(shotId) === detailPage.shotId) {
+                designImageCacheKey++
+            }
         }
     }
 
@@ -285,6 +291,7 @@ Item {
                         width: parent.width / 2 - 30
                         height: formGrid.implicitHeight
                         imageSource: bridge.storyboard.curDesignImage
+                        cacheKey: designImageCacheKey
                         busy: generatingDesignShotIds.indexOf(String(bridge.storyboard.curShotId)) !== -1
 
                         onAiGenerateClicked: bridge.storyboard.generate_design_image(

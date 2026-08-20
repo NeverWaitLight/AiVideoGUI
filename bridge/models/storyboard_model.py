@@ -3,7 +3,7 @@ from __future__ import annotations
 from PySide6.QtCore import QAbstractListModel, QModelIndex, Property, Qt, Signal
 
 from models.storyboard import Storyboard
-from utils.path_converter import to_absolute_path
+from utils.path_converter import to_absolute_path, to_relative_path
 
 
 class StoryboardListModel(QAbstractListModel):
@@ -19,6 +19,7 @@ class StoryboardListModel(QAbstractListModel):
     SoundEffectRole = Qt.UserRole + 10
     NotesRole = Qt.UserRole + 11
     SceneIdRole = Qt.UserRole + 12
+    DesignImageRevisionRole = Qt.UserRole + 13
 
     _ROLE_NAMES = {
         IdRole: b"shotId",
@@ -33,6 +34,7 @@ class StoryboardListModel(QAbstractListModel):
         SoundEffectRole: b"soundEffect",
         NotesRole: b"notes",
         SceneIdRole: b"sceneId",
+        DesignImageRevisionRole: b"designImageRevision",
     }
 
     count_changed = Signal()
@@ -41,6 +43,7 @@ class StoryboardListModel(QAbstractListModel):
         super().__init__(parent)
         self._data: list[Storyboard] = []
         self._workspace_root = workspace_root
+        self._design_image_revision: dict[int, int] = {}
 
     def roleNames(self):
         return self._ROLE_NAMES
@@ -74,6 +77,8 @@ class StoryboardListModel(QAbstractListModel):
             return item.duration
         if role == self.DesignImageRole:
             return to_absolute_path(item.design_image, self._workspace_root) if item.design_image else ""
+        if role == self.DesignImageRevisionRole:
+            return self._design_image_revision.get(item.id, 0)
         if role == self.SoundEffectRole:
             return item.sound_effect
         if role == self.NotesRole:
@@ -85,6 +90,7 @@ class StoryboardListModel(QAbstractListModel):
     def reset(self, shots: list[Storyboard]) -> None:
         self.beginResetModel()
         self._data = list(shots)
+        self._design_image_revision.clear()
         self.endResetModel()
         self.count_changed.emit()
 
@@ -96,7 +102,15 @@ class StoryboardListModel(QAbstractListModel):
     def update_design_image(self, shot_id: int, image_path: str) -> None:
         for i, s in enumerate(self._data):
             if s.id == shot_id:
-                s.design_image = image_path
+                if image_path:
+                    s.design_image = to_relative_path(image_path, self._workspace_root)
+                else:
+                    s.design_image = ""
+                self._design_image_revision[shot_id] = self._design_image_revision.get(shot_id, 0) + 1
                 idx = self.index(i)
-                self.dataChanged.emit(idx, idx, [self.DesignImageRole])
+                self.dataChanged.emit(
+                    idx,
+                    idx,
+                    [self.DesignImageRole, self.DesignImageRevisionRole],
+                )
                 return

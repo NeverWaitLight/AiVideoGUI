@@ -6,6 +6,7 @@ Rectangle {
     id: root
 
     property string imageSource: ""
+    property int cacheKey: 0
     property int fillMode: Image.PreserveAspectCrop
     property string placeholderIcon: ""
     property int placeholderIconSize: 48
@@ -19,10 +20,11 @@ Rectangle {
 
     Image {
         anchors.fill: parent
-        source: root.imageSource ? "file:///" + root.imageSource : ""
+        source: root.imageSource ? "file:///" + root.imageSource + "?v=" + root.cacheKey : ""
         fillMode: root.fillMode
         visible: source !== "" && !root.busy
         asynchronous: true
+        cache: false
     }
 
     Image {

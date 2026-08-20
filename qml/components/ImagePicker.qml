@@ -8,6 +8,7 @@ Item {
 
     property string imageSource: ""
     property bool busy: false
+    property int cacheKey: 0
 
     signal aiGenerateClicked()
     signal uploadClicked()
@@ -54,10 +55,11 @@ Item {
             id: displayImage
             anchors.fill: parent
             anchors.margins: 2
-            source: root.imageSource ? "file:///" + root.imageSource : ""
+            source: root.imageSource ? "file:///" + root.imageSource + "?v=" + root.cacheKey : ""
             fillMode: Image.PreserveAspectFit
             visible: source !== "" && !root.busy
             asynchronous: true
+            cache: false
         }
 
         MouseArea {
@@ -128,8 +130,9 @@ Item {
                 anchors.fill: parent
                 anchors.margins: 16
                 fillMode: Image.PreserveAspectFit
-                source: root.imageSource ? "file:///" + root.imageSource : ""
+                source: root.imageSource ? "file:///" + root.imageSource + "?v=" + root.cacheKey : ""
                 asynchronous: true
+                cache: false
             }
 
             Button {

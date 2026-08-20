@@ -201,7 +201,6 @@ class CharacterBridge(QObject):
                     user_requirement=user_requirement,
                     visual_style=visual_style,
                     project_name=self._get_project_name(project_id),
-                    aspect_ratio=project.aspect_ratio if project else "",
                 )
             except Exception:
                 self._unmark_design_generating(char_uuid)

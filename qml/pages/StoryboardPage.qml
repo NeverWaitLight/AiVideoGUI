@@ -391,6 +391,7 @@ Item {
                         shotNumber: model.shotNumber || 0
                         visualContent: model.visualContent || ""
                         designImage: model.designImagePath || ""
+                        designImageRevision: model.designImageRevision || 0
                         designImageBusy: generatingDesignShotIds.indexOf(String(model.shotId)) !== -1
                         videoGenerationBusy: generatingVideoShotIds.indexOf(String(model.shotId)) !== -1
                         cameraMovement: model.cameraMovement || ""

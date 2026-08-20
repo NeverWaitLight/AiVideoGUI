@@ -114,6 +114,22 @@ class TestImageServicePipeline(unittest.TestCase):
         self.assertEqual(request_params["aspect_ratio"], "9:16")
         self.assertEqual(request_params["size"], "960*1696")
 
+    @patch("service.image_service.uuid.uuid4", return_value="image-task-char")
+    def test_start_character_design_uses_fixed_4_3_aspect_ratio(self, _mock_uuid):
+        self.project_service.get_project.return_value = Mock(aspect_ratio="9:16")
+        self.image_service._coordinator.start = Mock()
+        self.image_service.start_character_design_image(
+            character_uuid="uuid-1",
+            character_name="测试角色",
+            description="角色描述",
+            project_id=1,
+        )
+
+        request_params = json.loads(self.task_repo.add.call_args.kwargs["request_params"])
+        self.assertEqual(request_params["aspect_ratio"], "4:3")
+        self.assertEqual(request_params["size"], "1472*1104")
+        self.project_service.get_project.assert_not_called()
+
     @patch("service.image_service._get_image_provider")
     def test_execute_pipeline_chat_parent_ids_and_status_flow(self, mock_get_provider):
         provider = Mock()

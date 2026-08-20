@@ -15,6 +15,7 @@ Item {
     property bool _multiSelect: false
     property bool _showDetail: false
     property string _editingDesignImage: ""
+    property int designImageCacheKey: 0
     property string _projectName: ""
     property var generatingDesignCharUuids: []
 
@@ -70,6 +71,7 @@ Item {
         function onDesign_image_ready(uuid, path) {
             if (uuid === _editingCharUuid) {
                 _editingDesignImage = path
+                designImageCacheKey++
             }
             characterAIDialog.finishWork()
         }
@@ -305,6 +307,7 @@ Item {
                         refCode: model.refCode || ""
                         description: model.description || ""
                         designImage: model.designImagePath || ""
+                        designImageRevision: model.designImageRevision || 0
                         designImageBusy: generatingDesignCharUuids.indexOf(model.characterUuid || "") !== -1
                         multiSelect: _multiSelect
                         isSelected: _selectedIds.indexOf(characterUuid) >= 0
@@ -629,6 +632,7 @@ Item {
                                 Layout.fillHeight: true
                                 visible: !_isNewCharacter
                                 imageSource: _editingDesignImage
+                                cacheKey: designImageCacheKey
                                 busy: generatingDesignCharUuids.indexOf(_editingCharUuid) !== -1
                                 onAiGenerateClicked: {
                                     characterAIDialog.openGenerateDesign()
@@ -679,6 +683,7 @@ Item {
         property string refCode: ""
         property string description: ""
         property string designImage: ""
+        property int designImageRevision: 0
         property bool designImageBusy: false
         property bool multiSelect: false
         property bool isSelected: false
@@ -702,35 +707,27 @@ Item {
             anchors.bottomMargin: 12
             spacing: 12
 
-            Rectangle {
-                width: 72; height: 72; radius: 36
-                clip: true
-                Image {
+            Item {
+                width: 72
+                height: 72
+
+                Comp.ImagePreview {
                     anchors.fill: parent
-                    source: designImage ? "file:///" + designImage + "?t=" + Date.now() : ""
+                    imageSource: designImage
+                    cacheKey: designImageRevision
+                    busy: designImageBusy
                     fillMode: Image.PreserveAspectCrop
-                    visible: designImage !== "" && !designImageBusy
-                    cache: false
+                    placeholderIcon: (!designImage && !designImageBusy && !characterName)
+                        ? "qrc:/resources/icons/person.svg" : ""
+                    placeholderIconSize: 32
                 }
+
                 Label {
                     anchors.centerIn: parent
                     text: characterName ? characterName[0] : ""
                     font.pixelSize: 24
                     visible: !designImage && !designImageBusy && characterName
-                }
-                Image {
-                    anchors.centerIn: parent
-                    source: "qrc:/resources/icons/person.svg"
-                    sourceSize.width: 32
-                    sourceSize.height: 32
-                    visible: !designImage && !designImageBusy && !characterName
-                }
-                BusyIndicator {
-                    anchors.centerIn: parent
-                    width: 40
-                    height: 40
-                    visible: designImageBusy
-                    running: designImageBusy
+                    z: 1
                 }
             }
 

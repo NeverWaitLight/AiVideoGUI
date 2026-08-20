@@ -49,6 +49,7 @@ _ASPECT_RATIO_SIZE_MAP: dict[str, str] = {
 }
 
 _DEFAULT_IMAGE_SIZE = "1696*960"
+_CHARACTER_DESIGN_ASPECT_RATIO = "4:3"
 
 
 def resolve_image_size(aspect_ratio: str) -> str:
@@ -214,7 +215,6 @@ class ImageService:
         user_requirement: str = "",
         visual_style: str = "",
         project_name: str | None = None,
-        aspect_ratio: str = "",
         size: str = "",
         wait: bool = False,
     ) -> str:
@@ -224,11 +224,8 @@ class ImageService:
         if self._coordinator.is_caller_active(caller_key):
             raise RuntimeError("该角色已有图片生成任务进行中")
 
+        aspect_ratio = _CHARACTER_DESIGN_ASPECT_RATIO
         if not size:
-            if not aspect_ratio:
-                project = self._project_service.get_project(project_id=project_id)
-                raw_ratio = getattr(project, "aspect_ratio", "") if project is not None else ""
-                aspect_ratio = raw_ratio if isinstance(raw_ratio, str) else ""
             size = resolve_image_size(aspect_ratio)
 
         local_path = to_relative_path(
