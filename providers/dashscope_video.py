@@ -8,12 +8,14 @@ import requests
 
 from config.url_resolver import get_task_base_url, get_video_submit_url
 from models.api_params import DashScopeVideoRequest, MediaItem
-from models.enums import TaskStatus
+from models.enums import GenerateTaskType, TaskStatus
 from models.exceptions import MissingConfigError
+from models.generate_task_context import GenerateTaskContext
 from models.model_info import ModelInfo
 from models.provider_config import ProviderConfig
 from models.task_result import TaskResult
 from providers.dashscope_oss_uploader import DashScopeOSSUploader
+from providers.generate_task_recorder import GenerateTaskRecorder
 from providers.video_base import VideoProvider
 from storage.repositories.oss_cache_repository import OSSFileCacheRepository
 from storage.session_manager import SessionManager
@@ -170,7 +172,51 @@ class DashScopeVideoProvider(VideoProvider):
         logger.info(f"任务已提交，task_id={task_id}")
         return task_id, {"url": self._submit_url, "json": payload, "headers": headers}
 
-    def t2v(self, prompt: str, params: dict[str, Any] | None = None) -> tuple[str, dict[str, Any]]:
+    def _submit_with_recording(
+        self,
+        payload: dict[str, Any],
+        task_context: GenerateTaskContext | None,
+        model_name: str,
+    ) -> tuple[str, dict[str, Any], int | None]:
+        child_task_id: int | None = None
+        recorder: GenerateTaskRecorder | None = None
+        if task_context is not None:
+            recorder = GenerateTaskRecorder(task_context.session_manager)
+            _, child_task_id = recorder.create_pending(
+                provider_name=self.provider_name,
+                model_name=model_name,
+                request_params=payload,
+                task_type=GenerateTaskType.VIDEO,
+                local_path=task_context.local_path,
+                caller_type=task_context.caller_type,
+                caller_id=task_context.caller_id,
+                project_id=task_context.project_id,
+                parent_ids=task_context.parent_ids,
+            )
+            logger.info(
+                f"视频生成子任务已创建：task_id={child_task_id}, parent_ids={task_context.parent_ids}"
+            )
+
+        try:
+            provider_task_id, request_details = self._submit_task(payload)
+            if recorder is not None and child_task_id is not None:
+                recorder.update_provider_task_id(
+                    child_task_id,
+                    provider_task_id,
+                    request_params=payload,
+                )
+            return provider_task_id, request_details, child_task_id
+        except Exception as e:
+            if recorder is not None and child_task_id is not None:
+                recorder.mark_failed(child_task_id, str(e))
+            raise
+
+    def t2v(
+        self,
+        prompt: str,
+        params: dict[str, Any] | None = None,
+        task_context: GenerateTaskContext | None = None,
+    ) -> tuple[str, dict[str, Any], int | None]:
         api_params = params.copy() if params else {}
 
         negative_prompt = api_params.pop("negative_prompt", None)
@@ -196,11 +242,15 @@ class DashScopeVideoProvider(VideoProvider):
         )
 
         payload = request.to_dict()
-        return self._submit_task(payload=payload)
+        return self._submit_with_recording(payload, task_context, model)
 
     def p2v(
-        self, prompt: str, image_path: str, params: dict[str, Any] | None = None
-    ) -> tuple[str, dict[str, Any]]:
+        self,
+        prompt: str,
+        image_path: str,
+        params: dict[str, Any] | None = None,
+        task_context: GenerateTaskContext | None = None,
+    ) -> tuple[str, dict[str, Any], int | None]:
         api_params = params.copy() if params else {}
         last_frame_path = api_params.pop("last_frame_path", None)
         driving_audio_path = api_params.pop("driving_audio_path", None)
@@ -234,11 +284,15 @@ class DashScopeVideoProvider(VideoProvider):
         )
 
         payload = request.to_dict()
-        return self._submit_task(payload)
+        return self._submit_with_recording(payload, task_context, model)
 
     def r2v(
-        self, prompt: str, reference_path: str, params: dict[str, Any] | None = None
-    ) -> tuple[str, dict[str, Any]]:
+        self,
+        prompt: str,
+        reference_path: str,
+        params: dict[str, Any] | None = None,
+        task_context: GenerateTaskContext | None = None,
+    ) -> tuple[str, dict[str, Any], int | None]:
         api_params = params.copy() if params else {}
         reference_media_dicts = api_params.pop("reference_media", [])
         first_frame_path = api_params.pop("first_frame_path", None)
@@ -297,7 +351,7 @@ class DashScopeVideoProvider(VideoProvider):
         )
 
         payload = request.to_dict()
-        return self._submit_task(payload)
+        return self._submit_with_recording(payload, task_context, model)
 
     @staticmethod
     def _detect_media_type(path: str) -> str:
@@ -311,8 +365,12 @@ class DashScopeVideoProvider(VideoProvider):
             return "reference_image"
 
     def extend(
-        self, prompt: str, video_path: str, params: dict[str, Any] | None = None
-    ) -> tuple[str, dict[str, Any]]:
+        self,
+        prompt: str,
+        video_path: str,
+        params: dict[str, Any] | None = None,
+        task_context: GenerateTaskContext | None = None,
+    ) -> tuple[str, dict[str, Any], int | None]:
         api_params = params.copy() if params else {}
         last_frame_path = api_params.pop("last_frame_path", None)
 
@@ -340,7 +398,7 @@ class DashScopeVideoProvider(VideoProvider):
         )
 
         payload = request.to_dict()
-        return self._submit_task(payload)
+        return self._submit_with_recording(payload, task_context, model)
 
     def check_status(self, task_id: str) -> TaskResult:
         url = f"{self._task_url}/{task_id}"

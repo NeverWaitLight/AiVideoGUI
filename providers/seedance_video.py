@@ -6,6 +6,7 @@ import requests
 
 from models.api_params import SeedanceVideoRequest
 from models.enums import TaskStatus
+from models.generate_task_context import GenerateTaskContext
 from models.model_info import ModelInfo
 from models.provider_config import ProviderConfig
 from models.task_result import TaskResult
@@ -92,7 +93,12 @@ class SeedanceVideoProvider(VideoProvider):
         logger.info(f"任务已提交，task_id={task_id}")
         return task_id, {"url": self.submit_url, "json": payload, "headers": headers}
 
-    def t2v(self, prompt: str, params: dict[str, Any] | None = None) -> tuple[str, dict[str, Any]]:
+    def t2v(
+        self,
+        prompt: str,
+        params: dict[str, Any] | None = None,
+        task_context: GenerateTaskContext | None = None,
+    ) -> tuple[str, dict[str, Any], int | None]:
         api_params = params.copy() if params else {}
 
         request = SeedanceVideoRequest.for_t2v(
@@ -107,21 +113,34 @@ class SeedanceVideoProvider(VideoProvider):
         )
 
         payload = request.to_dict()
-        return self._submit_task(payload=payload)
+        provider_task_id, request_details = self._submit_task(payload=payload)
+        return provider_task_id, request_details, None
 
     def p2v(
-        self, prompt: str, image_path: str, params: dict[str, Any] | None = None
-    ) -> tuple[str, dict[str, Any]]:
+        self,
+        prompt: str,
+        image_path: str,
+        params: dict[str, Any] | None = None,
+        task_context: GenerateTaskContext | None = None,
+    ) -> tuple[str, dict[str, Any], int | None]:
         raise NotImplementedError("Seedance p2v 尚未实现")
 
     def r2v(
-        self, prompt: str, reference_path: str, params: dict[str, Any] | None = None
-    ) -> tuple[str, dict[str, Any]]:
+        self,
+        prompt: str,
+        reference_path: str,
+        params: dict[str, Any] | None = None,
+        task_context: GenerateTaskContext | None = None,
+    ) -> tuple[str, dict[str, Any], int | None]:
         raise NotImplementedError("Seedance r2v 尚未实现")
 
     def extend(
-        self, prompt: str, video_path: str, params: dict[str, Any] | None = None
-    ) -> tuple[str, dict[str, Any]]:
+        self,
+        prompt: str,
+        video_path: str,
+        params: dict[str, Any] | None = None,
+        task_context: GenerateTaskContext | None = None,
+    ) -> tuple[str, dict[str, Any], int | None]:
         raise NotImplementedError("Seedance extend 尚未实现")
 
     def check_status(self, task_id: str) -> TaskResult:

@@ -105,6 +105,34 @@ class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
         entities = self.session.execute(stmt).scalars().all()
         return [self._entity_to_dict(e) for e in entities]
 
+    def list_active_child_tasks(self, task_type: GenerateTaskType | None = None) -> List[dict]:
+        conditions = [
+            GenerateTaskEntity.completed == False,
+            GenerateTaskEntity.parent_ids != "",
+        ]
+        if task_type is not None:
+            conditions.append(GenerateTaskEntity.type == task_type.value)
+
+        stmt = (
+            select(GenerateTaskEntity)
+            .where(*conditions)
+            .order_by(GenerateTaskEntity.created_at.asc())
+        )
+        entities = self.session.execute(stmt).scalars().all()
+        return [self._entity_to_dict(e) for e in entities]
+
+    @staticmethod
+    def get_parent_task_id(parent_ids: str) -> int | None:
+        if not parent_ids:
+            return None
+        first_id = parent_ids.split(",")[0].strip()
+        if not first_id:
+            return None
+        try:
+            return int(first_id)
+        except ValueError:
+            return None
+
     def get_by_id(self, task_id: int) -> Optional[dict]:
         entity = self.session.get(GenerateTaskEntity, task_id)
         if not entity:

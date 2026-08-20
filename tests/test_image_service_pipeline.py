@@ -97,14 +97,14 @@ class TestImageServicePipeline(unittest.TestCase):
     @patch("service.image_service._get_image_provider")
     def test_execute_pipeline_chat_parent_ids_and_status_flow(self, mock_get_provider):
         provider = Mock()
-        provider.generate.return_value = ("https://example.com/a.png", {})
+        provider.generate.return_value = ("https://example.com/a.png", {}, 303)
         provider.download.return_value = "/tmp/workspace/projects/1/design-1-1.png"
         mock_get_provider.return_value = provider
 
         relative_path = self.image_service.execute_pipeline("image-task-123")
 
         self.task_repo.update_status.assert_any_call(101, "running")
-        self.task_repo.update_status.assert_any_call(101, "succeeded", remote_url="https://example.com/a.png")
+        self.task_repo.update_status.assert_any_call(101, "succeeded")
         self.task_repo.mark_completed.assert_called_once_with(101)
 
         chat_kwargs = self.chat_service.chat.call_args.kwargs

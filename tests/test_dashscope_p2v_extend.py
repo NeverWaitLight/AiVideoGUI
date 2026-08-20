@@ -22,7 +22,7 @@ class TestDashScopeP2VExtend(unittest.TestCase):
         }
         mock_post.return_value = mock_response
 
-        task_id, request_details = self.provider.p2v(
+        task_id, request_details, _child_task_id = self.provider.p2v(
             prompt="一只小猫在草地上奔跑",
             image_path="https://example.com/first_frame.jpg",
             params={"resolution": "720P", "duration": 10},
@@ -52,7 +52,7 @@ class TestDashScopeP2VExtend(unittest.TestCase):
         }
         mock_post.return_value = mock_response
 
-        task_id, request_details = self.provider.p2v(
+        task_id, request_details, _child_task_id = self.provider.p2v(
             prompt="一只小猫从坐姿变为站立",
             image_path="https://example.com/first_frame.jpg",
             params={
@@ -83,7 +83,7 @@ class TestDashScopeP2VExtend(unittest.TestCase):
         }
         mock_post.return_value = mock_response
 
-        task_id, request_details = self.provider.p2v(
+        task_id, request_details, _child_task_id = self.provider.p2v(
             prompt="一个说唱歌手在表演",
             image_path="https://example.com/first_frame.jpg",
             params={
@@ -113,7 +113,7 @@ class TestDashScopeP2VExtend(unittest.TestCase):
         }
         mock_post.return_value = mock_response
 
-        task_id, request_details = self.provider.extend(
+        task_id, request_details, _child_task_id = self.provider.extend(
             prompt="女孩背着书包出门",
             video_path="https://example.com/first_clip.mp4",
             params={"resolution": "720P", "duration": 15},
@@ -140,7 +140,7 @@ class TestDashScopeP2VExtend(unittest.TestCase):
         }
         mock_post.return_value = mock_response
 
-        task_id, request_details = self.provider.extend(
+        task_id, request_details, _child_task_id = self.provider.extend(
             prompt="女孩走到门外",
             video_path="https://example.com/first_clip.mp4",
             params={
@@ -171,7 +171,7 @@ class TestDashScopeP2VExtend(unittest.TestCase):
         }
         mock_post.return_value = mock_response
 
-        task_id, request_details = self.provider.p2v(
+        task_id, request_details, _child_task_id = self.provider.p2v(
             prompt="完整的视频场景",
             image_path="https://example.com/first_frame.jpg",
             params={

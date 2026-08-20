@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+from models.generate_task_context import GenerateTaskContext
 from models.provider_config import ProviderConfig
 
 
@@ -17,6 +18,7 @@ class ChatProvider(ABC):
         self,
         messages: list[dict[str, str]],
         model: str | None = None,
+        task_context: GenerateTaskContext | None = None,
         **kwargs,
-    ) -> str:
+    ) -> tuple[str, int | None]:
         pass

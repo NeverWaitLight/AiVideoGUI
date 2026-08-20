@@ -11,6 +11,7 @@ from loguru import logger
 
 from config.manager import ConfigManager
 from models.enums import GenerateTaskType, GenerateTaskCallerType, TakeStatus
+from models.generate_task_context import GenerateTaskContext
 from models.storyboard_take import StoryboardTake
 from models.video_generation_request import VideoGenerationRequest, VideoScene
 from models.exceptions import MissingConfigError
@@ -120,7 +121,7 @@ class VideoService(QObject):
         return pending_provider_task_id
 
     def _create_pending_task(self, request: VideoGenerationRequest) -> tuple[str, int]:
-        provider = self.get_provider(request.provider_name)
+        _provider = self.get_provider(request.provider_name)
         pending_provider_task_id = str(uuid.uuid4())
         request_params = json.dumps(request.to_request_params(), ensure_ascii=False)
 
@@ -145,9 +146,9 @@ class VideoService(QObject):
 
             generate_task_id = task_repo.add(
                 provider_task_id=pending_provider_task_id,
-                provider_name=request.provider_name,
-                model_name=provider._config.default_model,
-                local_path=local_path,
+                provider_name="",
+                model_name="",
+                local_path="",
                 request_params=request_params,
                 type=GenerateTaskType.VIDEO,
                 caller_type=GenerateTaskCallerType.STORYBOARD,
@@ -268,23 +269,29 @@ class VideoService(QObject):
             prompt = flatten_prompt_text(prompt)
             emitter.task_progress.emit(pending_provider_task_id, "正在提交视频生成任务...")
 
-            provider_task_id, request_details = self._call_provider(
+            task_context = GenerateTaskContext(
+                session_manager=self._sm,
+                parent_ids=str(task_id),
+                caller_type=GenerateTaskCallerType.STORYBOARD,
+                caller_id=caller_id,
+                project_id=request.project_id,
+                project_name=request.project_name,
+                module="storyboard",
+                context="视频生成提交",
+                local_path=request.local_path,
+            )
+            provider_task_id, _request_details, _child_task_id = self._call_provider(
                 prompt=prompt,
                 provider_name=request.provider_name,
                 params=request.params,
                 reference_images=request.reference_images,
                 reference_image=request.reference_image,
                 prev_shot_last_frame=request.prev_shot_last_frame,
+                task_context=task_context,
             )
 
-            updated_params = json.dumps(request_details["json"], ensure_ascii=False)
             self._sm.begin_write()
             try:
-                task_repo.update_provider_task_id(
-                    task_id,
-                    provider_task_id,
-                    request_params=updated_params,
-                )
                 task_repo.update_status(task_id, "pending")
                 self._sm.commit_write()
             except Exception:
@@ -318,7 +325,8 @@ class VideoService(QObject):
         reference_images: list[str] | None = None,
         reference_image: str = "",
         prev_shot_last_frame: str = "",
-    ) -> tuple[str, dict[str, Any]]:
+        task_context: GenerateTaskContext | None = None,
+    ) -> tuple[str, dict[str, Any], int | None]:
         provider = self.get_provider(provider_name)
         params = (params or {}).copy()
         prev_last = prev_shot_last_frame or params.pop("first_frame_path", None)
@@ -332,25 +340,38 @@ class VideoService(QObject):
                 ]
             if prev_last:
                 params["first_frame_path"] = prev_last
-            provider_task_id, request_details = provider.r2v(
-                prompt=prompt, reference_path=main_ref, params=params
+            provider_task_id, request_details, child_task_id = provider.r2v(
+                prompt=prompt,
+                reference_path=main_ref,
+                params=params,
+                task_context=task_context,
             )
             logger.info(f"使用参考生视频 (r2v)：{len(reference_images)} 张参考图")
         elif prev_last:
-            provider_task_id, request_details = provider.p2v(
-                prompt=prompt, image_path=prev_last, params=params
+            provider_task_id, request_details, child_task_id = provider.p2v(
+                prompt=prompt,
+                image_path=prev_last,
+                params=params,
+                task_context=task_context,
             )
             logger.info(f"使用图生视频 (p2v)：上一镜尾帧={prev_last}")
         elif reference_image:
-            provider_task_id, request_details = provider.r2v(
-                prompt=prompt, reference_path=reference_image, params=params
+            provider_task_id, request_details, child_task_id = provider.r2v(
+                prompt=prompt,
+                reference_path=reference_image,
+                params=params,
+                task_context=task_context,
             )
             logger.info(f"使用参考生视频 (r2v)：reference_image={reference_image}")
         else:
-            provider_task_id, request_details = provider.t2v(prompt=prompt, params=params)
+            provider_task_id, request_details, child_task_id = provider.t2v(
+                prompt=prompt,
+                params=params,
+                task_context=task_context,
+            )
             logger.info("使用文生视频 (t2v)")
 
-        return provider_task_id, request_details
+        return provider_task_id, request_details, child_task_id
 
     def submit_shot_video(
         self,
@@ -423,26 +444,25 @@ class VideoService(QObject):
         pending_id, task_id = self._create_pending_task(request)
         get_video_signal_emitter().take_created.emit()
 
-        provider_task_id, request_details = self._call_provider(
+        task_context = GenerateTaskContext(
+            session_manager=self._sm,
+            parent_ids=str(task_id),
+            caller_type=GenerateTaskCallerType.STORYBOARD,
+            caller_id=str(storyboard_id),
+            project_id=project_id,
+            project_name=project_name,
+            module="storyboard",
+            context="视频生成提交",
+            local_path=local_path,
+        )
+        provider_task_id, _request_details, _child_task_id = self._call_provider(
             prompt=flatten_prompt_text(prompt),
             provider_name=provider_name,
             params=params,
             reference_images=reference_images,
             reference_image=reference_image,
             prev_shot_last_frame=prev_shot_last_frame,
+            task_context=task_context,
         )
-
-        task_repo = self._sm.get_repo(GenerateTaskRepository)
-        self._sm.begin_write()
-        try:
-            task_repo.update_provider_task_id(
-                task_id,
-                provider_task_id,
-                request_params=json.dumps(request_details["json"], ensure_ascii=False),
-            )
-            self._sm.commit_write()
-        except Exception:
-            self._sm.rollback_write()
-            raise
 
         return provider_task_id

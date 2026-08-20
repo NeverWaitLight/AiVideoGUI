@@ -9,6 +9,7 @@ from loguru import logger
 
 from config.manager import ConfigManager
 from models.enums import GenerateTaskType, GenerateTaskCallerType
+from models.generate_task_context import GenerateTaskContext
 from models.image_generation_request import ImageGenerationRequest, ImageScene
 from prompts.chat_prompt_builder import ChatPromptBuilder
 from providers.dashscope_image import DashScopeImageProvider
@@ -113,9 +114,9 @@ class ImageService:
         try:
             task_id = task_repo.add(
                 provider_task_id=provider_task_id,
-                provider_name=provider_name,
-                model_name=provider_cfg.default_model or "wan2.6-t2i",
-                local_path=request.local_path,
+                provider_name="",
+                model_name="",
+                local_path="",
                 request_params=request_params,
                 type=GenerateTaskType.IMAGE,
                 caller_type=request.caller_type,
@@ -358,13 +359,24 @@ class ImageService:
             config_name = json.loads(task_info["request_params"]).get("config_name", provider_name)
             provider = _get_image_provider(self._config, config_name or provider_name, self._provider_cache)
 
-            image_url, _payload = provider.generate(
+            image_url, _payload, _image_task_id = provider.generate(
                 prompt=prompt,
                 size=request.size,
                 negative_prompt=negative_prompt,
                 n=request.n,
                 prompt_extend=True,
                 watermark=False,
+                task_context=GenerateTaskContext(
+                    session_manager=self._sm,
+                    parent_ids=str(task_id),
+                    caller_type=request.caller_type,
+                    caller_id=request.caller_id,
+                    project_id=request.project_id,
+                    project_name=request.project_name,
+                    module=request.module,
+                    context=request.context,
+                    local_path=request.local_path,
+                ),
             )
 
             absolute_path = os.path.join(self._workspace_root, request.local_path)
@@ -376,7 +388,7 @@ class ImageService:
 
             self._sm.begin_write()
             try:
-                task_repo.update_status(task_id, "succeeded", remote_url=image_url)
+                task_repo.update_status(task_id, "succeeded")
                 task_repo.mark_completed(task_id)
                 self._sm.commit_write()
             except Exception:

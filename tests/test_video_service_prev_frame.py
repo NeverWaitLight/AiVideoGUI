@@ -24,9 +24,9 @@ class TestVideoServicePrevFrame(unittest.TestCase):
     def _mock_provider(self):
         provider = MagicMock()
         provider._config.default_model = "test-model"
-        provider.t2v.return_value = ("task-t2v", {"json": {}})
-        provider.p2v.return_value = ("task-p2v", {"json": {}})
-        provider.r2v.return_value = ("task-r2v", {"json": {}})
+        provider.t2v.return_value = ("task-t2v", {"json": {}}, None)
+        provider.p2v.return_value = ("task-p2v", {"json": {}}, None)
+        provider.r2v.return_value = ("task-r2v", {"json": {}}, None)
         self.service.get_provider = MagicMock(return_value=provider)
         return provider
 

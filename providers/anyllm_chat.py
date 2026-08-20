@@ -1,11 +1,15 @@
 from loguru import logger
 
+import json
 import any_llm
 from any_llm.provider import ProviderFactory
 
 from config.url_resolver import get_chat_base_url
+from models.enums import GenerateTaskType
+from models.generate_task_context import GenerateTaskContext
 from models.provider_config import ProviderConfig
 from providers.chat_base import ChatProvider
+from providers.generate_task_recorder import GenerateTaskRecorder
 
 _DEFAULT_TIMEOUT = 1800.0
 
@@ -44,9 +48,56 @@ class AnyLLMChatProvider(ChatProvider):
         self,
         messages: list[dict[str, str]],
         model: str | None = None,
+        task_context: GenerateTaskContext | None = None,
+        **kwargs,
+    ) -> tuple[str, int | None]:
+        resolved_model = self._resolve_model(model)
+        task_id: int | None = None
+
+        if task_context is not None:
+            request_params = {
+                "messages": messages,
+                "model": resolved_model,
+                "module": task_context.module,
+                "context": task_context.context,
+                "project_id": task_context.project_id,
+                "project_name": task_context.project_name,
+                **kwargs,
+            }
+            recorder = GenerateTaskRecorder(task_context.session_manager)
+            _, task_id = recorder.create_pending(
+                provider_name=self.provider_name,
+                model_name=resolved_model,
+                request_params=request_params,
+                task_type=GenerateTaskType.CHAT,
+                caller_type=task_context.caller_type,
+                caller_id=task_context.caller_id,
+                project_id=task_context.project_id,
+                parent_ids=task_context.parent_ids,
+            )
+            logger.info(
+                f"文本对话子任务已创建：task_id={task_id}, model={resolved_model}, "
+                f"parent_ids={task_context.parent_ids}"
+            )
+
+        try:
+            content = self._call_api(messages, resolved_model, **kwargs)
+        except Exception as e:
+            if task_id is not None and task_context is not None:
+                GenerateTaskRecorder(task_context.session_manager).mark_failed(task_id, str(e))
+            raise
+
+        if task_id is not None and task_context is not None:
+            GenerateTaskRecorder(task_context.session_manager).mark_succeeded(task_id)
+
+        return content, task_id
+
+    def _call_api(
+        self,
+        messages: list[dict[str, str]],
+        resolved_model: str,
         **kwargs,
     ) -> str:
-        resolved_model = self._resolve_model(model)
         params = {**self._config.default_params, **kwargs}
 
         logger.info(f"调用文本模型：provider={self.provider_name}, model={resolved_model}")

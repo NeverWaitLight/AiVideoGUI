@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
+from models.generate_task_context import GenerateTaskContext
 from models.provider_config import ProviderConfig
 
 
@@ -34,8 +35,9 @@ class ImageProvider(ABC):
         prompt_extend: bool = True,
         watermark: bool = False,
         seed: int | None = None,
-    ) -> tuple[str, dict[str, Any]]:
-        """生成图片，返回 (image_url, request_payload)"""
+        task_context: GenerateTaskContext | None = None,
+    ) -> tuple[str, dict[str, Any], int | None]:
+        """生成图片，返回 (image_url, request_payload, child_task_id)"""
         pass
 
     @abstractmethod

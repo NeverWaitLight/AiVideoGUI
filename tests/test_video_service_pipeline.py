@@ -95,7 +95,7 @@ class TestVideoServicePipeline(unittest.TestCase):
             provider_name="dashscope",
             default_model="wan2.7-t2v",
         )
-        self.provider.t2v.return_value = ("real-provider-task", {"json": {"input": {"prompt": "x"}}})
+        self.provider.t2v.return_value = ("real-provider-task", {"json": {"input": {"prompt": "x"}}}, 303)
 
         self.video_service = VideoService(
             session_manager=self.session_manager,
@@ -142,8 +142,8 @@ class TestVideoServicePipeline(unittest.TestCase):
 
         self.assertEqual(final_id, "real-provider-task")
         self.task_repo.update_status.assert_any_call(101, "running")
-        self.task_repo.update_provider_task_id.assert_called_once()
         self.task_repo.update_status.assert_any_call(101, "pending")
+        self.task_repo.update_provider_task_id.assert_not_called()
 
         chat_kwargs = self.chat_service.chat.call_args.kwargs
         self.assertEqual(chat_kwargs["parent_ids"], "101")

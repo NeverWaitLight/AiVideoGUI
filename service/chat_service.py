@@ -1,15 +1,13 @@
 from loguru import logger
 
-import json
-import uuid
-
 from config.manager import ConfigManager
-from models.enums import GenerateTaskType, GenerateTaskCallerType
+from models.enums import GenerateTaskCallerType
+from models.generate_task_context import GenerateTaskContext
 from prompts.chat_prompt_builder import ChatPromptBuilder
 from providers.anyllm_chat import AnyLLMChatProvider
 from providers.chat_base import ChatProvider
+from providers.generate_task_recorder import GenerateTaskRecorder
 from storage.session_manager import SessionManager
-from storage.repositories.generate_task_repository import GenerateTaskRepository
 from utils.prompt_sanitize import sanitize_chat_messages
 
 _PROVIDER_REGISTRY: dict[str, type[ChatProvider]] = {
@@ -77,24 +75,6 @@ class ChatService:
         _, provider_config = self._get_provider_config()
         return model or provider_config.default_model or self.DEFAULT_MODEL
 
-    def _mark_task_failed(self, task_repo: GenerateTaskRepository, task_id: int, error_message: str) -> None:
-        self._sm.begin_write()
-        try:
-            task_repo.update_status(task_id, "failed", error_message=error_message)
-            task_repo.mark_completed(task_id)
-            self._sm.commit_write()
-        except Exception:
-            self._sm.rollback_write()
-
-    def _mark_task_succeeded(self, task_repo: GenerateTaskRepository, task_id: int) -> None:
-        self._sm.begin_write()
-        try:
-            task_repo.update_status(task_id, "succeeded")
-            task_repo.mark_completed(task_id)
-            self._sm.commit_write()
-        except Exception:
-            self._sm.rollback_write()
-
     def _is_timeout_error(self, error: Exception) -> bool:
         message = str(error).lower()
         return "timeout" in message or "超时" in message
@@ -103,20 +83,42 @@ class ChatService:
         self,
         messages: list[dict],
         model: str,
+        project_id: int | None = None,
+        project_name: str | None = None,
+        module: str = "storyboard",
+        context: str | None = None,
+        caller_type: GenerateTaskCallerType | None = None,
+        caller_id: str = "",
+        parent_ids: str = "",
         **provider_kwargs,
-    ) -> str:
+    ) -> tuple[str, int | None]:
         provider = self._get_provider()
         last_error: Exception | None = None
 
         sanitized_messages = sanitize_chat_messages(messages)
+        task_context = GenerateTaskContext(
+            session_manager=self._sm,
+            parent_ids=parent_ids,
+            caller_type=caller_type,
+            caller_id=caller_id,
+            project_id=project_id,
+            project_name=project_name,
+            module=module,
+            context=context,
+        )
 
         for attempt in range(self._MAX_RETRIES):
             try:
                 logger.info(f"发起请求（第 {attempt + 1}/{self._MAX_RETRIES} 次尝试）")
-                content = provider.chat(messages=sanitized_messages, model=model, **provider_kwargs)
+                content, task_id = provider.chat(
+                    messages=sanitized_messages,
+                    model=model,
+                    task_context=task_context,
+                    **provider_kwargs,
+                )
                 if not content:
                     raise RuntimeError("API 返回的内容为空")
-                return content
+                return content, task_id
             except RuntimeError as e:
                 last_error = e
                 if self._is_timeout_error(e) and attempt < self._MAX_RETRIES - 1:
@@ -148,53 +150,23 @@ class ChatService:
         parent_ids: str = "",
         **provider_kwargs,
     ) -> tuple[str, int]:
-        provider_name, provider_config = self._get_provider_config()
         model = self._resolve_model(model)
-
-        provider_task_id = str(uuid.uuid4())
-        request_params = json.dumps({
-            "messages": messages,
-            "model": model,
-            "module": module,
-            "context": context,
-            "project_id": project_id,
-            "project_name": project_name,
-            **provider_kwargs,
-        }, ensure_ascii=False)
-
-        task_repo = self._sm.get_repo(repo_class=GenerateTaskRepository)
-        self._sm.begin_write()
-        try:
-            task_id = task_repo.add(
-                provider_task_id=provider_task_id,
-                provider_name=provider_name,
-                model_name=model,
-                local_path="",
-                request_params=request_params,
-                type=GenerateTaskType.CHAT,
-                caller_type=caller_type,
-                caller_id=caller_id,
-                project_id=project_id,
-                parent_ids=parent_ids,
-            )
-            self._sm.commit_write()
-        except Exception:
-            self._sm.rollback_write()
-            raise
-
-        logger.info(
-            f"文本对话任务已创建：task_id={task_id}, provider_task_id={provider_task_id}, "
-            f"model={model}, caller_type={caller_type}, caller_id={caller_id}, parent_ids={parent_ids}"
-        )
         logger.info(f"调用文本模型 chat，模型：{model}")
 
-        try:
-            content = self._call_provider(messages, model, **provider_kwargs)
-        except RuntimeError as e:
-            self._mark_task_failed(task_repo, task_id, str(e))
-            raise
-
-        self._mark_task_succeeded(task_repo, task_id)
+        content, task_id = self._call_provider(
+            messages=messages,
+            model=model,
+            project_id=project_id,
+            project_name=project_name,
+            module=module,
+            context=context,
+            caller_type=caller_type,
+            caller_id=caller_id,
+            parent_ids=parent_ids,
+            **provider_kwargs,
+        )
+        if task_id is None:
+            raise RuntimeError("文本模型任务创建失败")
         return content, task_id
 
     def optimize_story_outline(
@@ -251,8 +223,7 @@ class ChatService:
         try:
             title, scenes = ScriptParser.parse(script_content)
         except ValueError as e:
-            task_repo = self._sm.get_repo(repo_class=GenerateTaskRepository)
-            self._mark_task_failed(task_repo, task_id, f"解析响应失败：{e}")
+            GenerateTaskRecorder(self._sm).mark_failed(task_id, f"解析响应失败：{e}")
             raise RuntimeError(f"解析响应失败：{e}") from e
 
         logger.info(f"剧本解析成功：标题='{title}'，共 {len(scenes)} 场")
@@ -291,8 +262,7 @@ class ChatService:
         try:
             shots = ShotParser.parse(storyboard_content)
         except ValueError as e:
-            task_repo = self._sm.get_repo(repo_class=GenerateTaskRepository)
-            self._mark_task_failed(task_repo, task_id, f"解析响应失败：{e}")
+            GenerateTaskRecorder(self._sm).mark_failed(task_id, f"解析响应失败：{e}")
             raise RuntimeError(f"解析响应失败：{e}") from e
 
         logger.info(f"分镜解析成功：共 {len(shots)} 个镜头")

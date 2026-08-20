@@ -132,7 +132,11 @@ class TestVideoPromptClean(unittest.TestCase):
             workspace_root="/tmp/workspace",
         )
 
-        with patch.object(video_service, "_call_provider", return_value=("provider-task-1", {"json": {}})) as mock_call:
+        with patch.object(
+            video_service,
+            "_call_provider",
+            return_value=("provider-task-1", {"json": {}}, 303),
+        ) as mock_call:
             video_service.execute_submit_pipeline("pending-id")
 
         mock_chat_service.chat.assert_called_once()
@@ -173,8 +177,7 @@ class TestVideoPromptClean(unittest.TestCase):
         self.assertEqual(request.prev_shot_id, prev_shot.id)
         self.assertEqual(request.next_shot_id, next_shot.id)
 
-    @patch.object(VideoService, "execute_submit_pipeline")
-    def test_execute_submit_pipeline_clean_failure_fallback(self, _mock_execute):
+    def test_execute_submit_pipeline_clean_failure_fallback(self):
         storyboard = _make_storyboard(content="测试内容", camera_movement="", sound_effect="")
 
         mock_chat_service = Mock()
@@ -213,7 +216,11 @@ class TestVideoPromptClean(unittest.TestCase):
             workspace_root="/tmp/workspace",
         )
 
-        with patch.object(video_service, "_call_provider", return_value=("task", {"json": {}})) as mock_call:
+        with patch.object(
+            video_service,
+            "_call_provider",
+            return_value=("task", {"json": {}}, 303),
+        ) as mock_call:
             video_service.execute_submit_pipeline("pending-id")
             submitted_prompt = mock_call.call_args.kwargs["prompt"]
             self.assertIn("测试内容", submitted_prompt)

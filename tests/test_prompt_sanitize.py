@@ -55,7 +55,7 @@ class TestChatServicePromptSanitize(unittest.TestCase):
 
     def test_call_provider_sanitizes_messages_before_chat(self):
         provider = Mock()
-        provider.chat.return_value = "ok"
+        provider.chat.return_value = ("ok", 1)
         self.chat_service._providers["dashscope"] = provider
 
         messages = [
@@ -63,9 +63,10 @@ class TestChatServicePromptSanitize(unittest.TestCase):
             {"role": "user", "content": "  请回答\t问题  "},
         ]
 
-        result = self.chat_service._call_provider(messages, "qwen-max")
+        result, task_id = self.chat_service._call_provider(messages, "qwen-max")
 
         self.assertEqual(result, "ok")
+        self.assertEqual(task_id, 1)
         provider.chat.assert_called_once()
         sent_messages = provider.chat.call_args.kwargs["messages"]
         self.assertEqual(sent_messages[0]["content"], "你是 助手")
@@ -91,7 +92,7 @@ class TestVideoServicePromptSanitize(unittest.TestCase):
             provider_name="dashscope",
             default_model="wan2.7-t2v-2026-06-12",
         )
-        self.provider.t2v.return_value = ("task-1", {"json": {"input": {"prompt": "x"}}})
+        self.provider.t2v.return_value = ("task-1", {"json": {"input": {"prompt": "x"}}}, None)
 
         self.video_service = VideoService(
             session_manager=self.session_manager,

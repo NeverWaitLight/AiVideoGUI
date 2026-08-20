@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import time
@@ -19,6 +20,20 @@ from utils.path_converter import to_relative_path
 
 if TYPE_CHECKING:
     from providers.video_base import VideoProvider
+
+
+def _resolve_task_local_path(parent_info: dict[str, Any] | None, task_info: dict[str, Any]) -> str:
+    if parent_info:
+        local_path = parent_info.get("local_path", "")
+        if not local_path:
+            try:
+                params = json.loads(parent_info.get("request_params", "{}"))
+                local_path = params.get("local_path", "")
+            except (json.JSONDecodeError, TypeError):
+                local_path = ""
+        if local_path:
+            return local_path
+    return task_info.get("local_path", "")
 
 
 class VideoTaskPollingTask(BackgroundTask):
@@ -105,7 +120,7 @@ class VideoTaskPollingTask(BackgroundTask):
 
             task_repo = self._sm.get_repo(repo_class=GenerateTaskRepository)
             from models.enums import GenerateTaskType
-            tasks = task_repo.list_active_tasks(task_type=GenerateTaskType.VIDEO)
+            tasks = task_repo.list_active_child_tasks(task_type=GenerateTaskType.VIDEO)
 
             if not tasks:
                 self.interruptible_sleep(self._idle_check_interval)
@@ -142,11 +157,24 @@ class VideoTaskPollingTask(BackgroundTask):
         caller_type = task_info.get("caller_type")
         caller_id = task_info.get("caller_id", "")
 
+        task_repo = self._sm.get_repo(repo_class=GenerateTaskRepository)
+        parent_task_id = GenerateTaskRepository.get_parent_task_id(task_info.get("parent_ids", ""))
+        parent_info = task_repo.get_by_id(parent_task_id) if parent_task_id else None
+        signal_provider_task_id = (
+            parent_info["provider_task_id"] if parent_info else provider_task_id
+        )
+        local_path = _resolve_task_local_path(parent_info, task_info)
+
         poll_count = self._task_poll_count.get(internal_task_id, 0)
         if poll_count >= self._max_polls_per_task:
             error_msg = f"轮询超时（已查询 {poll_count} 次，任务仍未完成）"
             logger.warning(f"任务超时 internal_id={internal_task_id}")
-            self._handle_task_failed(provider_task_id, internal_task_id, error_msg)
+            self._handle_task_failed(
+                signal_provider_task_id,
+                internal_task_id,
+                error_msg,
+                parent_task_id=parent_task_id,
+            )
             return
 
         write_lock_acquired = False
@@ -172,7 +200,7 @@ class VideoTaskPollingTask(BackgroundTask):
                     write_lock_acquired = False
                     raise
 
-                self._signal_emitter.status_changed.emit(provider_task_id, result.status.value)
+                self._signal_emitter.status_changed.emit(signal_provider_task_id, result.status.value)
 
             if result.status == TaskStatus.SUCCEEDED:
                 if not result.video_url:
@@ -180,16 +208,22 @@ class VideoTaskPollingTask(BackgroundTask):
                 self._download_and_finish(
                     provider=provider,
                     internal_task_id=internal_task_id,
-                    provider_task_id=provider_task_id,
+                    provider_task_id=signal_provider_task_id,
                     remote_url=result.video_url,
                     model_name=model_name,
-                    local_path=task_info.get("local_path", ""),
+                    local_path=local_path,
                     caller_type=caller_type,
                     caller_id=caller_id,
+                    parent_task_id=parent_task_id,
                 )
             elif result.status == TaskStatus.FAILED:
                 error_msg = result.error_message or "未知原因"
-                self._handle_task_failed(provider_task_id, internal_task_id, f"任务失败：{error_msg}")
+                self._handle_task_failed(
+                    signal_provider_task_id,
+                    internal_task_id,
+                    f"任务失败：{error_msg}",
+                    parent_task_id=parent_task_id,
+                )
 
         except Exception as e:
             if write_lock_acquired:
@@ -212,7 +246,38 @@ class VideoTaskPollingTask(BackgroundTask):
             raise
         self._task_poll_count.pop(internal_task_id, None)
 
-    def _handle_task_failed(self, provider_task_id: str, internal_task_id: int, error: str) -> None:
+    def _sync_parent_task(
+        self,
+        parent_task_id: int | None,
+        status: str,
+        error_message: str = "",
+        *,
+        mark_completed: bool = False,
+    ) -> None:
+        if not parent_task_id:
+            return
+        task_repo = self._sm.get_repo(repo_class=GenerateTaskRepository)
+        self._sm.begin_write()
+        try:
+            task_repo.update_status(
+                parent_task_id,
+                status,
+                error_message=error_message,
+            )
+            if mark_completed:
+                task_repo.mark_completed(task_id=parent_task_id)
+            self._sm.commit_write()
+        except Exception:
+            self._sm.rollback_write()
+            raise
+
+    def _handle_task_failed(
+        self,
+        provider_task_id: str,
+        internal_task_id: int,
+        error: str,
+        parent_task_id: int | None = None,
+    ) -> None:
         task_repo = self._sm.get_repo(repo_class=GenerateTaskRepository)
         self._sm.begin_write()
         try:
@@ -222,6 +287,12 @@ class VideoTaskPollingTask(BackgroundTask):
         except Exception:
             self._sm.rollback_write()
             raise
+        self._sync_parent_task(
+            parent_task_id,
+            "failed",
+            error_message=error,
+            mark_completed=True,
+        )
         self._task_poll_count.pop(internal_task_id, None)
         self._signal_emitter.task_failed.emit(provider_task_id, error)
 
@@ -235,6 +306,7 @@ class VideoTaskPollingTask(BackgroundTask):
         local_path: str = "",
         caller_type: str | None = None,
         caller_id: str = "",
+        parent_task_id: int | None = None,
     ) -> None:
         try:
             workspace = paths.workspace_dir(self._workspace_root)
@@ -276,6 +348,11 @@ class VideoTaskPollingTask(BackgroundTask):
             except Exception:
                 self._sm.rollback_write()
                 raise
+            self._sync_parent_task(
+                parent_task_id,
+                "succeeded",
+                mark_completed=True,
+            )
             self._task_poll_count.pop(internal_task_id, None)
             logger.info(f"任务完成 internal_id={internal_task_id} local_path={absolute_path}")
 
@@ -285,7 +362,12 @@ class VideoTaskPollingTask(BackgroundTask):
 
         except Exception as e:
             logger.exception(f"下载失败 internal_id={internal_task_id}")
-            self._handle_task_failed(provider_task_id, internal_task_id, f"下载失败：{e}")
+            self._handle_task_failed(
+                provider_task_id,
+                internal_task_id,
+                f"下载失败：{e}",
+                parent_task_id=parent_task_id,
+            )
 
     def should_continue(self) -> bool:
         return True
