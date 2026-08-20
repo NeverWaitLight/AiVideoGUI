@@ -58,11 +58,7 @@ class SettingsBridge(QObject):
 
     @Slot(str, str, result=str)
     def get_base_url(self, provider_name: str, provider_type: str = "") -> str:
-        if provider_type:
-            typed = self._config._typed_name(provider_name, provider_type)
-            cfg = self._config.get_provider(typed) or self._config.get_provider(provider_name)
-        else:
-            cfg = self._config.get_provider(provider_name)
+        cfg = self._config.get_provider(provider_name, provider_type or None)
         return cfg.base_url if cfg else ""
 
     @Slot(str, str, result=str)

@@ -240,11 +240,12 @@ class TestConfigManagerCatalogIntegration(unittest.TestCase):
         manager = ConfigManager(self._config_path, providers_catalog=self._catalog)
         manager.upsert_provider(
             ProviderConfig(
-                provider_name="dashscope_video",
+                provider_name="dashscope",
                 api_key="sk-test",
                 default_model="wan2.7-t2v-2026-06-12",
                 model_mappings={"t2v": "wan2.7-t2v-2026-06-12"},
             ),
+            provider_type="video",
             auto_save=False,
         )
 
@@ -262,12 +263,13 @@ class TestConfigManagerCatalogIntegration(unittest.TestCase):
         manager = ConfigManager(self._config_path, providers_catalog=self._catalog)
         manager.upsert_provider(
             ProviderConfig(
-                provider_name="dashscope_video",
+                provider_name="dashscope",
                 api_key="sk-test",
                 base_url="custom.example.com",
                 default_model="wan2.7-t2v-2026-06-12",
                 model_mappings={"t2v": "wan2.7-t2v-2026-06-12"},
             ),
+            provider_type="video",
             auto_save=False,
         )
 
@@ -283,12 +285,13 @@ class TestConfigManagerCatalogIntegration(unittest.TestCase):
         manager = ConfigManager(self._config_path, providers_catalog=self._catalog)
         manager.upsert_provider(
             ProviderConfig(
-                provider_name="dashscope_video",
+                provider_name="dashscope",
                 api_key="sk-test",
                 base_url="https://custom.example.com/",
                 default_model="wan2.7-t2v-2026-06-12",
                 model_mappings={"t2v": "wan2.7-t2v-2026-06-12"},
             ),
+            provider_type="video",
             auto_save=False,
         )
 
@@ -303,10 +306,11 @@ class TestConfigManagerCatalogIntegration(unittest.TestCase):
         manager = ConfigManager(self._config_path, providers_catalog=self._catalog)
         manager.upsert_provider(
             ProviderConfig(
-                provider_name="dashscope_image",
+                provider_name="dashscope",
                 api_key="sk-test",
                 base_url="custom.example.com",
             ),
+            provider_type="image",
             auto_save=False,
         )
 

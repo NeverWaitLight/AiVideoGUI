@@ -48,19 +48,21 @@ class TestConfigHotReload(unittest.TestCase):
         )
         self._manager.upsert_provider(
             ProviderConfig(
-                provider_name="dashscope_chat",
+                provider_name="dashscope",
                 api_key="old-chat-key",
                 default_model="qwen3.5-plus",
             ),
+            provider_type="chat",
             auto_save=False,
         )
         self._manager.upsert_provider(
             ProviderConfig(
-                provider_name="dashscope_video",
+                provider_name="dashscope",
                 api_key="old-video-key",
                 default_model="wan2.7-t2v-2026-06-12",
                 model_mappings={"t2v": "wan2.7-t2v-2026-06-12"},
             ),
+            provider_type="video",
             auto_save=False,
         )
 
@@ -78,10 +80,11 @@ class TestConfigHotReload(unittest.TestCase):
 
         self._manager.upsert_provider(
             ProviderConfig(
-                provider_name="dashscope_chat",
+                provider_name="dashscope",
                 api_key="new-chat-key",
                 default_model="qwen3.5-plus",
             ),
+            provider_type="chat",
             auto_save=False,
         )
         service.invalidate_provider_cache()
@@ -109,11 +112,12 @@ class TestConfigHotReload(unittest.TestCase):
 
         self._manager.upsert_provider(
             ProviderConfig(
-                provider_name="dashscope_video",
+                provider_name="dashscope",
                 api_key="new-video-key",
                 default_model="wan2.7-t2v-2026-06-12",
                 model_mappings={"t2v": "wan2.7-t2v-2026-06-12"},
             ),
+            provider_type="video",
             auto_save=False,
         )
         service.invalidate_provider_cache()
@@ -138,11 +142,12 @@ class TestConfigHotReload(unittest.TestCase):
 
         self._manager.upsert_provider(
             ProviderConfig(
-                provider_name="dashscope_video",
+                provider_name="dashscope",
                 api_key="new-polling-key",
                 default_model="wan2.7-t2v-2026-06-12",
                 model_mappings={"t2v": "wan2.7-t2v-2026-06-12"},
             ),
+            provider_type="video",
             auto_save=False,
         )
         task.invalidate_provider_cache()

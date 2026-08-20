@@ -16,6 +16,15 @@ from models.provider_config import ProviderConfig
 if TYPE_CHECKING:
     from config.providers_catalog import ProvidersCatalog
 
+_PROVIDER_TYPES = ("chat", "image", "video")
+
+_LEGACY_RENAMED = {"bailian": "dashscope", "bailian_image": "dashscope_image"}
+_LEGACY_IMAGE_SETTING_RENAMED = {
+    "bailian": "dashscope",
+    "bailian_image": "dashscope",
+    "dashscope_image": "dashscope",
+}
+
 
 class ConfigManager:
     def __init__(
@@ -25,9 +34,15 @@ class ConfigManager:
     ) -> None:
         self._path = config_path
         self._catalog = providers_catalog
-        self._providers: dict[str, ProviderConfig] = {}
+        self._overrides: dict[str, dict[str, ProviderConfig]] = {
+            t: {} for t in _PROVIDER_TYPES
+        }
         self._settings = AppSettings()
         self._load()
+
+    @staticmethod
+    def _empty_overrides() -> dict[str, dict[str, ProviderConfig]]:
+        return {t: {} for t in _PROVIDER_TYPES}
 
     @staticmethod
     def _copy_provider_config(cfg: ProviderConfig, **overrides) -> ProviderConfig:
@@ -45,6 +60,152 @@ class ConfigManager:
         data.update(overrides)
         return ProviderConfig(**data)
 
+    @staticmethod
+    def _provider_from_item(item: dict) -> ProviderConfig | None:
+        provider_id = str(item.get("id") or item.get("provider_name", "")).strip()
+        if not provider_id:
+            return None
+        model_mappings = item.get("model_mappings", {})
+        if not isinstance(model_mappings, dict):
+            model_mappings = {}
+        default_params = item.get("default_params", {})
+        if not isinstance(default_params, dict):
+            default_params = {}
+        return ProviderConfig(
+            provider_name=provider_id,
+            api_key=str(item.get("api_key", "") or ""),
+            base_url=str(item.get("base_url", "") or ""),
+            submit_base_url=str(item.get("submit_base_url", "") or ""),
+            task_base_url=str(item.get("task_base_url", "") or ""),
+            default_model=str(item.get("default_model", "") or ""),
+            default_params=default_params,
+            model_mappings=model_mappings,
+        )
+
+    @staticmethod
+    def _serialize_provider(cfg: ProviderConfig) -> dict:
+        item: dict = {"id": cfg.provider_name}
+        if cfg.api_key:
+            item["api_key"] = cfg.api_key
+        if cfg.base_url:
+            item["base_url"] = cfg.base_url
+        if cfg.submit_base_url:
+            item["submit_base_url"] = cfg.submit_base_url
+        if cfg.task_base_url:
+            item["task_base_url"] = cfg.task_base_url
+        if cfg.default_model:
+            item["default_model"] = cfg.default_model
+        if cfg.default_params:
+            item["default_params"] = cfg.default_params
+        if cfg.model_mappings:
+            item["model_mappings"] = cfg.model_mappings
+        return item
+
+    @staticmethod
+    def _migrate_legacy_provider_name(name: str) -> tuple[str, str] | None:
+        name = _LEGACY_RENAMED.get(name, name)
+        if name.endswith("_video"):
+            return "video", name[:-6]
+        if name.endswith("_chat"):
+            return "chat", name[:-5]
+        if name.endswith("_image"):
+            return "image", name[:-6]
+        return None
+
+    @staticmethod
+    def _infer_legacy_provider_type(name: str, item: dict) -> str:
+        model_mappings = item.get("model_mappings") or {}
+        default_model = str(item.get("default_model", "") or "").lower()
+        mapping_text = " ".join(str(v).lower() for v in model_mappings.values())
+        combined = f"{default_model} {mapping_text}"
+        if any(k in combined for k in ("t2v", "i2v", "r2v", "video", "wan2.7")):
+            return "video"
+        if any(k in combined for k in ("t2i", "i2i", "r2i", "wan2.6")):
+            return "image"
+        if item.get("submit_base_url") or item.get("task_base_url"):
+            return "video"
+        return "chat"
+
+    def _load_new_format(self, data: dict) -> None:
+        for provider_type in _PROVIDER_TYPES:
+            type_data = data.get(provider_type, {})
+            providers = type_data.get("providers", []) if isinstance(type_data, dict) else []
+            if not isinstance(providers, list):
+                continue
+            for item in providers:
+                if not isinstance(item, dict):
+                    continue
+                cfg = self._provider_from_item(item)
+                if cfg:
+                    self._overrides[provider_type][cfg.provider_name] = cfg
+
+    def _load_legacy_format(self, data: dict) -> bool:
+        migrated = False
+        for item in data.get("providers", []):
+            if not isinstance(item, dict):
+                continue
+            name = str(item.get("provider_name", "")).strip()
+            if not name:
+                continue
+            name = _LEGACY_RENAMED.get(name, name)
+            model_mappings = item.get("model_mappings", {})
+            if not isinstance(model_mappings, dict):
+                model_mappings = {}
+
+            if name.endswith("_video") or name == "dashscope":
+                if not model_mappings and item.get("default_model"):
+                    default_model = str(item.get("default_model", "") or "")
+                    if "t2v" in default_model.lower():
+                        model_mappings = {
+                            "t2v": "wan2.7-t2v-2026-06-12",
+                            "i2v": "wan2.7-i2v-2026-04-25",
+                            "r2v": "wan2.7-r2v-2026-06-12",
+                        }
+                        logger.info(f"自动迁移 {name} 的旧配置到 model_mappings")
+                        migrated = True
+
+            typed = self._migrate_legacy_provider_name(name)
+            if typed:
+                provider_type, provider_id = typed
+            else:
+                provider_type = self._infer_legacy_provider_type(name, item)
+                provider_id = name
+
+            cfg = ProviderConfig(
+                provider_name=provider_id,
+                api_key=str(item.get("api_key", "") or ""),
+                base_url=str(item.get("base_url", "") or ""),
+                submit_base_url=str(item.get("submit_base_url", "") or ""),
+                task_base_url=str(item.get("task_base_url", "") or ""),
+                default_model=str(item.get("default_model", "") or ""),
+                default_params=item.get("default_params", {}) if isinstance(item.get("default_params"), dict) else {},
+                model_mappings=model_mappings,
+            )
+            if provider_id not in self._overrides[provider_type]:
+                self._overrides[provider_type][provider_id] = cfg
+                migrated = True
+        return migrated
+
+    def _load_app_settings(self, data: dict) -> tuple[AppSettings, bool]:
+        s = data.get("app_settings", {})
+        if not isinstance(s, dict):
+            s = {}
+        raw_image_provider = s.get("default_image_provider", "")
+        image_provider = _LEGACY_IMAGE_SETTING_RENAMED.get(raw_image_provider, raw_image_provider)
+        migrated = image_provider != raw_image_provider
+        settings = AppSettings(
+            default_provider=_LEGACY_RENAMED.get(s.get("default_provider", ""), s.get("default_provider", "")),
+            default_chat_provider=_LEGACY_RENAMED.get(
+                s.get("default_chat_provider", ""), s.get("default_chat_provider", "")
+            ),
+            default_image_provider=image_provider,
+            workspace_dir=s.get("workspace_dir", ""),
+            color_scheme=s.get("color_scheme", "System"),
+            ignored_update_version=s.get("ignored_update_version", ""),
+            close_window_action=s.get("close_window_action", ""),
+        )
+        return settings, migrated
+
     def _load(self) -> None:
         if not os.path.exists(self._path):
             logger.info(f"配置文件不存在，使用默认值：{self._path}")
@@ -56,134 +217,67 @@ class ConfigManager:
             logger.error(f"读取配置失败：{e}")
             return
 
-        _renamed = {"bailian": "dashscope", "bailian_image": "dashscope_image"}
-        _image_setting_renamed = {
-            "bailian": "dashscope",
-            "bailian_image": "dashscope",
-            "dashscope_image": "dashscope",
-        }
         migrated = False
+        if isinstance(data.get("providers"), list):
+            migrated = self._load_legacy_format(data) or migrated
+        else:
+            self._load_new_format(data)
 
-        for item in data.get("providers", []):
-            name = item.get("provider_name", "")
-            name = _renamed.get(name, name)
-            model_mappings = item.get("model_mappings", {})
+        self._settings, settings_migrated = self._load_app_settings(data)
+        migrated = migrated or settings_migrated
 
-            if name.endswith("_video") or name == "dashscope":
-                if not model_mappings and item.get("default_model"):
-                    default_model = item.get("default_model", "")
-                    if "t2v" in default_model.lower():
-                        model_mappings = {
-                            "t2v": "wan2.7-t2v-2026-06-12",
-                            "i2v": "wan2.7-i2v-2026-04-25",
-                            "r2v": "wan2.7-r2v-2026-06-12"
-                        }
-                        logger.info(f"自动迁移 {name} 的旧配置到 model_mappings")
-                        migrated = True
-
-            cfg = ProviderConfig(
-                provider_name=name,
-                api_key=item.get("api_key", ""),
-                base_url=item.get("base_url", ""),
-                submit_base_url=item.get("submit_base_url", ""),
-                task_base_url=item.get("task_base_url", ""),
-                default_model=item.get("default_model", ""),
-                default_params=item.get("default_params", {}),
-                model_mappings=model_mappings,
-            )
-            if cfg.provider_name and cfg.provider_name not in self._providers:
-                self._providers[cfg.provider_name] = cfg
-
-        s = data.get("app_settings", {})
-        raw_image_provider = s.get("default_image_provider", "")
-        image_provider = _image_setting_renamed.get(raw_image_provider, raw_image_provider)
-        if image_provider != raw_image_provider:
-            migrated = True
-        self._settings = AppSettings(
-            default_provider=_renamed.get(s.get("default_provider", ""), s.get("default_provider", "")),
-            default_chat_provider=_renamed.get(s.get("default_chat_provider", ""), s.get("default_chat_provider", "")),
-            default_image_provider=image_provider,
-            workspace_dir=s.get("workspace_dir", ""),
-            color_scheme=s.get("color_scheme", "System"),
-            ignored_update_version=s.get("ignored_update_version", ""),
-            close_window_action=s.get("close_window_action", ""),
-        )
-        logger.info(f"配置已加载，providers={list(self._providers.keys())}")
+        summary = {
+            t: list(self._overrides[t].keys()) for t in _PROVIDER_TYPES
+        }
+        logger.info(f"配置已加载，providers={summary}")
 
         if migrated:
             self.save()
 
     def save(self) -> None:
-        data = {
-            "providers": [
-                {
-                    "provider_name": p.provider_name,
-                    "api_key": p.api_key,
-                    "base_url": p.base_url,
-                    "submit_base_url": p.submit_base_url,
-                    "task_base_url": p.task_base_url,
-                    "default_model": p.default_model,
-                    "default_params": p.default_params,
-                    "model_mappings": p.model_mappings,
-                }
-                for p in self._providers.values()
-            ],
-            "app_settings": {
-                "default_provider": self._settings.default_provider,
-                "default_chat_provider": self._settings.default_chat_provider,
-                "default_image_provider": self._settings.default_image_provider,
-                "workspace_dir": self._settings.workspace_dir,
-                "color_scheme": self._settings.color_scheme,
-                "ignored_update_version": self._settings.ignored_update_version,
-                "close_window_action": self._settings.close_window_action,
-            },
+        data: dict = {"version": 1}
+        for provider_type in _PROVIDER_TYPES:
+            providers = [
+                self._serialize_provider(cfg)
+                for cfg in self._overrides[provider_type].values()
+            ]
+            if providers:
+                data[provider_type] = {"providers": providers}
+        data["app_settings"] = {
+            "default_provider": self._settings.default_provider,
+            "default_chat_provider": self._settings.default_chat_provider,
+            "default_image_provider": self._settings.default_image_provider,
+            "workspace_dir": self._settings.workspace_dir,
+            "color_scheme": self._settings.color_scheme,
+            "ignored_update_version": self._settings.ignored_update_version,
+            "close_window_action": self._settings.close_window_action,
         }
-        os.makedirs(os.path.dirname(self._path), exist_ok=True)
+        dir_name = os.path.dirname(self._path)
+        if dir_name:
+            os.makedirs(dir_name, exist_ok=True)
         with open(self._path, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
 
-    def get_provider(self, name: str) -> ProviderConfig | None:
-        return self._providers.get(name)
-
-    @staticmethod
-    def _typed_name(name: str, provider_type: str) -> str:
-        if provider_type == "video" and not name.endswith("_video"):
-            return f"{name}_video"
-        if provider_type == "chat" and not name.endswith("_chat"):
-            return f"{name}_chat"
-        if provider_type == "image" and not name.endswith("_image"):
-            return f"{name}_image"
-        return name
+    def get_provider(self, name: str, provider_type: str | None = None) -> ProviderConfig | None:
+        if provider_type in _PROVIDER_TYPES:
+            return self._overrides[provider_type].get(name)
+        for type_overrides in self._overrides.values():
+            if name in type_overrides:
+                return type_overrides[name]
+        return None
 
     def get_provider_config(self, name: str, provider_type: str | None = None) -> ProviderConfig | None:
-        if provider_type in ("video", "chat", "image"):
-            typed = self._typed_name(name, provider_type)
-            cfg = self._providers.get(typed)
-            if cfg:
-                return self._apply_catalog_defaults(cfg, provider_type)
-            cfg = self._providers.get(name)
+        if provider_type in _PROVIDER_TYPES:
+            cfg = self._overrides[provider_type].get(name)
             if cfg:
                 return self._apply_catalog_defaults(cfg, provider_type)
             return None
-        return self._providers.get(name)
-
-    @staticmethod
-    def _base_provider_name(name: str, provider_type: str) -> str:
-        if provider_type == "video" and name.endswith("_video"):
-            return name[:-6]
-        if provider_type == "chat" and name.endswith("_chat"):
-            return name[:-5]
-        if provider_type == "image" and name.endswith("_image"):
-            return name[:-6]
-        return name
+        return self.get_provider(name)
 
     def get_oss_config(self, provider_id: str) -> OssConfig | None:
         if not self._catalog:
             return None
-        lookup_name = provider_id
-        if provider_id.endswith("_video"):
-            lookup_name = provider_id[:-6]
-        return self._catalog.get_oss_config(lookup_name)
+        return self._catalog.get_oss_config(provider_id)
 
     def _resolve_catalog_urls(
         self,
@@ -192,7 +286,6 @@ class ConfigManager:
         user_base_url: str,
         cfg: ProviderConfig,
     ) -> tuple[str, str]:
-        """解析 catalog URL 模板，返回 (submit_or_base_url, task_url)。"""
         if provider_type == "video":
             catalog_submit = self._catalog.get_submit_base_url("video", lookup_name)
             catalog_task = self._catalog.get_task_base_url(lookup_name)
@@ -221,7 +314,7 @@ class ConfigManager:
         if not self._catalog:
             return cfg
 
-        lookup_name = self._base_provider_name(cfg.provider_name, provider_type)
+        lookup_name = cfg.provider_name
 
         if provider_type == "video":
             submit_url, task_url = self._resolve_catalog_urls(
@@ -265,54 +358,43 @@ class ConfigManager:
         return self._copy_provider_config(cfg, base_url=base_url)
 
     def resolve_config_for_type(self, name: str, provider_type: str) -> ProviderConfig | None:
-        cfg = self.get_provider_config(name, provider_type)
-        if cfg and not cfg.api_key:
-            base = self._providers.get(name)
-            if base and base.api_key:
-                return self._copy_provider_config(
-                    cfg,
-                    api_key=base.api_key,
-                    base_url=cfg.base_url or base.base_url,
-                    submit_base_url=cfg.submit_base_url or base.submit_base_url or base.base_url,
-                    task_base_url=cfg.task_base_url or base.task_base_url,
-                )
-        return cfg
+        return self.get_provider_config(name, provider_type)
 
     def list_providers(self) -> list[ProviderConfig]:
-        return list(self._providers.values())
+        result: list[ProviderConfig] = []
+        for type_overrides in self._overrides.values():
+            result.extend(type_overrides.values())
+        return result
 
-    def upsert_provider(self, cfg: ProviderConfig, auto_save: bool = True) -> None:
-        self._providers[cfg.provider_name] = cfg
+    def upsert_provider(
+        self,
+        cfg: ProviderConfig,
+        provider_type: str = "video",
+        auto_save: bool = True,
+    ) -> None:
+        if provider_type not in _PROVIDER_TYPES:
+            raise ValueError(f"未知的 provider_type：{provider_type}")
+        self._overrides[provider_type][cfg.provider_name] = cfg
         if auto_save:
             self.save()
 
     def save_provider_typed(
         self, cfg: ProviderConfig, provider_type: str, auto_save: bool = True
     ) -> None:
-        typed_name = self._typed_name(cfg.provider_name, provider_type)
-
-        if not cfg.api_key:
-            base = self._providers.get(cfg.provider_name)
-            if base:
-                cfg = self._copy_provider_config(
-                    cfg,
-                    provider_name=typed_name,
-                    api_key=base.api_key,
-                    base_url=cfg.base_url or base.base_url,
-                    submit_base_url=cfg.submit_base_url or base.submit_base_url or base.base_url,
-                    task_base_url=cfg.task_base_url or base.task_base_url,
-                )
-            else:
-                cfg = self._copy_provider_config(cfg, provider_name=typed_name)
-        elif typed_name != cfg.provider_name:
-            cfg = self._copy_provider_config(cfg, provider_name=typed_name)
-
-        self._providers[cfg.provider_name] = cfg
+        if provider_type not in _PROVIDER_TYPES:
+            raise ValueError(f"未知的 provider_type：{provider_type}")
+        self._overrides[provider_type][cfg.provider_name] = cfg
         if auto_save:
             self.save()
 
-    def delete_provider(self, name: str, auto_save: bool = True) -> None:
-        self._providers.pop(name, None)
+    def delete_provider(
+        self, name: str, provider_type: str | None = None, auto_save: bool = True
+    ) -> None:
+        if provider_type in _PROVIDER_TYPES:
+            self._overrides[provider_type].pop(name, None)
+        else:
+            for type_overrides in self._overrides.values():
+                type_overrides.pop(name, None)
         if self._settings.default_provider == name:
             self._settings.default_provider = ""
         if auto_save:
@@ -325,10 +407,9 @@ class ConfigManager:
     def _catalog_fallback_model(self, provider_name: str, provider_type: str) -> str:
         if not self._catalog:
             return ""
-        lookup_name = self._base_provider_name(provider_name, provider_type)
         task_keys = ("t2i", "i2i", "r2i") if provider_type == "image" else ("t2v", "i2v", "r2v")
         for task_key in task_keys:
-            models = self._catalog.list_models_for_task(provider_type, lookup_name, task_key)
+            models = self._catalog.list_models_for_task(provider_type, provider_name, task_key)
             if models:
                 return models[0]
         return ""
@@ -353,13 +434,12 @@ class ConfigManager:
         effective_default, effective_mappings = self._resolve_effective_model(cfg, provider_type)
 
         if provider_type == "video":
-            lookup_name = self._base_provider_name(cfg.provider_name, provider_type)
             catalog_submit = ""
             if self._catalog:
-                catalog_submit = self._catalog.get_submit_base_url("video", lookup_name)
+                catalog_submit = self._catalog.get_submit_base_url("video", cfg.provider_name)
             if has_url_template(catalog_submit):
                 submit_url, _ = self._resolve_catalog_urls(
-                    "video", lookup_name, cfg.base_url, cfg
+                    "video", cfg.provider_name, cfg.base_url, cfg
                 )
                 effective_submit = submit_url
             else:
@@ -373,11 +453,10 @@ class ConfigManager:
                 errors.append("未配置模型映射（model_mappings）或默认模型（default_model）")
 
         if provider_type == "chat":
-            lookup_name = self._base_provider_name(cfg.provider_name, provider_type)
-            if lookup_name == "openai":
+            if cfg.provider_name == "openai":
                 effective_url = cfg.base_url
                 if not effective_url and self._catalog:
-                    effective_url = self._catalog.get_base_url(provider_type, lookup_name)
+                    effective_url = self._catalog.get_base_url(provider_type, cfg.provider_name)
                 if not effective_url:
                     errors.append("未设置 Base URL")
 
