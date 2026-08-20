@@ -24,6 +24,7 @@ from service.background.image_generation_worker import (
 from storage.session_manager import SessionManager
 from storage.repositories.generate_task_repository import GenerateTaskRepository
 from utils import paths
+from utils.image_replace import replace_stored_image
 from utils.path_converter import to_relative_path
 from utils.prompt_sanitize import flatten_prompt_text
 
@@ -134,11 +135,11 @@ class ImageService:
         )
         return provider_task_id, task_id
 
-    def _start_worker(self, provider_task_id: str, caller_key: str, wait: bool = False) -> None:
+    def _start_worker(self, provider_task_id: str, caller_key: str, wait: bool = False) -> str | None:
         if wait:
-            self.execute_pipeline(provider_task_id)
-            return
+            return self.execute_pipeline(provider_task_id)
         self._coordinator.start(self, provider_task_id, caller_key)
+        return None
 
     def start_storyboard_design_image(
         self,
@@ -198,7 +199,9 @@ class ImageService:
             visual_style=visual_style,
         )
         provider_task_id, _task_id = self._create_pending_task(request)
-        self._start_worker(provider_task_id, caller_key, wait=wait)
+        relative_path = self._start_worker(provider_task_id, caller_key, wait=wait)
+        if wait:
+            return relative_path or request.local_path
         return provider_task_id
 
     def start_character_design_image(
@@ -444,26 +447,36 @@ class ImageService:
         relative_path: str,
     ) -> None:
         if request.caller_type == GenerateTaskCallerType.STORYBOARD:
+            storyboard = self._storyboard_service.get_storyboard(int(request.caller_id))
+            if not storyboard:
+                raise RuntimeError(f"分镜不存在：{request.caller_id}")
+            old_path = storyboard.design_image
             self._storyboard_service.update_storyboard(
                 storyboard_id=int(request.caller_id),
                 design_image=absolute_path,
             )
+            replace_stored_image(self._workspace_root, old_path, relative_path)
         elif request.caller_type == GenerateTaskCallerType.CHARACTER:
+            character = self._character_service.get_character(request.caller_id)
+            if not character:
+                raise RuntimeError(f"角色不存在：{request.caller_id}")
+            old_path = character.design_image
             self._character_service.update_character(
                 character_uuid=request.caller_id,
                 design_image=absolute_path,
             )
+            replace_stored_image(self._workspace_root, old_path, relative_path)
         elif request.caller_type == GenerateTaskCallerType.COVER:
             project = self._project_service.get_project(project_id=int(request.caller_id))
-            if project:
-                self._project_service.update_project(
-                    project_id=project.id,
-                    name=project.name,
-                    resolution=project.resolution,
-                    aspect_ratio=project.aspect_ratio,
-                    cover_image=relative_path,
-                    visual_style_id=project.visual_style_id,
-                )
+            if not project:
+                raise RuntimeError(f"项目不存在：{request.caller_id}")
+            old_path = project.cover_image
+            if not self._project_service.update_cover_image(
+                project_id=project.id,
+                cover_image=relative_path,
+            ):
+                raise RuntimeError(f"更新项目封面失败：{request.caller_id}")
+            replace_stored_image(self._workspace_root, old_path, relative_path)
 
     def generate(
         self,

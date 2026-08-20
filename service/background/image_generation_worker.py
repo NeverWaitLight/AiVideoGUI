@@ -151,7 +151,7 @@ class BatchImageGenerationWorker(QThread):
                     else shot_size_map.get(shot_size, "中景")
                 )
 
-                provider_task_id = self._image_service.start_storyboard_design_image(
+                relative_path = self._image_service.start_storyboard_design_image(
                     content=shot_data["content"],
                     storyboard_id=storyboard_id,
                     project_id=project_id,
@@ -166,9 +166,6 @@ class BatchImageGenerationWorker(QThread):
                     aspect_ratio=shot_data.get("aspect_ratio", ""),
                     wait=True,
                 )
-                task_repo = self._image_service._sm.get_repo(repo_class=GenerateTaskRepository)
-                task_info = task_repo.get_by_provider_task_id(provider_task_id)
-                relative_path = task_info.get("local_path", "") if task_info else ""
 
                 success_count += 1
                 self.shot_design_done.emit(storyboard_id, relative_path)

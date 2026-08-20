@@ -1,11 +1,14 @@
 import json
+import os
+import tempfile
 import unittest
 from unittest.mock import MagicMock, Mock, patch
 
 from models.enums import GenerateTaskCallerType, GenerateTaskType
-from models.image_generation_request import ImageScene
+from models.image_generation_request import ImageGenerationRequest, ImageScene
 from models.provider_config import ProviderConfig
 from service.image_service import ImageService
+from utils.image_replace import replace_stored_image, try_remove_workspace_file
 
 
 class TestImageServicePipeline(unittest.TestCase):
@@ -56,6 +59,7 @@ class TestImageServicePipeline(unittest.TestCase):
         ]
 
         self.storyboard_service = Mock()
+        self.storyboard_service.get_storyboard.return_value = Mock(design_image="")
         self.character_service = Mock()
         self.project_service = Mock()
 
@@ -141,6 +145,163 @@ class TestImageServicePipeline(unittest.TestCase):
 
         self.task_repo.update_status.assert_any_call(101, "failed", error_message="chat failed")
         self.task_repo.mark_completed.assert_called_with(101)
+
+    def test_apply_business_update_storyboard_replaces_db_and_removes_old_file(self):
+        with tempfile.TemporaryDirectory() as workspace:
+            old_rel = "projects/1/custom-old.png"
+            new_rel = "projects/1/design-1-1.png"
+            old_abs = os.path.join(workspace, old_rel.replace("/", os.sep))
+            os.makedirs(os.path.dirname(old_abs), exist_ok=True)
+            with open(old_abs, "w", encoding="utf-8") as f:
+                f.write("old")
+
+            self.image_service._workspace_root = workspace
+            self.storyboard_service.get_storyboard.return_value = Mock(
+                design_image=old_rel,
+            )
+
+            request = ImageGenerationRequest(
+                scene=ImageScene.STORYBOARD_DESIGN,
+                local_path=new_rel,
+                caller_type=GenerateTaskCallerType.STORYBOARD,
+                caller_id="42",
+            )
+            new_abs = os.path.join(workspace, new_rel.replace("/", os.sep))
+            self.image_service._apply_business_update(request, new_abs, new_rel)
+
+            self.storyboard_service.update_storyboard.assert_called_once_with(
+                storyboard_id=42,
+                design_image=new_abs,
+            )
+            self.assertFalse(os.path.exists(old_abs))
+
+    def test_apply_business_update_character_updates_design_image(self):
+        with tempfile.TemporaryDirectory() as workspace:
+            old_rel = "projects/1/char-old.png"
+            new_rel = "projects/1/char-uuid-1.png"
+            old_abs = os.path.join(workspace, old_rel.replace("/", os.sep))
+            os.makedirs(os.path.dirname(old_abs), exist_ok=True)
+            with open(old_abs, "w", encoding="utf-8") as f:
+                f.write("old")
+
+            self.image_service._workspace_root = workspace
+            self.character_service.get_character.return_value = Mock(
+                design_image=old_rel,
+            )
+
+            request = ImageGenerationRequest(
+                scene=ImageScene.CHARACTER_DESIGN,
+                local_path=new_rel,
+                caller_type=GenerateTaskCallerType.CHARACTER,
+                caller_id="uuid-1",
+            )
+            new_abs = os.path.join(workspace, new_rel.replace("/", os.sep))
+            self.image_service._apply_business_update(request, new_abs, new_rel)
+
+            self.character_service.update_character.assert_called_once_with(
+                character_uuid="uuid-1",
+                design_image=new_abs,
+            )
+            self.assertFalse(os.path.exists(old_abs))
+
+    def test_apply_business_update_cover_updates_cover_image(self):
+        with tempfile.TemporaryDirectory() as workspace:
+            old_rel = "projects/1/old-cover.png"
+            new_rel = "projects/1/cover-1.png"
+            old_abs = os.path.join(workspace, old_rel.replace("/", os.sep))
+            os.makedirs(os.path.dirname(old_abs), exist_ok=True)
+            with open(old_abs, "w", encoding="utf-8") as f:
+                f.write("old")
+
+            self.image_service._workspace_root = workspace
+            self.project_service.get_project.return_value = Mock(
+                id=1,
+                cover_image=old_rel,
+            )
+            self.project_service.update_cover_image.return_value = True
+
+            request = ImageGenerationRequest(
+                scene=ImageScene.PROJECT_COVER,
+                local_path=new_rel,
+                caller_type=GenerateTaskCallerType.COVER,
+                caller_id="1",
+            )
+            new_abs = os.path.join(workspace, new_rel.replace("/", os.sep))
+            self.image_service._apply_business_update(request, new_abs, new_rel)
+
+            self.project_service.update_cover_image.assert_called_once_with(
+                project_id=1,
+                cover_image=new_rel,
+            )
+            self.assertFalse(os.path.exists(old_abs))
+
+    def test_apply_business_update_raises_when_storyboard_missing(self):
+        self.storyboard_service.get_storyboard.return_value = None
+        request = ImageGenerationRequest(
+            scene=ImageScene.STORYBOARD_DESIGN,
+            local_path="projects/1/design-1-1.png",
+            caller_type=GenerateTaskCallerType.STORYBOARD,
+            caller_id="42",
+        )
+        with self.assertRaises(RuntimeError):
+            self.image_service._apply_business_update(
+                request,
+                "/tmp/workspace/projects/1/design-1-1.png",
+                "projects/1/design-1-1.png",
+            )
+
+    @patch("service.image_service.uuid.uuid4", return_value="image-task-wait")
+    def test_start_storyboard_wait_returns_relative_path(self, _mock_uuid):
+        self.image_service.execute_pipeline = Mock(
+            return_value="projects/1/design-1-1.png",
+        )
+        relative_path = self.image_service.start_storyboard_design_image(
+            content="主角站在窗前",
+            storyboard_id=42,
+            project_id=1,
+            scene_number=1,
+            shot_number=1,
+            wait=True,
+        )
+        self.assertEqual(relative_path, "projects/1/design-1-1.png")
+        self.image_service.execute_pipeline.assert_called_once_with("image-task-wait")
+
+
+class TestImageReplace(unittest.TestCase):
+    def test_replace_stored_image_removes_old_when_paths_differ(self):
+        with tempfile.TemporaryDirectory() as workspace:
+            old_rel = "projects/1/old.png"
+            new_rel = "projects/1/new.png"
+            old_abs = os.path.join(workspace, old_rel.replace("/", os.sep))
+            os.makedirs(os.path.dirname(old_abs), exist_ok=True)
+            with open(old_abs, "w", encoding="utf-8") as f:
+                f.write("old")
+
+            replace_stored_image(workspace, old_rel, new_rel)
+            self.assertFalse(os.path.exists(old_abs))
+
+    def test_replace_stored_image_skips_when_paths_same(self):
+        with tempfile.TemporaryDirectory() as workspace:
+            rel = "projects/1/same.png"
+            abs_path = os.path.join(workspace, rel.replace("/", os.sep))
+            os.makedirs(os.path.dirname(abs_path), exist_ok=True)
+            with open(abs_path, "w", encoding="utf-8") as f:
+                f.write("content")
+
+            replace_stored_image(workspace, rel, rel)
+            self.assertTrue(os.path.exists(abs_path))
+
+    def test_try_remove_workspace_file_skips_outside_workspace(self):
+        with tempfile.TemporaryDirectory() as workspace:
+            outside = os.path.join(tempfile.gettempdir(), "outside-image-replace-test.png")
+            with open(outside, "w", encoding="utf-8") as f:
+                f.write("outside")
+            try:
+                try_remove_workspace_file(workspace, outside)
+                self.assertTrue(os.path.exists(outside))
+            finally:
+                if os.path.exists(outside):
+                    os.remove(outside)
 
 
 if __name__ == "__main__":

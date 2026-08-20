@@ -175,6 +175,37 @@ class TestBatchDesignGeneration(unittest.TestCase):
         self.assertEqual(len(captured_shot_list), 1)
         self.assertEqual(captured_shot_list[0]["aspect_ratio"], "9:16")
 
+    def test_batch_worker_emits_relative_path_from_start_result(self):
+        from service.background.image_generation_worker import BatchImageGenerationWorker
+
+        image_service = MagicMock()
+        image_service.start_storyboard_design_image.return_value = "projects/1/design-1-1.png"
+
+        shot_list = [{
+            "storyboard_id": 1,
+            "project_id": 1,
+            "scene_number": 1,
+            "shot_number": 1,
+            "content": "主角站在窗前",
+            "shot_size": ShotSize.MEDIUM_SHOT,
+            "camera_movement": "固定",
+            "notes": "",
+            "character_info": "",
+            "visual_style": "",
+            "project_name": "测试项目",
+            "aspect_ratio": "16:9",
+        }]
+        worker = BatchImageGenerationWorker(image_service, shot_list)
+        emitted = []
+        worker.shot_design_done.connect(lambda shot_id, path: emitted.append((shot_id, path)))
+
+        worker.run()
+
+        self.assertEqual(emitted, [(1, "projects/1/design-1-1.png")])
+        image_service.start_storyboard_design_image.assert_called_once()
+        call_kwargs = image_service.start_storyboard_design_image.call_args.kwargs
+        self.assertTrue(call_kwargs.get("wait"))
+
     def test_collect_shot_data_for_batch_generation(self):
         storyboards = [
             Storyboard(
