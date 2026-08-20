@@ -49,7 +49,7 @@ class SettingsBridge(QObject):
 
     @Slot(str, str, result=str)
     def get_provider_base_url(self, provider_type: str, provider_id: str) -> str:
-        return self._catalog.get_base_url(provider_type, provider_id)
+        return self._catalog.get_base_url_default(provider_type, provider_id)
 
     @Slot(str, str, result=str)
     def get_api_key(self, provider_name: str, provider_type: str = "") -> str:
@@ -58,7 +58,11 @@ class SettingsBridge(QObject):
 
     @Slot(str, str, result=str)
     def get_base_url(self, provider_name: str, provider_type: str = "") -> str:
-        cfg = self._config.resolve_config_for_type(name=provider_name, provider_type=provider_type) if provider_type else self._config.get_provider(name=provider_name)
+        if provider_type:
+            typed = self._config._typed_name(provider_name, provider_type)
+            cfg = self._config.get_provider(typed) or self._config.get_provider(provider_name)
+        else:
+            cfg = self._config.get_provider(provider_name)
         return cfg.base_url if cfg else ""
 
     @Slot(str, str, result=str)

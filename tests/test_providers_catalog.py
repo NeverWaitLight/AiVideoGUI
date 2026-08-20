@@ -44,7 +44,7 @@ SAMPLE_CATALOG = {
             {
                 "id": "dashscope",
                 "name": "DashScope",
-                "base_url": "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation",
+                "base_url": "https://{base_url:dashscope.aliyuncs.com}/api/v1/services/aigc/multimodal-generation/generation",
                 "t2i_models": ["wan2.6-t2i"],
             }
         ]
@@ -54,8 +54,8 @@ SAMPLE_CATALOG = {
             {
                 "id": "dashscope",
                 "name": "DashScope",
-                "submit_base_url": "https://dashscope.aliyuncs.com/api/v1/services/aigc/video-generation/video-synthesis",
-                "task_base_url": "https://dashscope.aliyuncs.com/api/v1/tasks",
+                "submit_base_url": "https://{base_url:dashscope.aliyuncs.com}/api/v1/services/aigc/video-generation/video-synthesis",
+                "task_base_url": "https://{base_url:dashscope.aliyuncs.com}/api/v1/tasks",
                 "t2v_models": ["wan2.7-t2v-2026-06-12"],
                 "i2v_models": ["wan2.7-i2v-2026-04-25"],
                 "r2v_models": ["wan2.7-r2v-2026-06-12"],
@@ -147,18 +147,33 @@ class TestProvidersCatalog(unittest.TestCase):
         self.assertEqual(catalog.get_base_url("chat", "openai"), "")
         self.assertEqual(
             catalog.get_base_url("video", "dashscope"),
-            "https://dashscope.aliyuncs.com/api/v1/services/aigc/video-generation/video-synthesis",
+            "https://{base_url:dashscope.aliyuncs.com}/api/v1/services/aigc/video-generation/video-synthesis",
         )
         self.assertEqual(
             catalog.get_base_url("image", "dashscope"),
-            "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation",
+            "https://{base_url:dashscope.aliyuncs.com}/api/v1/services/aigc/multimodal-generation/generation",
+        )
+
+    def test_get_base_url_default(self) -> None:
+        catalog = ProvidersCatalog(self._catalog_path)
+        self.assertEqual(
+            catalog.get_base_url_default("video", "dashscope"),
+            "dashscope.aliyuncs.com",
+        )
+        self.assertEqual(
+            catalog.get_base_url_default("image", "dashscope"),
+            "dashscope.aliyuncs.com",
+        )
+        self.assertEqual(
+            catalog.get_base_url_default("chat", "dashscope"),
+            "https://dashscope.aliyuncs.com/compatible-mode/v1",
         )
 
     def test_get_task_base_url(self) -> None:
         catalog = ProvidersCatalog(self._catalog_path)
         self.assertEqual(
             catalog.get_task_base_url("dashscope"),
-            "https://dashscope.aliyuncs.com/api/v1/tasks",
+            "https://{base_url:dashscope.aliyuncs.com}/api/v1/tasks",
         )
 
     def test_get_oss_config(self) -> None:
@@ -242,6 +257,65 @@ class TestConfigManagerCatalogIntegration(unittest.TestCase):
         )
         self.assertEqual(cfg.task_base_url, "https://dashscope.aliyuncs.com/api/v1/tasks")
         self.assertIsNotNone(cfg.oss)
+
+    def test_user_host_overrides_both_video_urls(self) -> None:
+        manager = ConfigManager(self._config_path, providers_catalog=self._catalog)
+        manager.upsert_provider(
+            ProviderConfig(
+                provider_name="dashscope_video",
+                api_key="sk-test",
+                base_url="custom.example.com",
+                default_model="wan2.7-t2v-2026-06-12",
+                model_mappings={"t2v": "wan2.7-t2v-2026-06-12"},
+            ),
+            auto_save=False,
+        )
+
+        cfg = manager.get_provider_config("dashscope", "video")
+        assert cfg is not None
+        self.assertEqual(
+            cfg.submit_base_url,
+            "https://custom.example.com/api/v1/services/aigc/video-generation/video-synthesis",
+        )
+        self.assertEqual(cfg.task_base_url, "https://custom.example.com/api/v1/tasks")
+
+    def test_user_host_with_https_prefix_is_normalized(self) -> None:
+        manager = ConfigManager(self._config_path, providers_catalog=self._catalog)
+        manager.upsert_provider(
+            ProviderConfig(
+                provider_name="dashscope_video",
+                api_key="sk-test",
+                base_url="https://custom.example.com/",
+                default_model="wan2.7-t2v-2026-06-12",
+                model_mappings={"t2v": "wan2.7-t2v-2026-06-12"},
+            ),
+            auto_save=False,
+        )
+
+        cfg = manager.get_provider_config("dashscope", "video")
+        assert cfg is not None
+        self.assertEqual(
+            cfg.submit_base_url,
+            "https://custom.example.com/api/v1/services/aigc/video-generation/video-synthesis",
+        )
+
+    def test_image_url_resolved_from_template(self) -> None:
+        manager = ConfigManager(self._config_path, providers_catalog=self._catalog)
+        manager.upsert_provider(
+            ProviderConfig(
+                provider_name="dashscope_image",
+                api_key="sk-test",
+                base_url="custom.example.com",
+            ),
+            auto_save=False,
+        )
+
+        cfg = manager.get_provider_config("dashscope", "image")
+        assert cfg is not None
+        self.assertEqual(
+            cfg.base_url,
+            "https://custom.example.com/api/v1/services/aigc/multimodal-generation/generation",
+        )
 
     def test_validate_allows_empty_submit_when_catalog_has_default(self) -> None:
         manager = ConfigManager(self._config_path, providers_catalog=self._catalog)

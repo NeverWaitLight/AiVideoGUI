@@ -36,6 +36,11 @@ class ChatService:
         self._prompt_builder = text_prompt_builder
         self._providers: dict[str, ChatProvider] = {}
 
+    def invalidate_provider_cache(self) -> None:
+        if self._providers:
+            logger.info("清空 Provider 缓存：chat")
+        self._providers.clear()
+
     def _get_provider_config(self):
         provider_name = self._config.settings.default_chat_provider or "dashscope"
         provider_config = self._config.resolve_config_for_type(

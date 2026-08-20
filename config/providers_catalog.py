@@ -6,6 +6,11 @@ from pathlib import Path
 
 from loguru import logger
 
+from config.url_resolver import (
+    extract_url_variable_default,
+    has_url_template,
+    resolve_url_template,
+)
 from models.oss_config import OssConfig
 
 
@@ -144,10 +149,12 @@ class ProvidersCatalog:
         video_entry = self._catalog["video"].providers.get(provider_id)
         if not video_entry:
             return ""
-        legacy_base = video_entry.submit_base_url.rstrip("/")
-        if not legacy_base:
+        submit_url = video_entry.submit_base_url.rstrip("/")
+        if not submit_url:
             return ""
-        return f"{legacy_base}/uploads"
+        if has_url_template(submit_url):
+            submit_url = resolve_url_template(submit_url, {"base_url": None})
+        return f"{submit_url}/uploads"
 
     def _load(self, path: Path) -> None:
         try:
@@ -252,6 +259,14 @@ class ProvidersCatalog:
         if provider_type == "video":
             return entry.submit_base_url
         return entry.base_url
+
+    def get_base_url_default(self, provider_type: str, provider_id: str) -> str:
+        """返回 UI placeholder 用的默认值：模板 URL 提取变量默认值，否则返回完整 URL。"""
+        raw_url = self.get_base_url(provider_type, provider_id)
+        if not raw_url:
+            return ""
+        default = extract_url_variable_default(raw_url, "base_url")
+        return default if default else raw_url
 
     def get_submit_base_url(self, provider_type: str, provider_id: str) -> str:
         if provider_type != "video":

@@ -1,7 +1,48 @@
 from __future__ import annotations
 
+import re
+
 from models.oss_config import OssConfig
 from models.provider_config import ProviderConfig
+
+URL_VAR_RE = re.compile(r"\{(\w+):([^}]*)\}")
+
+
+def has_url_template(url: str) -> bool:
+    return bool(url and URL_VAR_RE.search(url))
+
+
+def extract_url_variable_default(url: str, var_name: str = "base_url") -> str:
+    if not url:
+        return ""
+    for match in URL_VAR_RE.finditer(url):
+        if match.group(1) == var_name:
+            return match.group(2)
+    return ""
+
+
+def normalize_host(value: str) -> str:
+    host = value.strip()
+    if not host:
+        return ""
+    if "://" in host:
+        host = host.split("://", 1)[1]
+    return host.strip("/")
+
+
+def resolve_url_template(template: str, variables: dict[str, str | None]) -> str:
+    if not template:
+        return ""
+
+    def replacer(match: re.Match[str]) -> str:
+        var_name = match.group(1)
+        default = match.group(2)
+        user_val = variables.get(var_name)
+        if user_val and str(user_val).strip():
+            return normalize_host(str(user_val))
+        return default
+
+    return URL_VAR_RE.sub(replacer, template)
 
 
 def get_image_url(cfg: ProviderConfig) -> str:

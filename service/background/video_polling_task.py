@@ -68,6 +68,11 @@ class VideoTaskPollingTask(BackgroundTask):
     def set_config_manager(self, config_manager: Any) -> None:
         self._config_manager = config_manager
 
+    def invalidate_provider_cache(self) -> None:
+        if self._providers:
+            logger.info("清空 Provider 缓存：video_polling")
+        self._providers.clear()
+
     def get_provider(self, name: str) -> VideoProvider:
         if name in self._providers:
             return self._providers[name]

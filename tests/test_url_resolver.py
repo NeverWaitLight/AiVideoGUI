@@ -1,12 +1,16 @@
 import unittest
 
 from config.url_resolver import (
+    extract_url_variable_default,
     get_chat_base_url,
     get_image_url,
     get_oss_policy_params,
     get_oss_policy_url,
     get_task_base_url,
     get_video_submit_url,
+    has_url_template,
+    normalize_host,
+    resolve_url_template,
 )
 from models.oss_config import OssConfig
 from models.provider_config import ProviderConfig
@@ -57,6 +61,42 @@ class TestUrlResolver(unittest.TestCase):
         )
         self.assertEqual(get_oss_policy_url(oss), "https://example.com/uploads")
         self.assertEqual(get_oss_policy_params(oss), {"action": "getPolicy"})
+
+    def test_has_url_template(self) -> None:
+        self.assertTrue(
+            has_url_template("https://{base_url:dashscope.aliyuncs.com}/api/v1/tasks")
+        )
+        self.assertFalse(has_url_template("https://dashscope.aliyuncs.com/api/v1/tasks"))
+
+    def test_extract_url_variable_default(self) -> None:
+        url = "https://{base_url:dashscope.aliyuncs.com}/api/v1/tasks"
+        self.assertEqual(extract_url_variable_default(url), "dashscope.aliyuncs.com")
+        self.assertEqual(extract_url_variable_default(url, "other"), "")
+
+    def test_normalize_host(self) -> None:
+        self.assertEqual(normalize_host("dashscope.aliyuncs.com"), "dashscope.aliyuncs.com")
+        self.assertEqual(
+            normalize_host("https://custom.example.com/"),
+            "custom.example.com",
+        )
+
+    def test_resolve_url_template_with_user_host(self) -> None:
+        template = "https://{base_url:dashscope.aliyuncs.com}/api/v1/tasks"
+        self.assertEqual(
+            resolve_url_template(template, {"base_url": "custom.example.com"}),
+            "https://custom.example.com/api/v1/tasks",
+        )
+
+    def test_resolve_url_template_uses_default_when_empty(self) -> None:
+        template = "https://{base_url:dashscope.aliyuncs.com}/api/v1/tasks"
+        self.assertEqual(
+            resolve_url_template(template, {"base_url": ""}),
+            "https://dashscope.aliyuncs.com/api/v1/tasks",
+        )
+        self.assertEqual(
+            resolve_url_template(template, {"base_url": None}),
+            "https://dashscope.aliyuncs.com/api/v1/tasks",
+        )
 
 
 if __name__ == "__main__":

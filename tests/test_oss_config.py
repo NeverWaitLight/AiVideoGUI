@@ -44,6 +44,26 @@ class TestOssConfig(unittest.TestCase):
         self.assertEqual(oss.get_policy_url, "https://example.com/uploads")
         self.assertEqual(oss.get_policy_params, {"action": "getPolicy"})
 
+    def test_fallback_oss_url_from_template_video_submit(self) -> None:
+        catalog_data = {
+            "video": {
+                "providers": [
+                    {
+                        "id": "dashscope",
+                        "name": "DashScope",
+                        "submit_base_url": "https://{base_url:example.com}/api/v1/submit",
+                    }
+                ]
+            }
+        }
+        with open(self._catalog_path, "w", encoding="utf-8") as f:
+            json.dump(catalog_data, f)
+
+        catalog = ProvidersCatalog(self._catalog_path)
+        oss = catalog.get_oss_config("dashscope")
+        assert oss is not None
+        self.assertEqual(oss.get_policy_url, "https://example.com/api/v1/submit/uploads")
+
     def test_fallback_oss_url_from_legacy_video_base_url(self) -> None:
         catalog_data = {
             "video": {

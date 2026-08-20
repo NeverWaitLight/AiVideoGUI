@@ -34,7 +34,7 @@
       {
         "id": "dashscope",
         "name": "DashScope",
-        "base_url": "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation",
+        "base_url": "https://{base_url:dashscope.aliyuncs.com}/api/v1/services/aigc/multimodal-generation/generation",
         "t2i_models": [
           "wan2.6-t2i"
         ]
@@ -46,8 +46,8 @@
       {
         "id": "dashscope",
         "name": "DashScope",
-        "submit_base_url": "https://dashscope.aliyuncs.com/api/v1/services/aigc/video-generation/video-synthesis",
-        "task_base_url": "https://dashscope.aliyuncs.com/api/v1/tasks",
+        "submit_base_url": "https://{base_url:dashscope.aliyuncs.com}/api/v1/services/aigc/video-generation/video-synthesis",
+        "task_base_url": "https://{base_url:dashscope.aliyuncs.com}/api/v1/tasks",
         "t2v_models": [
           "wan2.7-t2v-2026-06-12"
         ],

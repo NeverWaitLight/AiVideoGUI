@@ -608,7 +608,7 @@ Dialog {
                 var provider = settingsDialog.providerIdFromCombo(imageProviderCombo)
                 if (!provider)
                     return
-                imageBaseUrlField.placeholderText = bridge.settings.get_provider_base_url("image", provider) || "API 基础地址（可选）"
+                imageBaseUrlField.placeholderText = bridge.settings.get_provider_base_url("image", provider) || "默认域名（可选）"
                 imageApiKeyField.text = bridge.settings.get_api_key(provider, "image")
                 imageBaseUrlField.text = bridge.settings.get_base_url(provider, "image")
 
@@ -719,7 +719,7 @@ Dialog {
                                 id: imageBaseUrlField
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 36
-                                placeholderText: "API 基础地址（可选）"
+                                placeholderText: "默认域名（可选）"
                             }
 
                             Label {
@@ -832,7 +832,7 @@ Dialog {
                 var provider = settingsDialog.providerIdFromCombo(videoProviderCombo)
                 if (!provider)
                     return
-                videoBaseUrlField.placeholderText = bridge.settings.get_provider_base_url("video", provider) || "API 基础地址（可选）"
+                videoBaseUrlField.placeholderText = bridge.settings.get_provider_base_url("video", provider) || "默认域名（可选）"
                 videoApiKeyField.text = bridge.settings.get_api_key(provider, "video")
                 videoBaseUrlField.text = bridge.settings.get_base_url(provider, "video")
 
@@ -943,7 +943,7 @@ Dialog {
                                 id: videoBaseUrlField
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 36
-                                placeholderText: "API 基础地址（可选）"
+                                placeholderText: "默认域名（可选）"
                             }
 
                             Label {

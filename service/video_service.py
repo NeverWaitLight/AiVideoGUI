@@ -65,6 +65,11 @@ class VideoService(QObject):
         self._providers: dict[str, VideoProvider] = {}
         self._coordinator = VideoGenerationCoordinator()
 
+    def invalidate_provider_cache(self) -> None:
+        if self._providers:
+            logger.info("清空 Provider 缓存：video")
+        self._providers.clear()
+
     @property
     def signal_emitter(self):
         return get_video_signal_emitter()

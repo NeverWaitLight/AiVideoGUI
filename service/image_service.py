@@ -70,6 +70,11 @@ class ImageService:
         self._coordinator = ImageGenerationCoordinator()
         self._provider_cache: dict[str, ImageProvider] = {}
 
+    def invalidate_provider_cache(self) -> None:
+        if self._provider_cache:
+            logger.info("清空 Provider 缓存：image")
+        self._provider_cache.clear()
+
     @property
     def signal_emitter(self):
         return get_image_signal_emitter()

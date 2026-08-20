@@ -4,6 +4,11 @@ from typing import TYPE_CHECKING
 
 from loguru import logger
 
+from config.url_resolver import (
+    has_url_template,
+    normalize_host,
+    resolve_url_template,
+)
 from models.app_settings import AppSettings
 from models.oss_config import OssConfig
 from models.provider_config import ProviderConfig
@@ -180,6 +185,36 @@ class ConfigManager:
             lookup_name = provider_id[:-6]
         return self._catalog.get_oss_config(lookup_name)
 
+    def _resolve_catalog_urls(
+        self,
+        provider_type: str,
+        lookup_name: str,
+        user_base_url: str,
+        cfg: ProviderConfig,
+    ) -> tuple[str, str]:
+        """解析 catalog URL 模板，返回 (submit_or_base_url, task_url)。"""
+        if provider_type == "video":
+            catalog_submit = self._catalog.get_submit_base_url("video", lookup_name)
+            catalog_task = self._catalog.get_task_base_url(lookup_name)
+            if has_url_template(catalog_submit):
+                user_host = normalize_host(user_base_url) if user_base_url else None
+                submit_url = resolve_url_template(
+                    catalog_submit, {"base_url": user_host}
+                )
+                task_url = resolve_url_template(catalog_task, {"base_url": user_host})
+                return submit_url, task_url
+            submit_url = user_base_url or cfg.submit_base_url or catalog_submit
+            task_url = cfg.task_base_url or catalog_task
+            return submit_url, task_url
+
+        catalog_base = self._catalog.get_base_url(provider_type, lookup_name)
+        if has_url_template(catalog_base):
+            user_host = normalize_host(user_base_url) if user_base_url else None
+            return resolve_url_template(catalog_base, {"base_url": user_host}), ""
+        if user_base_url:
+            return user_base_url, ""
+        return catalog_base, ""
+
     def _apply_catalog_defaults(
         self, cfg: ProviderConfig, provider_type: str
     ) -> ProviderConfig:
@@ -189,24 +224,37 @@ class ConfigManager:
         lookup_name = self._base_provider_name(cfg.provider_name, provider_type)
 
         if provider_type == "video":
-            catalog_submit = self._catalog.get_submit_base_url("video", lookup_name)
-            catalog_task = self._catalog.get_task_base_url(lookup_name)
-            submit_url = cfg.base_url or cfg.submit_base_url or catalog_submit
-            task_url = cfg.task_base_url or catalog_task
+            submit_url, task_url = self._resolve_catalog_urls(
+                provider_type, lookup_name, cfg.base_url, cfg
+            )
             oss = self.get_oss_config(lookup_name)
             if (
-                submit_url == (cfg.submit_base_url or cfg.base_url)
+                submit_url == cfg.submit_base_url
                 and task_url == cfg.task_base_url
                 and oss == cfg.oss
             ):
                 return cfg
             return self._copy_provider_config(
                 cfg,
-                base_url=submit_url,
                 submit_base_url=submit_url,
                 task_base_url=task_url,
                 oss=oss,
             )
+
+        if provider_type == "image":
+            catalog_base = self._catalog.get_base_url(provider_type, lookup_name)
+            if not catalog_base:
+                return cfg
+            if has_url_template(catalog_base):
+                resolved, _ = self._resolve_catalog_urls(
+                    provider_type, lookup_name, cfg.base_url, cfg
+                )
+                if resolved == cfg.base_url:
+                    return cfg
+                return self._copy_provider_config(cfg, base_url=resolved)
+            if cfg.base_url:
+                return cfg
+            return self._copy_provider_config(cfg, base_url=catalog_base)
 
         if cfg.base_url:
             return cfg
@@ -242,9 +290,6 @@ class ConfigManager:
         self, cfg: ProviderConfig, provider_type: str, auto_save: bool = True
     ) -> None:
         typed_name = self._typed_name(cfg.provider_name, provider_type)
-
-        if provider_type == "video" and cfg.base_url and not cfg.submit_base_url:
-            cfg = self._copy_provider_config(cfg, submit_base_url=cfg.base_url)
 
         if not cfg.api_key:
             base = self._providers.get(cfg.provider_name)
@@ -308,10 +353,19 @@ class ConfigManager:
         effective_default, effective_mappings = self._resolve_effective_model(cfg, provider_type)
 
         if provider_type == "video":
-            effective_submit = cfg.submit_base_url or cfg.base_url
-            if not effective_submit and self._catalog:
-                lookup_name = self._base_provider_name(cfg.provider_name, provider_type)
-                effective_submit = self._catalog.get_submit_base_url("video", lookup_name)
+            lookup_name = self._base_provider_name(cfg.provider_name, provider_type)
+            catalog_submit = ""
+            if self._catalog:
+                catalog_submit = self._catalog.get_submit_base_url("video", lookup_name)
+            if has_url_template(catalog_submit):
+                submit_url, _ = self._resolve_catalog_urls(
+                    "video", lookup_name, cfg.base_url, cfg
+                )
+                effective_submit = submit_url
+            else:
+                effective_submit = cfg.submit_base_url or cfg.base_url
+                if not effective_submit and self._catalog:
+                    effective_submit = catalog_submit
             if not effective_submit:
                 errors.append("未设置 Base URL")
 

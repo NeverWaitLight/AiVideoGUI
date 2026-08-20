@@ -104,6 +104,7 @@ class AppBridge(QObject):
         self._settings_bridge = SettingsBridge(
             self._config, container.providers_catalog(), self
         )
+        self._settings_bridge.settings_saved.connect(self._on_settings_saved)
         self._visual_styles = VisualStyleBridge(
             container.visual_style_service(), self,
         )
@@ -269,4 +270,10 @@ class AppBridge(QObject):
 
     def _on_notify_image_failed(self, provider_task_id: str, error: str) -> None:
         self._notifications.notify_generate_task(provider_task_id, False, error)
+
+    def _on_settings_saved(self) -> None:
+        self._text_model_service.invalidate_provider_cache()
+        self._video_service.invalidate_provider_cache()
+        self._image_service.invalidate_provider_cache()
+        self._video_polling_task.invalidate_provider_cache()
 
