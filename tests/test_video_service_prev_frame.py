@@ -15,6 +15,10 @@ class TestVideoServicePrevFrame(unittest.TestCase):
             session_manager=self.session_manager,
             config=self.config,
             chat_service=self.chat_service,
+            prompt_builder=MagicMock(),
+            storyboard_service=MagicMock(),
+            screenplay_service=MagicMock(),
+            workspace_root="/tmp/workspace",
         )
 
     def _mock_provider(self):

@@ -185,7 +185,6 @@ class VideoTaskPollingTask(BackgroundTask):
             elif result.status == TaskStatus.FAILED:
                 error_msg = result.error_message or "未知原因"
                 self._handle_task_failed(provider_task_id, internal_task_id, f"任务失败：{error_msg}")
-                self._signal_emitter.task_failed.emit(provider_task_id, f"任务失败：{error_msg}")
 
         except Exception as e:
             if write_lock_acquired:
@@ -209,7 +208,16 @@ class VideoTaskPollingTask(BackgroundTask):
         self._task_poll_count.pop(internal_task_id, None)
 
     def _handle_task_failed(self, provider_task_id: str, internal_task_id: int, error: str) -> None:
-        self._mark_task_completed(internal_task_id)
+        task_repo = self._sm.get_repo(repo_class=GenerateTaskRepository)
+        self._sm.begin_write()
+        try:
+            task_repo.update_status(internal_task_id, "failed", error_message=error)
+            task_repo.mark_completed(task_id=internal_task_id)
+            self._sm.commit_write()
+        except Exception:
+            self._sm.rollback_write()
+            raise
+        self._task_poll_count.pop(internal_task_id, None)
         self._signal_emitter.task_failed.emit(provider_task_id, error)
 
     def _download_and_finish(
@@ -254,7 +262,16 @@ class VideoTaskPollingTask(BackgroundTask):
                 except Exception as e:
                     logger.warning(f"素材自动入库失败：{e}")
 
-            self._mark_task_completed(internal_task_id)
+            task_repo = self._sm.get_repo(repo_class=GenerateTaskRepository)
+            self._sm.begin_write()
+            try:
+                task_repo.update_status(internal_task_id, "succeeded", remote_url=remote_url)
+                task_repo.mark_completed(task_id=internal_task_id)
+                self._sm.commit_write()
+            except Exception:
+                self._sm.rollback_write()
+                raise
+            self._task_poll_count.pop(internal_task_id, None)
             logger.info(f"任务完成 internal_id={internal_task_id} local_path={absolute_path}")
 
             # 根据 caller_type 发送信号

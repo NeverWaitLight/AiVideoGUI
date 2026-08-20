@@ -20,6 +20,9 @@ class StoryboardBridge(QObject):
     design_image_finished = Signal(str)  # shot_id
     design_image_progress = Signal(str)
     design_image_failed = Signal(str)
+    video_generation_started = Signal(str)  # shot_id
+    video_generation_finished = Signal(str)  # shot_id
+    video_generation_failed = Signal(str, str)  # shot_id, error
     batch_progress = Signal(int, int, str)
     batch_done = Signal(int, int)
     shot_detail_changed = Signal()
@@ -81,11 +84,21 @@ class StoryboardBridge(QObject):
         self._cur_design_image: str = ""
         self._cur_seed: str = ""
         self._generating_design_shot_ids: set[int] = set()
+        self._generating_video_shot_ids: set[int] = set()
 
         emitter = self._image_service.signal_emitter
         emitter.task_finished.connect(self._on_image_task_finished)
         emitter.task_failed.connect(self._on_image_task_failed)
         emitter.task_progress.connect(self._on_image_task_progress)
+
+        video_service = self._container.video_service()
+        video_emitter = video_service.signal_emitter
+        video_emitter.take_created.connect(self.takes_changed.emit)
+        video_emitter.video_generation_started.connect(self._on_video_generation_started)
+        video_emitter.video_generation_failed.connect(self._on_video_generation_failed)
+        polling_emitter = self._container.video_polling_task().signal_emitter
+        polling_emitter.task_finished.connect(self._on_video_poll_finished)
+        polling_emitter.task_failed.connect(self._on_video_poll_failed)
 
     def _on_image_task_finished(
         self, _provider_task_id: str, caller_type: str, caller_id: str, relative_path: str,
@@ -124,6 +137,87 @@ class StoryboardBridge(QObject):
         if shot_id in self._generating_design_shot_ids:
             self._generating_design_shot_ids.discard(shot_id)
             self.design_image_finished.emit(str(shot_id))
+
+    def _mark_video_generating(self, shot_id: int) -> None:
+        self._generating_video_shot_ids.add(shot_id)
+        self.video_generation_started.emit(str(shot_id))
+
+    def _unmark_video_generating(self, shot_id: int) -> None:
+        if shot_id in self._generating_video_shot_ids:
+            self._generating_video_shot_ids.discard(shot_id)
+            self.video_generation_finished.emit(str(shot_id))
+
+    def _on_video_generation_started(self, shot_id: str) -> None:
+        try:
+            self._mark_video_generating(int(shot_id))
+        except ValueError:
+            pass
+        self.takes_changed.emit()
+
+    def _on_video_generation_failed(self, shot_id: str, error: str) -> None:
+        try:
+            self._unmark_video_generating(int(shot_id))
+        except ValueError:
+            pass
+        self.video_generation_failed.emit(shot_id, error)
+        self.takes_changed.emit()
+
+    def _on_video_poll_finished(self, _provider_task_id: str, _save_path: str, storyboard_id: int) -> None:
+        if storyboard_id > 0:
+            self._unmark_video_generating(storyboard_id)
+        self.takes_changed.emit()
+
+    def _on_video_poll_failed(self, provider_task_id: str, error: str) -> None:
+        from storage.repositories.generate_task_repository import GenerateTaskRepository
+
+        task_repo = self._container.session_manager().get_repo(GenerateTaskRepository)
+        task = task_repo.get_by_provider_task_id(provider_task_id)
+        if task and task.get("caller_type") == GenerateTaskCallerType.STORYBOARD.value:
+            try:
+                shot_id = int(task.get("caller_id") or "0")
+                if shot_id > 0:
+                    self._unmark_video_generating(shot_id)
+                    self.video_generation_failed.emit(str(shot_id), error)
+            except ValueError:
+                pass
+        self.takes_changed.emit()
+
+    def _build_video_request_for_shot(
+        self,
+        shot,
+        project,
+        *,
+        provider_name: str,
+        params: dict | None = None,
+        reference_images: list[str] | None = None,
+        reference_images_info: list[dict] | None = None,
+        visual_style: str | None = None,
+        prev_shot=None,
+        next_shot=None,
+        scene=None,
+        prev_shot_last_frame: str = "",
+    ):
+        from models.video_generation_request import VideoGenerationRequest, VideoScene
+
+        return VideoGenerationRequest(
+            scene=VideoScene.SHOT_VIDEO,
+            storyboard_id=shot.id,
+            local_path="",
+            provider_name=provider_name,
+            project_id=project.id,
+            project_name=project.name,
+            scene_id=scene.id if scene else shot.scene_id,
+            prev_shot_id=prev_shot.id if prev_shot else None,
+            next_shot_id=next_shot.id if next_shot else None,
+            scene_number=shot.scene_number,
+            shot_number=shot.shot_number,
+            reference_images=list(reference_images or []),
+            reference_images_info=list(reference_images_info or []),
+            visual_style=visual_style,
+            params=dict(params or {}),
+            prev_shot_last_frame=prev_shot_last_frame,
+            clean_prompt=True,
+        )
 
     def _get_project_name(self, project_id: int | None = None) -> str | None:
         pid = project_id if project_id is not None else self._project_id
@@ -384,7 +478,78 @@ class StoryboardBridge(QObject):
     def generate_video(self, shot_id: int, scene_number: int, shot_number: int,
                        prompt: str, project_id: int, design_image: str,
                        provider_name: str, model_name: str) -> None:
-        self.data_changed.emit()
+        try:
+            if shot_id <= 0 or project_id <= 0:
+                self.bridge_error.emit("无效的分镜或项目 ID")
+                return
+
+            storyboard = self._storyboard_service.get_storyboard(storyboard_id=shot_id)
+            if not storyboard:
+                self.bridge_error.emit(f"分镜不存在：{shot_id}")
+                return
+
+            project = self._project_service.get_project(project_id=project_id)
+            if not project:
+                self.bridge_error.emit("项目不存在")
+                return
+
+            if not provider_name:
+                config_mgr = self._container.config_manager()
+                provider_name = config_mgr.settings.default_provider
+            if not provider_name:
+                self.bridge_error.emit("未配置默认视频生成供应商")
+                return
+
+            provider_cfg = self._container.config_manager().get_provider_config(
+                name=provider_name, provider_type="video",
+            )
+            params = (provider_cfg.default_params if provider_cfg else {}).copy()
+            params["resolution"] = project.resolution
+            params["ratio"] = project.aspect_ratio
+            if storyboard.duration > 0:
+                params["duration"] = int(storyboard.duration)
+
+            visual_style_name = None
+            if project.visual_style_id:
+                visual_style = self._visual_style_service.get_style(project.visual_style_id)
+                if visual_style:
+                    visual_style_name = visual_style.name
+
+            characters = self._character_service.list_characters(project_id=project_id)
+            workspace_root = self._container.config.workspace_root()
+            reference_images_paths, reference_images_info = self._build_shot_reference_images(
+                storyboard,
+                characters,
+                workspace_root,
+                use_storyboard_design=True,
+                use_character_design=True,
+            )
+
+            scenes = self._screenplay_service.list_scenes(project_id=project_id)
+            shot_list = self._storyboard_service.list_storyboards(project_id=project_id)
+            idx = next((j for j, s in enumerate(shot_list) if s.id == shot_id), -1)
+            prev_shot = shot_list[idx - 1] if idx > 0 else None
+            next_shot = shot_list[idx + 1] if idx >= 0 and idx < len(shot_list) - 1 else None
+            scene_map = {s.id: s for s in scenes}
+            scene = scene_map.get(storyboard.scene_id)
+
+            request = self._build_video_request_for_shot(
+                storyboard,
+                project,
+                provider_name=provider_name,
+                params=params,
+                reference_images=reference_images_paths,
+                reference_images_info=reference_images_info,
+                visual_style=visual_style_name,
+                prev_shot=prev_shot,
+                next_shot=next_shot,
+                scene=scene,
+            )
+            video_service = self._container.video_service()
+            video_service.start_shot_video(request, wait_submit=False)
+        except Exception as e:
+            error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+            self.bridge_error.emit(error_msg)
 
     @Slot(int, int)
     def generate_design_image(self, storyboard_id: int, project_id: int) -> None:
@@ -742,7 +907,6 @@ class StoryboardBridge(QObject):
             controller.progress.connect(on_progress)
             controller.all_done.connect(on_all_done)
             controller.terminated.connect(on_terminated)
-            controller.take_created.connect(self.takes_changed.emit)
             controller.start()
 
         except Exception as e:

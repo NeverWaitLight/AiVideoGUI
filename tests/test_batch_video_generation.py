@@ -85,27 +85,27 @@ class TestBatchVideoGeneration(unittest.TestCase):
 
     def test_prompt_extend_false_passed_to_submit_shot_video(self):
         video_service = MagicMock()
-        video_service.submit_shot_video.return_value = "task-1"
+        video_service.start_shot_video.return_value = "task-1"
 
         controller = self._make_controller(prompt_extend=False, video_service=video_service)
         controller.run()
 
-        params = video_service.submit_shot_video.call_args.kwargs["params"]
-        self.assertFalse(params["prompt_extend"])
+        request = video_service.start_shot_video.call_args.args[0]
+        self.assertFalse(request.params["prompt_extend"])
 
     def test_prompt_extend_true_passed_to_submit_shot_video(self):
         video_service = MagicMock()
-        video_service.submit_shot_video.return_value = "task-1"
+        video_service.start_shot_video.return_value = "task-1"
 
         controller = self._make_controller(prompt_extend=True, video_service=video_service)
         controller.run()
 
-        params = video_service.submit_shot_video.call_args.kwargs["params"]
-        self.assertTrue(params["prompt_extend"])
+        request = video_service.start_shot_video.call_args.args[0]
+        self.assertTrue(request.params["prompt_extend"])
 
     def test_negative_prompt_passed_when_non_empty(self):
         video_service = MagicMock()
-        video_service.submit_shot_video.return_value = "task-1"
+        video_service.start_shot_video.return_value = "task-1"
 
         controller = self._make_controller(
             prompt_extend=True,
@@ -114,12 +114,12 @@ class TestBatchVideoGeneration(unittest.TestCase):
         )
         controller.run()
 
-        params = video_service.submit_shot_video.call_args.kwargs["params"]
-        self.assertEqual(params["negative_prompt"], "低质量 模糊")
+        request = video_service.start_shot_video.call_args.args[0]
+        self.assertEqual(request.params["negative_prompt"], "低质量 模糊")
 
     def test_negative_prompt_omitted_when_empty(self):
         video_service = MagicMock()
-        video_service.submit_shot_video.return_value = "task-1"
+        video_service.start_shot_video.return_value = "task-1"
 
         controller = self._make_controller(
             prompt_extend=True,
@@ -128,8 +128,8 @@ class TestBatchVideoGeneration(unittest.TestCase):
         )
         controller.run()
 
-        params = video_service.submit_shot_video.call_args.kwargs["params"]
-        self.assertNotIn("negative_prompt", params)
+        request = video_service.start_shot_video.call_args.args[0]
+        self.assertNotIn("negative_prompt", request.params)
 
     def test_batch_generate_videos_slot_accepts_prompt_extend(self):
         import inspect
@@ -149,7 +149,7 @@ class TestBatchVideoGeneration(unittest.TestCase):
 
     def test_serial_mode_passes_prev_last_frame_to_submit(self):
         video_service = MagicMock()
-        video_service.submit_shot_video.return_value = "task-1"
+        video_service.start_shot_video.return_value = "task-1"
 
         prev_service = MagicMock()
         prev_service.should_use_prev_frame.return_value = False
@@ -163,11 +163,9 @@ class TestBatchVideoGeneration(unittest.TestCase):
         controller._wait_for_task = MagicMock(return_value=True)
         controller.run()
 
-        video_service.submit_shot_video.assert_called_once()
-        self.assertEqual(
-            video_service.submit_shot_video.call_args.kwargs.get("prev_shot_last_frame"),
-            "",
-        )
+        video_service.start_shot_video.assert_called_once()
+        request = video_service.start_shot_video.call_args.args[0]
+        self.assertEqual(request.prev_shot_last_frame, "")
         controller._wait_for_task.assert_called_once_with("task-1")
 
 

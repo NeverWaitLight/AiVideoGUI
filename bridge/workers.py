@@ -390,22 +390,35 @@ class BatchGenerationController(QThread):
         return prev_last
 
     def _submit_shot(self, shot: dict, prev_last: str) -> str | None:
+        from models.video_generation_request import VideoGenerationRequest, VideoScene
+
         params = self._build_params(shot)
+        storyboard = shot["storyboard"]
+        scene = shot.get("scene")
+        prev_shot = shot.get("prev_shot")
+        next_shot = shot.get("next_shot")
         reference_images = shot.get("reference_images", [])
-        return self._service.submit_shot_video(
-            storyboard=shot["storyboard"],
-            scene=shot.get("scene"),
-            prev_shot=shot.get("prev_shot"),
-            next_shot=shot.get("next_shot"),
-            reference_images=reference_images,
-            reference_images_info=shot.get("reference_images_info"),
-            visual_style=shot.get("visual_style"),
+
+        request = VideoGenerationRequest(
+            scene=VideoScene.SHOT_VIDEO,
+            storyboard_id=storyboard.id,
+            local_path="",
             provider_name=self._provider_name,
-            params=params,
             project_id=self._project.id,
             project_name=self._project.name,
+            scene_id=scene.id if scene else storyboard.scene_id,
+            prev_shot_id=prev_shot.id if prev_shot else None,
+            next_shot_id=next_shot.id if next_shot else None,
+            scene_number=storyboard.scene_number,
+            shot_number=storyboard.shot_number,
+            reference_images=list(reference_images),
+            reference_images_info=list(shot.get("reference_images_info") or []),
+            visual_style=shot.get("visual_style"),
+            params=params,
             prev_shot_last_frame=prev_last,
+            clean_prompt=True,
         )
+        return self._service.start_shot_video(request, wait_submit=True)
 
     def _run_serial_with_prev_frame(self) -> None:
         total = len(self._shot_list)
@@ -425,7 +438,6 @@ class BatchGenerationController(QThread):
                     self._failed += 1
                     continue
 
-                self.take_created.emit()
                 self.progress.emit(i + 1, total, f"等待场{scene_number}镜{shot_number} 生成完成...")
                 if self._wait_for_task(provider_task_id):
                     self._success += 1
@@ -463,7 +475,6 @@ class BatchGenerationController(QThread):
                 provider_task_id = self._submit_shot(shot, "")
                 self._submitted_task_ids.add(provider_task_id)
                 submitted += 1
-                self.take_created.emit()
             except Exception:
                 self._failed += 1
                 self.progress.emit(submitted, len(self._shot_list), f"场{scene_number}镜{shot_number} 提交失败")

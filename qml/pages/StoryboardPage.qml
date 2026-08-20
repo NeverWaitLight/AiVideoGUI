@@ -16,6 +16,7 @@ Item {
     property string _projectName: ""
     property bool _exporting: false
     property var generatingDesignShotIds: []
+    property var generatingVideoShotIds: []
 
     signal backClicked()
     signal navigateToMediaLibrary(int projectId)
@@ -88,6 +89,31 @@ Item {
         function onDesign_image_failed(error) {
             var msg = error ? String(error) : "未知错误"
             alertDialog.error("错误", "设计图生成失败：" + msg)
+        }
+        function onVideo_generation_started(shotId) {
+            var ids = page.generatingVideoShotIds.slice()
+            if (ids.indexOf(shotId) === -1) {
+                ids.push(shotId)
+                page.generatingVideoShotIds = ids
+            }
+        }
+        function onVideo_generation_finished(shotId) {
+            var ids = page.generatingVideoShotIds.slice()
+            var index = ids.indexOf(shotId)
+            if (index !== -1) {
+                ids.splice(index, 1)
+                page.generatingVideoShotIds = ids
+            }
+        }
+        function onVideo_generation_failed(shotId, error) {
+            var ids = page.generatingVideoShotIds.slice()
+            var index = ids.indexOf(shotId)
+            if (index !== -1) {
+                ids.splice(index, 1)
+                page.generatingVideoShotIds = ids
+            }
+            var msg = error ? String(error) : "未知错误"
+            alertDialog.error("错误", "视频生成失败：" + msg)
         }
         function onBatch_progress(current, total, message) {
         }
@@ -366,6 +392,7 @@ Item {
                         visualContent: model.visualContent || ""
                         designImage: model.designImagePath || ""
                         designImageBusy: generatingDesignShotIds.indexOf(String(model.shotId)) !== -1
+                        videoGenerationBusy: generatingVideoShotIds.indexOf(String(model.shotId)) !== -1
                         cameraMovement: model.cameraMovement || ""
                         duration: model.duration || 0
                         multiSelect: _multiSelect

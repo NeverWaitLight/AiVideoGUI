@@ -194,6 +194,21 @@ class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
         entity.completed = True
         entity.updated_at = int(time.time() * 1000)
 
+    def update_provider_task_id(
+        self,
+        task_id: int,
+        provider_task_id: str,
+        request_params: str = "",
+    ) -> None:
+        entity = self.session.get(GenerateTaskEntity, task_id)
+        if not entity:
+            return
+
+        entity.provider_task_id = provider_task_id
+        if request_params:
+            entity.request_params = request_params
+        entity.updated_at = int(time.time() * 1000)
+
     def list_completed_tasks(self, limit: int = 50, offset: int = 0) -> List[dict]:
         stmt = (
             select(GenerateTaskEntity)

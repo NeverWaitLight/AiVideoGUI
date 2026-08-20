@@ -1,4 +1,12 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from prompts.manager import PromptTemplateManager
+
+if TYPE_CHECKING:
+    from models.scene import Scene
+    from models.storyboard import Storyboard
 
 
 class ChatPromptBuilder:
@@ -221,3 +229,23 @@ class ChatPromptBuilder:
         """构建视频提示词清理消息"""
         template = self._template_manager.get_template("storyboard_video_prompt_clean")
         return template.build_messages(original_prompt=original_prompt)
+
+    def assemble_video_shot_prompt(
+        self,
+        storyboard: Storyboard,
+        scene: Scene | None = None,
+        prev_shot: Storyboard | None = None,
+        next_shot: Storyboard | None = None,
+        reference_images: list[dict[str, str]] | None = None,
+        visual_style: str | None = None,
+    ) -> str:
+        from prompts.video_prompt_builder import VideoPromptBuilder
+
+        return VideoPromptBuilder.build_shot_prompt(
+            storyboard,
+            scene,
+            prev_shot,
+            next_shot,
+            reference_images=reference_images,
+            visual_style=visual_style,
+        )

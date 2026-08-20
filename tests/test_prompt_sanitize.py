@@ -97,6 +97,10 @@ class TestVideoServicePromptSanitize(unittest.TestCase):
             session_manager=self.session_manager,
             config=self.config,
             chat_service=Mock(),
+            prompt_builder=Mock(),
+            storyboard_service=Mock(),
+            screenplay_service=Mock(),
+            workspace_root="/tmp/workspace",
         )
         self.video_service._providers["dashscope"] = self.provider
 
