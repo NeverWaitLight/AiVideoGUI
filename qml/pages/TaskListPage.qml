@@ -16,6 +16,12 @@ Item {
         loadTasks()
     }
 
+    onVisibleChanged: {
+        if (visible) {
+            loadTasks()
+        }
+    }
+
     function loadTasks() {
         var tasks = bridge.tasks.list_tasks_filtered(_filterProjectId, _filterCallerType)
         taskModel.clear()

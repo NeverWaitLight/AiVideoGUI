@@ -118,6 +118,7 @@ ApplicationWindow {
                 }
                 onTasksClicked: {
                     mainPanel.currentPage = "tasks"
+                    mainPanel.taskListPage.loadTasks()
                 }
                 onTabChanged: {
                     mainPanel.currentPage = "project"
