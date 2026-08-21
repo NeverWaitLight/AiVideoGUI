@@ -10,7 +10,7 @@ Item {
     signal taskClicked(int taskId)
 
     property int _filterProjectId: -1
-    property string _filterCallerType: ""
+    property string _filterType: ""
 
     Component.onCompleted: {
         loadTasks()
@@ -23,7 +23,7 @@ Item {
     }
 
     function loadTasks() {
-        var tasks = bridge.tasks.list_tasks_filtered(_filterProjectId, _filterCallerType)
+        var tasks = bridge.tasks.list_tasks_filtered(_filterProjectId, _filterType)
         taskModel.clear()
         for (var i = 0; i < tasks.length; i++) {
             var t = tasks[i]
@@ -122,18 +122,15 @@ Item {
                 }
 
                 ComboBox {
-                    id: callerTypeFilterCombo
+                    id: typeFilterCombo
                     Layout.preferredWidth: 140
                     Layout.preferredHeight: 34
 
                     model: ListModel {
                         ListElement { value: ""; label: "全部类型" }
-                        ListElement { value: "cover"; label: "封面" }
-                        ListElement { value: "outline"; label: "大纲" }
-                        ListElement { value: "script"; label: "剧本" }
-                        ListElement { value: "character"; label: "角色" }
-                        ListElement { value: "storyboard"; label: "分镜" }
                         ListElement { value: "chat"; label: "聊天" }
+                        ListElement { value: "image"; label: "图片" }
+                        ListElement { value: "video"; label: "视频" }
                     }
                     textRole: "label"
                     displayText: currentIndex >= 0 ? currentText : "全部类型"
@@ -143,7 +140,7 @@ Item {
                     }
 
                     onActivated: {
-                        _filterCallerType = model.get(currentIndex).value
+                        _filterType = model.get(currentIndex).value
                         loadTasks()
                     }
 
@@ -157,7 +154,7 @@ Item {
                 }
 
                 Button {
-                    visible: _filterProjectId !== -1 || _filterCallerType !== ""
+                    visible: _filterProjectId !== -1 || _filterType !== ""
                     Layout.preferredWidth: 34
                     Layout.preferredHeight: 34
                     flat: true
@@ -174,9 +171,9 @@ Item {
 
                     onClicked: {
                         projectFilterCombo.currentIndex = 0
-                        callerTypeFilterCombo.currentIndex = 0
+                        typeFilterCombo.currentIndex = 0
                         _filterProjectId = -1
-                        _filterCallerType = ""
+                        _filterType = ""
                         loadTasks()
                     }
 

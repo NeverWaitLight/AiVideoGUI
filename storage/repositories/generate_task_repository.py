@@ -251,7 +251,7 @@ class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
     def list_tasks_with_filters(
         self,
         project_id: int | None = None,
-        caller_type: str | None = None,
+        task_type: str | None = None,
         limit: int = 150
     ) -> List[dict]:
         conditions = []
@@ -259,8 +259,8 @@ class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
         if project_id is not None:
             conditions.append(GenerateTaskEntity.project_id == project_id)
 
-        if caller_type is not None and caller_type != "":
-            conditions.append(GenerateTaskEntity.caller_type == caller_type)
+        if task_type is not None and task_type != "":
+            conditions.append(GenerateTaskEntity.type == task_type)
 
         stmt = (
             select(GenerateTaskEntity)

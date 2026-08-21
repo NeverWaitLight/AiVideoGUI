@@ -40,16 +40,16 @@ class TaskBridge(QObject):
             return {}
 
     @Slot(int, str, result=list)
-    def list_tasks_filtered(self, project_id: int, caller_type: str) -> list:
+    def list_tasks_filtered(self, project_id: int, task_type: str) -> list:
         try:
             repo = self._session_manager.get_repo(GenerateTaskRepository)
 
             pid = None if project_id == -1 else project_id
-            ctype = None if caller_type == "" else caller_type
+            ttype = None if task_type == "" else task_type
 
             tasks = repo.list_tasks_with_filters(
                 project_id=pid,
-                caller_type=ctype,
+                task_type=ttype,
                 limit=150
             )
 
