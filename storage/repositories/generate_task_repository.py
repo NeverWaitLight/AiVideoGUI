@@ -1,7 +1,7 @@
 import time
 from typing import List, Optional
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from models.generate_task import GenerateTask
@@ -262,7 +262,7 @@ class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
         task_type: str | None = None,
         limit: int = 150
     ) -> List[dict]:
-        conditions = []
+        conditions = [GenerateTaskEntity.parent_ids == ""]
 
         if project_id is not None:
             conditions.append(GenerateTaskEntity.project_id == project_id)
@@ -272,10 +272,26 @@ class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
 
         stmt = (
             select(GenerateTaskEntity)
-            .where(*conditions) if conditions else select(GenerateTaskEntity)
+            .where(*conditions)
+            .order_by(GenerateTaskEntity.created_at.desc())
+            .limit(limit)
         )
-        stmt = stmt.order_by(GenerateTaskEntity.created_at.desc()).limit(limit)
 
+        entities = self.session.execute(stmt).scalars().all()
+        return [self._entity_to_dict(e) for e in entities]
+
+    def list_child_tasks_by_parent_id(self, parent_id: int) -> List[dict]:
+        parent_id_str = str(parent_id)
+        stmt = (
+            select(GenerateTaskEntity)
+            .where(
+                or_(
+                    GenerateTaskEntity.parent_ids == parent_id_str,
+                    GenerateTaskEntity.parent_ids.like(f"%,{parent_id_str}"),
+                )
+            )
+            .order_by(GenerateTaskEntity.id.asc())
+        )
         entities = self.session.execute(stmt).scalars().all()
         return [self._entity_to_dict(e) for e in entities]
 

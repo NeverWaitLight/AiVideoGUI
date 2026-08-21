@@ -39,6 +39,15 @@ class TaskBridge(QObject):
             logger.error(f"获取任务详情失败: {e}")
             return {}
 
+    @Slot(int, result=list)
+    def list_child_tasks(self, parent_id: int) -> list:
+        try:
+            repo = self._session_manager.get_repo(GenerateTaskRepository)
+            return repo.list_child_tasks_by_parent_id(parent_id)
+        except Exception as e:
+            logger.error(f"获取子任务列表失败: {e}")
+            return []
+
     @Slot(int, str, result=list)
     def list_tasks_filtered(self, project_id: int, task_type: str) -> list:
         try:

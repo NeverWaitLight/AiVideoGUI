@@ -22,6 +22,21 @@ Item {
         }
     }
 
+    function loadChildTasks() {
+        childTaskModel.clear()
+        var children = bridge.tasks.list_child_tasks(taskId)
+        for (var i = 0; i < children.length; i++) {
+            var c = children[i]
+            childTaskModel.append({
+                id: c.id || 0,
+                type: c.type || "",
+                provider_name: c.provider_name || "",
+                model_name: c.model_name || "",
+                status: c.status || ""
+            })
+        }
+    }
+
     function loadTaskDetail() {
         var task = bridge.tasks.get_task_detail(taskId)
         if (task && task.id) {
@@ -62,8 +77,10 @@ Item {
                 var lastId = ids[ids.length - 1].trim()
                 parentTaskButton.text = "#" + lastId
                 parentTaskButton.visible = true
+                childTaskModel.clear()
             } else {
                 parentTaskButton.visible = false
+                loadChildTasks()
             }
         }
     }
@@ -280,6 +297,118 @@ Item {
                             wrapMode: Text.WrapAnywhere
                             font.family: "Consolas"
                             font.pixelSize: 11
+                        }
+                    }
+                }
+
+                Label {
+                    text: "子任务"
+                    font.pixelSize: 16
+                    font.weight: Font.Medium
+                    visible: childTaskModel.count > 0
+                }
+
+                ScrollView {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: childTaskRow.implicitHeight
+                    visible: childTaskModel.count > 0
+                    clip: true
+                    ScrollBar.vertical.policy: ScrollBar.AlwaysOff
+
+                    Row {
+                        id: childTaskRow
+                        spacing: 12
+
+                        Repeater {
+                            model: ListModel { id: childTaskModel }
+
+                            Control {
+                                width: 200
+                                height: 100
+                                padding: 12
+
+                                background: Rectangle {
+                                    radius: 8
+                                    color: Material.background
+                                    border.width: 1
+                                    border.color: Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.12)
+                                }
+
+                                contentItem: ColumnLayout {
+                                    spacing: 6
+
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 8
+
+                                        Rectangle {
+                                            Layout.preferredWidth: 28
+                                            Layout.preferredHeight: 28
+                                            radius: 4
+                                            color: {
+                                                if (model.status === "succeeded") return Material.color(Material.Green, Material.Shade200)
+                                                if (model.status === "failed") return Material.color(Material.Red, Material.Shade200)
+                                                if (model.status === "running") return Material.color(Material.Blue, Material.Shade200)
+                                                return Material.color(Material.Grey, Material.Shade200)
+                                            }
+
+                                            Label {
+                                                anchors.centerIn: parent
+                                                text: "#" + model.id
+                                                font.pixelSize: 11
+                                                font.weight: Font.Medium
+                                            }
+                                        }
+
+                                        Label {
+                                            text: model.type || "未知"
+                                            font.pixelSize: 13
+                                            font.weight: Font.Medium
+                                            color: Material.accent
+                                        }
+
+                                        Item { Layout.fillWidth: true }
+
+                                        Label {
+                                            text: {
+                                                if (model.status === "succeeded") return "成功"
+                                                if (model.status === "failed") return "失败"
+                                                if (model.status === "running") return "运行中"
+                                                return "等待中"
+                                            }
+                                            font.pixelSize: 12
+                                            color: {
+                                                if (model.status === "succeeded") return Material.color(Material.Green)
+                                                if (model.status === "failed") return Material.color(Material.Red)
+                                                if (model.status === "running") return Material.color(Material.Blue)
+                                                return Material.color(Material.Grey)
+                                            }
+                                        }
+                                    }
+
+                                    Label {
+                                        text: model.provider_name || "-"
+                                        font.pixelSize: 11
+                                        color: Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.6)
+                                        elide: Text.ElideRight
+                                        Layout.fillWidth: true
+                                    }
+
+                                    Label {
+                                        text: model.model_name || "-"
+                                        font.pixelSize: 11
+                                        color: Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.6)
+                                        elide: Text.ElideRight
+                                        Layout.fillWidth: true
+                                    }
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: root.taskId = model.id
+                                }
+                            }
                         }
                     }
                 }
