@@ -26,9 +26,11 @@ class MediaFileEntity(Base):
 
     storyboard_id: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     featured: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    generate_task_id: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     __table_args__ = (
         Index("idx_media_type", "media_type"),
         Index("idx_media_created", "created_at"),
         Index("idx_media_storyboard", "storyboard_id"),
+        Index("idx_media_generate_task", "generate_task_id"),
     )

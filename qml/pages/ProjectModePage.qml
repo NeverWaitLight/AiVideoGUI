@@ -8,6 +8,8 @@ Item {
     property string currentPage: "grid"  // grid, detail, project_info, outline, screenplay, storyboard, character, media
     property int currentProjectId: -1
 
+    signal openTaskDetail(int taskId)
+
     StackLayout {
         anchors.fill: parent
         currentIndex: {
@@ -94,6 +96,9 @@ Item {
             onBackClicked: projectMode.currentPage = "detail"
             onNavigateToMediaLibrary: function(pid) {
                 projectMode.currentPage = "media"
+            }
+            onOpenTaskDetail: function(taskId) {
+                projectMode.openTaskDetail(taskId)
             }
         }
 

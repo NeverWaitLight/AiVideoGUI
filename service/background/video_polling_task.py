@@ -336,7 +336,11 @@ class VideoTaskPollingTask(BackgroundTask):
                     # 根据 caller_type 判断是否传递 storyboard_id
                     storyboard_id = int(caller_id) if caller_type == "storyboard" and caller_id else 0
                     self._media_service.register_task_result(
-                        provider_task_id, absolute_path, "", storyboard_id=storyboard_id
+                        provider_task_id,
+                        absolute_path,
+                        "",
+                        storyboard_id=storyboard_id,
+                        generate_task_id=internal_task_id,
                     )
                 except Exception as e:
                     logger.warning(f"素材自动入库失败：{e}")

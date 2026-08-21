@@ -25,3 +25,4 @@ class MediaFile:
     height: int = 0             # 高度（像素）
     storyboard_id: int = 0      # 关联的分镜ID
     featured: bool = False      # 是否为精选视频
+    generate_task_id: int = 0   # 关联的 provider 视频子任务 ID

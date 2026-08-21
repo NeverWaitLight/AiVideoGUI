@@ -35,6 +35,7 @@ class MediaRepository(BaseRepository[MediaFileEntity, MediaFile]):
             height=entity.height,
             storyboard_id=entity.storyboard_id,
             featured=entity.featured,
+            generate_task_id=entity.generate_task_id or 0,
         )
 
     def _to_entity(self, dto: MediaFile) -> MediaFileEntity:
@@ -56,6 +57,7 @@ class MediaRepository(BaseRepository[MediaFileEntity, MediaFile]):
             height=dto.height,
             storyboard_id=dto.storyboard_id,
             featured=dto.featured,
+            generate_task_id=dto.generate_task_id or 0,
         )
 
     def list_all(self, media_type: Optional[MediaType] = None) -> List[MediaFile]:
@@ -116,6 +118,17 @@ class MediaRepository(BaseRepository[MediaFileEntity, MediaFile]):
     def get_by_message_id(self, message_id: str) -> Optional[MediaFile]:
         stmt = select(MediaFileEntity).where(MediaFileEntity.message_id == message_id)
         entity = self.session.execute(stmt).scalar_one_or_none()
+        return self._to_dto(entity) if entity else None
+
+    def get_by_generate_task_id(self, generate_task_id: int) -> Optional[MediaFile]:
+        if not generate_task_id:
+            return None
+        stmt = (
+            select(MediaFileEntity)
+            .where(MediaFileEntity.generate_task_id == generate_task_id)
+            .order_by(MediaFileEntity.created_at.desc())
+        )
+        entity = self.session.execute(stmt).scalars().first()
         return self._to_dto(entity) if entity else None
 
     def list_with_filters(

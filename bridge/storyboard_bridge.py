@@ -1010,12 +1010,30 @@ class StoryboardBridge(QObject):
                         )
                         generating = True
 
+                video_child_task_id = 0
+                if media is not None and getattr(media, "generate_task_id", 0):
+                    video_child_task_id = int(media.generate_task_id)
+                elif t.generate_task_id:
+                    try:
+                        children = task_repo.list_child_tasks_by_parent_id(t.generate_task_id)
+                        for child in reversed(children):
+                            child_type = (child.get("type") or "").strip().lower()
+                            parent_ids = (child.get("parent_ids") or "").strip()
+                            if child_type == "video" and parent_ids:
+                                video_child_task_id = int(child.get("id") or 0)
+                                break
+                    except Exception as e:
+                        logger.warning(
+                            f"解析视频子任务失败 take_id={t.id}, generate_task_id={t.generate_task_id}: {e}"
+                        )
+
                 result.append({
                     "id": t.id,
                     "storyboardId": t.storyboard_id,
                     "number": t.number,
                     "mediaFileId": media_file_id,
                     "generateTaskId": t.generate_task_id or 0,
+                    "videoChildTaskId": video_child_task_id,
                     "status": t.status.value if hasattr(t.status, "value") else str(t.status),
                     "comment": t.comment or "",
                     "createdAt": t.created_at,

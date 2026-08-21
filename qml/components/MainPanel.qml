@@ -26,6 +26,9 @@ Control {
 
         Pages.ProjectModePage {
             id: projectModePage
+            onOpenTaskDetail: function(taskId) {
+                mainPanel.openTaskDetail(taskId)
+            }
         }
 
         Pages.MediaLibraryPage {
@@ -63,4 +66,11 @@ Control {
     readonly property alias visualStylePage: visualStylePage
     readonly property alias taskListPage: taskListPage
     readonly property alias taskDetailPage: taskDetailPage
+
+    function openTaskDetail(taskId) {
+        if (!taskId || taskId <= 0)
+            return
+        taskDetailPage.taskId = taskId
+        mainPanel.currentPage = "taskDetail"
+    }
 }

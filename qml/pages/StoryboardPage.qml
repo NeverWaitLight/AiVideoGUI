@@ -20,6 +20,7 @@ Item {
 
     signal backClicked()
     signal navigateToMediaLibrary(int projectId)
+    signal openTaskDetail(int taskId)
 
     Shortcut {
         sequence: "Escape"
@@ -430,6 +431,9 @@ Item {
                 _showDetail = false
                 _editingShotId = -1
                 bridge.storyboard.load_for_project(page.projectId)
+            }
+            onOpenTaskDetail: function(taskId) {
+                page.openTaskDetail(taskId)
             }
         }
     }

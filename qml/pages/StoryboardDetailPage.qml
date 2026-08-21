@@ -21,6 +21,7 @@ Item {
     }
 
     signal backClicked()
+    signal openTaskDetail(int taskId)
 
     property color borderColor: Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.15)
 
@@ -676,6 +677,33 @@ Item {
                                     var statusMap = ["candidate", "selected", "abandoned"]
                                     bridge.storyboard.update_take_status(takeCard.takeId, statusMap[currentIndex])
                                 }
+                            }
+
+                            // Open provider video child task
+                            Button {
+                                Layout.preferredWidth: 32
+                                Layout.preferredHeight: 32
+                                visible: (model.videoChildTaskId || 0) > 0
+                                display: AbstractButton.IconOnly
+                                icon.source: "qrc:/resources/icons/task.svg"
+                                icon.width: 18
+                                icon.height: 18
+                                topPadding: 7
+                                bottomPadding: 7
+                                leftPadding: 7
+                                rightPadding: 7
+                                ToolTip.visible: hovered
+                                ToolTip.text: "查看生成任务"
+
+                                background: Rectangle {
+                                    anchors.fill: parent
+                                    radius: Theme.radiusSmall
+                                    color: parent.hovered
+                                        ? Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.08)
+                                        : "transparent"
+                                }
+
+                                onClicked: detailPage.openTaskDetail(model.videoChildTaskId)
                             }
 
                             // Delete button

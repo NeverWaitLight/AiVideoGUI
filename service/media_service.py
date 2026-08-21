@@ -48,6 +48,7 @@ class MediaService:
         local_path: str,
         conversation_id: str = "",
         storyboard_id: int = 0,
+        generate_task_id: int = 0,
     ) -> None:
         media_repo = self._sm.get_repo(repo_class=MediaRepository)
 
@@ -122,6 +123,7 @@ class MediaService:
             width=width,
             height=height,
             storyboard_id=storyboard_id,
+            generate_task_id=generate_task_id or 0,
         )
 
         self._sm.begin_write()
