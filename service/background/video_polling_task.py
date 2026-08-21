@@ -215,6 +215,7 @@ class VideoTaskPollingTask(BackgroundTask):
                     caller_type=caller_type,
                     caller_id=caller_id,
                     parent_task_id=parent_task_id,
+                    response_data=result.raw_response or "",
                 )
             elif result.status == TaskStatus.FAILED:
                 error_msg = result.error_message or "未知原因"
@@ -307,6 +308,7 @@ class VideoTaskPollingTask(BackgroundTask):
         caller_type: str | None = None,
         caller_id: str = "",
         parent_task_id: int | None = None,
+        response_data: str = "",
     ) -> None:
         try:
             workspace = paths.workspace_dir(self._workspace_root)
@@ -339,10 +341,25 @@ class VideoTaskPollingTask(BackgroundTask):
                 except Exception as e:
                     logger.warning(f"素材自动入库失败：{e}")
 
+            from utils.response_data import normalize_response_data
+
+            normalized_response = ""
+            if response_data:
+                normalized_response = normalize_response_data(
+                    response_data,
+                    workspace_root=self._workspace_root,
+                    task_id=internal_task_id,
+                )
+
             task_repo = self._sm.get_repo(repo_class=GenerateTaskRepository)
             self._sm.begin_write()
             try:
-                task_repo.update_status(internal_task_id, "succeeded", remote_url=remote_url)
+                task_repo.update_status(
+                    internal_task_id,
+                    "succeeded",
+                    remote_url=remote_url,
+                    response_data=normalized_response,
+                )
                 task_repo.mark_completed(task_id=internal_task_id)
                 self._sm.commit_write()
             except Exception:

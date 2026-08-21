@@ -38,6 +38,14 @@ class TestGenerateTaskRecorder(unittest.TestCase):
         self.assertIsNone(GenerateTaskRepository.get_parent_task_id(""))
         self.assertIsNone(GenerateTaskRepository.get_parent_task_id("invalid"))
 
+    def test_mark_succeeded_stores_response_data(self):
+        self.recorder.mark_succeeded(42, remote_url="https://example.com/a.png", response_data='{"ok":true}')
+        kwargs = self.task_repo.update_status.call_args.kwargs
+        self.assertEqual(kwargs["remote_url"], "https://example.com/a.png")
+        self.assertEqual(kwargs["response_data"], '{"ok":true}')
+        self.task_repo.mark_completed.assert_called_once_with(42)
+        self.session_manager.commit_write.assert_called()
+
 
 if __name__ == "__main__":
     unittest.main()

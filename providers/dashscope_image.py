@@ -148,7 +148,11 @@ class DashScopeImageProvider(ImageProvider):
 
             logger.info(f"图片生成成功：{image_url}")
             if recorder is not None and child_task_id is not None:
-                recorder.mark_succeeded(child_task_id, remote_url=image_url)
+                recorder.mark_succeeded(
+                    child_task_id,
+                    remote_url=image_url,
+                    response_data=resp.text if resp is not None else "",
+                )
             return image_url, payload, child_task_id
 
         except Exception as e:

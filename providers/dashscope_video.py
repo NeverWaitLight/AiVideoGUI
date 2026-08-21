@@ -431,19 +431,27 @@ class DashScopeVideoProvider(VideoProvider):
                 elif isinstance(results, dict):
                     video_url = results.get("url", "")
             logger.info(f"任务成功，video_url={video_url}")
-            return TaskResult(status=TaskStatus.SUCCEEDED, video_url=video_url)
+            return TaskResult(
+                status=TaskStatus.SUCCEEDED,
+                video_url=video_url,
+                raw_response=resp.text,
+            )
 
         if task_status == "FAILED":
             code = output.get("code", "")
             message = output.get("message", "未知错误")
             error = f"[{code}] {message}" if code else message
             logger.error(f"任务失败：{error}")
-            return TaskResult(status=TaskStatus.FAILED, error_message=error)
+            return TaskResult(
+                status=TaskStatus.FAILED,
+                error_message=error,
+                raw_response=resp.text,
+            )
 
         if task_status == "RUNNING":
-            return TaskResult(status=TaskStatus.RUNNING)
+            return TaskResult(status=TaskStatus.RUNNING, raw_response=resp.text)
 
-        return TaskResult(status=TaskStatus.PENDING)
+        return TaskResult(status=TaskStatus.PENDING, raw_response=resp.text)
 
     def download(
         self,

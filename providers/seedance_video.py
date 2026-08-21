@@ -166,17 +166,25 @@ class SeedanceVideoProvider(VideoProvider):
             if not video_url:
                 raise RuntimeError(f"任务已完成但未返回 video_url: {data}")
             logger.info(f"任务成功，video_url={video_url}")
-            return TaskResult(status=TaskStatus.SUCCEEDED, video_url=video_url)
+            return TaskResult(
+                status=TaskStatus.SUCCEEDED,
+                video_url=video_url,
+                raw_response=resp.text,
+            )
 
         if status == "failed":
             error_message = data.get("error", {}).get("message", "未知错误")
             logger.error(f"任务失败：{error_message}")
-            return TaskResult(status=TaskStatus.FAILED, error_message=error_message)
+            return TaskResult(
+                status=TaskStatus.FAILED,
+                error_message=error_message,
+                raw_response=resp.text,
+            )
 
         if status == "processing":
-            return TaskResult(status=TaskStatus.RUNNING)
+            return TaskResult(status=TaskStatus.RUNNING, raw_response=resp.text)
 
-        return TaskResult(status=TaskStatus.PENDING)
+        return TaskResult(status=TaskStatus.PENDING, raw_response=resp.text)
 
     def download(
         self,

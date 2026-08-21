@@ -41,6 +41,14 @@ Item {
                 requestParamsText.text = params
             }
 
+            var responseData = task.response_data || ""
+            try {
+                var responseJson = JSON.parse(responseData)
+                responseDataText.text = JSON.stringify(responseJson, null, 2)
+            } catch (e) {
+                responseDataText.text = responseData
+            }
+
             remoteUrlLabel.text = task.remote_url || ""
             localPathLabel.text = task.local_path || ""
             errorMessageLabel.text = task.error_message || ""
@@ -302,6 +310,35 @@ Item {
                         selectByMouse: true
                         background: null
                         implicitHeight: contentHeight
+                    }
+                }
+
+                Label {
+                    text: "响应数据"
+                    font.pixelSize: 16
+                    font.weight: Font.Medium
+                }
+
+                Control {
+                    Layout.fillWidth: true
+                    padding: 12
+
+                    background: Rectangle {
+                        radius: 8
+                        color: "transparent"
+                        border.width: 1
+                        border.color: Qt.rgba(Material.foreground.r, Material.foreground.g, Material.foreground.b, 0.12)
+                    }
+
+                    contentItem: TextArea {
+                        id: responseDataText
+                        readOnly: true
+                        wrapMode: TextArea.Wrap
+                        font.family: "Consolas"
+                        font.pixelSize: 12
+                        selectByMouse: true
+                        background: null
+                        implicitHeight: Math.max(contentHeight, 40)
                     }
                 }
 

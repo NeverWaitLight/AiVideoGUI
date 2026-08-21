@@ -7,11 +7,28 @@ from typing import Any
 from models.enums import GenerateTaskCallerType, GenerateTaskType
 from storage.repositories.generate_task_repository import GenerateTaskRepository
 from storage.session_manager import SessionManager
+from utils.paths import workspace_root
+from utils.response_data import normalize_response_data
 
 
 class GenerateTaskRecorder:
     def __init__(self, session_manager: SessionManager) -> None:
         self._sm = session_manager
+
+    def _normalize_response(
+        self,
+        task_id: int,
+        response_data: Any = None,
+        content_type: str = "",
+    ) -> str:
+        if response_data is None or response_data == "":
+            return ""
+        return normalize_response_data(
+            response_data,
+            workspace_root=workspace_root(),
+            task_id=task_id,
+            content_type=content_type,
+        )
 
     def create_pending(
         self,
@@ -80,11 +97,23 @@ class GenerateTaskRecorder:
             self._sm.rollback_write()
             raise
 
-    def mark_succeeded(self, task_id: int, remote_url: str = "") -> None:
+    def mark_succeeded(
+        self,
+        task_id: int,
+        remote_url: str = "",
+        response_data: Any = None,
+        content_type: str = "",
+    ) -> None:
+        normalized = self._normalize_response(task_id, response_data, content_type)
         task_repo = self._sm.get_repo(repo_class=GenerateTaskRepository)
         self._sm.begin_write()
         try:
-            task_repo.update_status(task_id, "succeeded", remote_url=remote_url)
+            task_repo.update_status(
+                task_id,
+                "succeeded",
+                remote_url=remote_url,
+                response_data=normalized,
+            )
             task_repo.mark_completed(task_id)
             self._sm.commit_write()
         except Exception:
@@ -108,7 +137,10 @@ class GenerateTaskRecorder:
         status: str,
         remote_url: str = "",
         error_message: str = "",
+        response_data: Any = None,
+        content_type: str = "",
     ) -> None:
+        normalized = self._normalize_response(task_id, response_data, content_type)
         task_repo = self._sm.get_repo(repo_class=GenerateTaskRepository)
         self._sm.begin_write()
         try:
@@ -117,6 +149,7 @@ class GenerateTaskRecorder:
                 status,
                 remote_url=remote_url,
                 error_message=error_message,
+                response_data=normalized,
             )
             self._sm.commit_write()
         except Exception:

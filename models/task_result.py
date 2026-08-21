@@ -11,3 +11,4 @@ class TaskResult:
     status: TaskStatus          # 任务状态
     video_url: str = ""         # 视频URL
     error_message: str = ""     # 错误消息
+    raw_response: str = ""      # 状态查询原始响应文本

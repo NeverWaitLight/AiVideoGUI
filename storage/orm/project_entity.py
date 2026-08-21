@@ -53,6 +53,7 @@ class GenerateTaskEntity(Base):
     remote_url: Mapped[str] = mapped_column(String(500), nullable=False, default="")
     local_path: Mapped[str] = mapped_column(String(500), nullable=False, default="")
     error_message: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    response_data: Mapped[str] = mapped_column(Text, nullable=False, default="")
 
     caller_type: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     caller_id: Mapped[str] = mapped_column(String(100), nullable=False, default="")

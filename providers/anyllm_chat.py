@@ -88,7 +88,9 @@ class AnyLLMChatProvider(ChatProvider):
             raise
 
         if task_id is not None and task_context is not None:
-            GenerateTaskRecorder(task_context.session_manager).mark_succeeded(task_id)
+            GenerateTaskRecorder(task_context.session_manager).mark_succeeded(
+                task_id, response_data=content
+            )
 
         return content, task_id
 

@@ -19,6 +19,7 @@ class GenerateTask:
     remote_url: str                 # 视频/图片/音频URL（供应商返回）
     local_path: str                 # 本地保存路径（相对工作目录）
     error_message: str              # 错误消息
+    response_data: str = ""         # HTTP 响应数据（文本/JSON，或字节流落盘后的相对路径）
     caller_type: GenerateTaskCallerType | None = None  # 调用者类型（storyboard/character/cover/chat）
     caller_id: str = ""             # 调用者ID（对应类型的ID或UUID）
     project_id: int | None = None   # 项目ID（关联 projects 表，可为空）

@@ -28,6 +28,7 @@ class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
             remote_url=entity.remote_url,
             local_path=entity.local_path,
             error_message=entity.error_message,
+            response_data=entity.response_data or "",
             caller_type=GenerateTaskCallerType(entity.caller_type) if entity.caller_type else None,
             caller_id=entity.caller_id,
             project_id=entity.project_id,
@@ -49,6 +50,7 @@ class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
             remote_url=dto.remote_url,
             local_path=dto.local_path,
             error_message=dto.error_message,
+            response_data=dto.response_data or "",
             caller_type=dto.caller_type.value if dto.caller_type else None,
             caller_id=dto.caller_id,
             project_id=dto.project_id,
@@ -81,6 +83,7 @@ class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
             remote_url="",
             local_path=local_path,
             error_message="",
+            response_data="",
             caller_type=caller_type.value if caller_type else None,
             caller_id=caller_id,
             project_id=project_id,
@@ -149,6 +152,7 @@ class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
             "remote_url": entity.remote_url,
             "local_path": entity.local_path,
             "error_message": entity.error_message,
+            "response_data": entity.response_data or "",
             "caller_type": entity.caller_type,
             "caller_id": entity.caller_id,
             "project_id": entity.project_id if entity.project_id is not None else -1,
@@ -188,6 +192,7 @@ class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
             "remote_url": entity.remote_url,
             "local_path": entity.local_path,
             "error_message": entity.error_message,
+            "response_data": entity.response_data or "",
             "caller_type": entity.caller_type,
             "caller_id": entity.caller_id,
             "project_id": entity.project_id if entity.project_id is not None else -1,
@@ -202,6 +207,7 @@ class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
         status: str,
         remote_url: str = "",
         error_message: str = "",
+        response_data: str = "",
     ) -> None:
         entity = self.session.get(GenerateTaskEntity, task_id)
         if not entity:
@@ -212,6 +218,8 @@ class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
             entity.remote_url = remote_url
         if error_message:
             entity.error_message = error_message
+        if response_data:
+            entity.response_data = response_data
         entity.updated_at = int(time.time() * 1000)
 
     def mark_completed(self, task_id: int) -> None:
@@ -284,6 +292,7 @@ class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
             "remote_url": e.remote_url,
             "local_path": e.local_path,
             "error_message": e.error_message,
+            "response_data": e.response_data or "",
             "caller_type": e.caller_type,
             "caller_id": e.caller_id,
             "project_id": e.project_id if e.project_id is not None else -1,
