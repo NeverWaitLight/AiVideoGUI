@@ -98,6 +98,39 @@ class TestGenerateTaskRepository(unittest.TestCase):
         self.assertEqual([c["id"] for c in root_children], [nested_id])
         self.assertEqual([c["id"] for c in nested_children], [deep_child])
 
+    def test_fail_incomplete_sync_wait_tasks_marks_chat_and_image_only(self):
+        chat_id = self._add_task(task_type=GenerateTaskType.CHAT)
+        image_id = self._add_task(task_type=GenerateTaskType.IMAGE)
+        video_id = self._add_task(task_type=GenerateTaskType.VIDEO)
+        done_image_id = self._add_task(task_type=GenerateTaskType.IMAGE)
+        self.repo.update_status(done_image_id, "succeeded")
+        self.repo.mark_completed(done_image_id)
+        self.session.commit()
+
+        n = self.repo.fail_incomplete_sync_wait_tasks("应用退出时任务未完成")
+        self.session.commit()
+
+        self.assertEqual(n, 2)
+
+        chat = self.repo.get_by_id(chat_id)
+        image = self.repo.get_by_id(image_id)
+        video = self.repo.get_by_id(video_id)
+        done_image = self.repo.get_by_id(done_image_id)
+
+        self.assertEqual(chat["status"], "failed")
+        self.assertTrue(chat["completed"])
+        self.assertEqual(chat["error_message"], "应用退出时任务未完成")
+
+        self.assertEqual(image["status"], "failed")
+        self.assertTrue(image["completed"])
+        self.assertEqual(image["error_message"], "应用退出时任务未完成")
+
+        self.assertEqual(video["status"], "pending")
+        self.assertFalse(video["completed"])
+
+        self.assertEqual(done_image["status"], "succeeded")
+        self.assertTrue(done_image["completed"])
+
 
 if __name__ == "__main__":
     unittest.main()

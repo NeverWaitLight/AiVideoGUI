@@ -1,7 +1,7 @@
 import time
 from typing import List, Optional
 
-from sqlalchemy import or_, select
+from sqlalchemy import or_, select, update
 from sqlalchemy.orm import Session
 
 from models.generate_task import GenerateTask
@@ -229,6 +229,27 @@ class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
 
         entity.completed = True
         entity.updated_at = int(time.time() * 1000)
+
+    def fail_incomplete_sync_wait_tasks(self, error_message: str) -> int:
+        """将未完成的 chat/image 任务标记为失败（应用退出时同步等待任务无法继续）。"""
+        now = int(time.time() * 1000)
+        stmt = (
+            update(GenerateTaskEntity)
+            .where(
+                GenerateTaskEntity.completed == False,
+                GenerateTaskEntity.type.in_(
+                    [GenerateTaskType.CHAT.value, GenerateTaskType.IMAGE.value]
+                ),
+            )
+            .values(
+                status=TaskStatus.FAILED.value,
+                error_message=error_message,
+                completed=True,
+                updated_at=now,
+            )
+        )
+        result = self.session.execute(stmt)
+        return int(result.rowcount or 0)
 
     def update_provider_task_id(
         self,

@@ -246,6 +246,21 @@ def main():
     def on_about_to_quit():
         logger.info("应用即将退出，清理资源...")
         scheduler.shutdown()
+        try:
+            from storage.repositories.generate_task_repository import GenerateTaskRepository
+
+            sm = container.session_manager()
+            repo = sm.get_repo(repo_class=GenerateTaskRepository)
+            sm.begin_write()
+            try:
+                n = repo.fail_incomplete_sync_wait_tasks("应用退出时任务未完成")
+                sm.commit_write()
+            except Exception:
+                sm.rollback_write()
+                raise
+            logger.info(f"已将 {n} 个未完成 chat/image 任务标记为失败")
+        except Exception as e:
+            logger.warning(f"退出时标记任务失败出错: {e}")
         logger.info("资源清理完成")
 
     app.aboutToQuit.connect(on_about_to_quit)
