@@ -115,7 +115,9 @@ class VideoService(QObject):
         emitter.take_created.emit()
 
         if wait_submit:
-            return self.execute_submit_pipeline(pending_provider_task_id)
+            self.execute_submit_pipeline(pending_provider_task_id)
+            # 完成信号使用父任务 pending UUID，批量等待必须与之对齐
+            return pending_provider_task_id
 
         self._coordinator.start(self, pending_provider_task_id, caller_key)
         return pending_provider_task_id

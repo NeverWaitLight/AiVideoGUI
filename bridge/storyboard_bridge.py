@@ -892,6 +892,7 @@ class StoryboardBridge(QObject):
                 use_prev_shot_last_frame=use_prev_shot_last_frame,
                 cross_scene_prev_frame=cross_scene_prev_frame,
                 prev_shot_frame_service=prev_shot_frame_service,
+                parent=self,
             )
 
             def on_progress(current: int, total: int, message: str) -> None:
@@ -899,15 +900,20 @@ class StoryboardBridge(QObject):
 
             def on_all_done(success: int, failed: int) -> None:
                 self.batch_done.emit(success, failed)
+                if controller in self._workers:
+                    self._workers.remove(controller)
                 controller.deleteLater()
 
             def on_terminated(success: int, failed: int) -> None:
                 self.batch_done.emit(success, failed)
+                if controller in self._workers:
+                    self._workers.remove(controller)
                 controller.deleteLater()
 
             controller.progress.connect(on_progress)
             controller.all_done.connect(on_all_done)
             controller.terminated.connect(on_terminated)
+            self._workers.append(controller)
             controller.start()
 
         except Exception as e:

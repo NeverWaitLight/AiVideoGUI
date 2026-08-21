@@ -488,12 +488,20 @@ class BatchGenerationController(QThread):
         if not provider_task_id:
             return False
 
-        if self._prev_frame_service:
+        def _check_outcome() -> bool | None:
+            if not self._prev_frame_service:
+                return None
             outcome = self._prev_frame_service.get_provider_task_outcome(provider_task_id)
-            if outcome is not None:
-                finished, success = outcome
-                if finished:
-                    return success
+            if outcome is None:
+                return None
+            finished, success = outcome
+            if finished:
+                return success
+            return None
+
+        early = _check_outcome()
+        if early is not None:
+            return early
 
         event = threading.Event()
         result = {"success": False}
@@ -512,6 +520,10 @@ class BatchGenerationController(QThread):
         self._signal_emitter.task_failed.connect(on_failed)
         try:
             while not event.is_set() and not self._stopped:
+                polled = _check_outcome()
+                if polled is not None:
+                    result["success"] = polled
+                    break
                 event.wait(timeout=0.5)
         finally:
             try:

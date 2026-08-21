@@ -137,6 +137,27 @@ class TestVideoServicePipeline(unittest.TestCase):
         self.assertEqual(add_kwargs["provider_task_id"], "pending-task-123")
         self.video_service._coordinator.start.assert_called_once()
 
+    @patch("service.video_service.paths.workspace_root", return_value="/workspace")
+    @patch("service.video_service.to_relative_path", return_value="projects/1/1-1-1.mp4")
+    @patch("service.video_service.uuid.uuid4", return_value="pending-task-123")
+    def test_start_shot_video_wait_submit_returns_pending_id(self, *_mocks):
+        from models.video_generation_request import VideoGenerationRequest
+
+        request = VideoGenerationRequest(
+            scene=VideoScene.SHOT_VIDEO,
+            storyboard_id=42,
+            local_path="",
+            provider_name="dashscope",
+            project_id=1,
+            project_name="测试项目",
+            scene_number=1,
+            shot_number=1,
+        )
+        returned = self.video_service.start_shot_video(request, wait_submit=True)
+        self.assertEqual(returned, "pending-task-123")
+        self.provider.t2v.assert_called_once()
+        self.video_service._coordinator.start.assert_not_called()
+
     def test_execute_submit_pipeline_chat_parent_ids_and_status_flow(self):
         final_id = self.video_service.execute_submit_pipeline("pending-task-123")
 
