@@ -131,6 +131,53 @@ class TestGenerateTaskRepository(unittest.TestCase):
         self.assertEqual(done_image["status"], "succeeded")
         self.assertTrue(done_image["completed"])
 
+    def test_fail_stale_pending_or_running_tasks(self):
+        from storage.orm.project_entity import GenerateTaskEntity
+
+        now = int(time.time() * 1000)
+        four_hours_ms = 4 * 60 * 60 * 1000
+        old_ts = now - four_hours_ms - 60_000
+
+        stale_pending = self._add_task(task_type=GenerateTaskType.CHAT)
+        fresh_running = self._add_task(task_type=GenerateTaskType.IMAGE)
+        self.repo.update_status(fresh_running, "running")
+        old_succeeded = self._add_task(task_type=GenerateTaskType.VIDEO)
+        self.repo.update_status(old_succeeded, "succeeded")
+        self.repo.mark_completed(old_succeeded)
+        fresh_pending = self._add_task(task_type=GenerateTaskType.VIDEO)
+        self.session.commit()
+
+        for task_id in (stale_pending, old_succeeded):
+            entity = self.session.get(GenerateTaskEntity, task_id)
+            entity.created_at = old_ts
+            entity.updated_at = old_ts
+        self.session.commit()
+
+        n = self.repo.fail_stale_pending_or_running_tasks(
+            four_hours_ms, "任务超时未完成（超过 4 小时）"
+        )
+        self.session.commit()
+
+        self.assertEqual(n, 1)
+
+        stale = self.repo.get_by_id(stale_pending)
+        fresh_r = self.repo.get_by_id(fresh_running)
+        old_ok = self.repo.get_by_id(old_succeeded)
+        fresh_p = self.repo.get_by_id(fresh_pending)
+
+        self.assertEqual(stale["status"], "failed")
+        self.assertTrue(stale["completed"])
+        self.assertEqual(stale["error_message"], "任务超时未完成（超过 4 小时）")
+
+        self.assertEqual(fresh_r["status"], "running")
+        self.assertFalse(fresh_r["completed"])
+
+        self.assertEqual(old_ok["status"], "succeeded")
+        self.assertTrue(old_ok["completed"])
+
+        self.assertEqual(fresh_p["status"], "pending")
+        self.assertFalse(fresh_p["completed"])
+
 
 if __name__ == "__main__":
     unittest.main()

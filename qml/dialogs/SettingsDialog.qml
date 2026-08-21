@@ -34,6 +34,7 @@ Dialog {
     property string imageModelI2I: ""
     property string imageModelR2I: ""
     property string workspacePath: ""
+    property int staleTaskTimeoutHours: 4
 
     function providerIdFromCombo(combo) {
         if (!combo || combo.currentIndex < 0 || !combo.model)
@@ -276,6 +277,7 @@ Dialog {
         imageModel = imageModelT2I
 
         workspacePath = bridge.settings.get_workspace_dir()
+        staleTaskTimeoutHours = bridge.settings.get_stale_task_timeout_hours()
     }
 
     function saveAll() {
@@ -353,6 +355,9 @@ Dialog {
         // Workspace
         if (workspacePath !== bridge.settings.get_workspace_dir()) {
             bridge.settings.batch_set("workspace_dir", workspacePath)
+        }
+        if (staleTaskTimeoutHours !== bridge.settings.get_stale_task_timeout_hours()) {
+            bridge.settings.batch_set_int("stale_task_timeout_hours", staleTaskTimeoutHours)
         }
 
         // Color scheme & AI logging
@@ -1125,6 +1130,54 @@ Dialog {
                                 }
                             }
                         }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            height: 1
+                            color: Material.frameColor
+                        }
+
+                        ColumnLayout {
+                            spacing: 12
+                            Layout.fillWidth: true
+
+                            Label {
+                                text: "未完成任务超时"
+                                font.pixelSize: Theme.fontSizeNormal
+                                font.bold: true
+                            }
+
+                            Label {
+                                text: "超过该小时数仍处于等待或运行中的任务将标记为失败"
+                                font.pixelSize: Theme.fontSizeSmall
+                                color: Material.hintTextColor
+                                wrapMode: Text.Wrap
+                                Layout.fillWidth: true
+                            }
+
+                            RowLayout {
+                                spacing: 8
+                                Layout.fillWidth: true
+
+                                SpinBox {
+                                    id: staleTaskTimeoutSpin
+                                    from: 1
+                                    to: 168
+                                    value: settingsDialog.staleTaskTimeoutHours
+                                    editable: true
+                                    Layout.preferredWidth: 140
+                                    onValueModified: {
+                                        settingsDialog.staleTaskTimeoutHours = value
+                                    }
+                                }
+
+                                Label {
+                                    text: "小时"
+                                    font.pixelSize: Theme.fontSizeNormal
+                                    color: Material.foreground
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -1133,6 +1186,7 @@ Dialog {
 
             Component.onCompleted: {
                 workspaceDirField.text = settingsDialog.workspacePath
+                staleTaskTimeoutSpin.value = settingsDialog.staleTaskTimeoutHours
             }
         }
     }

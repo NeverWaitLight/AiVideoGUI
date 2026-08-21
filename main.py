@@ -240,6 +240,9 @@ def main():
     update_check_task.signal_emitter.update_found.connect(bridge.update.update_available)
     scheduler.register_task(update_check_task)
 
+    stale_task_cleanup_task = container.stale_task_cleanup_task()
+    scheduler.register_task(stale_task_cleanup_task)
+
     scheduler.start()
     logger.info("后台任务调度器已启动（延迟 3 秒）")
 

@@ -13,3 +13,4 @@ class AppSettings:
     color_scheme: str = "System"            # 配色方案（System/Light/Dark）
     ignored_update_version: str = ""        # 已忽略的更新版本
     close_window_action: str = ""          # 关闭窗口行为（""/minimize/quit）
+    stale_task_timeout_hours: int = 4      # 未完成任务超时小时数

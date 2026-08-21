@@ -9,6 +9,7 @@ from prompts.chat_prompt_builder import ChatPromptBuilder
 from service.background.enhanced_scheduler import BackgroundTaskScheduler
 from service.background.video_polling_task import VideoTaskPollingTask
 from service.background.update_check_task import UpdateCheckTask
+from service.background.stale_task_cleanup_task import StaleTaskCleanupTask
 from service.character_service import CharacterService
 from service.image_service import ImageService
 from service.media_service import MediaService
@@ -184,5 +185,12 @@ class ApplicationContainer(containers.DeclarativeContainer):
         UpdateCheckTask,
         update_service=update_service,
         check_interval=3600.0,
+    )
+
+    stale_task_cleanup_task = providers.Singleton(
+        StaleTaskCleanupTask,
+        session_manager=session_manager,
+        config_manager=config_manager,
+        check_interval=1800.0,
     )
 

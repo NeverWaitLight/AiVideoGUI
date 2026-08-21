@@ -251,6 +251,31 @@ class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
         result = self.session.execute(stmt)
         return int(result.rowcount or 0)
 
+    def fail_stale_pending_or_running_tasks(
+        self, older_than_ms: int, error_message: str
+    ) -> int:
+        """将超过阈值仍处于 pending/running 的任务标记为失败。"""
+        now = int(time.time() * 1000)
+        cutoff = now - older_than_ms
+        stmt = (
+            update(GenerateTaskEntity)
+            .where(
+                GenerateTaskEntity.completed == False,
+                GenerateTaskEntity.status.in_(
+                    [TaskStatus.PENDING.value, TaskStatus.RUNNING.value]
+                ),
+                GenerateTaskEntity.created_at < cutoff,
+            )
+            .values(
+                status=TaskStatus.FAILED.value,
+                error_message=error_message,
+                completed=True,
+                updated_at=now,
+            )
+        )
+        result = self.session.execute(stmt)
+        return int(result.rowcount or 0)
+
     def update_provider_task_id(
         self,
         task_id: int,

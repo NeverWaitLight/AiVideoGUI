@@ -193,6 +193,11 @@ class ConfigManager:
         raw_image_provider = s.get("default_image_provider", "")
         image_provider = _LEGACY_IMAGE_SETTING_RENAMED.get(raw_image_provider, raw_image_provider)
         migrated = image_provider != raw_image_provider
+        try:
+            stale_hours = int(s.get("stale_task_timeout_hours", 4))
+        except (TypeError, ValueError):
+            stale_hours = 4
+        stale_hours = max(1, min(168, stale_hours))
         settings = AppSettings(
             default_provider=_LEGACY_RENAMED.get(s.get("default_provider", ""), s.get("default_provider", "")),
             default_chat_provider=_LEGACY_RENAMED.get(
@@ -203,6 +208,7 @@ class ConfigManager:
             color_scheme=s.get("color_scheme", "System"),
             ignored_update_version=s.get("ignored_update_version", ""),
             close_window_action=s.get("close_window_action", ""),
+            stale_task_timeout_hours=stale_hours,
         )
         return settings, migrated
 
@@ -251,6 +257,7 @@ class ConfigManager:
             "color_scheme": self._settings.color_scheme,
             "ignored_update_version": self._settings.ignored_update_version,
             "close_window_action": self._settings.close_window_action,
+            "stale_task_timeout_hours": self._settings.stale_task_timeout_hours,
         }
         dir_name = os.path.dirname(self._path)
         if dir_name:

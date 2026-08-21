@@ -134,6 +134,17 @@ class SettingsBridge(QObject):
     def batch_set_bool(self, key: str, value: bool) -> None:
         self._config.update_settings(auto_save=False, **{key: value})
 
+    @Slot(str, int)
+    def batch_set_int(self, key: str, value: int) -> None:
+        if key == "stale_task_timeout_hours":
+            value = max(1, min(168, int(value)))
+        self._config.update_settings(auto_save=False, **{key: value})
+
+    @Slot(result=int)
+    def get_stale_task_timeout_hours(self) -> int:
+        hours = int(getattr(self._config.settings, "stale_task_timeout_hours", 4) or 4)
+        return max(1, min(168, hours))
+
     @Slot()
     def commit_batch(self) -> None:
         self._config.save()
