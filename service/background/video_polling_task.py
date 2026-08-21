@@ -363,6 +363,7 @@ class VideoTaskPollingTask(BackgroundTask):
                     "succeeded",
                     remote_url=remote_url,
                     response_data=normalized_response,
+                    local_path=relative_save_path,
                 )
                 task_repo.mark_completed(task_id=internal_task_id)
                 self._sm.commit_write()

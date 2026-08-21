@@ -208,6 +208,7 @@ class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
         remote_url: str = "",
         error_message: str = "",
         response_data: str = "",
+        local_path: str = "",
     ) -> None:
         entity = self.session.get(GenerateTaskEntity, task_id)
         if not entity:
@@ -220,6 +221,8 @@ class GenerateTaskRepository(BaseRepository[GenerateTaskEntity, GenerateTask]):
             entity.error_message = error_message
         if response_data:
             entity.response_data = response_data
+        if local_path:
+            entity.local_path = local_path
         entity.updated_at = int(time.time() * 1000)
 
     def mark_completed(self, task_id: int) -> None:

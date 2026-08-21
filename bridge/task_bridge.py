@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import json
+from typing import TYPE_CHECKING, Any
 
 from PySide6.QtCore import QObject, Slot
 from loguru import logger
@@ -9,6 +10,20 @@ if TYPE_CHECKING:
     from storage.session_manager import SessionManager
 
 from storage.repositories.generate_task_repository import GenerateTaskRepository
+
+
+def _resolve_display_local_path(parent_info: dict[str, Any] | None, task: dict[str, Any]) -> str:
+    if parent_info:
+        local_path = parent_info.get("local_path", "") or ""
+        if not local_path:
+            try:
+                params = json.loads(parent_info.get("request_params", "{}") or "{}")
+                local_path = params.get("local_path", "") or ""
+            except (json.JSONDecodeError, TypeError):
+                local_path = ""
+        if local_path:
+            return local_path
+    return task.get("local_path", "") or ""
 
 
 class TaskBridge(QObject):
@@ -34,7 +49,18 @@ class TaskBridge(QObject):
         try:
             repo = self._session_manager.get_repo(GenerateTaskRepository)
             task = repo.get_by_id(task_id)
-            return task if task else {}
+            if not task:
+                return {}
+
+            if not (task.get("local_path") or "").strip():
+                parent_id = GenerateTaskRepository.get_parent_task_id(task.get("parent_ids", ""))
+                parent_info = repo.get_by_id(parent_id) if parent_id else None
+                resolved = _resolve_display_local_path(parent_info, task)
+                if resolved:
+                    task = dict(task)
+                    task["local_path"] = resolved
+
+            return task
         except Exception as e:
             logger.error(f"获取任务详情失败: {e}")
             return {}
