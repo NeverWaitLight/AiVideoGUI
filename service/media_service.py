@@ -343,6 +343,42 @@ class MediaService:
                 count += 1
         return count
 
+    def cleanup_orphaned_files(self) -> int:
+        """删除本地文件已不存在的素材库记录，并尝试清理残留缩略图/帧图。"""
+        media_repo = self._sm.get_repo(repo_class=MediaRepository)
+        take_repo = self._sm.get_repo(repo_class=StoryboardTakeRepository)
+
+        orphans = [
+            media
+            for media in media_repo.list_all()
+            if not media.local_path or not os.path.exists(media.local_path)
+        ]
+        if not orphans:
+            return 0
+
+        orphan_ids = [media.id for media in orphans]
+        self._sm.begin_write()
+        try:
+            for media_id in orphan_ids:
+                take_repo.delete_by_media_file_id(media_id)
+            deleted = media_repo.delete_by_ids(orphan_ids)
+            self._sm.commit_write()
+        except Exception as e:
+            self._sm.rollback_write()
+            logger.error(f"清理孤儿素材记录失败: {e}")
+            raise
+
+        for media in orphans:
+            if media.thumbnail_path:
+                self._try_remove_file(media.thumbnail_path)
+            if media.first_frame_path:
+                self._try_remove_file(media.first_frame_path)
+            if media.last_frame_path:
+                self._try_remove_file(media.last_frame_path)
+
+        logger.info(f"已清理孤儿素材记录：{deleted}")
+        return deleted
+
     def list_by_storyboard(self, storyboard_id: int) -> list[MediaFile]:
         media_repo = self._sm.get_repo(repo_class=MediaRepository)
         files = media_repo.list_by_storyboard(storyboard_id)

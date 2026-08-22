@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from sqlalchemy import select
+from sqlalchemy import delete, or_, select
 from sqlalchemy.orm import Session
 
 from models.enums import MediaType
@@ -161,6 +161,33 @@ class MediaRepository(BaseRepository[MediaFileEntity, MediaFile]):
 
         entities = self.session.execute(stmt).scalars().all()
         return [self._to_dto(e) for e in entities]
+
+    def delete_by_project(self, project_id: int) -> int:
+        """删除项目关联素材：按分镜归属或 local_path 前缀 projects/{id}/。"""
+        from storage.orm.storyboard_entity import StoryboardEntity
+        from storage.orm.screenplay_entity import ScreenplayEntity
+
+        path_prefix = f"projects/{project_id}/"
+        storyboard_ids = (
+            select(StoryboardEntity.id)
+            .join(ScreenplayEntity, StoryboardEntity.scene_id == ScreenplayEntity.id)
+            .where(ScreenplayEntity.project_id == project_id)
+        )
+        stmt = delete(MediaFileEntity).where(
+            or_(
+                MediaFileEntity.storyboard_id.in_(storyboard_ids),
+                MediaFileEntity.local_path.like(f"{path_prefix}%"),
+            )
+        )
+        result = self.session.execute(stmt)
+        return result.rowcount or 0
+
+    def delete_by_ids(self, file_ids: List[str]) -> int:
+        if not file_ids:
+            return 0
+        stmt = delete(MediaFileEntity).where(MediaFileEntity.id.in_(file_ids))
+        result = self.session.execute(stmt)
+        return result.rowcount or 0
 
     def list_featured_by_project(self, project_id: int) -> List[MediaFile]:
         from storage.orm.storyboard_entity import StoryboardEntity

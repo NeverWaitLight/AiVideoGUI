@@ -22,36 +22,36 @@ class MediaBridge(QObject):
     def model(self):
         return self._model
 
+    def _reload_after_cleanup(self, **list_kwargs) -> None:
+        self._media_service.cleanup_orphaned_files()
+        files = self._media_service.list_files(**list_kwargs)
+        self._model.reset(files)
+
     @Slot()
     def load_files(self) -> None:
-        files = self._media_service.list_files()
-        self._model.reset(files)
+        self._reload_after_cleanup()
 
     @Slot(str)
     def load_files_by_type(self, media_type: str = "") -> None:
-        files = self._media_service.list_files(media_type=media_type or None)
-        self._model.reset(files)
+        self._reload_after_cleanup(media_type=media_type or None)
 
     @Slot(str, str)
     def load_files_search(self, media_type: str, search: str) -> None:
-        files = self._media_service.list_files(
+        self._reload_after_cleanup(
             media_type=media_type or None, keyword=search or None,
         )
-        self._model.reset(files)
 
     @Slot(int)
     def load_project_files(self, project_id: int) -> None:
-        files = self._media_service.list_files(project_id=project_id)
-        self._model.reset(files)
+        self._reload_after_cleanup(project_id=project_id)
 
     @Slot(str, str, int)
     def load_files_filtered(self, media_type: str, keyword: str, project_id: int) -> None:
-        files = self._media_service.list_files(
+        self._reload_after_cleanup(
             media_type=media_type or None,
             keyword=keyword or None,
             project_id=project_id if project_id > 0 else None,
         )
-        self._model.reset(files)
 
     @Slot(list)
     def import_files(self, file_paths: list) -> None:

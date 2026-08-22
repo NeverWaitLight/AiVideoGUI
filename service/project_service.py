@@ -78,6 +78,7 @@ class ProjectService:
 
     def delete_project(self, project_id: int) -> None:
         project_repo = self._sm.get_repo(repo_class=ProjectRepository)
+        media_repo = self._sm.get_repo(repo_class=MediaRepository)
 
         self._sm.begin_write()
         try:
@@ -85,6 +86,12 @@ class ProjectService:
                 deleted = self._take_service.delete_by_project(project_id)
                 if deleted:
                     logger.info(f"删除项目关联拍摄记录：project_id={project_id}, count={deleted}")
+
+            media_deleted = media_repo.delete_by_project(project_id)
+            if media_deleted:
+                logger.info(
+                    f"删除项目关联素材记录：project_id={project_id}, count={media_deleted}"
+                )
 
             entity = project_repo.session.get(project_repo.entity_class, project_id)
             if entity:
