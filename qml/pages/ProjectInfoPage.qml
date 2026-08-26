@@ -133,6 +133,11 @@ Item {
                         alertDialog.error("错误", "请先保存项目")
                         return
                     }
+                    if (_nameText.trim() === "") {
+                        alertDialog.error("错误", "请输入项目名称")
+                        return
+                    }
+                    _saveProject()
                     page.nextStepClicked()
                 }
             }
@@ -449,6 +454,7 @@ Item {
         }
 
         bridge.projects.update_project(projectId, _nameText.trim(), _resText, _ratioText, coverToSave, _visualStyleId)
+        _projectName = _nameText.trim()
         page.isCreate = false
         page.projectSaved(projectId)
     }

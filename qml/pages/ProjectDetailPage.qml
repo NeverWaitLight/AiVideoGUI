@@ -22,6 +22,17 @@ Item {
         }
     }
 
+    Connections {
+        target: bridge.projects
+        function onProject_updated(pid) {
+            if (pid === projectId && projectId > 0) {
+                var info = JSON.parse(bridge.projects.get_project_info(projectId))
+                _projectName = info.name || "项目详情"
+                _projectInfo = (info.aspectRatio || "") + " · " + (info.resolution || "")
+            }
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
