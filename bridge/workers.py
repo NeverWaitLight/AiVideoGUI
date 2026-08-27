@@ -103,6 +103,8 @@ class CharacterWorker(QThread):
 
 
 class OutlineOptimizeWorker(QThread):
+    started = Signal()
+    chunk = Signal(str)
     finished = Signal(str)
     failed = Signal(str)
 
@@ -124,11 +126,17 @@ class OutlineOptimizeWorker(QThread):
 
     def run(self):
         try:
+            self.started.emit()
+
+            def _on_chunk(delta: str) -> None:
+                self.chunk.emit(delta)
+
             result, _task_id = self._text_service.optimize_story_outline(
                 self._original_content,
                 self._user_requirement,
                 project_id=self._project_id,
                 project_name=self._project_name,
+                on_chunk=_on_chunk,
             )
             self.finished.emit(result)
         except Exception as e:

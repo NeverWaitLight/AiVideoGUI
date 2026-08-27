@@ -9,6 +9,8 @@ from bridge.workers import OutlineOptimizeWorker
 class StoryOutlineBridge(QObject):
     loaded = Signal(str)
     saved = Signal()
+    optimize_started = Signal()
+    optimize_chunk = Signal(str)
     optimize_finished = Signal(str)
     optimize_failed = Signal(str)
     isOptimizingChanged = Signal()
@@ -126,6 +128,12 @@ class StoryOutlineBridge(QObject):
             project_name=self._get_project_name(),
         )
 
+        def on_started() -> None:
+            self.optimize_started.emit()
+
+        def on_chunk(delta: str) -> None:
+            self.optimize_chunk.emit(delta)
+
         def on_finished(result: str) -> None:
             self._optimizing = False
             self.isOptimizingChanged.emit()
@@ -136,6 +144,8 @@ class StoryOutlineBridge(QObject):
             self.isOptimizingChanged.emit()
             self.optimize_failed.emit(err)
 
+        self._worker.started.connect(on_started)
+        self._worker.chunk.connect(on_chunk)
         self._worker.finished.connect(on_finished)
         self._worker.failed.connect(on_failed)
         self._worker.finished.connect(self._worker.deleteLater)

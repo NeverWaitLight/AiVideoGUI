@@ -1,5 +1,7 @@
 from loguru import logger
 
+from collections.abc import Callable
+
 from config.manager import ConfigManager
 from models.enums import GenerateTaskCallerType
 from models.generate_task_context import GenerateTaskContext
@@ -137,6 +139,66 @@ class ChatService:
             raise last_error
         raise RuntimeError("文本模型调用失败")
 
+    def _call_provider_stream(
+        self,
+        messages: list[dict],
+        on_chunk: Callable[[str], None] | None,
+        model: str,
+        project_id: int | None = None,
+        project_name: str | None = None,
+        module: str = "storyboard",
+        context: str | None = None,
+        caller_type: GenerateTaskCallerType | None = None,
+        caller_id: str = "",
+        parent_ids: str = "",
+        **provider_kwargs,
+    ) -> tuple[str, int | None]:
+        provider = self._get_provider()
+        last_error: Exception | None = None
+
+        sanitized_messages = sanitize_chat_messages(messages)
+        task_context = GenerateTaskContext(
+            session_manager=self._sm,
+            parent_ids=parent_ids,
+            caller_type=caller_type,
+            caller_id=caller_id,
+            project_id=project_id,
+            project_name=project_name,
+            module=module,
+            context=context,
+        )
+
+        for attempt in range(self._MAX_RETRIES):
+            try:
+                logger.info(f"发起流式请求（第 {attempt + 1}/{self._MAX_RETRIES} 次尝试）")
+                content, task_id = provider.chat_stream(
+                    messages=sanitized_messages,
+                    model=model,
+                    task_context=task_context,
+                    on_chunk=on_chunk,
+                    **provider_kwargs,
+                )
+                if not content:
+                    raise RuntimeError("API 返回的内容为空")
+                return content, task_id
+            except RuntimeError as e:
+                last_error = e
+                if self._is_timeout_error(e) and attempt < self._MAX_RETRIES - 1:
+                    logger.warning(f"请求超时（{self._TIMEOUT_SECONDS}秒），准备重试...")
+                    continue
+                raise
+            except Exception as e:
+                logger.exception("文本流式生成请求失败")
+                raise RuntimeError(f"文本模型调用失败：{e}") from e
+
+        if last_error:
+            if self._is_timeout_error(last_error):
+                raise RuntimeError(
+                    f"文本生成请求超时（{self._TIMEOUT_SECONDS}秒），请检查网络连接或稍后重试"
+                ) from last_error
+            raise last_error
+        raise RuntimeError("文本模型调用失败")
+
     def chat(
         self,
         messages: list[dict],
@@ -176,16 +238,19 @@ class ChatService:
         model: str | None = None,
         project_id: int | None = None,
         project_name: str | None = None,
+        on_chunk: Callable[[str], None] | None = None,
     ) -> tuple[str, int]:
         messages = self._prompt_builder.build_outline_optimization_messages(
             original_content=original_content,
             user_requirement=user_requirement,
         )
 
-        logger.info(f"调用文本模型优化大纲，模型：{model or self.DEFAULT_MODEL}")
-        return self.chat(
+        resolved_model = self._resolve_model(model)
+        logger.info(f"调用文本模型优化大纲（流式），模型：{resolved_model}")
+        content, task_id = self._call_provider_stream(
             messages=messages,
-            model=model,
+            on_chunk=on_chunk,
+            model=resolved_model,
             project_id=project_id,
             project_name=project_name,
             module="outline",
@@ -193,6 +258,9 @@ class ChatService:
             caller_type=GenerateTaskCallerType.OUTLINE,
             caller_id=str(project_id) if project_id else "",
         )
+        if task_id is None:
+            raise RuntimeError("文本模型任务创建失败")
+        return content, task_id
 
     def generate_script(
         self,

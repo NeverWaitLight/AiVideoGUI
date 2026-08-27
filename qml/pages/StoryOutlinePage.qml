@@ -29,6 +29,24 @@ Item {
             _dirty = false
     }
 
+    function _appendStreamingContent(delta) {
+        _content += delta
+        textArea.text = _content
+    }
+
+    function _scrollEditorToBottom() {
+        var flickable = editScrollView.contentItem
+        if (flickable && flickable.contentHeight !== undefined)
+            flickable.contentY = Math.max(0, flickable.contentHeight - flickable.height)
+    }
+
+    function _finishStreaming(success) {
+        textArea.readOnly = false
+        if (success)
+            previewArea.text = _content
+        aiOptimizeDialog.finishOptimizing()
+    }
+
     onProjectIdChanged: {
         if (projectId > 0) {
             var info = JSON.parse(bridge.projects.get_project_info(projectId))
@@ -61,19 +79,31 @@ Item {
             _dirty = false
         }
 
+        function onOptimize_started() {
+            _previewMode = false
+            _setContent("", true)
+            textArea.readOnly = true
+        }
+
+        function onOptimize_chunk(delta) {
+            _appendStreamingContent(delta)
+            _scrollEditorToBottom()
+        }
+
         function onOptimize_finished(result) {
             _setContent(result, true)
             _previewMode = false
-            aiOptimizeDialog.finishOptimizing()
+            _finishStreaming(true)
+            bridge.storyOutline.save(_content)
         }
 
         function onOptimize_failed(error) {
-            aiOptimizeDialog.finishOptimizing()
+            _finishStreaming(false)
             alertDialog.error("错误", "优化失败：" + error)
         }
 
         function onBridge_error(msg) {
-            aiOptimizeDialog.finishOptimizing()
+            _finishStreaming(false)
             var safeMsg = msg ? String(msg) : "未知错误"
             alertDialog.error("错误", safeMsg)
         }
@@ -234,6 +264,7 @@ Item {
             currentIndex: _previewMode ? 1 : 0
 
             ScrollView {
+                id: editScrollView
                 clip: true
 
                 TextArea {
@@ -245,7 +276,7 @@ Item {
                     padding: 0
                     background: null
                     onTextChanged: {
-                        if (_previewMode)
+                        if (_previewMode || textArea.readOnly)
                             return
                         _content = text
                         _dirty = (_content !== _loadedContent)
