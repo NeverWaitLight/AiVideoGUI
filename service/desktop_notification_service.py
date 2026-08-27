@@ -1,8 +1,9 @@
 """Windows 桌面通知：视频/图片生成任务完成或失败时弹出系统通知。"""
 from __future__ import annotations
 
+import json
 import sys
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 from PySide6.QtCore import QObject, Qt, Signal, Slot
@@ -24,6 +25,130 @@ _TYPE_LABELS: dict[str, str] = {
     "video": "视频",
     "image": "图片",
 }
+
+
+def _parse_request_params(raw: Any) -> dict:
+    if isinstance(raw, dict):
+        return raw
+    if not raw or not isinstance(raw, str):
+        return {}
+    try:
+        data = json.loads(raw)
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def _resolve_character_name(session_manager: SessionManager, caller_id: str, params: dict) -> str:
+    name = str(params.get("character_name") or "").strip()
+    if name:
+        return name
+    if not caller_id:
+        return ""
+    try:
+        from storage.repositories.character_repository import CharacterRepository
+
+        character = session_manager.get_repo(CharacterRepository).get_by_id(caller_id)
+        if character and getattr(character, "name", None):
+            return str(character.name).strip()
+    except Exception as e:
+        logger.debug(f"通知查询角色名称失败：{e}")
+    return ""
+
+
+def _resolve_storyboard_scene_shot(
+    session_manager: SessionManager, caller_id: str
+) -> tuple[int | None, int | None]:
+    if not caller_id:
+        return None, None
+    try:
+        from storage.repositories.storyboard_repository import StoryboardRepository
+
+        storyboard = session_manager.get_repo(StoryboardRepository).get_by_id(int(caller_id))
+        if not storyboard:
+            return None, None
+        return int(storyboard.scene_number), int(storyboard.shot_number)
+    except Exception as e:
+        logger.debug(f"通知查询分镜场镜号失败：{e}")
+        return None, None
+
+
+def _resolve_take_number(session_manager: SessionManager, task_id: Any) -> int | None:
+    try:
+        generate_task_id = int(task_id)
+    except (TypeError, ValueError):
+        return None
+    if generate_task_id <= 0:
+        return None
+    try:
+        from storage.repositories.storyboard_take_repository import StoryboardTakeRepository
+
+        take = session_manager.get_repo(StoryboardTakeRepository).get_by_generate_task_id(
+            generate_task_id
+        )
+        if take is None:
+            return None
+        return int(take.number)
+    except Exception as e:
+        logger.debug(f"通知查询拍摄次数失败：{e}")
+        return None
+
+
+def _resolve_subject(session_manager: SessionManager, task: dict, params: dict) -> str | None:
+    task_type = (task.get("type") or "").lower()
+    caller_type = (task.get("caller_type") or "").lower()
+    caller_id = str(task.get("caller_id") or "")
+
+    if caller_type == "cover":
+        return "项目封面图"
+
+    if caller_type == "character":
+        name = _resolve_character_name(session_manager, caller_id, params)
+        return f"角色{name}设计图" if name else "角色设计图"
+
+    if task_type == "image" and caller_type == "storyboard":
+        scene_number, shot_number = _resolve_storyboard_scene_shot(session_manager, caller_id)
+        if scene_number is None or shot_number is None:
+            return None
+        return f"{scene_number}场{shot_number}镜设计图"
+
+    if task_type == "video":
+        try:
+            scene_number = int(params.get("scene_number", 0))
+            shot_number = int(params.get("shot_number", 0))
+        except (TypeError, ValueError):
+            scene_number, shot_number = 0, 0
+        take_number = _resolve_take_number(session_manager, task.get("id"))
+        if scene_number <= 0 or shot_number <= 0 or take_number is None or take_number <= 0:
+            return None
+        return f"{scene_number}场{shot_number}镜{take_number}次"
+
+    return None
+
+
+def build_notify_texts(
+    session_manager: SessionManager,
+    task: dict,
+    success: bool,
+    error: str = "",
+) -> tuple[str, str]:
+    """根据生成任务拼出通知标题与正文。"""
+    task_type = (task.get("type") or "").lower()
+    label = _TYPE_LABELS.get(task_type, "任务")
+    params = _parse_request_params(task.get("request_params"))
+    subject = _resolve_subject(session_manager, task, params)
+    if not subject:
+        subject = label
+
+    title = f"{subject}生成完成" if success else f"{subject}生成失败"
+    if success:
+        body = "点击查看"
+    else:
+        err = (error or task.get("error_message") or "未知错误").strip()
+        if len(err) > 120:
+            err = err[:117] + "..."
+        body = err
+    return title, body
 
 
 class DesktopNotificationService(QObject):
@@ -102,24 +227,8 @@ class DesktopNotificationService(QObject):
             if task_type not in ("video", "image"):
                 return
 
-            label = _TYPE_LABELS.get(task_type, "任务")
-            title = f"{label}生成完成" if success else f"{label}生成失败"
+            title, body = build_notify_texts(self._session_manager, task, success, error)
             caller_type = task.get("caller_type") or ""
-            caller_labels = {
-                "storyboard": "分镜",
-                "character": "角色",
-                "cover": "封面",
-                "outline": "大纲",
-                "script": "剧本",
-            }
-            caller_label = caller_labels.get(caller_type, "")
-            if success:
-                body = f"{caller_label}{label}已就绪，点击查看" if caller_label else "点击查看结果"
-            else:
-                err = (error or task.get("error_message") or "未知错误").strip()
-                if len(err) > 120:
-                    err = err[:117] + "..."
-                body = err
 
             module = _CALLER_TO_MODULE.get(caller_type, "detail")
             project_id = int(task.get("project_id") or -1)
