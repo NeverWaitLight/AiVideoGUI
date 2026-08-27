@@ -190,7 +190,7 @@ Item {
                         Layout.preferredWidth: 36
                         Layout.preferredHeight: 36
                         display: AbstractButton.IconOnly
-                        icon.source: "qrc:/resources/icons/auto_awesome.svg"
+                        icon.source: bridge.screenplay.isOptimizing ? "" : "qrc:/resources/icons/auto_awesome.svg"
                         icon.width: 20
                         icon.height: 20
                         icon.color: "white"
@@ -205,7 +205,17 @@ Item {
                         background: Rectangle {
                             anchors.fill: parent
                             radius: parent.width / 2
-                            color: parent.enabled ? (parent.pressed ? "#E65100" : (parent.hovered ? "#FB8C00" : "#FF9800")) : "#BDBDBD"
+                            color: bridge.screenplay.isOptimizing
+                                ? "#FF9800"
+                                : (parent.enabled ? (parent.pressed ? "#E65100" : (parent.hovered ? "#FB8C00" : "#FF9800")) : "#BDBDBD")
+                        }
+
+                        BusyIndicator {
+                            anchors.centerIn: parent
+                            width: 24
+                            height: 24
+                            visible: bridge.screenplay.isOptimizing
+                            running: bridge.screenplay.isOptimizing
                         }
 
                         onClicked: aiOptimizeDialog.show("AI 优化剧本", "请输入优化要求（如修改剧情、增减场次等）...", "开始优化")

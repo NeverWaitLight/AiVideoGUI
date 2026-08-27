@@ -338,7 +338,7 @@ Item {
                         Layout.preferredWidth: 36
                         Layout.preferredHeight: 36
                         display: AbstractButton.IconOnly
-                        icon.source: "qrc:/resources/icons/auto_awesome.svg"
+                        icon.source: bridge.storyboard.isOptimizing ? "" : "qrc:/resources/icons/auto_awesome.svg"
                         icon.width: 20
                         icon.height: 20
                         icon.color: "white"
@@ -353,7 +353,17 @@ Item {
                         background: Rectangle {
                             anchors.fill: parent
                             radius: parent.width / 2
-                            color: parent.enabled ? (parent.pressed ? "#E65100" : (parent.hovered ? "#FB8C00" : "#FF9800")) : "#BDBDBD"
+                            color: bridge.storyboard.isOptimizing
+                                ? "#FF9800"
+                                : (parent.enabled ? (parent.pressed ? "#E65100" : (parent.hovered ? "#FB8C00" : "#FF9800")) : "#BDBDBD")
+                        }
+
+                        BusyIndicator {
+                            anchors.centerIn: parent
+                            width: 24
+                            height: 24
+                            visible: bridge.storyboard.isOptimizing
+                            running: bridge.storyboard.isOptimizing
                         }
 
                         onClicked: {
