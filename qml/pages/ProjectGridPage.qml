@@ -142,7 +142,7 @@ Item {
 
                             onClicked: projectGridPage.projectSelected(projectId)
                             onDeleteClicked: function(id) {
-                                confirmDialog.confirmDelete("项目", function() {
+                                confirmDialog.confirmDelete(model.name, function() {
                                     bridge.projects.delete_project(id)
                                 })
                             }
