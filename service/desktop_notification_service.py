@@ -46,7 +46,7 @@ class DesktopNotificationService(QObject):
         self._tray.activated.connect(self._on_tray_activated)
 
         self._tray_menu = QMenu()
-        quit_action = QAction("退出", self._tray_menu)
+        quit_action = QAction("退出AiVideoGUI", self._tray_menu)
         quit_action.triggered.connect(lambda _checked=False: self.quit_requested.emit())
         self._tray_menu.addAction(quit_action)
         self._tray.setContextMenu(self._tray_menu)

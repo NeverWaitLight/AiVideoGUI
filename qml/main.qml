@@ -14,7 +14,7 @@ ApplicationWindow {
     minimumWidth: 960
     minimumHeight: 640
     visible: true
-    title: "AI Video GUI"
+    title: "AiVideoGUI"
     flags: Qt.Window | Qt.FramelessWindowHint
 
     property int resizeBorderWidth: 5
