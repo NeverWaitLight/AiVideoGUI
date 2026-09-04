@@ -6,6 +6,7 @@ Canvas {
     height: 36
 
     property real angle: 0
+    property color strokeColor: "#000000"
 
     Timer {
         interval: 40
@@ -22,6 +23,7 @@ Canvas {
         ctx.clearRect(0, 0, width, height)
         ctx.lineWidth = 3
         ctx.lineCap = "round"
+        ctx.strokeStyle = spinner.strokeColor.toString()
         ctx.beginPath()
         var cx = width / 2
         var cy = height / 2

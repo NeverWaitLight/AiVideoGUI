@@ -18,6 +18,14 @@ Item {
     property int designImageCacheKey: 0
     property string _projectName: ""
     property var generatingDesignCharUuids: []
+    property bool _descWaiting: false
+    property bool _descWaitingFirstChunk: false
+    property bool _descStreamFinished: false
+    property bool _descStreaming: false
+    property string _preRefineDesc: ""
+    property string _pendingRefineResult: ""
+    property string _refiningUuid: ""
+    readonly property bool _descBusyHere: _descStreaming && _refiningUuid === _editingCharUuid
 
     signal backClicked()
     signal navigateToStoryboard(int projectId)
@@ -68,7 +76,40 @@ Item {
         descInput.text = info.description || ""
         voiceToneInput.text = info.voiceTone || ""
         voiceRefFileInput.text = info.voiceReferenceFile || ""
+        descInput.readOnly = page._descStreaming && page._refiningUuid === uuid
         _showDetail = true
+    }
+
+    function _scrollDescToBottom() {
+        var flickable = descScrollView.contentItem
+        if (flickable && flickable.contentHeight !== undefined)
+            flickable.contentY = Math.max(0, flickable.contentHeight - flickable.height)
+    }
+
+    function _tryCompleteDescStream() {
+        if (!_descStreamFinished)
+            return
+        if (descTypewriter.active)
+            return
+        if (descInput.text !== _pendingRefineResult)
+            descInput.text = _pendingRefineResult
+        descInput.readOnly = false
+        _descWaiting = false
+        _descWaitingFirstChunk = false
+        _descStreaming = false
+        _descStreamFinished = false
+        _refiningUuid = ""
+    }
+
+    function _restorePreRefine() {
+        descTypewriter.stop()
+        descInput.text = _preRefineDesc
+        descInput.readOnly = false
+        _descWaiting = false
+        _descWaitingFirstChunk = false
+        _descStreaming = false
+        _descStreamFinished = false
+        _refiningUuid = ""
     }
 
     Connections {
@@ -104,14 +145,58 @@ Item {
             characterAIDialog.finishWork()
             alertDialog.error("错误", "设计图生成失败：" + error)
         }
-        function onDescription_refined(uuid, desc) {
-            if (uuid === _editingCharUuid) {
-                descInput.text = desc
+        function onDescription_refine_started(uuid) {
+            if (uuid !== _editingCharUuid)
+                return
+            _refiningUuid = uuid
+            _preRefineDesc = descInput.text
+            _pendingRefineResult = ""
+            _descWaiting = true
+            _descWaitingFirstChunk = true
+            _descStreaming = true
+            _descStreamFinished = false
+            descTypewriter.stop()
+            descInput.readOnly = true
+        }
+        function onDescription_refine_chunk(uuid, delta) {
+            if (uuid !== _editingCharUuid)
+                return
+            if (_descWaitingFirstChunk) {
+                _descWaitingFirstChunk = false
+                _descWaiting = false
+                descTypewriter.beginReplace()
             }
+            descTypewriter.feed(delta)
+        }
+        function onDescription_refined(uuid, desc) {
             characterAIDialog.finishWork()
+            if (uuid !== _editingCharUuid) {
+                if (uuid === _refiningUuid) {
+                    descTypewriter.stop()
+                    _descWaiting = false
+                    _descWaitingFirstChunk = false
+                    _descStreaming = false
+                    _descStreamFinished = false
+                    _refiningUuid = ""
+                }
+                return
+            }
+            _pendingRefineResult = desc
+            _descStreamFinished = true
+            _tryCompleteDescStream()
         }
         function onDescription_refine_failed(error) {
             characterAIDialog.finishWork()
+            if (_refiningUuid === _editingCharUuid || _editingCharUuid === "")
+                _restorePreRefine()
+            else {
+                descTypewriter.stop()
+                _descWaiting = false
+                _descWaitingFirstChunk = false
+                _descStreaming = false
+                _descStreamFinished = false
+                _refiningUuid = ""
+            }
             alertDialog.error("错误", "描述修改失败：" + error)
         }
         function onCharacters_generated(count) {
@@ -400,10 +485,11 @@ Item {
                         Layout.preferredWidth: 36
                         Layout.preferredHeight: 36
                         display: AbstractButton.IconOnly
-                        icon.source: "qrc:/resources/icons/auto_awesome.svg"
+                        icon.source: page._descBusyHere ? "" : "qrc:/resources/icons/auto_awesome.svg"
                         icon.width: 20
                         icon.height: 20
                         icon.color: "white"
+                        enabled: !page._descBusyHere
                         topPadding: 8
                         bottomPadding: 8
                         leftPadding: 8
@@ -414,7 +500,17 @@ Item {
                         background: Rectangle {
                             anchors.fill: parent
                             radius: parent.width / 2
-                            color: parent.pressed ? "#E65100" : (parent.hovered ? "#FB8C00" : "#FF9800")
+                            color: page._descBusyHere
+                                ? "#FF9800"
+                                : (parent.pressed ? "#E65100" : (parent.hovered ? "#FB8C00" : "#FF9800"))
+                        }
+
+                        BusyIndicator {
+                            anchors.centerIn: parent
+                            width: 24
+                            height: 24
+                            visible: page._descBusyHere
+                            running: page._descBusyHere
                         }
 
                         onClicked: characterAIDialog.open()
@@ -581,23 +677,36 @@ Item {
                                     background: Item {}
 
                                     ColumnLayout {
+                                        id: descCol
                                         anchors.fill: parent
                                         spacing: 8
 
                                         Label {
+                                            id: descLabel
                                             text: "形象描述："
                                             font.pixelSize: Theme.fontSizeSmall
                                         }
 
-                                        ScrollView {
+                                        Item {
                                             Layout.fillWidth: true
                                             Layout.fillHeight: true
-                                            clip: true
-                                            TextArea {
-                                                id: descInput
-                                                wrapMode: TextArea.Wrap
-                                                font.pixelSize: Theme.fontSizeSmall
-                                                padding: 10
+                                            Layout.minimumHeight: 120
+
+                                            ScrollView {
+                                                id: descScrollView
+                                                anchors.fill: parent
+                                                clip: true
+                                                TextArea {
+                                                    id: descInput
+                                                    wrapMode: TextArea.Wrap
+                                                    font.pixelSize: Theme.fontSizeSmall
+                                                    padding: 10
+                                                }
+                                            }
+
+                                            Comp.EditorWaitingOverlay {
+                                                anchors.fill: parent
+                                                visible: page._descWaiting && page._descBusyHere
                                             }
                                         }
                                     }
@@ -832,6 +941,7 @@ Item {
         descInput.text = ""
         voiceToneInput.text = ""
         voiceRefFileInput.text = ""
+        descInput.readOnly = false
         _showDetail = true
     }
 
@@ -844,6 +954,7 @@ Item {
         descInput.text = model.description || ""
         voiceToneInput.text = model.voiceTone || ""
         voiceRefFileInput.text = model.voiceReferenceFile || ""
+        descInput.readOnly = page._descStreaming && page._refiningUuid === (model.characterUuid || "")
         _showDetail = true
     }
 
@@ -865,6 +976,13 @@ Item {
         } else {
             _selectedIds = allIds
         }
+    }
+
+    Comp.TypewriterController {
+        id: descTypewriter
+        target: descInput
+        onTextUpdated: page._scrollDescToBottom()
+        onDrained: page._tryCompleteDescStream()
     }
 
     Dialogs.AlertDialog {

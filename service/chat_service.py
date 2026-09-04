@@ -810,6 +810,7 @@ class ChatService:
         model: str | None = None,
         project_id: int | None = None,
         project_name: str | None = None,
+        on_chunk: Callable[[str], None] | None = None,
     ) -> tuple[str, int]:
         messages = self._prompt_builder.build_character_description_refine_messages(
             character_name=character_name,
@@ -817,10 +818,12 @@ class ChatService:
             user_requirement=user_requirement,
         )
 
-        logger.info(f"调用文本模型修改角色描述，角色：{character_name}，模型：{self._resolve_model(model)}")
-        result, task_id = self.chat(
+        resolved_model = self._resolve_model(model)
+        logger.info(f"调用文本模型修改角色描述（流式），角色：{character_name}，模型：{resolved_model}")
+        result, task_id = self._call_provider_stream(
             messages=messages,
-            model=model,
+            on_chunk=on_chunk,
+            model=resolved_model,
             project_id=project_id,
             project_name=project_name,
             module="character",
@@ -828,6 +831,8 @@ class ChatService:
             caller_type=GenerateTaskCallerType.CHARACTER,
             caller_id=str(project_id) if project_id else "",
         )
+        if task_id is None:
+            raise RuntimeError("文本模型任务创建失败")
         return result.strip(), task_id
 
     def generate_cover_image_prompt(

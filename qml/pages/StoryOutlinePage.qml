@@ -13,6 +13,11 @@ Item {
     property string _projectName: ""
     property bool _previewMode: false
     property string _content: ""
+    property string _preOptimizeContent: ""
+    property string _pendingResult: ""
+    property bool _aiWaiting: false
+    property bool _waitingFirstChunk: false
+    property bool _streamFinished: false
 
     signal backClicked()
     signal nextStepClicked(string content)
@@ -29,18 +34,39 @@ Item {
             _dirty = false
     }
 
-    function _appendStreamingContent(delta) {
-        _content += delta
-        textArea.text = _content
-    }
-
     function _scrollEditorToBottom() {
         var flickable = editScrollView.contentItem
         if (flickable && flickable.contentHeight !== undefined)
             flickable.contentY = Math.max(0, flickable.contentHeight - flickable.height)
     }
 
+    function _syncTypedContent() {
+        _content = textArea.text
+        _dirty = (_content !== _loadedContent)
+        _scrollEditorToBottom()
+    }
+
+    function _tryCompleteOutlineStream() {
+        if (!_streamFinished)
+            return
+        if (typewriter.active)
+            return
+        _setContent(_pendingResult, true)
+        _finishStreaming(true)
+        _streamFinished = false
+    }
+
+    function _restorePreOptimize() {
+        typewriter.stop()
+        _aiWaiting = false
+        _waitingFirstChunk = false
+        _streamFinished = false
+        _setContent(_preOptimizeContent, _preOptimizeContent !== _loadedContent)
+    }
+
     function _finishStreaming(success) {
+        _aiWaiting = false
+        _waitingFirstChunk = false
         textArea.readOnly = false
         if (success)
             previewArea.text = _content
@@ -75,34 +101,50 @@ Item {
         }
 
         function onSaved() {
+            if (_streamFinished || typewriter.active || _waitingFirstChunk)
+                return
             _loadedContent = _content
             _dirty = false
         }
 
         function onOptimize_started() {
             _previewMode = false
-            _setContent("", true)
+            _preOptimizeContent = textArea.text
+            _pendingResult = ""
+            _aiWaiting = true
+            _waitingFirstChunk = true
+            _streamFinished = false
+            typewriter.stop()
             textArea.readOnly = true
         }
 
         function onOptimize_chunk(delta) {
-            _appendStreamingContent(delta)
-            _scrollEditorToBottom()
+            if (_waitingFirstChunk) {
+                _waitingFirstChunk = false
+                _aiWaiting = false
+                typewriter.beginReplace()
+            }
+            typewriter.feed(delta)
         }
 
         function onOptimize_finished(result) {
-            _setContent(result, true)
             _previewMode = false
-            _finishStreaming(true)
-            bridge.storyOutline.save(_content)
+            _pendingResult = result
+            _streamFinished = true
+            _loadedContent = result
+            bridge.storyOutline.save(result)
+            _tryCompleteOutlineStream()
         }
 
         function onOptimize_failed(error) {
+            _restorePreOptimize()
             _finishStreaming(false)
             alertDialog.error("错误", "优化失败：" + error)
         }
 
         function onBridge_error(msg) {
+            if (_aiWaiting || _waitingFirstChunk || typewriter.active || _streamFinished)
+                _restorePreOptimize()
             _finishStreaming(false)
             var safeMsg = msg ? String(msg) : "未知错误"
             alertDialog.error("错误", safeMsg)
@@ -273,24 +315,32 @@ Item {
             Layout.bottomMargin: 16
             currentIndex: _previewMode ? 1 : 0
 
-            ScrollView {
-                id: editScrollView
-                clip: true
+            Item {
+                ScrollView {
+                    id: editScrollView
+                    anchors.fill: parent
+                    clip: true
 
-                TextArea {
-                    id: textArea
-                    textFormat: TextEdit.PlainText
-                    placeholderText: "请输入项目大纲（支持 Markdown，点预览查看效果）..."
-                    wrapMode: TextArea.Wrap
-                    font.pixelSize: Theme.fontSizeMedium
-                    padding: 0
-                    background: null
-                    onTextChanged: {
-                        if (_previewMode || textArea.readOnly)
-                            return
-                        _content = text
-                        _dirty = (_content !== _loadedContent)
+                    TextArea {
+                        id: textArea
+                        textFormat: TextEdit.PlainText
+                        placeholderText: "请输入项目大纲（支持 Markdown，点预览查看效果）..."
+                        wrapMode: TextArea.Wrap
+                        font.pixelSize: Theme.fontSizeMedium
+                        padding: 0
+                        background: null
+                        onTextChanged: {
+                            if (_previewMode || textArea.readOnly)
+                                return
+                            _content = text
+                            _dirty = (_content !== _loadedContent)
+                        }
                     }
+                }
+
+                Comp.EditorWaitingOverlay {
+                    anchors.fill: parent
+                    visible: page._aiWaiting
                 }
             }
 
@@ -309,6 +359,13 @@ Item {
                 }
             }
         }
+    }
+
+    Comp.TypewriterController {
+        id: typewriter
+        target: textArea
+        onTextUpdated: page._syncTypedContent()
+        onDrained: page._tryCompleteOutlineStream()
     }
 
     Shortcut {

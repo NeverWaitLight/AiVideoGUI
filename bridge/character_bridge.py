@@ -19,6 +19,8 @@ class CharacterBridge(QObject):
     design_image_progress = Signal(str)
     design_image_failed = Signal(str)
     description_refined = Signal(str, str)  # char_uuid, new_description
+    description_refine_started = Signal(str)  # char_uuid
+    description_refine_chunk = Signal(str, str)  # char_uuid, delta
     description_refine_failed = Signal(str)
     characters_generated = Signal(int)  # count
     characters_optimized = Signal(int)  # count
@@ -250,7 +252,9 @@ class CharacterBridge(QObject):
                 project_id=self._project_id if self._project_id >= 0 else None,
                 project_name=self._get_project_name(),
             )
-            worker.finished.connect(lambda desc: self._on_refine_done(char_uuid, desc))
+            worker.started.connect(lambda uuid=char_uuid: self.description_refine_started.emit(uuid))
+            worker.chunk.connect(lambda delta, uuid=char_uuid: self.description_refine_chunk.emit(uuid, delta))
+            worker.finished.connect(lambda desc, uuid=char_uuid: self._on_refine_done(uuid, desc))
             worker.failed.connect(self.description_refine_failed.emit)
             worker.finished.connect(worker.deleteLater)
             worker.failed.connect(worker.deleteLater)

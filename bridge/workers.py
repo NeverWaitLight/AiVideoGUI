@@ -250,6 +250,8 @@ class StoryboardOptimizeWorker(QThread):
 
 
 class CharacterRefineWorker(QThread):
+    started = Signal()
+    chunk = Signal(str)
     finished = Signal(str)
     failed = Signal(str)
 
@@ -266,12 +268,18 @@ class CharacterRefineWorker(QThread):
 
     def run(self):
         try:
+            self.started.emit()
+
+            def _on_chunk(delta: str) -> None:
+                self.chunk.emit(delta)
+
             result, task_id = self._text_service.refine_character_description(
                 character_name=self._character_name,
                 current_description=self._current_description,
                 user_requirement=self._user_requirement,
                 project_id=self._project_id,
                 project_name=self._project_name,
+                on_chunk=_on_chunk,
             )
             self.finished.emit(result)
         except Exception as e:
