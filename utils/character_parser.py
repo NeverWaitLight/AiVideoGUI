@@ -100,3 +100,11 @@ class CharacterParser:
             })
 
         return validated if validated else None
+
+    @staticmethod
+    def parse_character_item(item: dict) -> dict | None:
+        """解析并校验单个角色条目，无效时返回 None"""
+        validated = CharacterParser._validate_characters([item])
+        if not validated:
+            return None
+        return validated[0]

@@ -74,6 +74,14 @@ Item {
             alertDialog.error("错误", "生成剧本失败：" + error)
         }
 
+        function onGeneration_started() {
+            sceneListView.positionViewAtBeginning()
+        }
+
+        function onScene_added() {
+            sceneListView.positionViewAtEnd()
+        }
+
         function onNew_scene_created() {
             _isNewScene = true
             _editingSceneId = -1
@@ -300,6 +308,27 @@ Item {
                                     model: bridge.screenplay.sceneModel
                                     spacing: 10
                                     clip: true
+
+                                    add: Transition {
+                                        enabled: bridge.screenplay.isOptimizing
+                                        ParallelAnimation {
+                                            NumberAnimation {
+                                                properties: "opacity"
+                                                from: 0
+                                                to: 1
+                                                duration: 300
+                                                easing.type: Easing.OutCubic
+                                            }
+                                            NumberAnimation {
+                                                properties: "x"
+                                                from: (ViewTransition.index % 2 === 0)
+                                                    ? -sceneListView.width * 0.25
+                                                    : sceneListView.width * 0.25
+                                                duration: 300
+                                                easing.type: Easing.OutCubic
+                                            }
+                                        }
+                                    }
 
                                     delegate: SceneCardDelegate {
                                         width: ListView.view.width - 32

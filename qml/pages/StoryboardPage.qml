@@ -80,6 +80,12 @@ Item {
             var msg = error ? String(error) : "未知错误"
             alertDialog.error("错误", "生成分镜失败：" + msg)
         }
+        function onGeneration_started() {
+            storyboardListView.positionViewAtBeginning()
+        }
+        function onShot_added() {
+            storyboardListView.positionViewAtEnd()
+        }
         function onDesign_image_ready(shotId, path) {
         }
         function onDesign_image_started(shotId) {
@@ -398,12 +404,34 @@ Item {
                 }
 
                 ListView {
+                    id: storyboardListView
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     Layout.margins: 16
                     model: bridge.storyboard.model
                     spacing: 8
                     clip: true
+
+                    add: Transition {
+                        enabled: bridge.storyboard.isOptimizing
+                        ParallelAnimation {
+                            NumberAnimation {
+                                properties: "opacity"
+                                from: 0
+                                to: 1
+                                duration: 300
+                                easing.type: Easing.OutCubic
+                            }
+                            NumberAnimation {
+                                properties: "x"
+                                from: (ViewTransition.index % 2 === 0)
+                                    ? -storyboardListView.width * 0.25
+                                    : storyboardListView.width * 0.25
+                                duration: 300
+                                easing.type: Easing.OutCubic
+                            }
+                        }
+                    }
 
                     delegate: Comp.StoryboardCard {
                         width: ListView.view.width - 32

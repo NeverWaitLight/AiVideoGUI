@@ -19,6 +19,8 @@ class ScreenplayBridge(QObject):
     script_failed = Signal(str)
     script_optimized = Signal(int)  # scene_count
     isOptimizingChanged = Signal()
+    generation_started = Signal()
+    scene_added = Signal()
     bridge_error = Signal(str)
     current_scene_changed = Signal()
 
@@ -52,6 +54,9 @@ class ScreenplayBridge(QObject):
         self._worker: ScriptGenerateWorker | None = None
         self._optimize_worker: ScreenplayOptimizeWorker | None = None
         self._optimizing: bool = False
+        self._generation_snapshot: list = []
+        self._created_ids: list[int] = []
+        self._generation_aborted: bool = False
         self._cur_scene_id: int = -1
         self._cur_scene_number: int = 0
         self._cur_location_type_index: int = 0
@@ -289,29 +294,137 @@ class ScreenplayBridge(QObject):
             self.bridge_error.emit("大纲内容为空，无法生成剧本")
             return
 
+        self._begin_generation(clear_existing=False)
+
         self._worker = ScriptGenerateWorker(
             text_service=self._text_service, outline_content=outline_content,
             project_id=self._project_id if self._project_id >= 0 else None,
             project_name=self._get_project_name(),
         )
+        self._connect_script_worker(self._worker, is_optimize=False)
+
+    def _begin_generation(self, clear_existing: bool) -> None:
+        if self._project_id >= 0:
+            self._generation_snapshot = list(self._service.list_scenes(project_id=self._project_id))
+        else:
+            self._generation_snapshot = []
+        self._created_ids = []
+
+        if clear_existing and self._project_id >= 0:
+            for scene in self._generation_snapshot:
+                self._service.delete_scene(scene_id=scene.id)
+            self._scene_model.reset([])
+
+        self._generation_aborted = False
+        self._optimizing = True
+        self.isOptimizingChanged.emit()
+        self.generation_started.emit()
+
+    def _create_scene_from_data(self, data: dict):
+        location_type = data["location_type"]
+        if isinstance(location_type, str):
+            location_type = SceneLocation(location_type)
+
+        time_type = data["time_type"]
+        if isinstance(time_type, str):
+            time_type = SceneTime(time_type)
+
+        return self._service.create_scene(
+            project_id=self._project_id,
+            scene_number=data["scene_number"],
+            location_type=location_type,
+            location=data["location"],
+            time_type=time_type,
+            time_detail=data.get("time_detail", ""),
+            content=data["content"],
+        )
+
+    def _on_scene_item_ready(self, data: dict) -> None:
+        if self._generation_aborted or self._project_id < 0:
+            return
+        try:
+            scene = self._create_scene_from_data(data)
+            self._created_ids.append(scene.id)
+            self._scene_model.append(scene)
+            self.scene_added.emit()
+        except Exception as e:
+            self._generation_aborted = True
+            error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+            self._rollback_generation()
+            self._optimizing = False
+            self.isOptimizingChanged.emit()
+            self.script_failed.emit(f"保存失败：{error_msg}")
+
+    def _rollback_generation(self) -> None:
+        for scene_id in self._created_ids:
+            try:
+                self._service.delete_scene(scene_id=scene_id)
+            except Exception:
+                pass
+        self._created_ids = []
+
+        if self._project_id >= 0:
+            for scene in self._generation_snapshot:
+                self._service.create_scene(
+                    project_id=self._project_id,
+                    scene_number=scene.scene_number,
+                    location_type=scene.location_type,
+                    location=scene.location,
+                    time_type=scene.time_type,
+                    time_detail=scene.time_detail,
+                    content=scene.content,
+                )
+        self._load_scenes()
+
+    def _finish_generation(self) -> None:
+        self._generation_snapshot = []
+        self._created_ids = []
+        self._optimizing = False
+        self.isOptimizingChanged.emit()
+        self._load_history()
+
+    def _connect_script_worker(self, worker, is_optimize: bool) -> None:
+        def on_started() -> None:
+            pass
+
+        def on_item_ready(data: dict) -> None:
+            self._on_scene_item_ready(data)
 
         def on_finished(title: str, scenes: list) -> None:
+            if self._generation_aborted:
+                return
             try:
-                if self._project_id >= 0 and scenes:
-                    self._service.batch_create_scenes(project_id=self._project_id, scenes_data=scenes)
-                self._load_scenes()
-                self._load_history()
-                self.script_generated.emit(title, len(scenes))
+                if not scenes:
+                    self._generation_aborted = True
+                    self._rollback_generation()
+                    self._optimizing = False
+                    self.isOptimizingChanged.emit()
+                    self.script_failed.emit("AI 返回的剧本数据为空")
+                    return
+                self._finish_generation()
+                if is_optimize:
+                    self.script_optimized.emit(len(scenes))
+                else:
+                    self.script_generated.emit(title, len(scenes))
             except Exception as e:
                 error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
                 self.script_failed.emit(error_msg)
 
         def on_failed(err: str) -> None:
+            if self._generation_aborted:
+                return
+            self._generation_aborted = True
+            self._rollback_generation()
+            self._optimizing = False
+            self.isOptimizingChanged.emit()
             self.script_failed.emit(err)
 
-        self._worker.finished.connect(on_finished)
-        self._worker.failed.connect(on_failed)
-        self._worker.start()
+        worker.started.connect(on_started)
+        worker.item_ready.connect(on_item_ready)
+        worker.finished.connect(on_finished)
+        worker.failed.connect(on_failed)
+        worker.finished.connect(worker.deleteLater)
+        worker.start()
 
     @Slot(str, int)
     def optimize_with_ai(self, user_input: str, project_id: int) -> None:
@@ -340,10 +453,8 @@ class ScreenplayBridge(QObject):
         self.generate_script(combined_content)
 
     def _optimize_existing_script(self, outline_content: str, scenes: list, user_input: str) -> None:
-        self._optimizing = True
-        self.isOptimizingChanged.emit()
-
         current_script = self._format_scenes_as_text(scenes)
+        self._begin_generation(clear_existing=True)
 
         self._optimize_worker = ScreenplayOptimizeWorker(
             text_service=self._text_service,
@@ -353,33 +464,7 @@ class ScreenplayBridge(QObject):
             project_id=self._project_id if self._project_id >= 0 else None,
             project_name=self._get_project_name(),
         )
-
-        def on_finished(title: str, new_scenes: list) -> None:
-            self._optimizing = False
-            self.isOptimizingChanged.emit()
-            try:
-                for scene in scenes:
-                    self._service.delete_scene(scene_id=scene.id)
-
-                if self._project_id >= 0 and new_scenes:
-                    self._service.batch_create_scenes(project_id=self._project_id, scenes=new_scenes)
-
-                self._load_scenes()
-                self._load_history()
-                self.script_optimized.emit(len(new_scenes))
-
-            except Exception as e:
-                self.script_failed.emit(f"保存失败：{e}")
-
-        def on_failed(err: str) -> None:
-            self._optimizing = False
-            self.isOptimizingChanged.emit()
-            self.script_failed.emit(err)
-
-        self._optimize_worker.finished.connect(on_finished)
-        self._optimize_worker.failed.connect(on_failed)
-        self._optimize_worker.finished.connect(self._optimize_worker.deleteLater)
-        self._optimize_worker.start()
+        self._connect_script_worker(self._optimize_worker, is_optimize=True)
 
     def _format_scenes_as_text(self, scenes: list) -> str:
         lines = []

@@ -23,6 +23,8 @@ class CharacterBridge(QObject):
     characters_generated = Signal(int)  # count
     characters_optimized = Signal(int)  # count
     isOptimizingChanged = Signal()
+    generation_started = Signal()
+    character_added = Signal()
     bridge_error = Signal(str)
 
     def __init__(self, character_service, text_model_service, image_service,
@@ -46,6 +48,9 @@ class CharacterBridge(QObject):
         self._optimizing = False
         self._character_worker = None
         self._project_id: int = -1
+        self._generation_snapshot: list = []
+        self._created_uuids: list[str] = []
+        self._generation_aborted: bool = False
         self._generating_design_char_uuids: set[str] = set()
 
         emitter = self._image_service.signal_emitter
@@ -342,10 +347,8 @@ class CharacterBridge(QObject):
             self.bridge_error.emit(error_msg)
 
     def _generate_characters(self, outline_content: str, scenes: list, user_input: str, project_id: int) -> None:
-        self._optimizing = True
-        self.isOptimizingChanged.emit()
-
         script_content = self._format_script_as_text(scenes)
+        self._begin_generation(project_id=project_id, clear_existing=False)
 
         self._character_worker = CharacterWorker(
             text_service=self._text_model_service,
@@ -356,42 +359,12 @@ class CharacterBridge(QObject):
             script_content=script_content,
             user_requirement=user_input,
         )
-
-        def on_finished(characters: list) -> None:
-            self._optimizing = False
-            self.isOptimizingChanged.emit()
-            try:
-                for char_data in characters:
-                    self._character_service.create_character(
-                        project_id=project_id,
-                        name=char_data["name"],
-                        ref_code=char_data["ref_code"],
-                        description=char_data["description"],
-                        voice_tone=char_data.get("voice_tone", ""),
-                    )
-
-                self.load_for_project(project_id)
-                self.characters_generated.emit(len(characters))
-
-            except Exception as e:
-                self.bridge_error.emit(f"保存失败：{e}")
-
-        def on_failed(err: str) -> None:
-            self._optimizing = False
-            self.isOptimizingChanged.emit()
-            self.bridge_error.emit(f"生成角色失败：{err}")
-
-        self._character_worker.finished.connect(on_finished)
-        self._character_worker.failed.connect(on_failed)
-        self._character_worker.finished.connect(self._character_worker.deleteLater)
-        self._character_worker.start()
+        self._connect_character_worker(self._character_worker, project_id, is_optimize=False)
 
     def _optimize_characters(self, outline_content: str, scenes: list, characters: list, user_input: str, project_id: int) -> None:
-        self._optimizing = True
-        self.isOptimizingChanged.emit()
-
         script_content = self._format_script_as_text(scenes)
         current_characters = self._format_characters_as_text(characters)
+        self._begin_generation(project_id=project_id, clear_existing=True)
 
         self._character_worker = CharacterWorker(
             text_service=self._text_model_service,
@@ -403,38 +376,111 @@ class CharacterBridge(QObject):
             current_characters=current_characters,
             user_requirement=user_input,
         )
+        self._connect_character_worker(self._character_worker, project_id, is_optimize=True)
 
-        def on_finished(new_characters: list) -> None:
+    def _begin_generation(self, project_id: int, clear_existing: bool) -> None:
+        self._project_id = project_id
+        self._generation_snapshot = list(
+            self._character_service.list_characters(project_id=project_id)
+        )
+        self._created_uuids = []
+        self._generation_aborted = False
+
+        if clear_existing:
+            for char in self._generation_snapshot:
+                self._character_service.delete_character(character_uuid=char.uuid)
+            self._model.reset([])
+
+        self._optimizing = True
+        self.isOptimizingChanged.emit()
+        self.generation_started.emit()
+
+    def _on_character_item_ready(self, data: dict, project_id: int) -> None:
+        if self._generation_aborted:
+            return
+        try:
+            character = self._character_service.create_character(
+                project_id=project_id,
+                name=data["name"],
+                ref_code=data["ref_code"],
+                description=data["description"],
+                voice_tone=data.get("voice_tone", ""),
+            )
+            self._created_uuids.append(character.uuid)
+            self._model.append(character)
+            self.character_added.emit()
+        except Exception as e:
+            self._generation_aborted = True
+            error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+            self._rollback_generation(project_id)
             self._optimizing = False
             self.isOptimizingChanged.emit()
+            self.bridge_error.emit(f"保存失败：{error_msg}")
+
+    def _rollback_generation(self, project_id: int) -> None:
+        for char_uuid in self._created_uuids:
             try:
-                for char in characters:
-                    self._character_service.delete_character(character_uuid=char.id)
+                self._character_service.delete_character(character_uuid=char_uuid)
+            except Exception:
+                pass
+        self._created_uuids = []
 
-                for char_data in new_characters:
-                    self._character_service.create_character(
-                        project_id=project_id,
-                        name=char_data["name"],
-                        ref_code=char_data["ref_code"],
-                        description=char_data["description"],
-                        voice_tone=char_data.get("voice_tone", ""),
-                    )
+        for char in self._generation_snapshot:
+            self._character_service.create_character(
+                project_id=project_id,
+                name=char.name,
+                ref_code=char.ref_code,
+                description=char.description,
+                design_image=char.design_image,
+                voice_tone=char.voice_tone,
+                voice_reference_file=char.voice_reference_file,
+            )
+        self.load_for_project(project_id)
 
-                self.load_for_project(project_id)
-                self.characters_optimized.emit(len(new_characters))
+    def _finish_generation(self) -> None:
+        self._generation_snapshot = []
+        self._created_uuids = []
+        self._optimizing = False
+        self.isOptimizingChanged.emit()
 
+    def _connect_character_worker(self, worker, project_id: int, is_optimize: bool) -> None:
+        def on_item_ready(data: dict) -> None:
+            self._on_character_item_ready(data, project_id)
+
+        def on_finished(characters: list) -> None:
+            if self._generation_aborted:
+                return
+            try:
+                if not characters:
+                    self._generation_aborted = True
+                    self._rollback_generation(project_id)
+                    self._optimizing = False
+                    self.isOptimizingChanged.emit()
+                    self.bridge_error.emit("AI 返回的角色数据为空")
+                    return
+                self._finish_generation()
+                if is_optimize:
+                    self.characters_optimized.emit(len(characters))
+                else:
+                    self.characters_generated.emit(len(characters))
             except Exception as e:
                 self.bridge_error.emit(f"保存失败：{e}")
 
         def on_failed(err: str) -> None:
+            if self._generation_aborted:
+                return
+            self._generation_aborted = True
+            self._rollback_generation(project_id)
             self._optimizing = False
             self.isOptimizingChanged.emit()
-            self.bridge_error.emit(f"优化角色失败：{err}")
+            prefix = "优化角色失败：" if is_optimize else "生成角色失败："
+            self.bridge_error.emit(f"{prefix}{err}")
 
-        self._character_worker.finished.connect(on_finished)
-        self._character_worker.failed.connect(on_failed)
-        self._character_worker.finished.connect(self._character_worker.deleteLater)
-        self._character_worker.start()
+        worker.item_ready.connect(on_item_ready)
+        worker.finished.connect(on_finished)
+        worker.failed.connect(on_failed)
+        worker.finished.connect(worker.deleteLater)
+        worker.start()
 
     def _format_script_as_text(self, scenes: list) -> str:
         from models.enums import SceneLocation, SceneTime

@@ -46,24 +46,28 @@ class ScriptParser:
         scenes = []
 
         for scene in scenes_raw:
-            location_type = cls.LOCATION_TYPE_MAP.get(
-                scene.get("location_type", "interior"),
-                SceneLocation.INTERIOR
-            ).value
-
-            time_type = cls.TIME_TYPE_MAP.get(
-                scene.get("time_type", "day"),
-                SceneTime.DAY
-            ).value
-
-            scenes.append({
-                "scene_number": scene.get("scene_number", 0),
-                "location_type": location_type,
-                "location": scene.get("location", ""),
-                "time_type": time_type,
-                "time_detail": scene.get("time_detail", ""),
-                "content": scene.get("content", ""),
-            })
+            scenes.append(cls.parse_scene_item(scene))
 
         logger.info(f"解析剧本完成：标题='{title}'，共 {len(scenes)} 场")
         return title, scenes
+
+    @classmethod
+    def parse_scene_item(cls, scene: dict[str, Any]) -> dict[str, Any]:
+        location_type = cls.LOCATION_TYPE_MAP.get(
+            scene.get("location_type", "interior"),
+            SceneLocation.INTERIOR,
+        ).value
+
+        time_type = cls.TIME_TYPE_MAP.get(
+            scene.get("time_type", "day"),
+            SceneTime.DAY,
+        ).value
+
+        return {
+            "scene_number": scene.get("scene_number", 0),
+            "location_type": location_type,
+            "location": scene.get("location", ""),
+            "time_type": time_type,
+            "time_detail": scene.get("time_detail", ""),
+            "content": scene.get("content", ""),
+        }

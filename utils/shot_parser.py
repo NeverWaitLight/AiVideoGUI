@@ -52,24 +52,25 @@ class ShotParser:
 
     @classmethod
     def _parse_shots(cls, shots_raw: list[dict]) -> list[dict[str, Any]]:
-        shots = []
-        for shot in shots_raw:
-            shot_size_str = shot.get("shot_size", "medium_shot")
-            shot_size_enum = cls.SHOT_SIZE_MAP.get(shot_size_str, ShotSize.MEDIUM_SHOT)
-            if shot_size_str not in cls.SHOT_SIZE_MAP:
-                logger.warning(f"未识别的景别值 '{shot_size_str}'，使用默认值 medium_shot")
+        return [cls.parse_shot_item(shot) for shot in shots_raw]
 
-            shots.append({
-                "scene_number": shot.get("scene_number", 0),
-                "shot_number": shot.get("shot_number", 0),
-                "shot_size": shot_size_enum.value,
-                "camera_movement": shot.get("camera_movement", ""),
-                "content": shot.get("content", ""),
-                "dialogue": shot.get("dialogue", ""),
-                "sound_effect": shot.get("sound_effect", ""),
-                "ambient_sound": shot.get("ambient_sound", ""),
-                "background_music": shot.get("background_music", ""),
-                "duration": float(shot.get("duration", 0.0)),
-                "notes": shot.get("notes", ""),
-            })
-        return shots
+    @classmethod
+    def parse_shot_item(cls, shot: dict[str, Any]) -> dict[str, Any]:
+        shot_size_str = shot.get("shot_size", "medium_shot")
+        shot_size_enum = cls.SHOT_SIZE_MAP.get(shot_size_str, ShotSize.MEDIUM_SHOT)
+        if shot_size_str not in cls.SHOT_SIZE_MAP:
+            logger.warning(f"未识别的景别值 '{shot_size_str}'，使用默认值 medium_shot")
+
+        return {
+            "scene_number": shot.get("scene_number", 0),
+            "shot_number": shot.get("shot_number", 0),
+            "shot_size": shot_size_enum.value,
+            "camera_movement": shot.get("camera_movement", ""),
+            "content": shot.get("content", ""),
+            "dialogue": shot.get("dialogue", ""),
+            "sound_effect": shot.get("sound_effect", ""),
+            "ambient_sound": shot.get("ambient_sound", ""),
+            "background_music": shot.get("background_music", ""),
+            "duration": float(shot.get("duration", 0.0)),
+            "notes": shot.get("notes", ""),
+        }

@@ -70,6 +70,13 @@ class SceneListModel(QAbstractListModel):
         self.endResetModel()
         self.count_changed.emit()
 
+    def append(self, scene: Scene) -> None:
+        row = len(self._data)
+        self.beginInsertRows(QModelIndex(), row, row)
+        self._data.append(scene)
+        self.endInsertRows()
+        self.count_changed.emit()
+
     def get_by_index(self, row: int) -> Scene | None:
         if 0 <= row < len(self._data):
             return self._data[row]

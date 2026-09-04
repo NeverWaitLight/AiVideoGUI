@@ -134,6 +134,58 @@ class TestCharacterParser(unittest.TestCase):
         self.assertEqual(result[0]["name"], "李明")
         self.assertEqual(result[1]["name"], "王芳")
 
+    def test_parse_character_item_valid(self) -> None:
+        item = {
+            "name": "李明",
+            "ref_code": "CHAR_A",
+            "description": "30岁男性",
+            "voice_tone": "低沉男声",
+        }
+        parsed = CharacterParser.parse_character_item(item)
+        self.assertIsNotNone(parsed)
+        self.assertEqual(parsed["name"], "李明")
+        self.assertEqual(parsed["voice_tone"], "低沉男声")
+
+    def test_parse_character_item_invalid_returns_none(self) -> None:
+        parsed = CharacterParser.parse_character_item({"name": "", "ref_code": "CHAR_A"})
+        self.assertIsNone(parsed)
+
+
+SAMPLE_CHARACTERS_JSON = """{
+  "characters": [
+    {
+      "name": "李探长",
+      "ref_code": "CHAR_A",
+      "description": "45岁男性",
+      "voice_tone": "低沉男声"
+    },
+    {
+      "name": "小王",
+      "ref_code": "CHAR_B",
+      "description": "28岁男性",
+      "voice_tone": "年轻男声"
+    }
+  ]
+}"""
+
+
+class TestCharacterStreamingParser(unittest.TestCase):
+    def _feed_in_chunks(self, text: str, chunk_size: int = 7) -> list[dict]:
+        from utils.streaming_json_array_parser import StreamingJsonArrayParser
+
+        parser = StreamingJsonArrayParser(array_key="characters")
+        items: list[dict] = []
+        for i in range(0, len(text), chunk_size):
+            items.extend(parser.feed(text[i : i + chunk_size]))
+        return items
+
+    def test_incremental_character_parsing(self) -> None:
+        raw_items = self._feed_in_chunks(SAMPLE_CHARACTERS_JSON)
+        self.assertEqual(len(raw_items), 2)
+        chars = [CharacterParser.parse_character_item(item) for item in raw_items]
+        self.assertEqual(chars[0]["ref_code"], "CHAR_A")
+        self.assertEqual(chars[1]["name"], "小王")
+
 
 if __name__ == "__main__":
     unittest.main()

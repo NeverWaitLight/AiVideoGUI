@@ -94,6 +94,13 @@ class StoryboardListModel(QAbstractListModel):
         self.endResetModel()
         self.count_changed.emit()
 
+    def append(self, shot: Storyboard) -> None:
+        row = len(self._data)
+        self.beginInsertRows(QModelIndex(), row, row)
+        self._data.append(shot)
+        self.endInsertRows()
+        self.count_changed.emit()
+
     def get_by_index(self, row: int) -> Storyboard | None:
         if 0 <= row < len(self._data):
             return self._data[row]

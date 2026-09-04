@@ -120,6 +120,12 @@ Item {
         function onCharacters_optimized(count) {
             aiOptimizeDialog.finishOptimizing()
         }
+        function onGeneration_started() {
+            characterListView.positionViewAtBeginning()
+        }
+        function onCharacter_added() {
+            characterListView.positionViewAtEnd()
+        }
         function onBridge_error(msg) {
             aiOptimizeDialog.finishOptimizing()
             alertDialog.error("错误", msg)
@@ -226,7 +232,7 @@ Item {
                         Layout.preferredWidth: 36
                         Layout.preferredHeight: 36
                         display: AbstractButton.IconOnly
-                        icon.source: "qrc:/resources/icons/auto_awesome.svg"
+                        icon.source: bridge.characters.isOptimizing ? "" : "qrc:/resources/icons/auto_awesome.svg"
                         icon.width: 20
                         icon.height: 20
                         icon.color: "white"
@@ -241,7 +247,17 @@ Item {
                         background: Rectangle {
                             anchors.fill: parent
                             radius: parent.width / 2
-                            color: parent.enabled ? (parent.pressed ? "#E65100" : (parent.hovered ? "#FB8C00" : "#FF9800")) : "#BDBDBD"
+                            color: bridge.characters.isOptimizing
+                                ? "#FF9800"
+                                : (parent.enabled ? (parent.pressed ? "#E65100" : (parent.hovered ? "#FB8C00" : "#FF9800")) : "#BDBDBD")
+                        }
+
+                        BusyIndicator {
+                            anchors.centerIn: parent
+                            width: 24
+                            height: 24
+                            visible: bridge.characters.isOptimizing
+                            running: bridge.characters.isOptimizing
                         }
 
                         onClicked: {
@@ -302,12 +318,34 @@ Item {
                 }
 
                 ListView {
+                    id: characterListView
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     Layout.margins: 16
                     model: bridge.characters.model
                     spacing: 8
                     clip: true
+
+                    add: Transition {
+                        enabled: bridge.characters.isOptimizing
+                        ParallelAnimation {
+                            NumberAnimation {
+                                properties: "opacity"
+                                from: 0
+                                to: 1
+                                duration: 300
+                                easing.type: Easing.OutCubic
+                            }
+                            NumberAnimation {
+                                properties: "x"
+                                from: (ViewTransition.index % 2 === 0)
+                                    ? -characterListView.width * 0.25
+                                    : characterListView.width * 0.25
+                                duration: 300
+                                easing.type: Easing.OutCubic
+                            }
+                        }
+                    }
 
                     delegate: CharacterCardDelegate {
                         width: ListView.view.width - 32

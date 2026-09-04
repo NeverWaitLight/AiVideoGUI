@@ -14,6 +14,8 @@ from utils.prompt_sanitize import flatten_prompt_text
 
 
 class ScriptGenerateWorker(QThread):
+    started = Signal()
+    item_ready = Signal(dict)
     finished = Signal(str, list)
     failed = Signal(str)
 
@@ -27,8 +29,14 @@ class ScriptGenerateWorker(QThread):
 
     def run(self):
         try:
-            title, scenes, task_id = self._text_service.generate_script(
+            self.started.emit()
+
+            def _on_item(item: dict) -> None:
+                self.item_ready.emit(item)
+
+            title, scenes, task_id = self._text_service.generate_script_stream(
                 self._outline_content,
+                on_item=_on_item,
                 project_id=self._project_id,
                 project_name=self._project_name,
             )
@@ -39,6 +47,8 @@ class ScriptGenerateWorker(QThread):
 
 
 class StoryboardGenerateWorker(QThread):
+    started = Signal()
+    item_ready = Signal(dict)
     finished = Signal(list)
     failed = Signal(str)
 
@@ -53,8 +63,15 @@ class StoryboardGenerateWorker(QThread):
 
     def run(self):
         try:
-            result, task_id = self._text_service.generate_storyboard(
-                self._script_content, self._art_style,
+            self.started.emit()
+
+            def _on_item(item: dict) -> None:
+                self.item_ready.emit(item)
+
+            result, task_id = self._text_service.generate_storyboard_stream(
+                self._script_content,
+                self._art_style,
+                on_item=_on_item,
                 project_id=self._project_id,
                 project_name=self._project_name,
             )
@@ -65,6 +82,8 @@ class StoryboardGenerateWorker(QThread):
 
 
 class CharacterWorker(QThread):
+    started = Signal()
+    item_ready = Signal(dict)
     finished = Signal(list)
     failed = Signal(str)
 
@@ -79,20 +98,27 @@ class CharacterWorker(QThread):
 
     def run(self):
         try:
+            self.started.emit()
+
+            def _on_item(item: dict) -> None:
+                self.item_ready.emit(item)
+
             if self._mode == 'generate':
-                characters, task_id = self._text_service.generate_characters(
+                characters, task_id = self._text_service.generate_characters_stream(
                     outline_content=self._kwargs['outline_content'],
                     script_content=self._kwargs['script_content'],
                     user_requirement=self._kwargs['user_requirement'],
+                    on_item=_on_item,
                     project_id=self._project_id,
                     project_name=self._project_name,
                 )
             else:
-                characters, task_id = self._text_service.optimize_characters(
+                characters, task_id = self._text_service.optimize_characters_stream(
                     outline_content=self._kwargs['outline_content'],
                     script_content=self._kwargs['script_content'],
                     current_characters=self._kwargs['current_characters'],
                     user_requirement=self._kwargs['user_requirement'],
+                    on_item=_on_item,
                     project_id=self._project_id,
                     project_name=self._project_name,
                 )
@@ -145,6 +171,8 @@ class OutlineOptimizeWorker(QThread):
 
 
 class ScreenplayOptimizeWorker(QThread):
+    started = Signal()
+    item_ready = Signal(dict)
     finished = Signal(str, list)
     failed = Signal(str)
 
@@ -160,10 +188,16 @@ class ScreenplayOptimizeWorker(QThread):
 
     def run(self):
         try:
-            title, scenes, task_id = self._text_service.optimize_screenplay(
+            self.started.emit()
+
+            def _on_item(item: dict) -> None:
+                self.item_ready.emit(item)
+
+            title, scenes, task_id = self._text_service.optimize_screenplay_stream(
                 self._outline_content,
                 self._current_script,
                 self._user_requirement,
+                on_item=_on_item,
                 project_id=self._project_id,
                 project_name=self._project_name,
             )
@@ -174,6 +208,8 @@ class ScreenplayOptimizeWorker(QThread):
 
 
 class StoryboardOptimizeWorker(QThread):
+    started = Signal()
+    item_ready = Signal(dict)
     finished = Signal(list)
     failed = Signal(str)
 
@@ -192,12 +228,18 @@ class StoryboardOptimizeWorker(QThread):
 
     def run(self):
         try:
-            shots, task_id = self._text_service.optimize_storyboard(
+            self.started.emit()
+
+            def _on_item(item: dict) -> None:
+                self.item_ready.emit(item)
+
+            shots, task_id = self._text_service.optimize_storyboard_stream(
                 self._outline_content,
                 self._script_content,
                 self._character_content,
                 self._current_storyboard,
                 self._user_requirement,
+                on_item=_on_item,
                 project_id=self._project_id,
                 project_name=self._project_name,
             )

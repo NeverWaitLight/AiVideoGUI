@@ -79,6 +79,13 @@ class CharacterListModel(QAbstractListModel):
         self.endResetModel()
         self.count_changed.emit()
 
+    def append(self, character: Character) -> None:
+        row = len(self._data)
+        self.beginInsertRows(QModelIndex(), row, row)
+        self._data.append(character)
+        self.endInsertRows()
+        self.count_changed.emit()
+
     def get_by_index(self, row: int) -> Character | None:
         if 0 <= row < len(self._data):
             return self._data[row]

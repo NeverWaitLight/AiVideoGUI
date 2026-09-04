@@ -32,6 +32,8 @@ class StoryboardBridge(QObject):
     storyboard_optimized = Signal(int)  # shot_count
     storyboard_generation_failed = Signal(str)
     isOptimizingChanged = Signal()
+    generation_started = Signal()
+    shot_added = Signal()
     takes_changed = Signal()
     bridge_error = Signal(str)
 
@@ -70,6 +72,10 @@ class StoryboardBridge(QObject):
         self._optimize_worker = None
         self._generate_worker = None
         self._project_id: int = -1
+        self._generation_snapshot: list = []
+        self._created_ids: list[int] = []
+        self._scene_map: dict[int, int] = {}
+        self._generation_aborted: bool = False
         self._cur_shot_id: int = -1
         self._cur_scene_number: int = 0
         self._cur_shot_number: int = 0
@@ -1136,83 +1142,23 @@ class StoryboardBridge(QObject):
 
     def _generate_storyboard_with_requirement(self, outline_content: str, scenes: list, characters: list, user_input: str, project_id: int) -> None:
         script_content = self._format_script_as_text(scenes)
-        character_content = self._format_characters_as_text(characters)
-
         combined_requirement = f"用户要求：{user_input}\n\n大纲参考：{outline_content}"
+
+        self._begin_generation(project_id=project_id, scenes=scenes, clear_existing=False)
 
         self._generate_worker = StoryboardGenerateWorker(
             text_service=self._text_model_service, script_content=script_content, art_style=combined_requirement,
             project_id=project_id,
             project_name=self._get_project_name(project_id),
         )
-
-        def on_finished(result: list) -> None:
-            try:
-                shots_data = result
-
-                if not shots_data:
-                    self.storyboard_generation_failed.emit("AI 返回的分镜数据为空")
-                    return
-
-                scene_map = {s.scene_number: s.id for s in scenes}
-
-                storyboards = []
-                for shot_data in shots_data:
-                    scene_number = shot_data.get("scene_number", 1)
-                    scene_id = scene_map.get(scene_number, 0)
-
-                    from models.storyboard import Storyboard
-                    from models.enums import ShotSize
-
-                    shot_size_map = {
-                        "extreme_close_up": ShotSize.EXTREME_CLOSE_UP,
-                        "close_up": ShotSize.CLOSE_UP,
-                        "medium_shot": ShotSize.MEDIUM_SHOT,
-                        "full_shot": ShotSize.FULL_SHOT,
-                        "long_shot": ShotSize.LONG_SHOT,
-                        "extreme_long_shot": ShotSize.EXTREME_LONG_SHOT,
-                    }
-
-                    shot_size = shot_size_map.get(shot_data.get("shot_size", "medium_shot"), ShotSize.MEDIUM_SHOT)
-
-                    storyboard = Storyboard(
-                        scene_id=scene_id,
-                        scene_number=scene_number,
-                        shot_number=shot_data.get("shot_number", 1),
-                        shot_size=shot_size,
-                        camera_movement=shot_data.get("camera_movement", ""),
-                        content=shot_data.get("content", ""),
-                        sound_effect=shot_data.get("sound_effect", ""),
-                        ambient_sound=shot_data.get("ambient_sound", ""),
-                        background_music=shot_data.get("background_music", ""),
-                        duration=shot_data.get("duration", 5.0),
-                        notes=shot_data.get("color_lighting", ""),
-                    )
-                    storyboards.append(storyboard)
-
-                self._storyboard_service.batch_create_storyboards(storyboards=storyboards)
-
-                self.load_for_project(project_id)
-                self.storyboard_generated.emit(len(storyboards))
-
-            except Exception as e:
-                self.storyboard_generation_failed.emit(f"保存失败：{e}")
-
-        def on_failed(err: str) -> None:
-            self.storyboard_generation_failed.emit(err)
-
-        self._generate_worker.finished.connect(on_finished)
-        self._generate_worker.failed.connect(on_failed)
-        self._generate_worker.finished.connect(self._generate_worker.deleteLater)
-        self._generate_worker.start()
+        self._connect_storyboard_worker(self._generate_worker, project_id, is_optimize=False)
 
     def _optimize_storyboard(self, outline_content: str, scenes: list, characters: list, storyboards: list, user_input: str, project_id: int) -> None:
-        self._optimizing = True
-        self.isOptimizingChanged.emit()
-
         script_content = self._format_script_as_text(scenes)
         character_content = self._format_characters_as_text(characters)
         current_storyboard = self._format_storyboards_as_text(storyboards)
+
+        self._begin_generation(project_id=project_id, scenes=scenes, clear_existing=True)
 
         self._optimize_worker = StoryboardOptimizeWorker(
             text_service=self._text_model_service,
@@ -1224,67 +1170,148 @@ class StoryboardBridge(QObject):
             project_id=project_id,
             project_name=self._get_project_name(project_id),
         )
+        self._connect_storyboard_worker(self._optimize_worker, project_id, is_optimize=True)
 
-        def on_finished(new_shots: list) -> None:
+    def _begin_generation(self, project_id: int, scenes: list, clear_existing: bool) -> None:
+        self._project_id = project_id
+        self._scene_map = {s.scene_number: s.id for s in scenes}
+        self._generation_snapshot = list(
+            self._storyboard_service.list_storyboards(project_id=project_id)
+        )
+        self._created_ids = []
+
+        if clear_existing:
+            for shot in self._generation_snapshot:
+                self._storyboard_service.delete_storyboard(storyboard_id=shot.id)
+            self._model.reset([])
+
+        self._generation_aborted = False
+        self._optimizing = True
+        self.isOptimizingChanged.emit()
+        self.generation_started.emit()
+
+    def _build_storyboard_from_data(self, shot_data: dict):
+        from models.storyboard import Storyboard
+        from models.enums import ShotSize
+
+        shot_size_map = {
+            "extreme_close_up": ShotSize.EXTREME_CLOSE_UP,
+            "close_up": ShotSize.CLOSE_UP,
+            "medium_shot": ShotSize.MEDIUM_SHOT,
+            "full_shot": ShotSize.FULL_SHOT,
+            "long_shot": ShotSize.LONG_SHOT,
+            "extreme_long_shot": ShotSize.EXTREME_LONG_SHOT,
+        }
+
+        scene_number = shot_data.get("scene_number", 1)
+        scene_id = self._scene_map.get(scene_number, 0)
+        shot_size_value = shot_data.get("shot_size", "medium_shot")
+        if isinstance(shot_size_value, str):
+            shot_size = shot_size_map.get(shot_size_value, ShotSize.MEDIUM_SHOT)
+        else:
+            shot_size = ShotSize(shot_size_value)
+
+        return self._storyboard_service.create_storyboard(
+            scene_id=scene_id,
+            scene_number=scene_number,
+            shot_number=shot_data.get("shot_number", 1),
+            shot_size=shot_size,
+            camera_movement=shot_data.get("camera_movement", ""),
+            content=shot_data.get("content", ""),
+            sound_effect=shot_data.get("sound_effect", ""),
+            ambient_sound=shot_data.get("ambient_sound", ""),
+            background_music=shot_data.get("background_music", ""),
+            duration=shot_data.get("duration", 5.0),
+            notes=shot_data.get("notes", ""),
+        )
+
+    def _on_shot_item_ready(self, data: dict) -> None:
+        if self._generation_aborted:
+            return
+        try:
+            storyboard = self._build_storyboard_from_data(data)
+            self._created_ids.append(storyboard.id)
+            self._model.append(storyboard)
+            self.shot_added.emit()
+        except Exception as e:
+            self._generation_aborted = True
+            error_msg = str(e) or f"{type(e).__name__}（无详细信息）"
+            self._rollback_generation()
             self._optimizing = False
             self.isOptimizingChanged.emit()
+            self.storyboard_generation_failed.emit(f"保存失败：{error_msg}")
+
+    def _rollback_generation(self) -> None:
+        for shot_id in self._created_ids:
             try:
-                for shot in storyboards:
-                    self._storyboard_service.delete_storyboard(storyboard_id=shot.id)
+                self._storyboard_service.delete_storyboard(storyboard_id=shot_id)
+            except Exception:
+                pass
+        self._created_ids = []
 
-                scene_map = {s.scene_number: s.id for s in scenes}
+        for shot in self._generation_snapshot:
+            self._storyboard_service.create_storyboard(
+                scene_id=shot.scene_id,
+                scene_number=shot.scene_number,
+                shot_number=shot.shot_number,
+                shot_size=shot.shot_size,
+                camera_movement=shot.camera_movement,
+                content=shot.content,
+                sound_effect=shot.sound_effect,
+                ambient_sound=shot.ambient_sound,
+                background_music=shot.background_music,
+                duration=shot.duration,
+                notes=shot.notes,
+                design_image=shot.design_image,
+                seed=shot.seed,
+            )
+        if self._project_id >= 0:
+            self.load_for_project(self._project_id)
 
-                storyboards_to_create = []
-                for shot_data in new_shots:
-                    scene_number = shot_data.get("scene_number", 1)
-                    scene_id = scene_map.get(scene_number, 0)
+    def _finish_generation(self) -> None:
+        self._generation_snapshot = []
+        self._created_ids = []
+        self._optimizing = False
+        self.isOptimizingChanged.emit()
 
-                    from models.storyboard import Storyboard
-                    from models.enums import ShotSize
+    def _connect_storyboard_worker(self, worker, project_id: int, is_optimize: bool) -> None:
+        def on_item_ready(data: dict) -> None:
+            self._on_shot_item_ready(data)
 
-                    shot_size_map = {
-                        "extreme_close_up": ShotSize.EXTREME_CLOSE_UP,
-                        "close_up": ShotSize.CLOSE_UP,
-                        "medium_shot": ShotSize.MEDIUM_SHOT,
-                        "full_shot": ShotSize.FULL_SHOT,
-                        "long_shot": ShotSize.LONG_SHOT,
-                        "extreme_long_shot": ShotSize.EXTREME_LONG_SHOT,
-                    }
-
-                    shot_size = shot_size_map.get(shot_data.get("shot_size", "medium_shot"), ShotSize.MEDIUM_SHOT)
-
-                    storyboard = Storyboard(
-                        scene_id=scene_id,
-                        scene_number=scene_number,
-                        shot_number=shot_data.get("shot_number", 1),
-                        shot_size=shot_size,
-                        camera_movement=shot_data.get("camera_movement", ""),
-                        content=shot_data.get("content", ""),
-                        sound_effect=shot_data.get("sound_effect", ""),
-                        ambient_sound=shot_data.get("ambient_sound", ""),
-                        background_music=shot_data.get("background_music", ""),
-                        duration=shot_data.get("duration", 5.0),
-                        notes=shot_data.get("color_lighting", ""),
-                    )
-                    storyboards_to_create.append(storyboard)
-
-                self._storyboard_service.batch_create_storyboards(storyboards=storyboards_to_create)
-
-                self.load_for_project(project_id)
-                self.storyboard_optimized.emit(len(storyboards_to_create))
-
+        def on_finished(result: list) -> None:
+            if self._generation_aborted:
+                return
+            try:
+                if not result:
+                    self._generation_aborted = True
+                    self._rollback_generation()
+                    self._optimizing = False
+                    self.isOptimizingChanged.emit()
+                    self.storyboard_generation_failed.emit("AI 返回的分镜数据为空")
+                    return
+                self._finish_generation()
+                if is_optimize:
+                    self.storyboard_optimized.emit(len(result))
+                else:
+                    self.storyboard_generated.emit(len(result))
             except Exception as e:
                 self.storyboard_generation_failed.emit(f"保存失败：{e}")
 
         def on_failed(err: str) -> None:
+            if self._generation_aborted:
+                return
+            self._generation_aborted = True
+            self._rollback_generation()
             self._optimizing = False
             self.isOptimizingChanged.emit()
-            self.storyboard_generation_failed.emit(f"优化分镜失败：{err}")
+            prefix = "优化分镜失败：" if is_optimize else "生成分镜失败："
+            self.storyboard_generation_failed.emit(f"{prefix}{err}")
 
-        self._optimize_worker.finished.connect(on_finished)
-        self._optimize_worker.failed.connect(on_failed)
-        self._optimize_worker.finished.connect(self._optimize_worker.deleteLater)
-        self._optimize_worker.start()
+        worker.item_ready.connect(on_item_ready)
+        worker.finished.connect(on_finished)
+        worker.failed.connect(on_failed)
+        worker.finished.connect(worker.deleteLater)
+        worker.start()
 
     def _format_script_as_text(self, scenes: list) -> str:
         """将场次列表格式化为文本"""
